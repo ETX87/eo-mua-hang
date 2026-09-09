@@ -5,7 +5,20 @@ import type { D1Database } from "@cloudflare/workers-types";
  * "2.2. All" - xem REPORT_SPEC.md §2.2). `scopeCodes` = danh sach approval_code_raw bi anh huong
  * (khi 1 EO vua ISSUED). Bo trong = tinh lai toan bo.
  */
+const SCOPE_CHUNK = 80; // D1: gioi han so bien bind moi cau lenh - chia nho de tranh SQLITE_ERROR "too many SQL variables"
+
 export async function recomputeMatch(db: D1Database, scopeCodes?: string[]): Promise<void> {
+  const hasScope = scopeCodes && scopeCodes.length > 0;
+  if (!hasScope) {
+    await recomputeMatchChunk(db, undefined);
+    return;
+  }
+  for (let i = 0; i < scopeCodes!.length; i += SCOPE_CHUNK) {
+    await recomputeMatchChunk(db, scopeCodes!.slice(i, i + SCOPE_CHUNK));
+  }
+}
+
+async function recomputeMatchChunk(db: D1Database, scopeCodes?: string[]): Promise<void> {
   const hasScope = scopeCodes && scopeCodes.length > 0;
   const inList = hasScope ? `(${scopeCodes!.map(() => "?").join(",")})` : "";
   const scopeSql = hasScope ? `WHERE amis_receipt.approval_code_raw IN ${inList}` : "";
