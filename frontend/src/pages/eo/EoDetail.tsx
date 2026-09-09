@@ -24,19 +24,29 @@ const EVENT_LABEL: Record<string, string> = {
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
 };
 
+const PRE_ISSUE_STATES = ["DRAFT", "IN_REVIEW", "WAITING_FINAL_APPROVAL"];
+
 export default function EoDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("Linh kiện");
   const [qtyItem, setQtyItem] = useState<any>(null);
+  const [showCancel, setShowCancel] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
 
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const q = useQuery({ queryKey: ["eo", id], queryFn: () => api.get<any>(`/eo/${id}`) });
   if (q.isLoading) return <Spinner />;
   if (q.isError || !q.data) return <div className="muted">Không tìm thấy EO.</div>;
   const { eo, items, tong, submissions, approvals, events, comments, files } = q.data;
   const issued = eo.trang_thai === "ISSUED";
   const refresh = () => qc.invalidateQueries({ queryKey: ["eo", id] });
+
+  const myEmail = me.data?.email;
+  const myRole = me.data?.vai_tro;
+  const canManage = myRole === "Admin" || myRole === "KH cung ung" || eo.created_by === myEmail;
+  const canCancel = (PRE_ISSUE_STATES.includes(eo.trang_thai) && canManage) || (issued && myRole === "Admin");
 
   return (
     <div>
@@ -46,7 +56,7 @@ export default function EoDetail() {
         actions={<>
           <button className="btn primary" onClick={() => nav(`/eo/${id}/edit`)}><I.edit width={14} height={14} /> Sửa EO</button>
           <button className="btn" onClick={() => setTab("Lịch sử thay đổi")}><I.clock width={14} height={14} /> Lịch sử</button>
-          <button className="btn"><I.dots width={14} height={14} /> Khác</button>
+          {canCancel && <button className="btn danger" onClick={() => setShowCancel(true)}><I.x width={14} height={14} /> Hủy EO</button>}
         </>}
       />
 
@@ -85,18 +95,20 @@ export default function EoDetail() {
         ))}
       </div>
 
-      {tab === "Linh kiện" && <TabLinhKien items={items} tong={tong} issued={issued} onEditQty={setQtyItem} />}
+      {tab === "Linh kiện" && <TabLinhKien items={items} tong={tong} issued={issued} onEditQty={setQtyItem} onAddItem={() => setShowAddItem(true)} />}
       {tab === "Quy trình duyệt" && <TabQuyTrinh submissions={submissions} approvals={approvals} />}
       {tab === "Lịch sử thay đổi" && <TabLichSu events={events} />}
       {tab === "Bình luận" && <TabBinhLuan eoId={id!} comments={comments} onSent={refresh} />}
       {tab === "Tài liệu đính kèm" && <TabTaiLieu files={files} />}
 
       {qtyItem && <QtyModal item={qtyItem} issued={issued} onClose={() => setQtyItem(null)} onSaved={() => { setQtyItem(null); refresh(); }} />}
+      {showCancel && <CancelModal eo={eo} onClose={() => setShowCancel(false)} onDone={() => { setShowCancel(false); refresh(); }} />}
+      {showAddItem && <AddItemModal eoId={id!} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); refresh(); }} />}
     </div>
   );
 }
 
-function TabLinhKien({ items, tong, issued, onEditQty }: any) {
+function TabLinhKien({ items, tong, issued, onEditQty, onAddItem }: any) {
   const cols: Col<any>[] = [
     { key: "stt", header: "STT", align: "center", render: (_r, ) => "", width: 48 },
     { key: "part_code", header: "Mã linh kiện", render: (r) => <span className="cell-link" style={{ textDecoration: "underline" }}>{r.legacy_id || r.part_code}</span> },
@@ -133,7 +145,7 @@ function TabLinhKien({ items, tong, issued, onEditQty }: any) {
         <StatTile label="Tổng tiền dự kiến" value={tien(tong.tong_tien_du_kien)} />
       </div>
       {issued && (
-        <button className="btn sm" style={{ marginTop: 14 }}><I.plus width={14} height={14} /> Thêm dòng (duyệt sau ban hành)</button>
+        <button className="btn sm" style={{ marginTop: 14 }} onClick={onAddItem}><I.plus width={14} height={14} /> Thêm dòng (duyệt sau ban hành)</button>
       )}
     </>
   );
@@ -267,6 +279,84 @@ function QtyModal({ item, issued, onClose, onSaved }: any) {
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
       <label className="field-label" style={{ marginTop: 12 }}>Lý do {issued && <span className="req">*</span>}</label>
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do thay đổi số lượng" />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+function CancelModal({ eo, onClose, onDone }: any) {
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setErr(""); setBusy(true);
+    try {
+      await api.post(`/eo/${eo.id}/cancel`, { reason: reason.trim() || undefined });
+      onDone();
+    } catch (e: any) {
+      setErr(e?.body?.error === "FORBIDDEN" ? "Bạn không có quyền hủy EO này." :
+        e?.body?.error === "ADMIN_ONLY_AFTER_ISSUE" ? "EO đã ban hành — chỉ Admin được hủy." :
+        e?.body?.error === "BAD_STATE" ? "EO đang ở trạng thái không thể hủy." : "Lỗi hủy EO.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Hủy EO — ${eo.eo_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>Xác nhận hủy</button></>}>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Hành động này sẽ chuyển EO sang trạng thái "Đã hủy" và không thể hoàn tác.</div>
+      <label className="field-label">Lý do hủy</label>
+      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do hủy (tuỳ chọn)..." />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+function AddItemModal({ eoId, onClose, onSaved }: any) {
+  const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
+  const [partCode, setPartCode] = useState("");
+  const [partName, setPartName] = useState("");
+  const [warehouse, setWarehouse] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [qty, setQty] = useState("");
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setErr("");
+    if (!partCode.trim()) return setErr("Nhập mã linh kiện.");
+    if (!warehouse) return setErr("Chọn kho cần đặt.");
+    if (!qty || Number(qty) <= 0) return setErr("Nhập số lượng > 0.");
+    setBusy(true);
+    try {
+      await api.post(`/eo/${eoId}/items`, {
+        part_code: partCode.trim(), part_name: partName.trim() || undefined, warehouse,
+        supplier: supplier.trim() || undefined, current_qty: Number(qty), reason: reason.trim() || undefined,
+      });
+      onSaved();
+    } catch {
+      setErr("Lỗi lưu dòng linh kiện.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title="Thêm dòng linh kiện (duyệt sau ban hành)" onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Dòng mới sẽ ở trạng thái chờ duyệt cho tới khi người duyệt cuối của EO xác nhận.</div>
+      <label className="field-label">Mã linh kiện <span className="req">*</span></label>
+      <input className="input" value={partCode} onChange={(e) => setPartCode(e.target.value)} placeholder="Nhập mã LK" />
+      <label className="field-label" style={{ marginTop: 12 }}>Tên linh kiện</label>
+      <input className="input" value={partName} onChange={(e) => setPartName(e.target.value)} placeholder="Nhập tên linh kiện" />
+      <label className="field-label" style={{ marginTop: 12 }}>Kho cần đặt <span className="req">*</span></label>
+      <select className="select" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
+        <option value="">Chọn kho</option>
+        {(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
+      </select>
+      <label className="field-label" style={{ marginTop: 12 }}>Đối tác</label>
+      <input className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nhập đối tác" />
+      <label className="field-label" style={{ marginTop: 12 }}>Số lượng <span className="req">*</span></label>
+      <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
+      <label className="field-label" style={{ marginTop: 12 }}>Lý do PS</label>
+      <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do..." />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );

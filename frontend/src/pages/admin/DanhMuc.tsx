@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { PageHeader, Card, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
@@ -7,14 +7,20 @@ import { soLuong } from "../../lib/format";
 
 export default function DanhMuc() {
   const [tab, setTab] = useState<"kho" | "loai" | "toc">("kho");
+  const qc = useQueryClient();
   const kho = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const loai = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
   const toc = useQuery({ queryKey: ["dm-tocdo"], queryFn: () => api.get<any[]>("/danh-muc/toc-do") });
 
+  const toggleKhoActive = async (r: any, active: boolean) => {
+    await api.put(`/danh-muc/kho/${encodeURIComponent(r.ten_kho)}`, { ma_kho: r.ma_kho ?? null, active: active ? 1 : 0 });
+    qc.invalidateQueries({ queryKey: ["dm-kho"] });
+  };
+
   const khoCols: Col<any>[] = [
     { key: "t", header: "Tên kho", render: (r) => r.ten_kho },
     { key: "m", header: "Mã kho", render: (r) => r.ma_kho || "" },
-    { key: "a", header: "Kích hoạt", align: "center", render: (r) => <input type="checkbox" defaultChecked={!!r.active} /> },
+    { key: "a", header: "Kích hoạt", align: "center", render: (r) => <input type="checkbox" checked={!!r.active} onChange={(e) => toggleKhoActive(r, e.target.checked)} /> },
   ];
   const loaiCols: Col<any>[] = [
     { key: "c", header: "Mã", render: (r) => r.code },

@@ -18,7 +18,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const { id } = useParams();
   const cats = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
-  const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users").catch(() => []) });
+  const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
 
   const [tieuDe, setTieuDe] = useState("");
   const [loaiHinh, setLoaiHinh] = useState("");

@@ -15,6 +15,14 @@ app.get("/", requireAdmin, async (c) => {
   return c.json(rows.results);
 });
 
+// GET /api/users/directory - moi tai khoan da duyet: danh sach toi thieu de chon nguoi tham dinh/duyet cuoi khi tao EO
+app.get("/directory", async (c) => {
+  const rows = await c.env.DB.prepare(
+    "SELECT email, ho_ten FROM users WHERE trang_thai_duyet = 'Da duyet' AND active = 1 ORDER BY ho_ten, email",
+  ).all();
+  return c.json(rows.results);
+});
+
 // PATCH /api/users/:email - Admin: vai tro / co nghiep vu / duyet / active
 app.patch("/:email", requireAdmin, async (c) => {
   const email = c.req.param("email");

@@ -22,11 +22,11 @@ export default function Dashboard() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* KPI */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
-        <KpiCard icon="clipboard" tint="#F5CC18" label="Tổng số EO" value={soLuong(d.kpi.tong)} delta={{ text: "+12.5% so với tháng trước", up: true }} />
-        <KpiCard icon="clock" tint="#FC7000" label="Đang thẩm định" value={soLuong(d.kpi.tham_dinh)} delta={{ text: "+8.2% so với tháng trước", up: true }} />
-        <KpiCard icon="user" tint="#FC7000" label="Chờ duyệt cuối" value={soLuong(d.kpi.cho_duyet)} delta={{ text: "+4.1% so với tháng trước", up: true }} />
-        <KpiCard icon="check" tint="#6CD13D" label="Đã ban hành" value={soLuong(d.kpi.ban_hanh)} delta={{ text: "+15.3% so với tháng trước", up: true }} />
-        <KpiCard icon="x" tint="#FC4244" label="Từ chối / Đã hủy" value={soLuong(d.kpi.tu_choi)} delta={{ text: "-3.6% so với tháng trước", up: false }} />
+        <KpiCard icon="clipboard" tint="#F5CC18" label="Tổng số EO" value={soLuong(d.kpi.tong)} />
+        <KpiCard icon="clock" tint="#FC7000" label="Đang thẩm định" value={soLuong(d.kpi.tham_dinh)} />
+        <KpiCard icon="user" tint="#FC7000" label="Chờ duyệt cuối" value={soLuong(d.kpi.cho_duyet)} />
+        <KpiCard icon="check" tint="#6CD13D" label="Đã ban hành" value={soLuong(d.kpi.ban_hanh)} />
+        <KpiCard icon="x" tint="#FC4244" label="Từ chối / Đã hủy" value={soLuong(d.kpi.tu_choi)} />
       </div>
 
       {/* 3 columns */}
