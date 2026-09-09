@@ -23,6 +23,25 @@ app.get("/directory", async (c) => {
   return c.json(rows.results);
 });
 
+const EMAIL_RE = /^[^\s,;<>@]+@[^\s,;<>@]+\.[^\s,;<>@]+$/;
+
+// POST /api/users - Admin: them tai khoan thu cong, da duyet ngay (khi email do dang nhap Google
+// se khop dong nay, khong bi treo "Cho duyet" lai).
+app.post("/", requireAdmin, async (c) => {
+  const b = (await c.req.json()) as { email?: string; ho_ten?: string; vai_tro?: string | null };
+  const email = b.email?.trim().toLowerCase();
+  if (!email || !EMAIL_RE.test(email)) return c.json({ error: "INVALID_EMAIL" }, 400);
+  const exists = await c.env.DB.prepare("SELECT 1 FROM users WHERE email = ?").bind(email).first();
+  if (exists) return c.json({ error: "ALREADY_EXISTS" }, 409);
+  const now = nowVN();
+  await c.env.DB.prepare(
+    `INSERT INTO users (email, ho_ten, vai_tro, trang_thai_duyet, active, approved_at, approved_by)
+     VALUES (?, ?, ?, 'Da duyet', 1, ?, ?)`,
+  ).bind(email, b.ho_ten?.trim() || email, b.vai_tro || null, now, c.get("user").email).run();
+  await bumpVersions(c.env.DB, ["users"]);
+  return c.json({ ok: true, email });
+});
+
 // PATCH /api/users/:email - Admin: vai tro / co nghiep vu / duyet / active
 app.patch("/:email", requireAdmin, async (c) => {
   const email = c.req.param("email");

@@ -6,6 +6,7 @@ import { PageHeader, Card, StatTile, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, pct } from "../../lib/format";
+import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 
 const badgeFor = (v: string) => {
   if (v === "Kết thúc") return "issued";
@@ -54,9 +55,41 @@ export default function ReportTienDo() {
     { key: "nt", header: "Ngày tạo", render: (r) => ngay(r.ngay_tao) },
   ];
 
+  const exportCols: ExportCol<any>[] = [
+    { header: "Trạng thái đơn hàng", get: (r) => r.trang_thai_don_hang },
+    { header: "Cảnh báo", get: (r) => r.canh_bao },
+    { header: "Tốc độ hàng về", get: (r) => r.toc_do_hang_ve },
+    { header: "Mã phê duyệt (EO)", get: (r) => r.ma_phe_duyet },
+    { header: "Phân loại thời điểm đặt", get: (r) => r.phan_loai_thoi_diem_dat },
+    { header: "ID ĐẶT LK", get: (r) => r.id_dat_lk },
+    { header: "ID tài liệu (mã EO)", get: (r) => r.id_tai_lieu },
+    { header: "Loại hình", get: (r) => r.loai_hinh },
+    { header: "Lý do PS", get: (r) => r.ly_do_ps },
+    { header: "ID CRM", get: (r) => r.id_crm },
+    { header: "ID đặt hàng", get: (r) => r.id_dat_hang },
+    { header: "Ghi chú", get: (r) => r.ghi_chu },
+    { header: "Kho", get: (r) => r.kho },
+    { header: "Đối tác", get: (r) => r.doi_tac },
+    { header: "Mã linh kiện", get: (r) => r.part_code },
+    { header: "Tên linh kiện", get: (r) => r.part_name },
+    { header: "SL đặt", get: (r) => r.so_luong_dat },
+    { header: "SL nhập theo AMIS (đúng EO)", get: (r) => r.sl_nhap_amis_dung_eo },
+    { header: "Đối chiếu sai/thừa", get: (r) => r.doi_chieu_sai_thua },
+    { header: "SL còn thiếu", get: (r) => r.so_luong_con_thieu },
+    { header: "Thời gian xử lý (ngày)", get: (r) => r.thoi_gian_xu_ly_ngay },
+    { header: "Số lần đổi ngày dự kiến", get: (r) => r.so_lan_doi_ngay_du_kien },
+    { header: "Ngày dự kiến lần đầu", get: (r) => ngay(r.ngay_du_kien_lan_dau) },
+    { header: "Ngày dự kiến gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) },
+    { header: "Ngày nhập kho AMIS (theo mã EO)", get: (r) => ngay(r.ngay_nhap_kho_amis_theo_eo) },
+    { header: "Ngày nhập kho AMIS", get: (r) => ngay(r.ngay_nhap_kho_amis) },
+    { header: "Ngày nhập toàn quốc AMIS", get: (r) => ngay(r.ngay_nhap_toan_quoc_amis) },
+    { header: "Ngày cập nhật lại SL", get: (r) => ngay(r.ngay_cap_nhat_so_luong) },
+    { header: "Ngày tạo", get: (r) => ngay(r.ngay_tao) },
+  ];
+
   return (
     <div>
-      <PageHeader title="Báo cáo – Tiến độ đơn hàng" actions={<button className="btn sm"><I.download width={14} height={14} /> Xuất Excel</button>} />
+      <PageHeader title="Báo cáo – Tiến độ đơn hàng" actions={<button className="btn sm" onClick={() => exportRowsToXlsx(allRows, exportCols, "tien-do-don-hang.xlsx")}><I.download width={14} height={14} /> Xuất Excel</button>} />
 
       {summary.data && (
         <Card style={{ marginBottom: 16 }}>

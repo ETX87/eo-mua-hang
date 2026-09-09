@@ -7,12 +7,27 @@ import { StatusBadge, TypeBadge } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ten } from "../../lib/format";
 import { STATUS_META } from "../../lib/nav";
+import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 
 interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
   loai_hinh: string | null; phong_ban: string | null; trang_thai: string;
   created_by: string; created_at: string; so_dong: number; tong_sl: number; final_approver_email: string | null;
 }
+
+const EXPORT_COLS: ExportCol<EoRow>[] = [
+  { header: "Mã EO", get: (r) => r.eo_code },
+  { header: "Mã phê duyệt", get: (r) => r.approval_code },
+  { header: "Tiêu đề", get: (r) => r.tieu_de },
+  { header: "Loại hình", get: (r) => r.loai_hinh },
+  { header: "Phòng ban", get: (r) => r.phong_ban },
+  { header: "Trạng thái", get: (r) => STATUS_META[r.trang_thai]?.label ?? r.trang_thai },
+  { header: "Người tạo", get: (r) => ten(r.created_by) },
+  { header: "Ngày tạo", get: (r) => ngay(r.created_at) },
+  { header: "Số dòng LK", get: (r) => r.so_dong },
+  { header: "Tổng SL đặt", get: (r) => r.tong_sl },
+  { header: "Người duyệt cuối", get: (r) => ten(r.final_approver_email) },
+];
 
 export default function EoListInner({ compact }: { compact?: boolean }) {
   const nav = useNavigate();
@@ -23,6 +38,7 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
   const [phongBan, setPhongBan] = useState("");
   const limit = 10;
   const [offset, setOffset] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -58,13 +74,38 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
       key: "act", header: "Thao tác", align: "center", render: (r) => (
         <div style={{ display: "flex", gap: 4, justifyContent: "center" }} onClick={(e) => e.stopPropagation()}>
           <button className="btn ghost sm" onClick={() => nav(`/eo/${r.id}`)}><I.eye width={15} height={15} /></button>
-          <button className="btn ghost sm"><I.dots width={15} height={15} /></button>
         </div>
       ),
     },
   ];
 
   const reset = () => { setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setOffset(0); };
+
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const exportParams = new URLSearchParams();
+      if (q) exportParams.set("q", q);
+      if (status) exportParams.set("trang_thai", status);
+      if (createdBy) exportParams.set("created_by", createdBy);
+      exportParams.set("limit", "200");
+      const all: EoRow[] = [];
+      let off = 0;
+      while (true) {
+        exportParams.set("offset", String(off));
+        const page = await api.get<{ rows: EoRow[]; total: number }>("/eo?" + exportParams.toString());
+        all.push(...page.rows);
+        if (all.length >= page.total || page.rows.length === 0) break;
+        off += 200;
+      }
+      let filtered = all;
+      if (loaiHinh) filtered = filtered.filter((r) => r.loai_hinh === loaiHinh);
+      if (phongBan) filtered = filtered.filter((r) => r.phong_ban === phongBan);
+      exportRowsToXlsx(filtered, EXPORT_COLS, "danh-sach-eo.xlsx");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const phongBanOpts = [...new Set((list.data?.rows ?? []).map((r) => r.phong_ban).filter(Boolean))] as string[];
 
@@ -93,7 +134,7 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
         </select>
         <RefreshFiltersBtn onClick={reset} />
         <div style={{ flex: 1 }} />
-        <button className="btn sm"><I.download width={14} height={14} /> Xuất Excel</button>
+        <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
       </FilterBar>
 
       <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => nav(`/eo/${r.id}`)} empty="Chưa có EO nào khớp bộ lọc" />
