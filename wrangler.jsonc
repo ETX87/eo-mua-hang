@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "eomua",
+  "name": "muahang",
   "main": "backend/src/index.ts",
   "compatibility_date": "2026-07-16",
   "compatibility_flags": ["nodejs_compat"],
@@ -28,8 +28,8 @@
 
   "vars": {
     "BOOTSTRAP_ADMIN_EMAIL": "smarttrade.vp@gmail.com",
-    "GOOGLE_REDIRECT_URI": "https://eomua.dichvu3t.workers.dev/api/auth/callback",
-    "FRONTEND_URL": "https://eomua.dichvu3t.workers.dev"
+    "GOOGLE_REDIRECT_URI": "https://muahang.dichvu3t.workers.dev/api/auth/callback",
+    "FRONTEND_URL": "https://muahang.dichvu3t.workers.dev"
   }
 
   // Gia tri NHAY CAM (dat qua "wrangler secret put", KHONG de trong "vars"):
