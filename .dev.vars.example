@@ -1,0 +1,7 @@
+SESSION_SECRET=dev-only-local-testing-secret-change-me
+GOOGLE_CLIENT_ID=dev-placeholder-client-id
+GOOGLE_CLIENT_SECRET=dev-placeholder-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:8790/api/auth/callback
+FRONTEND_URL=http://localhost:8790
+BOOTSTRAP_ADMIN_EMAIL=smarttrade.vp@gmail.com
+LOCAL_DEV_BYPASS_AUTH=true

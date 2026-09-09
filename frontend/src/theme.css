@@ -1,0 +1,118 @@
+/* Design tokens rut tu Giao dien demo 1/2.png */
+:root {
+  --brand-yellow: #FEDC3E;
+  --brand-yellow-soft: #FFE469;
+  --brand-yellow-btn: #F7CE1B;
+  --brand-yellow-btn-hover: #ECC00C;
+  --brand-ink: #1F2430;
+  --brand-olive: #86732A;
+  --link-amber: #C98A0C;
+
+  --app-bg: #FFFFFF;
+  --panel: #FFFFFF;
+  --panel-2: #F8F8F7;
+  --border: #ECECEA;
+  --border-strong: #DFDFDC;
+
+  --text: #1F2937;
+  --text-muted: #6B7280;
+  --text-faint: #9AA1AC;
+
+  --ok: #16A34A;
+  --ok-ink: #15803D;      --ok-bg: #DCFCE7;
+  --warn: #F59E0B;        --warn-ink: #B45309;   --warn-bg: #FBF0B9;
+  --orange: #FC7000;      --orange-ink: #C2410C; --orange-bg: #FFE7D6;
+  --danger: #EF4444;      --danger-ink: #B91C1C; --danger-bg: #FED7D3;
+  --slate-ink: #4B5563;   --slate-bg: #F1F2F4;
+
+  --type-sx-ink: #1D4ED8; --type-sx-bg: #E9F2FE;
+  --type-vp-ink: #6D28D9; --type-vp-bg: #EEE9FE;
+
+  --radius-card: 14px;
+  --radius-input: 10px;
+  --shadow-card: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.07);
+  --shadow-pop: 0 10px 30px rgba(16,24,40,.14);
+
+  --sidebar-w: 246px;
+  --topbar-h: 68px;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: "Be Vietnam Pro", ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--text);
+  background: var(--app-bg);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #D9D9D6; border-radius: 8px; border: 2px solid #fff; }
+
+/* ---------- primitives ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-strong);
+  background: #fff; color: var(--text); font-weight: 600; font-size: 13px; cursor: pointer;
+  white-space: nowrap; transition: background .12s, border-color .12s;
+}
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--brand-yellow-btn); border-color: var(--brand-yellow-btn); color: var(--brand-ink); }
+.btn.primary:hover { background: var(--brand-yellow-btn-hover); border-color: var(--brand-yellow-btn-hover); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+.btn.danger { color: var(--danger-ink); border-color: var(--danger-bg); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.input, .select, .textarea {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input); background: #fff; font-size: 13px; color: var(--text);
+}
+.input::placeholder, .textarea::placeholder { color: var(--text-faint); }
+.input:focus, .select:focus, .textarea:focus { outline: 2px solid #FDE68A; border-color: var(--brand-yellow-btn); }
+.textarea { min-height: 90px; resize: vertical; }
+.field-label { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 6px; display: block; }
+.req { color: var(--danger); }
+
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+.card-pad { padding: 18px; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.4;
+  max-width: 100%;
+}
+.badge > span.badge-txt { overflow: hidden; text-overflow: ellipsis; }
+.badge.nhap    { color: var(--slate-ink);  background: var(--slate-bg); }
+.badge.review  { color: var(--warn-ink);   background: var(--warn-bg); }
+.badge.final   { color: var(--orange-ink); background: var(--orange-bg); }
+.badge.issued  { color: var(--ok-ink);     background: var(--ok-bg); }
+.badge.reject  { color: var(--danger-ink); background: var(--danger-bg); }
+.badge.type-sx { color: var(--type-sx-ink); background: var(--type-sx-bg); }
+.badge.type-vp { color: var(--type-vp-ink); background: var(--type-vp-bg); }
+
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+.mono-num { font-variant-numeric: tabular-nums; }
+.right { text-align: right; }
+
+/* ---------- table ---------- */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.tbl thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--panel-2); color: var(--text-muted); font-weight: 600; text-align: left;
+  padding: 11px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 12.5px;
+}
+table.tbl tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+table.tbl tbody tr { height: 48px; }
+table.tbl tbody tr:last-child td { border-bottom: 0; }
+table.tbl tbody tr:hover { background: #FCFCFB; }
+table.tbl tr.total-row td { background: var(--panel-2); font-weight: 700; }
+.cell-link { color: var(--link-amber); font-weight: 600; }

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.wrangler/
+*.log
+.env
+.env.*
+.dev.vars
+secrets.md
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+scripts/_data/

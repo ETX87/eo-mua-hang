@@ -1,0 +1,382 @@
+import { Hono } from "hono";
+import type { Env, AppVariables } from "../types";
+import { nowVN } from "../lib/vnTime";
+import { bumpVersions } from "../lib/dataVersions";
+import { eventStmt } from "../lib/audit";
+import { canCreateEo, canManageEo } from "../lib/eoAccess";
+
+const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+// ------------------------------------------------------------------ GET / (list)
+app.get("/", async (c) => {
+  const url = new URL(c.req.url);
+  const status = url.searchParams.get("trang_thai");
+  const q = url.searchParams.get("q");
+  const createdBy = url.searchParams.get("created_by");
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
+  const offset = Number(url.searchParams.get("offset") ?? 0);
+
+  const where: string[] = [];
+  const bind: unknown[] = [];
+  if (status) { where.push("e.trang_thai = ?"); bind.push(status); }
+  if (createdBy) { where.push("e.created_by = ?"); bind.push(createdBy); }
+  if (q) { where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ?)"); bind.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  const wsql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  const rows = await c.env.DB.prepare(
+    `SELECT e.id, e.eo_code, e.approval_code, e.tieu_de, e.loai_hinh, e.phong_ban, e.trang_thai,
+            e.final_approver_email, e.created_by, e.created_at, e.issued_at,
+            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id) so_dong,
+            (SELECT COALESCE(SUM(i.current_qty),0) FROM eo_item i WHERE i.eo_id = e.id) tong_sl
+     FROM eo e ${wsql}
+     ORDER BY e.created_at DESC LIMIT ? OFFSET ?`,
+  ).bind(...bind, limit, offset).all();
+
+  const total = await c.env.DB.prepare(`SELECT COUNT(*) n FROM eo e ${wsql}`).bind(...bind).first<{ n: number }>();
+  return c.json({ rows: rows.results, total: total?.n ?? 0, limit, offset });
+});
+
+// ------------------------------------------------------------------ GET /:id (detail)
+app.get("/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+
+  const [items, subs, apprs, plans, files, comments, events] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT i.*,
+              COALESCE((SELECT SUM(qty_in) FROM amis_receipt r WHERE r.match_status='MATCHED_EO' AND r.matched_eo_item_id = i.id), 0) da_dat,
+              COALESCE(i.don_gia_du_kien, 0) * i.current_qty thanh_tien_du_kien
+       FROM eo_item i WHERE i.eo_id = ? ORDER BY i.id`,
+    ).bind(id).all(),
+    c.env.DB.prepare("SELECT * FROM eo_submission WHERE eo_id = ? ORDER BY version").bind(id).all(),
+    c.env.DB.prepare(
+      `SELECT a.* FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
+       WHERE s.eo_id = ? ORDER BY a.submission_id, a.step_no, a.id`,
+    ).bind(id).all(),
+    c.env.DB.prepare(
+      `SELECT p.* FROM item_plan p JOIN eo_item i ON i.id = p.eo_item_id
+       WHERE i.eo_id = ? AND p.deleted_at IS NULL ORDER BY p.eo_item_id, p.planned_date`,
+    ).bind(id).all(),
+    c.env.DB.prepare("SELECT * FROM eo_file WHERE eo_id = ? ORDER BY id").bind(id).all(),
+    c.env.DB.prepare("SELECT * FROM eo_comment WHERE eo_id = ? ORDER BY created_at").bind(id).all(),
+    c.env.DB.prepare("SELECT * FROM event_log WHERE eo_id = ? ORDER BY created_at, id").bind(id).all(),
+  ]);
+
+  const it = items.results as any[];
+  const tong = {
+    so_dong: it.length,
+    tong_sl_dat: round3(it.reduce((s, r) => s + (r.current_qty || 0), 0)),
+    sl_da_dat: round3(it.reduce((s, r) => s + (r.da_dat || 0), 0)),
+    sl_chua_dat: round3(it.reduce((s, r) => s + Math.max(0, (r.current_qty || 0) - (r.da_dat || 0)), 0)),
+    tong_tien_du_kien: round3(it.reduce((s, r) => s + (r.thanh_tien_du_kien || 0), 0)),
+  };
+  return c.json({
+    eo,
+    items: it.map((r) => ({ ...r, chua_dat: Math.max(0, (r.current_qty || 0) - (r.da_dat || 0)) })),
+    tong,
+    submissions: subs.results,
+    approvals: apprs.results,
+    plans: plans.results,
+    files: files.results,
+    comments: comments.results,
+    events: events.results,
+  });
+});
+
+// ------------------------------------------------------------------ POST / (create draft)
+interface CreateBody {
+  tieu_de?: string;
+  noi_dung?: string;
+  loai_hinh?: string;
+  phong_ban?: string;
+  final_approver_email: string;
+  reviewers?: string[];
+  skip_review?: boolean;
+  items: Array<{
+    part_code: string; part_name?: string; warehouse: string; supplier?: string;
+    current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
+    don_gia_du_kien?: number;
+  }>;
+}
+
+app.post("/", async (c) => {
+  const u = c.get("user");
+  if (!canCreateEo(u)) return c.json({ error: "FORBIDDEN" }, 403);
+  const b = (await c.req.json()) as CreateBody;
+  if (!b.items?.length) return c.json({ error: "EO_MUST_HAVE_ITEM" }, 400);
+  if (!b.final_approver_email) return c.json({ error: "FINAL_APPROVER_REQUIRED" }, 400);
+
+  const now = nowVN();
+  const seq = await c.env.DB.prepare(
+    "UPDATE id_counters SET gia_tri_hien_tai = gia_tri_hien_tai + 1 WHERE ten_bang = 'eo_code' RETURNING gia_tri_hien_tai",
+  ).first<{ gia_tri_hien_tai: number }>();
+  const eoCode = `EO-${String(seq?.gia_tri_hien_tai ?? 1).padStart(6, "0")}`;
+
+  const ins = await c.env.DB.prepare(
+    `INSERT INTO eo (eo_code, tieu_de, noi_dung, loai_hinh, phong_ban, trang_thai, final_approver_email, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?) RETURNING id`,
+  ).bind(eoCode, b.tieu_de ?? "", b.noi_dung ?? "", b.loai_hinh ?? null, b.phong_ban ?? null, b.final_approver_email, u.email, now).first<{ id: number }>();
+  const eoId = ins!.id;
+
+  const batch = b.items.map((it) =>
+    c.env.DB.prepare(
+      `INSERT INTO eo_item (eo_id, part_code, part_name, warehouse, supplier, original_qty, current_qty,
+        reason, crm_id, order_id, ghi_chu, line_status, don_gia_du_kien, created_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(eoId, it.part_code, it.part_name ?? "", it.warehouse, it.supplier ?? null,
+      it.current_qty, it.current_qty, it.reason ?? null, it.crm_id ?? null, it.order_id ?? null,
+      it.ghi_chu ?? null, it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE",
+      it.don_gia_du_kien ?? null, u.email, now),
+  );
+  batch.push(eventStmt(c.env.DB, { entity_type: "eo", entity_id: eoId, eo_id: eoId, event_type: "CREATE_EO", user_email: u.email, at: now, metadata: { eo_code: eoCode, reviewers: b.reviewers ?? [], skip_review: !!b.skip_review } }));
+  await c.env.DB.batch(batch);
+  await bumpVersions(c.env.DB, ["eo"]);
+
+  // luu tam reviewer/skip_review vao app_settings-like? -> giu trong 1 dong draft submission chua tao.
+  // Reviewer/skip_review truyen lai luc /submit. Tra ve id.
+  return c.json({ id: eoId, eo_code: eoCode });
+});
+
+// ------------------------------------------------------------------ PATCH /:id (edit draft)
+app.patch("/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<{ id: number; trang_thai: string; created_by: string }>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  if (!canManageEo(c.get("user"), eo)) return c.json({ error: "FORBIDDEN" }, 403);
+  if (eo.trang_thai !== "DRAFT") return c.json({ error: "ONLY_DRAFT_EDITABLE" }, 409);
+
+  const b = (await c.req.json()) as Record<string, unknown>;
+  const fields = ["tieu_de", "noi_dung", "loai_hinh", "phong_ban", "final_approver_email"] as const;
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  for (const f of fields) if (f in b) { sets.push(`${f} = ?`); vals.push(b[f]); }
+  if (!sets.length) return c.json({ error: "NO_FIELDS" }, 400);
+  const now = nowVN();
+  sets.push("updated_by = ?", "updated_at = ?");
+  vals.push(c.get("user").email, now, id);
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE eo SET ${sets.join(", ")} WHERE id = ?`).bind(...vals),
+    eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "UPDATE_EO", user_email: c.get("user").email, at: now, after: b }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /:id/items (add item)
+app.post("/:id/items", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<{ id: number; trang_thai: string; created_by: string }>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  if (!canManageEo(c.get("user"), eo)) return c.json({ error: "FORBIDDEN" }, 403);
+  if (!["DRAFT", "ISSUED"].includes(eo.trang_thai)) return c.json({ error: "BAD_STATE" }, 409);
+
+  const it = (await c.req.json()) as {
+    part_code: string; part_name?: string; warehouse: string; supplier?: string;
+    current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
+  };
+  const now = nowVN();
+  const afterIssue = eo.trang_thai === "ISSUED";
+  const ins = await c.env.DB.prepare(
+    `INSERT INTO eo_item (eo_id, part_code, part_name, warehouse, supplier, original_qty, current_qty,
+      reason, crm_id, order_id, ghi_chu, line_status, post_issue_status, created_by, created_at, created_after_issue)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+  ).bind(id, it.part_code, it.part_name ?? "", it.warehouse, it.supplier ?? null, it.current_qty, it.current_qty,
+    it.reason ?? null, it.crm_id ?? null, it.order_id ?? null, it.ghi_chu ?? null,
+    it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE", afterIssue ? "PENDING" : null,
+    c.get("user").email, now, afterIssue ? 1 : 0).first<{ id: number }>();
+
+  await c.env.DB.batch([
+    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "ADD_ITEM", user_email: c.get("user").email, at: now, after: it, metadata: { after_issue: afterIssue } }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ id: ins!.id, post_issue_status: afterIssue ? "PENDING" : null });
+});
+
+// ------------------------------------------------------------------ PATCH /items/:itemId (qty / fields)
+app.patch("/items/:itemId", async (c) => {
+  const itemId = Number(c.req.param("itemId"));
+  const row = await c.env.DB.prepare(
+    `SELECT i.*, e.trang_thai eo_status, e.created_by eo_created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?`,
+  ).bind(itemId).first<any>();
+  if (!row) return c.json({ error: "NOT_FOUND" }, 404);
+  if (!canManageEo(c.get("user"), { created_by: row.eo_created_by })) return c.json({ error: "FORBIDDEN" }, 403);
+
+  const b = (await c.req.json()) as { current_qty?: number; reason?: string; part_name?: string; supplier?: string; ghi_chu?: string; crm_id?: string; order_id?: string; don_gia_du_kien?: number };
+  const now = nowVN();
+  const stmts: any[] = [];
+
+  if (typeof b.current_qty === "number" && b.current_qty !== row.current_qty) {
+    if (row.eo_status === "ISSUED" && !b.reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+    // rang buoc: current_qty moi >= tong planned_qty song
+    const sump = await c.env.DB.prepare(
+      "SELECT COALESCE(SUM(planned_qty),0) s FROM item_plan WHERE eo_item_id = ? AND deleted_at IS NULL",
+    ).bind(itemId).first<{ s: number }>();
+    if (b.current_qty < (sump?.s ?? 0)) return c.json({ error: "QTY_BELOW_PLANNED_SUM", planned_sum: sump?.s }, 409);
+    const newLine = b.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE";
+    stmts.push(
+      c.env.DB.prepare("UPDATE eo_item SET current_qty = ?, line_status = ?, updated_by = ?, updated_at = ? WHERE id = ?")
+        .bind(b.current_qty, newLine, c.get("user").email, now, itemId),
+      eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: b.current_qty === 0 ? "CANCEL_LINE" : "UPDATE_QUANTITY", user_email: c.get("user").email, at: now, before: { qty: row.current_qty }, after: { qty: b.current_qty }, metadata: { reason: b.reason ?? null } }),
+    );
+  }
+
+  const misc = ["part_name", "supplier", "ghi_chu", "crm_id", "order_id", "don_gia_du_kien"] as const;
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  for (const f of misc) if (f in b) { sets.push(`${f} = ?`); vals.push((b as any)[f]); }
+  if (sets.length) {
+    sets.push("updated_by = ?", "updated_at = ?");
+    vals.push(c.get("user").email, now, itemId);
+    stmts.push(
+      c.env.DB.prepare(`UPDATE eo_item SET ${sets.join(", ")} WHERE id = ?`).bind(...vals),
+      eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "UPDATE_ITEM", user_email: c.get("user").email, at: now, after: b }),
+    );
+  }
+  if (!stmts.length) return c.json({ error: "NO_CHANGE" }, 400);
+  await c.env.DB.batch(stmts);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /:id/submit
+app.post("/:id/submit", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<any>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  if (!canManageEo(c.get("user"), eo)) return c.json({ error: "FORBIDDEN" }, 403);
+  if (eo.trang_thai !== "DRAFT") return c.json({ error: "ONLY_DRAFT_SUBMITTABLE" }, 409);
+
+  const nItems = await c.env.DB.prepare("SELECT COUNT(*) n FROM eo_item WHERE eo_id = ?").bind(id).first<{ n: number }>();
+  if (!nItems?.n) return c.json({ error: "EO_MUST_HAVE_ITEM" }, 400);
+
+  const b = (await c.req.json().catch(() => ({}))) as { reviewers?: string[]; final_approver_email?: string };
+  const reviewers = [...new Set((b.reviewers ?? []).map((x) => x.toLowerCase()).filter(Boolean))];
+  const finalApprover = (b.final_approver_email ?? eo.final_approver_email)?.toLowerCase();
+  if (!finalApprover) return c.json({ error: "FINAL_APPROVER_REQUIRED" }, 400);
+
+  const now = nowVN();
+  const prevSub = await c.env.DB.prepare(
+    "SELECT * FROM eo_submission WHERE eo_id = ? ORDER BY version DESC LIMIT 1",
+  ).bind(id).first<any>();
+  const version = (prevSub?.version ?? 0) + 1;
+  const skipReview = reviewers.length === 0;
+
+  const subIns = await c.env.DB.prepare(
+    `INSERT INTO eo_submission (eo_id, version, skip_review, status, submitted_by, submitted_at)
+     VALUES (?, ?, ?, 'PENDING', ?, ?) RETURNING id`,
+  ).bind(id, version, skipReview ? 1 : 0, c.get("user").email, now).first<{ id: number }>();
+  const subId = subIns!.id;
+
+  // carry-forward: reviewer da APPROVED o submission truoc va van con trong danh sach
+  const carried = new Set<string>();
+  if (prevSub) {
+    const prevApproved = await c.env.DB.prepare(
+      "SELECT approver_email FROM eo_approval WHERE submission_id = ? AND step_type = 'REVIEW' AND status = 'APPROVED'",
+    ).bind(prevSub.id).all<{ approver_email: string }>();
+    for (const r of prevApproved.results) if (reviewers.includes(r.approver_email)) carried.add(r.approver_email);
+  }
+
+  const stmts: any[] = [];
+  for (const rv of reviewers) {
+    const isCarried = carried.has(rv);
+    stmts.push(
+      c.env.DB.prepare(
+        `INSERT INTO eo_approval (submission_id, step_type, step_no, approver_email, status, assigned_at, action_at, carried_from_submission_id)
+         VALUES (?, 'REVIEW', 1, ?, ?, ?, ?, ?)`,
+      ).bind(subId, rv, isCarried ? "APPROVED" : "PENDING", now, isCarried ? now : null, isCarried ? prevSub.id : null),
+    );
+  }
+  // neu skip review -> tao FINAL luon
+  let newStatus = "IN_REVIEW";
+  if (skipReview) {
+    stmts.push(
+      c.env.DB.prepare(
+        `INSERT INTO eo_approval (submission_id, step_type, step_no, approver_email, status, assigned_at)
+         VALUES (?, 'FINAL', 2, ?, 'PENDING', ?)`,
+      ).bind(subId, finalApprover, now),
+    );
+    newStatus = "WAITING_FINAL_APPROVAL";
+  } else if (reviewers.length > 0 && carried.size === reviewers.length) {
+    // tat ca carry-forward -> mo FINAL ngay
+    stmts.push(
+      c.env.DB.prepare(
+        `INSERT INTO eo_approval (submission_id, step_type, step_no, approver_email, status, assigned_at)
+         VALUES (?, 'FINAL', 2, ?, 'PENDING', ?)`,
+      ).bind(subId, finalApprover, now),
+    );
+    newStatus = "WAITING_FINAL_APPROVAL";
+  }
+
+  if (prevSub && prevSub.status !== "APPROVED") {
+    stmts.push(c.env.DB.prepare("UPDATE eo_submission SET status = 'SUPERSEDED', closed_at = ? WHERE id = ?").bind(now, prevSub.id));
+  }
+  stmts.push(
+    c.env.DB.prepare("UPDATE eo SET trang_thai = ?, current_submission_id = ?, final_approver_email = ?, updated_by = ?, updated_at = ? WHERE id = ?")
+      .bind(newStatus, subId, finalApprover, c.get("user").email, now, id),
+    eventStmt(c.env.DB, { entity_type: "eo_submission", entity_id: subId, eo_id: id, event_type: version === 1 ? "SUBMIT_EO" : "RESUBMIT_EO", user_email: c.get("user").email, at: now, metadata: { version, reviewers, skip_review: skipReview, carried: [...carried] } }),
+  );
+  await c.env.DB.batch(stmts);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true, submission_id: subId, version, trang_thai: newStatus });
+});
+
+// ------------------------------------------------------------------ POST /:id/cancel
+app.post("/:id/cancel", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<any>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  const preIssue = ["DRAFT", "IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(eo.trang_thai);
+  if (preIssue) {
+    if (!canManageEo(u, eo)) return c.json({ error: "FORBIDDEN" }, 403);
+  } else if (eo.trang_thai === "ISSUED") {
+    if (u.vai_tro !== "Admin") return c.json({ error: "ADMIN_ONLY_AFTER_ISSUE" }, 403);
+  } else {
+    return c.json({ error: "BAD_STATE" }, 409);
+  }
+  const b = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const now = nowVN();
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE eo SET trang_thai = 'CANCELLED', cancelled_by = ?, cancelled_at = ?, cancel_reason = ? WHERE id = ?")
+      .bind(u.email, now, b.reason ?? null, id),
+    c.env.DB.prepare("UPDATE eo_submission SET status = 'CANCELLED', closed_at = ? WHERE eo_id = ? AND status IN ('PENDING','REQUEST_UPDATE')").bind(now, id),
+    eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "CANCEL_EO", user_email: u.email, at: now, metadata: { reason: b.reason ?? null, after_issue: !preIssue } }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /:id/comments
+app.post("/:id/comments", async (c) => {
+  const id = Number(c.req.param("id"));
+  const b = (await c.req.json()) as { noi_dung: string; submission_id?: number };
+  if (!b.noi_dung?.trim()) return c.json({ error: "EMPTY" }, 400);
+  await c.env.DB.prepare(
+    "INSERT INTO eo_comment (eo_id, submission_id, user_email, noi_dung, created_at) VALUES (?, ?, ?, ?, ?)",
+  ).bind(id, b.submission_id ?? null, c.get("user").email, b.noi_dung.trim(), nowVN()).run();
+  return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /items/:itemId/approve-post-issue
+app.post("/items/:itemId/approve-post-issue", async (c) => {
+  const itemId = Number(c.req.param("itemId"));
+  const row = await c.env.DB.prepare(
+    "SELECT i.*, e.final_approver_email, e.trang_thai eo_status FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?",
+  ).bind(itemId).first<any>();
+  if (!row) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (u.email !== row.final_approver_email && u.vai_tro !== "Admin") return c.json({ error: "ONLY_FINAL_APPROVER" }, 403);
+  if (row.post_issue_status !== "PENDING") return c.json({ error: "NOT_PENDING" }, 409);
+  const now = nowVN();
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE eo_item SET post_issue_status = 'APPROVED', post_issue_approved_by = ?, post_issue_approved_at = ? WHERE id = ?")
+      .bind(u.email, now, itemId),
+    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "APPROVE_POST_ISSUE_ITEM", user_email: u.email, at: now }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true });
+});
+
+export default app;

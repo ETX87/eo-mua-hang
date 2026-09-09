@@ -1,0 +1,42 @@
+import type { SVGProps } from "react";
+
+const S = (p: SVGProps<SVGSVGElement>) => ({
+  width: 18, height: 18, viewBox: "0 0 24 24", fill: "none",
+  stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+  ...p,
+});
+
+export const I = {
+  home: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /></svg>),
+  list: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 9h8M8 13h8M8 17h5" /></svg>),
+  bell: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>),
+  calendar: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>),
+  upload: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M12 15V3" /><path d="m7 8 5-5 5 5" /><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /></svg>),
+  trend: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="m3 17 6-6 4 4 8-8" /><path d="M17 7h4v4" /></svg>),
+  clock: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>),
+  grid: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="8" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13" y="13" width="8" height="8" rx="1" /></svg>),
+  user: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>),
+  users: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="9" cy="8" r="3.4" /><path d="M2.5 20c0-3.4 3-5.2 6.5-5.2S15.5 16.6 15.5 20" /><path d="M16 5.5a3 3 0 0 1 0 6M18 20c0-2.4-1-4-2.6-4.9" /></svg>),
+  shield: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z" /><path d="m9 12 2 2 4-4" /></svg>),
+  tag: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M3 8v4l9 9 8-8-9-9H7a4 4 0 0 0-4 4Z" /><circle cx="8" cy="9" r="1.4" /></svg>),
+  gear: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="12" cy="12" r="3.2" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>),
+  search: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>),
+  help: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01" /></svg>),
+  menu: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M4 6h16M4 12h16M4 18h16" /></svg>),
+  chevronDown: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="m6 9 6 6 6-6" /></svg>),
+  chevronRight: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="m9 6 6 6-6 6" /></svg>),
+  arrowLeft: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>),
+  arrowRight: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M5 12h14M12 5l7 7-7 7" /></svg>),
+  eye: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>),
+  dots: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>),
+  plus: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M12 5v14M5 12h14" /></svg>),
+  trash: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" /></svg>),
+  download: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 21h16" /></svg>),
+  refresh: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>),
+  edit: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M4 20h4L20 8l-4-4L4 16v4Z" /><path d="M14 6l4 4" /></svg>),
+  check: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="m5 13 4 4L19 7" /></svg>),
+  x: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M6 6l12 12M18 6 6 18" /></svg>),
+  clipboard: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><rect x="6" y="4" width="12" height="17" rx="2" /><path d="M9 4V3h6v1M9 10h6M9 14h6" /></svg>),
+  send: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" /></svg>),
+  file: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /></svg>),
+};

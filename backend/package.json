@@ -1,0 +1,20 @@
+{
+  "name": "backend",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler dev --config ../wrangler.jsonc --persist-to ../.wrangler/state --port 8790",
+    "deploy": "wrangler deploy --config ../wrangler.jsonc",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config ../wrangler.jsonc --persist-to ../.wrangler/state",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config ../wrangler.jsonc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.111.0"
+  }
+}
