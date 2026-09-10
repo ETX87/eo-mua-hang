@@ -54,7 +54,9 @@ export default function EoDetail() {
         title="Chi tiết EO" back={() => nav(-1)}
         breadcrumb={["Danh sách EO", "Chi tiết EO"]}
         actions={<>
-          <button className="btn primary" onClick={() => nav(`/eo/${id}/edit`)}><I.edit width={14} height={14} /> Sửa EO</button>
+          {eo.trang_thai === "DRAFT" && canManage && (
+            <button className="btn primary" onClick={() => nav(`/eo/${id}/edit`)}><I.edit width={14} height={14} /> Sửa EO</button>
+          )}
           <button className="btn" onClick={() => setTab("Lịch sử thay đổi")}><I.clock width={14} height={14} /> Lịch sử</button>
           {canCancel && <button className="btn danger" onClick={() => setShowCancel(true)}><I.x width={14} height={14} /> Hủy EO</button>}
         </>}
