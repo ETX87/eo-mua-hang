@@ -4,6 +4,7 @@ import { nowVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canCreateEo, canManageEo } from "../lib/eoAccess";
+import { uploadPublicFile } from "../lib/googleDrive";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -357,6 +358,37 @@ app.post("/:id/comments", async (c) => {
     "INSERT INTO eo_comment (eo_id, submission_id, user_email, noi_dung, created_at) VALUES (?, ?, ?, ?, ?)",
   ).bind(id, b.submission_id ?? null, c.get("user").email, b.noi_dung.trim(), nowVN()).run();
   return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /:id/files (upload tai lieu dinh kem qua Google Drive)
+app.post("/:id/files", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT id FROM eo WHERE id = ?").bind(id).first();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+
+  const filename = c.req.query("filename")?.trim();
+  if (!filename) return c.json({ error: "MISSING_FILENAME" }, 400);
+  const contentType = c.req.header("Content-Type") || "application/octet-stream";
+  const bytes = await c.req.arrayBuffer();
+  if (bytes.byteLength === 0) return c.json({ error: "EMPTY_FILE" }, 400);
+
+  let uploaded: { id: string; url: string };
+  try {
+    uploaded = await uploadPublicFile(c.env, c.env.DB, bytes, contentType, filename);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.startsWith("GOOGLE_DRIVE_NOT_CONNECTED")) {
+      return c.json({ error: "GOOGLE_DRIVE_NOT_CONNECTED", message: "Chưa kết nối tài khoản Google Drive - vào Cài đặt để kết nối." }, 400);
+    }
+    return c.json({ error: "UPLOAD_FAILED", message }, 502);
+  }
+
+  const now = nowVN();
+  const ins = await c.env.DB.prepare(
+    `INSERT INTO eo_file (eo_id, file_name, drive_file_id, drive_url, file_type, uploaded_by, uploaded_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+  ).bind(id, filename, uploaded.id, uploaded.url, contentType, c.get("user").email, now).first();
+  return c.json(ins, 201);
 });
 
 // ------------------------------------------------------------------ POST /items/:itemId/approve-post-issue

@@ -20,10 +20,29 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return data as T;
 }
 
+// Upload binary tho (file dinh kem) voi Content-Type la mime that (khong phai multipart/form-data)
+// - backend doc truc tiep qua c.req.arrayBuffer().
+async function postBinary<T>(path: string, bytes: ArrayBuffer, contentType: string): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers: { "Content-Type": contentType },
+    body: bytes,
+    credentials: "include",
+  });
+  if (res.status === 401) {
+    window.location.href = "/api/auth/login";
+    throw new ApiError(401, null);
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, data);
+  return data as T;
+}
+
 export const api = {
   get: <T>(p: string) => req<T>("GET", p),
   post: <T>(p: string, b?: unknown) => req<T>("POST", p, b),
   patch: <T>(p: string, b?: unknown) => req<T>("PATCH", p, b),
   put: <T>(p: string, b?: unknown) => req<T>("PUT", p, b),
   del: <T>(p: string, b?: unknown) => req<T>("DELETE", p, b),
+  postBinary,
 };

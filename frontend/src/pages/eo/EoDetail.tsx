@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -99,7 +99,7 @@ export default function EoDetail() {
       {tab === "Quy trình duyệt" && <TabQuyTrinh submissions={submissions} approvals={approvals} />}
       {tab === "Lịch sử thay đổi" && <TabLichSu events={events} />}
       {tab === "Bình luận" && <TabBinhLuan eoId={id!} comments={comments} onSent={refresh} />}
-      {tab === "Tài liệu đính kèm" && <TabTaiLieu files={files} />}
+      {tab === "Tài liệu đính kèm" && <TabTaiLieu eoId={id!} files={files} onUploaded={refresh} />}
 
       {qtyItem && <QtyModal item={qtyItem} issued={issued} onClose={() => setQtyItem(null)} onSaved={() => { setQtyItem(null); refresh(); }} />}
       {showCancel && <CancelModal eo={eo} onClose={() => setShowCancel(false)} onDone={() => { setShowCancel(false); refresh(); }} />}
@@ -239,21 +239,49 @@ function TabBinhLuan({ eoId, comments, onSent }: any) {
   );
 }
 
-function TabTaiLieu({ files }: any) {
+function TabTaiLieu({ eoId, files, onUploaded }: any) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr(""); setBusy(true);
+    try {
+      const bytes = await file.arrayBuffer();
+      await api.postBinary(`/eo/${eoId}/files?filename=${encodeURIComponent(file.name)}`, bytes, file.type || "application/octet-stream");
+      onUploaded();
+    } catch (ex: any) {
+      setErr(ex?.body?.error === "GOOGLE_DRIVE_NOT_CONNECTED" ? "Chưa kết nối Google Drive — vào Cài đặt › Cấu hình hệ thống để kết nối." : "Lỗi tải file lên.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-      {files.length === 0 && <div className="muted">Chưa có tài liệu.</div>}
-      {files.map((f: any) => (
-        <Card key={f.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <I.file width={22} height={22} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{f.file_name}</div>
-            <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{ten(f.uploaded_by)} · {ngay(f.uploaded_at)}</div>
-            {!f.drive_url && <span className="badge nhap" style={{ marginTop: 6 }}>Chưa đồng bộ</span>}
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
+        {files.length === 0 && <div className="muted">Chưa có tài liệu.</div>}
+        {files.map((f: any) => (
+          <div key={f.id} onClick={() => f.drive_url && window.open(f.drive_url, "_blank", "noopener")} style={{ cursor: f.drive_url ? "pointer" : undefined }}>
+            <Card style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <I.file width={22} height={22} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{f.file_name}</div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{ten(f.uploaded_by)} · {ngay(f.uploaded_at)}</div>
+                {!f.drive_url && <span className="badge nhap" style={{ marginTop: 6 }}>Chưa đồng bộ</span>}
+              </div>
+            </Card>
           </div>
-        </Card>
-      ))}
-      <button className="btn sm" style={{ alignSelf: "start" }}><I.upload width={14} height={14} /> Tải lên</button>
+        ))}
+        <button className="btn sm" style={{ alignSelf: "start" }} disabled={busy} onClick={() => inputRef.current?.click()}>
+          <I.upload width={14} height={14} /> {busy ? "Đang tải lên..." : "Tải lên"}
+        </button>
+        <input ref={inputRef} type="file" style={{ display: "none" }} onChange={onPick} />
+      </div>
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </div>
   );
 }
