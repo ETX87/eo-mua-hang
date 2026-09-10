@@ -122,13 +122,7 @@ function AccountMenu({ uName, email, sub, subColor, nameColor }: { uName: string
 }
 
 function CartLogo({ size = 34 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke="#1F2430" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 4h3l2.2 12.5a2 2 0 0 0 2 1.7h11.4a2 2 0 0 0 2-1.6L27 8H8" />
-      <circle cx="12" cy="25" r="2.1" fill="#1F2430" />
-      <circle cx="23" cy="25" r="2.1" fill="#1F2430" />
-    </svg>
-  );
+  return <img src="/icon-192.png" width={size} height={size} alt="" style={{ borderRadius: size * 0.22 }} />;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
