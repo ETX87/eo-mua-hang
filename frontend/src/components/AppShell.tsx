@@ -1,14 +1,125 @@
-import { useState, type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { NAV } from "../lib/nav";
 import { I } from "../lib/icons";
 import { Avatar } from "./ui";
 import { APP_VERSION } from "../version";
-import { ten } from "../lib/format";
+import { ten, tuBayGio } from "../lib/format";
 
 interface Me { email: string; ho_ten: string; vai_tro: string | null; trang_thai_duyet: string; }
+
+interface NotifRow { id: number; loai: string; noi_dung: string; eo_id: number; da_doc: number; created_at: string; eo_code: string; }
+
+function useClickOutside(onOutside: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
+    };
+    window.addEventListener("mousedown", h);
+    return () => window.removeEventListener("mousedown", h);
+  }, [onOutside]);
+  return ref;
+}
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const ref = useClickOutside(() => setOpen(false));
+  const count = useQuery({
+    queryKey: ["notif-count"],
+    queryFn: () => api.get<{ count: number }>("/notifications/count"),
+    refetchInterval: 120000,
+    refetchIntervalInBackground: false,
+  });
+  const list = useQuery({
+    queryKey: ["notif-list"],
+    queryFn: () => api.get<NotifRow[]>("/notifications"),
+    enabled: open,
+    staleTime: 0,
+  });
+  const unread = count.data?.count ?? 0;
+  const rows = list.data ?? [];
+
+  async function markAllRead() {
+    await api.post("/notifications/mark-all-read");
+    qc.invalidateQueries({ queryKey: ["notif-count"] });
+    qc.invalidateQueries({ queryKey: ["notif-list"] });
+  }
+  async function onRowClick(r: NotifRow) {
+    if (!r.da_doc) {
+      await api.post(`/notifications/${r.id}/read`);
+      qc.invalidateQueries({ queryKey: ["notif-count"] });
+      qc.invalidateQueries({ queryKey: ["notif-list"] });
+    }
+    setOpen(false);
+    nav(`/eo/${r.eo_id}`);
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button className="btn ghost sm" style={{ position: "relative" }} aria-label="Thông báo" onClick={() => setOpen((o) => !o)}>
+        <I.bell />
+        {unread > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 800, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{unread}</span>}
+      </button>
+      {open && (
+        <div style={{ position: "absolute", right: 0, top: 42, width: 360, background: "#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
+            <strong style={{ fontSize: 13.5 }}>Thông báo</strong>
+            {unread > 0 && <button className="btn ghost sm" style={{ fontSize: 12 }} onClick={markAllRead}>Đánh dấu đã đọc hết</button>}
+          </div>
+          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+            {list.isLoading && <div className="muted" style={{ padding: 20, textAlign: "center", fontSize: 12.5 }}>Đang tải…</div>}
+            {!list.isLoading && rows.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center", fontSize: 12.5 }}>Chưa có thông báo.</div>}
+            {rows.map((r) => (
+              <div key={r.id} onClick={() => onRowClick(r)} style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", cursor: "pointer", background: r.da_doc ? "transparent" : "#FFF8E1", display: "flex", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: r.da_doc ? 500 : 700 }}>{r.noi_dung}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{tuBayGio(r.created_at)}</div>
+                </div>
+                {!r.da_doc && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-yellow)", marginTop: 4, flexShrink: 0 }} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountMenu({ uName, email, sub, subColor, nameColor }: { uName: string; email?: string | null; sub: string; subColor?: string; nameColor?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside(() => setOpen(false));
+  const logout = () => api.post("/auth/logout").then(() => (location.href = "/"));
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
+        <Avatar name={uName} size={34} />
+        <div style={{ lineHeight: 1.25, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: nameColor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{uName}</div>
+          <div style={{ fontSize: 11, color: subColor ?? "var(--text-faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
+        </div>
+        <I.chevronDown width={16} height={16} color={nameColor} />
+      </div>
+      {open && (
+        <div style={{ position: "absolute", right: 0, top: 46, width: 220, background: "#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
+          {email && (
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{uName}</div>
+              <div className="muted" style={{ fontSize: 11.5, wordBreak: "break-all" }}>{email}</div>
+            </div>
+          )}
+          <button className="btn ghost sm" style={{ width: "100%", justifyContent: "flex-start", borderRadius: 0, padding: "11px 14px", color: "var(--danger-ink)" }} onClick={logout}>
+            <I.logout width={16} height={16} /> Đăng xuất
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CartLogo({ size = 34 }: { size?: number }) {
   return (
@@ -84,13 +195,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {open && (
           <div style={{ padding: 12 }}>
-            <div style={{ padding: 10, display: "flex", alignItems: "center", gap: 10, borderRadius: 14, border: "1px solid rgba(120,100,20,.25)", background: "rgba(255,255,255,.28)" }}>
-              <Avatar name={uName} size={34} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{uName}</div>
-                <div style={{ fontSize: 11, color: "var(--brand-olive)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{me.data?.email}</div>
-              </div>
-              <I.chevronDown width={16} height={16} />
+            <div style={{ padding: 10, borderRadius: 14, border: "1px solid rgba(120,100,20,.25)", background: "rgba(255,255,255,.28)" }}>
+              <AccountMenu uName={uName} email={me.data?.email} sub={me.data?.email ?? ""} nameColor="var(--brand-ink)" subColor="var(--brand-olive)" />
             </div>
             <div style={{ fontSize: 10.5, color: "var(--brand-olive)", textAlign: "center", marginTop: 12 }}>
               Phiên bản v{APP_VERSION} — Hệ thống nội bộ
@@ -106,27 +212,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           display: "flex", alignItems: "center", gap: 18, padding: "0 24px", position: "sticky", top: 0, zIndex: 20,
         }}>
           <button className="btn ghost sm" onClick={() => setOpen((o) => !o)} aria-label="Menu"><I.menu /></button>
-          <div style={{ fontSize: 19, fontWeight: 800 }}>{titleFor(loc.pathname)}</div>
-          <div style={{ flex: 1, maxWidth: 540, marginInline: "auto", display: "flex" }}>
-            <div style={{ position: "relative", flex: 1 }}>
-              <I.search width={16} height={16} style={{ position: "absolute", left: 13, top: 12, color: "var(--text-faint)" }} />
-              <input className="input" style={{ paddingLeft: 36, borderRadius: "10px 0 0 10px", borderRight: "none", height: 40 }} placeholder="Tìm kiếm EO, mã phê duyệt, tiêu đề..." />
-            </div>
-            <button className="btn primary" style={{ borderRadius: "0 10px 10px 0", height: 40, width: 46, padding: 0, justifyContent: "center" }}><I.search width={17} height={17} /></button>
-          </div>
-          <button className="btn ghost sm" style={{ position: "relative" }} aria-label="Thông báo">
-            <I.bell />
-            {approvalsBadge > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 800, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{approvalsBadge}</span>}
-          </button>
-          <button className="btn ghost sm" aria-label="Trợ giúp"><I.help /></button>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <Avatar name={uName} size={34} />
-            <div style={{ lineHeight: 1.25 }}>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{uName}</div>
-              <div className="muted" style={{ fontSize: 11 }}>{roleLabel(me.data?.vai_tro)}</div>
-            </div>
-            <I.chevronDown width={16} height={16} />
-          </div>
+          <div style={{ fontSize: 19, fontWeight: 800, flex: 1 }}>{titleFor(loc.pathname)}</div>
+          <NotificationBell />
+          <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} />
         </header>
 
         <main style={{ flex: 1, padding: 24, maxWidth: 1520, width: "100%", margin: "0 auto" }}>{children}</main>

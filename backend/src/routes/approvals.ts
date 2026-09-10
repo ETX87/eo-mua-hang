@@ -3,6 +3,7 @@ import type { Env, AppVariables } from "../types";
 import { nowVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
+import { notifyStmt } from "../lib/notify";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -40,7 +41,8 @@ app.post("/:id/act", async (c) => {
   const now = nowVN();
 
   const a = await c.env.DB.prepare(
-    `SELECT a.*, s.eo_id, s.status sub_status, e.trang_thai eo_status, e.final_approver_email
+    `SELECT a.*, s.eo_id, s.status sub_status, e.trang_thai eo_status, e.final_approver_email,
+            e.eo_code eo_code, e.created_by eo_created_by
      FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id JOIN eo e ON e.id = s.eo_id
      WHERE a.id = ?`,
   ).bind(aid).first<any>();
@@ -86,6 +88,9 @@ app.post("/:id/act", async (c) => {
         c.env.DB.prepare("UPDATE eo SET trang_thai = 'DRAFT', updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, eoId),
         eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "REQUEST_UPDATE", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
       );
+      if (a.eo_created_by !== u.email) {
+        stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "request_update", noi_dung: `EO ${a.eo_code} bị yêu cầu cập nhật${b.comment ? ": " + b.comment : ""}`, eo_id: eoId, at: now }));
+      }
       await c.env.DB.batch(stmts);
       await bumpVersions(c.env.DB, ["eo"]);
       return c.json({ ok: true, trang_thai: "DRAFT" });
@@ -126,6 +131,9 @@ app.post("/:id/act", async (c) => {
         c.env.DB.prepare("UPDATE eo SET trang_thai = 'REJECTED', updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, eoId),
         eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "REJECT_FINAL", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
       );
+      if (a.eo_created_by !== u.email) {
+        stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "rejected", noi_dung: `EO ${a.eo_code} bị từ chối (duyệt cuối)${b.comment ? ": " + b.comment : ""}`, eo_id: eoId, at: now }));
+      }
       await c.env.DB.batch(stmts);
       await bumpVersions(c.env.DB, ["eo"]);
       return c.json({ ok: true, trang_thai: "REJECTED" });
@@ -146,6 +154,9 @@ app.post("/:id/act", async (c) => {
       eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "APPROVE_FINAL", user_email: u.email, at: now }),
       eventStmt(c.env.DB, { entity_type: "eo", entity_id: eoId, eo_id: eoId, event_type: "ISSUE_EO", user_email: u.email, at: now, metadata: { approval_code: approvalCode } }),
     );
+    if (a.eo_created_by !== u.email) {
+      stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "issued", noi_dung: `EO ${a.eo_code} đã được ban hành (mã duyệt ${approvalCode})`, eo_id: eoId, at: now }));
+    }
     await c.env.DB.batch(stmts);
     await bumpVersions(c.env.DB, ["eo", "amis"]); // amis: match_status can tinh lai khi co approval_code moi
     return c.json({ ok: true, trang_thai: "ISSUED", approval_code: approvalCode });

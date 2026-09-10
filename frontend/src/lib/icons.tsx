@@ -39,4 +39,5 @@ export const I = {
   clipboard: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><rect x="6" y="4" width="12" height="17" rx="2" /><path d="M9 4V3h6v1M9 10h6M9 14h6" /></svg>),
   send: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" /></svg>),
   file: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /></svg>),
+  logout: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>),
 };
