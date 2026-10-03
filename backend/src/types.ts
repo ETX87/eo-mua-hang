@@ -9,6 +9,9 @@ export interface Env {
   FRONTEND_URL: string;
   BOOTSTRAP_ADMIN_EMAIL: string;
   LOCAL_DEV_BYPASS_AUTH?: string;
+  // Danh ba "ETX nhan su" (lib/etxNhanSu.ts). Base URL de trong vars, key qua "wrangler secret put".
+  ETX_HR_BASE_URL: string;
+  ETX_HR_API_KEY: string;
 }
 
 export type VaiTro = "Admin" | "KH cung ung" | "Ke toan" | "Kho" | "Theo doi tien do" | "View";
@@ -25,6 +28,8 @@ export interface AppUser {
   khu_vuc_kho: string | null;
   trang_thai_duyet: "Cho duyet" | "Da duyet" | "Tu choi";
   active: number;
+  ma_nhan_su: string | null;
+  chuc_danh: string | null;
 }
 
 // Bien Hono context dung xuyen suot middleware/route

@@ -1,6 +1,7 @@
 import type { Context, Next } from "hono";
 import type { Env, AppVariables, AppUser } from "../types";
 import { nowVN } from "../lib/vnTime";
+import { linkOneUser } from "../lib/etxNhanSu";
 
 type Ctx = Context<{ Bindings: Env; Variables: AppVariables }>;
 
@@ -26,6 +27,7 @@ export async function loadUser(c: Ctx, next: Next) {
     await c.env.DB.prepare(
       `INSERT INTO users (email, ho_ten) VALUES (?, ?) ON CONFLICT(email) DO NOTHING`,
     ).bind(email, email).run();
+    await linkOneUser(c.env.DB, email);
     user = await c.env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first<AppUser>();
   }
 

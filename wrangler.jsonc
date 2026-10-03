@@ -29,9 +29,11 @@
   "vars": {
     "BOOTSTRAP_ADMIN_EMAIL": "smarttrade.vp@gmail.com",
     "GOOGLE_REDIRECT_URI": "https://muahang.dichvu3t.workers.dev/api/auth/callback",
-    "FRONTEND_URL": "https://muahang.dichvu3t.workers.dev"
+    "FRONTEND_URL": "https://muahang.dichvu3t.workers.dev",
+    // Nguon danh ba "ETX nhan su" (lib/etxNhanSu.ts) - Google Cloud Function, khong nhay cam.
+    "ETX_HR_BASE_URL": "https://asia-southeast1-etx-nhan-su.cloudfunctions.net"
   }
 
   // Gia tri NHAY CAM (dat qua "wrangler secret put", KHONG de trong "vars"):
-  //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET
+  //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, ETX_HR_API_KEY (dung chung key cua linh-kien-app)
 }

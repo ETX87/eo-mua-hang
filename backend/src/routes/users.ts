@@ -3,6 +3,7 @@ import type { Env, AppVariables } from "../types";
 import { requireAdmin } from "../middleware/guards";
 import { bumpVersions } from "../lib/dataVersions";
 import { nowVN } from "../lib/vnTime";
+import { linkOneUser } from "../lib/etxNhanSu";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -38,6 +39,7 @@ app.post("/", requireAdmin, async (c) => {
     `INSERT INTO users (email, ho_ten, vai_tro, trang_thai_duyet, active, approved_at, approved_by)
      VALUES (?, ?, ?, 'Da duyet', 1, ?, ?)`,
   ).bind(email, b.ho_ten?.trim() || email, b.vai_tro || null, now, c.get("user").email).run();
+  await linkOneUser(c.env.DB, email);
   await bumpVersions(c.env.DB, ["users"]);
   return c.json({ ok: true, email });
 });

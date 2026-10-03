@@ -12,6 +12,7 @@ import reportsRoutes from "./routes/reports";
 import dashboardRoutes from "./routes/dashboard";
 import danhMucRoutes from "./routes/danhMuc";
 import notificationsRoutes from "./routes/notifications";
+import etxNhanSuRoutes from "./routes/etxNhanSu";
 
 // EO MUA HANG - Worker doc lap (Hono + D1). Phuc vu ca API lan frontend tinh tu 1 Worker.
 // Khong cron, khong R2 (xem TARGET_ARCHITECTURE.md). Route nghiep vu (eo/items/plans/approvals/
@@ -44,6 +45,7 @@ app.route("/api/reports", reportsRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/danh-muc", danhMucRoutes);
 app.route("/api/notifications", notificationsRoutes);
+app.route("/api/etx-nhan-su", etxNhanSuRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 

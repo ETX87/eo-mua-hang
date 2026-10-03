@@ -60,6 +60,14 @@ scripts/                     script migration từ Database EO MUA HANG.xlsx (Ph
 - **Luôn commit trước khi deploy.** Không chạy `npm run deploy` khi cây làm việc còn thay đổi
   chưa commit — commit (hoặc stash) hết, rồi mới deploy, để mỗi bản deploy khớp đúng 1 commit.
 
+## ETX nhân sự
+
+Danh bạ nhân sự kéo từ ETX (`lib/etxNhanSu.ts`, `routes/etxNhanSu.ts`, tab "ETX nhân sự" ở Cài đặt › Người dùng),
+**chỉ bấm tay** (không cron). Liên kết `users` ↔ `etx_nhan_su` theo Gmail hiệu lực = `gmail_gan_tay` (Admin gán;
+`''` = chủ động bỏ liên kết) nếu có, ngược lại Gmail ETX. Chỉ đồng bộ **họ tên + chức danh** — `users.vai_tro`
+vẫn gán tay. Nghỉ việc (on→off) tự khoá tài khoản liên kết (trừ BOOTSTRAP_ADMIN). Secret `ETX_HR_API_KEY` dùng
+chung key với `../../linh-kien-app`.
+
 ## Trạng thái
 
 Phase 1 (thiết kế) xong. Phase 2 (migration script) + Phase 3 (backend routes) đang chờ.
