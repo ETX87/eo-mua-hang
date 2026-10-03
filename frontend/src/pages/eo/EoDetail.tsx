@@ -7,7 +7,7 @@ import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, tien, ngay, ngayGio, ten } from "../../lib/format";
 
-const TABS = ["Linh kiện", "Quy trình duyệt", "Lịch sử thay đổi", "Bình luận", "Tài liệu đính kèm"] as const;
+const TABS = ["Linh kiện", "Kế hoạch hàng về", "Quy trình duyệt", "Lịch sử thay đổi", "Bình luận", "Tài liệu đính kèm"] as const;
 type Tab = typeof TABS[number];
 
 const APR_STATUS: Record<string, { label: string; cls: string }> = {
@@ -39,7 +39,7 @@ export default function EoDetail() {
   const q = useQuery({ queryKey: ["eo", id], queryFn: () => api.get<any>(`/eo/${id}`) });
   if (q.isLoading) return <Spinner />;
   if (q.isError || !q.data) return <div className="muted">Không tìm thấy EO.</div>;
-  const { eo, items, tong, submissions, approvals, events, comments, files } = q.data;
+  const { eo, items, tong, submissions, approvals, events, comments, files, plans } = q.data;
   const issued = eo.trang_thai === "ISSUED";
   const refresh = () => qc.invalidateQueries({ queryKey: ["eo", id] });
 
@@ -47,6 +47,11 @@ export default function EoDetail() {
   const myRole = me.data?.vai_tro;
   const canManage = myRole === "Admin" || myRole === "KH cung ung" || eo.created_by === myEmail;
   const canCancel = (PRE_ISSUE_STATES.includes(eo.trang_thai) && canManage) || (issued && myRole === "Admin");
+  // khop backend lib/eoAccess.ts canEditPlan
+  const m = me.data ?? {};
+  const canEditPlan = myRole !== "View" && (eo.created_by === myEmail ||
+    ["Admin", "KH cung ung", "Kho", "Theo doi tien do"].includes(myRole) ||
+    m.la_nv_dat_hang === 1 || m.la_nv_kho === 1 || m.la_theo_doi_td === 1);
 
   return (
     <div>
@@ -97,7 +102,17 @@ export default function EoDetail() {
         ))}
       </div>
 
-      {tab === "Linh kiện" && <TabLinhKien items={items} tong={tong} issued={issued} onEditQty={setQtyItem} onAddItem={() => setShowAddItem(true)} />}
+      {tab === "Linh kiện" && (
+        <TabLinhKien
+          items={items} tong={tong} issued={issued} canManage={canManage}
+          canApprovePostIssue={issued && (myEmail === eo.final_approver_email || myRole === "Admin")}
+          onEditQty={setQtyItem} onAddItem={() => setShowAddItem(true)}
+          onApproved={() => { refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["post-issue"] }); }}
+        />
+      )}
+      {tab === "Kế hoạch hàng về" && (
+        <TabKeHoach items={items} plans={plans} issued={issued} canEdit={canEditPlan} onChanged={refresh} />
+      )}
       {tab === "Quy trình duyệt" && <TabQuyTrinh submissions={submissions} approvals={approvals} />}
       {tab === "Lịch sử thay đổi" && <TabLichSu events={events} />}
       {tab === "Bình luận" && <TabBinhLuan eoId={id!} comments={comments} onSent={refresh} />}
@@ -110,10 +125,32 @@ export default function EoDetail() {
   );
 }
 
-function TabLinhKien({ items, tong, issued, onEditQty, onAddItem }: any) {
+function TabLinhKien({ items, tong, issued, canManage, canApprovePostIssue, onEditQty, onAddItem, onApproved }: any) {
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [err, setErr] = useState("");
+  const approve = async (r: any) => {
+    if (!confirm(`Duyệt dòng ${r.part_code} (SL ${soLuong(r.current_qty)}) thêm sau ban hành?`)) return;
+    setErr(""); setBusyId(r.id);
+    try {
+      await api.post(`/eo/items/${r.id}/approve-post-issue`);
+      onApproved();
+    } catch (e: any) {
+      setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt cuối của EO được duyệt dòng này." : "Lỗi duyệt dòng.");
+    } finally {
+      setBusyId(null);
+    }
+  };
   const cols: Col<any>[] = [
     { key: "stt", header: "STT", align: "center", render: (_r, ) => "", width: 48 },
-    { key: "part_code", header: "Mã linh kiện", render: (r) => <span className="cell-link" style={{ textDecoration: "underline" }}>{r.legacy_id || r.part_code}</span> },
+    {
+      key: "part_code", header: "Mã linh kiện", render: (r) => (
+        <>
+          <span className="cell-link" style={{ textDecoration: "underline" }}>{r.legacy_id || r.part_code}</span>
+          {r.post_issue_status === "PENDING" && <span className="badge final" style={{ marginLeft: 6 }}>Chờ duyệt sau BH</span>}
+          {r.post_issue_status === "APPROVED" && <span className="badge issued" style={{ marginLeft: 6 }}>Thêm sau BH</span>}
+        </>
+      ),
+    },
     { key: "part_name", header: "Tên linh kiện", render: (r) => r.part_name },
     { key: "warehouse", header: "Kho cần đặt", render: (r) => r.warehouse },
     { key: "supplier", header: "Đối tác", render: (r) => r.supplier || "" },
@@ -125,7 +162,12 @@ function TabLinhKien({ items, tong, issued, onEditQty, onAddItem }: any) {
     { key: "reason", header: "Lý do PS", render: (r) => r.reason || "" },
     {
       key: "act", header: "", align: "center", render: (r) => (
-        <button className="btn ghost sm" onClick={() => onEditQty(r)} title="Sửa số lượng"><I.edit width={14} height={14} /></button>
+        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+          {canManage && <button className="btn ghost sm" onClick={() => onEditQty(r)} title="Sửa số lượng"><I.edit width={14} height={14} /></button>}
+          {canApprovePostIssue && r.post_issue_status === "PENDING" && (
+            <button className="btn sm primary" disabled={busyId === r.id} onClick={() => approve(r)}>Duyệt dòng này</button>
+          )}
+        </div>
       ),
     },
   ];
@@ -146,10 +188,117 @@ function TabLinhKien({ items, tong, issued, onEditQty, onAddItem }: any) {
         <StatTile label="SL chưa đặt" value={soLuong(tong.sl_chua_dat)} />
         <StatTile label="Tổng tiền dự kiến" value={tien(tong.tong_tien_du_kien)} />
       </div>
-      {issued && (
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      {issued && canManage && (
         <button className="btn sm" style={{ marginTop: 14 }} onClick={onAddItem}><I.plus width={14} height={14} /> Thêm dòng (duyệt sau ban hành)</button>
       )}
     </>
+  );
+}
+
+function TabKeHoach({ items, plans, issued, canEdit, onChanged }: any) {
+  const [edit, setEdit] = useState<any>(null);
+  const [err, setErr] = useState("");
+  const itemById = Object.fromEntries(items.map((i: any) => [i.id, i]));
+  const plannedOf = (itemId: number, excludeId?: number) =>
+    plans.filter((p: any) => p.eo_item_id === itemId && p.id !== excludeId).reduce((s: number, p: any) => s + (p.planned_qty || 0), 0);
+  const del = async (p: any) => {
+    if (!confirm(`Xóa kế hoạch ${ngay(p.planned_date)} — SL ${soLuong(p.planned_qty)}?`)) return;
+    setErr("");
+    try { await api.del(`/plans/${p.id}`); onChanged(); } catch { setErr("Lỗi xóa kế hoạch."); }
+  };
+  const editable = issued && canEdit;
+  const cols: Col<any>[] = [
+    { key: "pc", header: "Mã linh kiện", render: (p) => itemById[p.eo_item_id]?.part_code ?? "" },
+    { key: "wh", header: "Kho", render: (p) => itemById[p.eo_item_id]?.warehouse ?? "" },
+    { key: "d", header: "Ngày về dự kiến", render: (p) => ngay(p.planned_date) },
+    { key: "q", header: "SL kế hoạch", align: "right", render: (p) => soLuong(p.planned_qty) },
+    { key: "f", header: "Ngày NM cam kết", render: (p) => p.factory_committed_date ? ngay(p.factory_committed_date) : "" },
+    { key: "g", header: "Ghi chú", render: (p) => p.ghi_chu || "" },
+    {
+      key: "act", header: "", align: "center", render: (p) => editable ? (
+        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+          <button className="btn ghost sm" title="Sửa" onClick={() => setEdit(p)}><I.edit width={14} height={14} /></button>
+          <button className="btn ghost sm danger" title="Xóa" onClick={() => del(p)}><I.trash width={14} height={14} /></button>
+        </div>
+      ) : null,
+    },
+  ];
+  const activeItems = items.filter((i: any) => i.line_status !== "CANCELLED_LINE");
+  return (
+    <>
+      {!issued && <div className="muted" style={{ marginBottom: 10, fontSize: 13 }}>Lập kế hoạch hàng về sau khi EO được ban hành.</div>}
+      <DataTable cols={cols} rows={plans} keyOf={(p) => p.id} empty="Chưa có kế hoạch hàng về" pageSize={PAGE_SIZE} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 10, marginTop: 14 }}>
+        {activeItems.map((i: any) => {
+          const sum = plannedOf(i.id);
+          return (
+            <div key={i.id} className="card card-pad" style={{ fontSize: 12.5 }}>
+              <b>{i.part_code}</b> · {i.warehouse}
+              <div className="muted">Đã lên KH {soLuong(sum)} / {soLuong(i.current_qty)}</div>
+            </div>
+          );
+        })}
+      </div>
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      {editable && (
+        <button className="btn sm primary" style={{ marginTop: 14 }} onClick={() => setEdit({})}><I.plus width={14} height={14} /> Thêm kế hoạch</button>
+      )}
+      {edit && (
+        <PlanModal plan={edit} items={activeItems} plannedOf={plannedOf}
+          onClose={() => setEdit(null)} onSaved={() => { setEdit(null); onChanged(); }} />
+      )}
+    </>
+  );
+}
+
+function PlanModal({ plan, items, plannedOf, onClose, onSaved }: any) {
+  const isNew = plan.id == null;
+  const [itemId, setItemId] = useState<string>(plan.eo_item_id ? String(plan.eo_item_id) : "");
+  const [date, setDate] = useState(plan.planned_date ?? "");
+  const [qty, setQty] = useState(plan.planned_qty != null ? String(plan.planned_qty) : "");
+  const [factory, setFactory] = useState(plan.factory_committed_date ?? "");
+  const [note, setNote] = useState(plan.ghi_chu ?? "");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const item = items.find((i: any) => String(i.id) === itemId);
+  const remain = item ? item.current_qty - plannedOf(item.id, plan.id) : 0;
+  const save = async () => {
+    setErr("");
+    if (!itemId) return setErr("Chọn dòng linh kiện.");
+    if (!date) return setErr("Chọn ngày về dự kiến.");
+    if (!(Number(qty) > 0)) return setErr("Nhập số lượng > 0.");
+    setBusy(true);
+    const body = { planned_date: date, planned_qty: Number(qty), factory_committed_date: factory || null, ghi_chu: note.trim() || null };
+    try {
+      if (isNew) await api.post("/plans", { eo_item_id: Number(itemId), ...body });
+      else await api.patch(`/plans/${plan.id}`, body);
+      onSaved();
+    } catch (e: any) {
+      setErr(e?.body?.error === "PLAN_EXCEEDS_QTY" ? `Vượt số lượng đặt — còn được lên KH tối đa ${soLuong(remain)}.` :
+        e?.body?.error === "READ_ONLY" ? "Tài khoản chỉ xem, không được cập nhật kế hoạch." : "Lỗi lưu kế hoạch.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={isNew ? "Thêm kế hoạch hàng về" : "Sửa kế hoạch hàng về"} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
+      <label className="field-label">Dòng linh kiện <span className="req">*</span></label>
+      <select className="select" value={itemId} disabled={!isNew} onChange={(e) => setItemId(e.target.value)}>
+        <option value="">Chọn dòng linh kiện</option>
+        {items.map((i: any) => <option key={i.id} value={i.id}>{i.part_code} · {i.warehouse} (SL {soLuong(i.current_qty)})</option>)}
+      </select>
+      {item && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Còn được lên kế hoạch: {soLuong(remain)}</div>}
+      <label className="field-label" style={{ marginTop: 12 }}>Ngày về dự kiến <span className="req">*</span></label>
+      <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      <label className="field-label" style={{ marginTop: 12 }}>Số lượng <span className="req">*</span></label>
+      <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
+      <label className="field-label" style={{ marginTop: 12 }}>Ngày nhà máy cam kết</label>
+      <input className="input" type="date" value={factory} onChange={(e) => setFactory(e.target.value)} />
+      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
+      <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú nhà máy..." />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
   );
 }
 

@@ -26,6 +26,8 @@ export const NAV: NavItem[] = [
   { to: "/admin/cau-hinh", label: "Cấu hình hệ thống", icon: "gear" },
 ];
 
+export const PHONG_BAN = ["Phòng Tác Ngiệp KD", "Phòng kế hoạch cung ứng", "Kho vận Miền Bắc", "Kho vận Miền Nam", "Phòng tài chính kế toán"];
+
 export const STATUS_META: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: "Nháp", cls: "nhap" },
   IN_REVIEW: { label: "Đang thẩm định", cls: "review" },

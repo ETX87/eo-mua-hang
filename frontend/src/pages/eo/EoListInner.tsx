@@ -6,7 +6,7 @@ import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, type Col } from ".
 import { StatusBadge, TypeBadge } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ten } from "../../lib/format";
-import { STATUS_META } from "../../lib/nav";
+import { STATUS_META, PHONG_BAN } from "../../lib/nav";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 
 interface EoRow {
@@ -40,10 +40,16 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState(false);
 
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (status) params.set("trang_thai", status);
-  if (createdBy) params.set("created_by", createdBy);
+  const filterParams = () => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (status) p.set("trang_thai", status);
+    if (createdBy) p.set("created_by", createdBy);
+    if (loaiHinh) p.set("loai_hinh", loaiHinh);
+    if (phongBan) p.set("phong_ban", phongBan);
+    return p;
+  };
+  const params = filterParams();
   params.set("limit", String(limit));
   params.set("offset", String(offset));
 
@@ -52,11 +58,10 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
     queryFn: () => api.get<{ rows: EoRow[]; total: number; limit: number; offset: number }>("/eo?" + params.toString()),
   });
   const cats = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
+  const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
 
-  let rows = list.data?.rows ?? [];
-  if (loaiHinh) rows = rows.filter((r) => r.loai_hinh === loaiHinh);
-  if (phongBan) rows = rows.filter((r) => r.phong_ban === phongBan);
-  const creatorOpts = [...new Set((list.data?.rows ?? []).map((r) => r.created_by).filter(Boolean))] as string[];
+  const rows = list.data?.rows ?? [];
+  const creatorOpts = (users.data ?? []).map((u: any) => u.email as string);
 
   const cols: Col<EoRow>[] = [
     { key: "eo_code", header: "Mã EO", render: (r) => <span className="cell-link">{r.eo_code}</span> },
@@ -84,10 +89,7 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
   const doExport = async () => {
     setExporting(true);
     try {
-      const exportParams = new URLSearchParams();
-      if (q) exportParams.set("q", q);
-      if (status) exportParams.set("trang_thai", status);
-      if (createdBy) exportParams.set("created_by", createdBy);
+      const exportParams = filterParams();
       exportParams.set("limit", "200");
       const all: EoRow[] = [];
       let off = 0;
@@ -98,16 +100,13 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
         if (all.length >= page.total || page.rows.length === 0) break;
         off += 200;
       }
-      let filtered = all;
-      if (loaiHinh) filtered = filtered.filter((r) => r.loai_hinh === loaiHinh);
-      if (phongBan) filtered = filtered.filter((r) => r.phong_ban === phongBan);
-      exportRowsToXlsx(filtered, EXPORT_COLS, "danh-sach-eo.xlsx");
+      exportRowsToXlsx(all, EXPORT_COLS, "danh-sach-eo.xlsx");
     } finally {
       setExporting(false);
     }
   };
 
-  const phongBanOpts = [...new Set((list.data?.rows ?? []).map((r) => r.phong_ban).filter(Boolean))] as string[];
+  const phongBanOpts = [...new Set([...PHONG_BAN, ...rows.map((r) => r.phong_ban).filter(Boolean)])] as string[];
 
   return (
     <div>
@@ -124,11 +123,11 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
           <option value="">Người tạo</option>
           {creatorOpts.map((u) => <option key={u} value={u}>{ten(u)}</option>)}
         </select>
-        <select className="select" style={{ width: 128 }} value={loaiHinh} onChange={(e) => setLoaiHinh(e.target.value)}>
+        <select className="select" style={{ width: 128 }} value={loaiHinh} onChange={(e) => { setLoaiHinh(e.target.value); setOffset(0); }}>
           <option value="">Loại hình</option>
           {(cats.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
         </select>
-        <select className="select" style={{ width: 128 }} value={phongBan} onChange={(e) => setPhongBan(e.target.value)}>
+        <select className="select" style={{ width: 128 }} value={phongBan} onChange={(e) => { setPhongBan(e.target.value); setOffset(0); }}>
           <option value="">Phòng ban</option>
           {phongBanOpts.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>

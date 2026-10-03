@@ -18,7 +18,8 @@ app.get("/app", async (c) => c.json((await c.env.DB.prepare("SELECT * FROM app_s
 app.use("/*", async (c, next) => (c.req.method === "GET" ? next() : requireAdmin(c, next)));
 
 app.put("/kho/:ten", async (c) => {
-  const ten = decodeURIComponent(c.req.param("ten"));
+  const ten = decodeURIComponent(c.req.param("ten")).trim();
+  if (!ten) return c.json({ error: "BAD_INPUT" }, 400);
   const b = (await c.req.json()) as { ma_kho?: string; active?: number };
   await c.env.DB.prepare(
     `INSERT INTO settings_warehouse (ten_kho, ma_kho, active) VALUES (?, ?, ?)
@@ -29,12 +30,45 @@ app.put("/kho/:ten", async (c) => {
 });
 
 app.put("/loai-hinh/:code", async (c) => {
-  const code = decodeURIComponent(c.req.param("code"));
+  const code = decodeURIComponent(c.req.param("code")).trim();
+  if (!code) return c.json({ error: "BAD_INPUT" }, 400);
   const b = (await c.req.json()) as { ten?: string; cap2?: string; phong_ban?: string };
   await c.env.DB.prepare(
     `INSERT INTO settings_eo_category (code, ten, cap2, phong_ban) VALUES (?, ?, ?, ?)
      ON CONFLICT(code) DO UPDATE SET ten = excluded.ten, cap2 = excluded.cap2, phong_ban = excluded.phong_ban`,
   ).bind(code, b.ten ?? code, b.cap2 ?? null, b.phong_ban ?? null).run();
+  await bumpVersions(c.env.DB, ["settings"]);
+  return c.json({ ok: true });
+});
+
+// min_days la khoa chinh -> doi nguong = xoa dong cu + them dong moi trong 1 batch
+app.put("/toc-do", async (c) => {
+  const b = (await c.req.json()) as { old_min_days?: number | null; min_days: number; label: string };
+  if (typeof b.min_days !== "number" || !Number.isFinite(b.min_days) || !b.label?.trim()) {
+    return c.json({ error: "BAD_INPUT" }, 400);
+  }
+  const stmts = [];
+  if (b.old_min_days != null && b.old_min_days !== b.min_days) {
+    stmts.push(c.env.DB.prepare("DELETE FROM settings_speed_bucket WHERE min_days = ?").bind(b.old_min_days));
+  } else if (b.old_min_days == null) {
+    const dup = await c.env.DB.prepare("SELECT 1 FROM settings_speed_bucket WHERE min_days = ?").bind(b.min_days).first();
+    if (dup) return c.json({ error: "ALREADY_EXISTS" }, 409);
+  }
+  stmts.push(
+    c.env.DB.prepare(
+      `INSERT INTO settings_speed_bucket (min_days, label) VALUES (?, ?)
+       ON CONFLICT(min_days) DO UPDATE SET label = excluded.label`,
+    ).bind(b.min_days, b.label.trim()),
+  );
+  await c.env.DB.batch(stmts);
+  await bumpVersions(c.env.DB, ["settings"]);
+  return c.json({ ok: true });
+});
+
+app.delete("/toc-do/:min", async (c) => {
+  const n = await c.env.DB.prepare("SELECT COUNT(*) n FROM settings_speed_bucket").first<{ n: number }>();
+  if ((n?.n ?? 0) <= 1) return c.json({ error: "LAST_BUCKET" }, 409);
+  await c.env.DB.prepare("DELETE FROM settings_speed_bucket WHERE min_days = ?").bind(Number(c.req.param("min"))).run();
   await bumpVersions(c.env.DB, ["settings"]);
   return c.json({ ok: true });
 });
@@ -45,6 +79,7 @@ app.put("/app/:key", async (c) => {
   await c.env.DB.prepare(
     `INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
   ).bind(key, b.value ?? null).run();
+  await bumpVersions(c.env.DB, ["settings"]);
   return c.json({ ok: true });
 });
 

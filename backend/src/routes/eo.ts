@@ -5,6 +5,7 @@ import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canCreateEo, canManageEo } from "../lib/eoAccess";
 import { uploadPublicFile } from "../lib/googleDrive";
+import { notifyStmt } from "../lib/notify";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -15,6 +16,8 @@ app.get("/", async (c) => {
   const status = url.searchParams.get("trang_thai");
   const q = url.searchParams.get("q");
   const createdBy = url.searchParams.get("created_by");
+  const loaiHinh = url.searchParams.get("loai_hinh");
+  const phongBan = url.searchParams.get("phong_ban");
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
   const offset = Number(url.searchParams.get("offset") ?? 0);
 
@@ -22,6 +25,8 @@ app.get("/", async (c) => {
   const bind: unknown[] = [];
   if (status) { where.push("e.trang_thai = ?"); bind.push(status); }
   if (createdBy) { where.push("e.created_by = ?"); bind.push(createdBy); }
+  if (loaiHinh) { where.push("e.loai_hinh = ?"); bind.push(loaiHinh); }
+  if (phongBan) { where.push("e.phong_ban = ?"); bind.push(phongBan); }
   if (q) { where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ?)"); bind.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   const wsql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -168,7 +173,7 @@ app.patch("/:id", async (c) => {
 // ------------------------------------------------------------------ POST /:id/items (add item)
 app.post("/:id/items", async (c) => {
   const id = Number(c.req.param("id"));
-  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<{ id: number; trang_thai: string; created_by: string }>();
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<{ id: number; eo_code: string; trang_thai: string; created_by: string; final_approver_email: string | null }>();
   if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
   if (!canManageEo(c.get("user"), eo)) return c.json({ error: "FORBIDDEN" }, 403);
   if (!["DRAFT", "ISSUED"].includes(eo.trang_thai)) return c.json({ error: "BAD_STATE" }, 409);
@@ -177,6 +182,7 @@ app.post("/:id/items", async (c) => {
     part_code: string; part_name?: string; warehouse: string; supplier?: string;
     current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
   };
+  if (!it.part_code?.trim() || !it.warehouse) return c.json({ error: "PART_AND_WAREHOUSE_REQUIRED" }, 400);
   const now = nowVN();
   const afterIssue = eo.trang_thai === "ISSUED";
   const ins = await c.env.DB.prepare(
@@ -188,9 +194,13 @@ app.post("/:id/items", async (c) => {
     it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE", afterIssue ? "PENDING" : null,
     c.get("user").email, now, afterIssue ? 1 : 0).first<{ id: number }>();
 
-  await c.env.DB.batch([
+  const stmts = [
     eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "ADD_ITEM", user_email: c.get("user").email, at: now, after: it, metadata: { after_issue: afterIssue } }),
-  ]);
+  ];
+  if (afterIssue && eo.final_approver_email && eo.final_approver_email !== c.get("user").email) {
+    stmts.push(notifyStmt(c.env.DB, { email: eo.final_approver_email, loai: "post_issue_pending", noi_dung: `EO ${eo.eo_code}: dòng ${it.part_code} thêm sau ban hành đang chờ bạn duyệt`, eo_id: id, at: now }));
+  }
+  await c.env.DB.batch(stmts);
   await bumpVersions(c.env.DB, ["eo"]);
   return c.json({ id: ins!.id, post_issue_status: afterIssue ? "PENDING" : null });
 });
@@ -251,6 +261,9 @@ app.post("/:id/submit", async (c) => {
 
   const nItems = await c.env.DB.prepare("SELECT COUNT(*) n FROM eo_item WHERE eo_id = ?").bind(id).first<{ n: number }>();
   if (!nItems?.n) return c.json({ error: "EO_MUST_HAVE_ITEM" }, 400);
+  if (!eo.loai_hinh || !eo.phong_ban || !String(eo.noi_dung ?? "").trim()) {
+    return c.json({ error: "MISSING_REQUIRED_FIELDS" }, 400);
+  }
 
   const b = (await c.req.json().catch(() => ({}))) as { reviewers?: string[]; final_approver_email?: string };
   const reviewers = [...new Set((b.reviewers ?? []).map((x) => x.toLowerCase()).filter(Boolean))];

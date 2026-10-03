@@ -15,7 +15,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 // ============================================================ GET /summary  (man Tong quan)
 app.get("/summary", async (c) => {
-  const data = await cachedReport(c.env.DB, "dash:summary", ["eo"], async () => {
+  const soThang = [3, 6, 12].includes(Number(c.req.query("thang"))) ? Number(c.req.query("thang")) : 6;
+  // trend phu thuoc thang hien tai -> cache theo ngay (mac dinh dateSensitive)
+  const data = await cachedReport(c.env.DB, `dash:summary:${soThang}`, ["eo"], async () => {
     // 1 lan quet `eo` -> KPI + trend. substr thay strftime (khong sargable nhung tranh ham).
     const eoRows = (
       await c.env.DB.prepare(`
@@ -43,10 +45,9 @@ app.get("/summary", async (c) => {
         return { label, count, pct: tong ? Math.round((count / tong) * 1000) / 10 : 0 };
       });
 
-    // 6 thang gan nhat
     const now = new Date(Date.now() + 7 * 3600_000);
     const months: string[] = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = soThang - 1; i >= 0; i--) {
       const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
       months.push(d.toISOString().slice(0, 7));
     }
@@ -81,7 +82,7 @@ app.get("/summary", async (c) => {
         nguoi_tao: r.created_by, luc: r.updated_at ?? r.created_at,
       })),
     };
-  }, { dateSensitive: false });
+  });
   return c.json(data);
 });
 
@@ -178,20 +179,26 @@ app.get("/amis-tomtat", (c) =>
   }, { dateSensitive: false }).then((d) => c.json(d)));
 
 // ============================================================ GET /plan-tuan  (widget Ke hoach hang ve)
-app.get("/plan-tuan", (c) =>
-  cachedReport(c.env.DB, "dash:plan-tuan", ["eo"], async () => {
+// ?tuan=<lech tuan so voi tuan nay, -4..8>. Tuan = Chu nhat -> Thu bay (giong lib/week.ts).
+app.get("/plan-tuan", (c) => {
+  const raw = Number(c.req.query("tuan") ?? 0);
+  const lech = Number.isInteger(raw) && raw >= -4 && raw <= 8 ? raw : 0;
+  return cachedReport(c.env.DB, `dash:plan-tuan:${lech}`, ["eo"], async () => {
+    const start = `${lech * 7} days`;
+    const range = await c.env.DB.prepare(
+      `SELECT date('now','+7 hours','-6 days','weekday 0', ?) tu, date('now','+7 hours','-6 days','weekday 0', ?, '+6 days') den`,
+    ).bind(start, start).first<{ tu: string; den: string }>();
     const rows = (
       await c.env.DB.prepare(`
         SELECT p.planned_date, e.eo_code, e.id eo_id,
                COUNT(*) so_dong, SUM(p.planned_qty) tong_sl
         FROM item_plan p JOIN eo_item i ON i.id = p.eo_item_id JOIN eo e ON e.id = i.eo_id
-        WHERE p.deleted_at IS NULL
-          AND p.planned_date >= date('now','+7 hours','weekday 0','-7 days')
-          AND p.planned_date <  date('now','+7 hours','weekday 0','+7 days')
-        GROUP BY p.planned_date, e.id ORDER BY p.planned_date LIMIT 30
-      `).all()
+        WHERE p.deleted_at IS NULL AND p.planned_date >= ? AND p.planned_date <= ?
+        GROUP BY p.planned_date, e.id ORDER BY p.planned_date, e.eo_code
+      `).bind(range!.tu, range!.den).all()
     ).results;
-    return { rows };
-  }).then((d) => c.json(d)));
+    return { tu: range!.tu, den: range!.den, rows };
+  }).then((d) => c.json(d));
+});
 
 export default app;

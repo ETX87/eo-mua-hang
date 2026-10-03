@@ -20,7 +20,7 @@ export default function AmisImport() {
   const unmatched = useQuery({ queryKey: ["amis-unmatched"], queryFn: () => api.get<{ rows: any[]; total: any }>("/amis/unmatched") });
   const tomtat = useQuery({ queryKey: ["amis-tomtat"], queryFn: () => api.get<any>("/dashboard/amis-tomtat") });
   const kho = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
-  const validKho = new Set((kho.data ?? []).map((k) => k.ten_kho));
+  const validKho = new Set((kho.data ?? []).filter((k) => k.active).map((k) => k.ten_kho));
 
   const onFile = (f: File) => {
     setFilename(f.name); setResult(null);
@@ -34,7 +34,10 @@ export default function AmisImport() {
   };
 
   const classify = (r: any): "nhap" | "bo" => {
-    const ok = r["Mã phê duyệt"] && Number(String(r["Số lượng Nhập"]).replace(/,/g, "")) > 0 && validKho.has(r["Tên kho"]);
+    // dong bo voi dieu kien loc that o backend (routes/amis.ts)
+    const str = (k: string) => String(r[k] ?? "").trim();
+    const ok = str("Mã phê duyệt") && Number(str("Số lượng Nhập").replace(/,/g, "")) > 0 && validKho.has(str("Tên kho"))
+      && str("Mã hàng") && str("Số chứng từ") && str("Ngày chứng từ");
     return ok ? "nhap" : "bo";
   };
   const seNhap = rows?.filter((r) => classify(r) === "nhap").length ?? 0;

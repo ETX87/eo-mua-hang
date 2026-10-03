@@ -33,9 +33,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/eo" element={<EoList />} />
-        <Route path="/eo/new" element={<EoForm mode="create" />} />
+        <Route path="/eo/new" element={<EoForm key="create" mode="create" />} />
         <Route path="/eo/:id" element={<EoDetail />} />
-        <Route path="/eo/:id/edit" element={<EoForm mode="edit" />} />
+        <Route path="/eo/:id/edit" element={<EoForm key="edit" mode="edit" />} />
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/plans" element={<Plans />} />
         <Route path="/amis" element={<AmisImport />} />

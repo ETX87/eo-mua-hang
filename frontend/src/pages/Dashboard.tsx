@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import { api } from "../api/client";
 import { Card, KpiCard, StatusBadge, Avatar, Spinner } from "../components/ui";
@@ -14,7 +15,12 @@ const DONUT_COLOR: Record<string, string> = {
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const q = useQuery({ queryKey: ["dash-summary"], queryFn: () => api.get<any>("/dashboard/summary") });
+  const [soThang, setSoThang] = useState(6);
+  const q = useQuery({
+    queryKey: ["dash-summary", soThang],
+    queryFn: () => api.get<any>(`/dashboard/summary?thang=${soThang}`),
+    placeholderData: keepPreviousData,
+  });
   if (q.isLoading) return <Spinner />;
   const d = q.data;
 
@@ -34,7 +40,9 @@ export default function Dashboard() {
         <Card style={{ minHeight: 270, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <strong style={{ fontSize: 16, whiteSpace: "nowrap" }}>Xu hướng EO theo tháng</strong>
-            <select className="select" style={{ width: 150 }} defaultValue="6"><option value="6">6 tháng gần đây</option></select>
+            <select className="select" style={{ width: 150 }} value={soThang} onChange={(e) => setSoThang(Number(e.target.value))}>
+              {[3, 6, 12].map((n) => <option key={n} value={n}>{n} tháng gần đây</option>)}
+            </select>
           </div>
           <div style={{ flex: 1, minHeight: 214 }}>
             <ResponsiveContainer>

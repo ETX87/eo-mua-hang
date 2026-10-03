@@ -14,9 +14,14 @@ export function canManageEo(u: AppUser, eo: { created_by: string }): boolean {
   return u.vai_tro === "Admin" || u.vai_tro === "KH cung ung" || eo.created_by === u.email;
 }
 
-/** Cap nhat plan / ngay du kien: moi vai tro tru View. */
-export function canEditPlan(u: AppUser): boolean {
-  return !isViewOnly(u);
+/** CRUD item_plan (PERMISSION_SPEC muc 2): creator, NV dat hang/kho, KH cung ung, Kho/Theo doi TD, Admin. Ke toan & View: khong. */
+export function canEditPlan(u: AppUser, eo?: { created_by: string }): boolean {
+  if (isViewOnly(u)) return false;
+  if (eo && eo.created_by === u.email) return true;
+  return (
+    u.vai_tro === "Admin" || u.vai_tro === "KH cung ung" || u.vai_tro === "Kho" || u.vai_tro === "Theo doi tien do" ||
+    u.la_nv_dat_hang === 1 || u.la_nv_kho === 1 || u.la_theo_doi_td === 1
+  );
 }
 
 export function isViewOnly(u: AppUser): boolean {

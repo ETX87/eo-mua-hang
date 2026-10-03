@@ -6,6 +6,7 @@ import { PageHeader, Spinner } from "../../components/ui";
 import { type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ten } from "../../lib/format";
+import { PHONG_BAN } from "../../lib/nav";
 
 interface ItemRow {
   id?: number; part_code: string; part_name: string; warehouse: string; supplier: string;
@@ -80,7 +81,16 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       tieu_de: tieuDe, noi_dung: noiDung, loai_hinh: loaiHinh || undefined, phong_ban: phongBan || undefined,
       final_approver_email: finalApprover, items: its,
     });
-    if (send) await api.post(`/eo/${res.id}/submit`, { reviewers, final_approver_email: finalApprover });
+    if (send) {
+      try {
+        await api.post(`/eo/${res.id}/submit`, { reviewers, final_approver_email: finalApprover });
+      } catch {
+        // nhap da tao - chuyen sang man sua de tranh bam lai tao EO trung
+        alert("Đã lưu nháp nhưng gửi trình duyệt thất bại — kiểm tra lại thông tin rồi gửi lại.");
+        nav(`/eo/${res.id}/edit`, { replace: true });
+        return;
+      }
+    }
     nav(`/eo/${res.id}`);
   };
 
@@ -122,12 +132,18 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     if (!tieuDe.trim()) return setErr("Nhập tiêu đề.");
     if (its.length === 0) return setErr("EO phải có ít nhất 1 dòng linh kiện.");
     if (!finalApprover) return setErr("Chọn người duyệt cuối.");
+    if (send) {
+      if (!loaiHinh) return setErr(cats.data?.length ? "Chọn loại hình." : "Chưa có danh mục Loại hình EO — Admin cần thêm ở Cài đặt › Danh mục.");
+      if (!phongBan) return setErr("Chọn phòng ban.");
+      if (!noiDung.trim()) return setErr("Nhập nội dung / lý do trình.");
+    }
     setBusy(true);
     try {
       if (mode === "create") await submitCreate(send);
       else await submitEdit(send);
     } catch (e: any) {
-      setErr(e?.body?.error || "Lỗi lưu EO.");
+      const code = e?.body?.error;
+      setErr(code === "MISSING_REQUIRED_FIELDS" ? "Thiếu Loại hình / Phòng ban / Nội dung — bổ sung rồi gửi lại." : code || "Lỗi lưu EO.");
       setBusy(false);
     }
   };
@@ -173,12 +189,16 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           <label className="field-label" style={{ marginTop: 14 }}>Loại hình <span className="req">*</span></label>
           <select className="select" value={loaiHinh} onChange={(e) => setLoaiHinh(e.target.value)}>
             <option value="">Chọn loại hình</option>
-            {(cats.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
+            {loaiHinh && !(cats.data ?? []).some((c) => c.code === loaiHinh) && <option value={loaiHinh}>{loaiHinh}</option>}
+            {(cats.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.ten && c.ten !== c.code ? `${c.code} — ${c.ten}` : c.code}</option>)}
           </select>
+          {cats.data && cats.data.length === 0 && (
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chưa có danh mục Loại hình — Admin thêm ở Cài đặt › Danh mục.</div>
+          )}
           <label className="field-label" style={{ marginTop: 14 }}>Phòng ban <span className="req">*</span></label>
           <select className="select" value={phongBan} onChange={(e) => setPhongBan(e.target.value)}>
             <option value="">Chọn phòng ban</option>
-            {["Phòng Tác Ngiệp KD", "Phòng kế hoạch cung ứng", "Kho vận Miền Bắc", "Kho vận Miền Nam", "Phòng tài chính kế toán"].map((p) => <option key={p} value={p}>{p}</option>)}
+            {[...new Set([...PHONG_BAN, ...(phongBan ? [phongBan] : [])])].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           <label className="field-label" style={{ marginTop: 14 }}>Nội dung / lý do trình <span className="req">*</span></label>
           <textarea className="textarea" placeholder="Nhập nội dung / lý do trình..." value={noiDung} onChange={(e) => setNoiDung(e.target.value)} />

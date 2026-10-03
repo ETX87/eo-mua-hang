@@ -13,7 +13,23 @@ app.get("/count", async (c) => {
     `SELECT COUNT(*) n FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
      WHERE a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING'`,
   ).bind(c.get("user").email).first<{ n: number }>();
-  return c.json({ count: r?.n ?? 0 });
+  const p = await c.env.DB.prepare(
+    `SELECT COUNT(*) n FROM eo_item i JOIN eo e ON e.id = i.eo_id
+     WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?`,
+  ).bind(c.get("user").email).first<{ n: number }>();
+  return c.json({ count: (r?.n ?? 0) + (p?.n ?? 0) });
+});
+
+// ------------------------------------------------------------------ GET /post-issue (dong them sau ban hanh cho duyet)
+app.get("/post-issue", async (c) => {
+  const rows = await c.env.DB.prepare(
+    `SELECT i.id, i.eo_id, i.part_code, i.part_name, i.warehouse, i.current_qty, i.reason, i.created_by, i.created_at,
+            e.eo_code, e.approval_code, e.tieu_de
+     FROM eo_item i JOIN eo e ON e.id = i.eo_id
+     WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?
+     ORDER BY i.created_at`,
+  ).bind(c.get("user").email).all();
+  return c.json(rows.results);
 });
 
 // ------------------------------------------------------------------ GET /inbox

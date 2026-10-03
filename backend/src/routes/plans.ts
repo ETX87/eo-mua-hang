@@ -8,7 +8,7 @@ import { canEditPlan } from "../lib/eoAccess";
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 async function itemCtx(db: Env["DB"], itemId: number) {
-  return db.prepare("SELECT id, eo_id, current_qty FROM eo_item WHERE id = ?").bind(itemId).first<{ id: number; eo_id: number; current_qty: number }>();
+  return db.prepare("SELECT i.id, i.eo_id, i.current_qty, e.created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?").bind(itemId).first<{ id: number; eo_id: number; current_qty: number; created_by: string }>();
 }
 async function plannedSum(db: Env["DB"], itemId: number, excludePlanId?: number) {
   const r = await db.prepare(
@@ -27,10 +27,10 @@ app.get("/item/:itemId", async (c) => {
 
 // POST /api/plans   body: { eo_item_id, planned_date, planned_qty, factory_committed_date?, ghi_chu? }
 app.post("/", async (c) => {
-  if (!canEditPlan(c.get("user"))) return c.json({ error: "READ_ONLY" }, 403);
   const b = (await c.req.json()) as { eo_item_id: number; planned_date: string; planned_qty: number; factory_committed_date?: string; ghi_chu?: string };
   const it = await itemCtx(c.env.DB, b.eo_item_id);
   if (!it) return c.json({ error: "ITEM_NOT_FOUND" }, 404);
+  if (!canEditPlan(c.get("user"), it)) return c.json({ error: "READ_ONLY" }, 403);
   if (!b.planned_date || !(b.planned_qty > 0)) return c.json({ error: "BAD_INPUT" }, 400);
   const sum = await plannedSum(c.env.DB, b.eo_item_id);
   if (sum + b.planned_qty > it.current_qty) return c.json({ error: "PLAN_EXCEEDS_QTY", planned_sum: sum, current_qty: it.current_qty }, 409);
@@ -49,11 +49,12 @@ app.post("/", async (c) => {
 
 // PATCH /api/plans/:id
 app.patch("/:id", async (c) => {
-  if (!canEditPlan(c.get("user"))) return c.json({ error: "READ_ONLY" }, 403);
   const id = Number(c.req.param("id"));
   const p = await c.env.DB.prepare("SELECT * FROM item_plan WHERE id = ? AND deleted_at IS NULL").bind(id).first<any>();
   if (!p) return c.json({ error: "NOT_FOUND" }, 404);
   const it = await itemCtx(c.env.DB, p.eo_item_id);
+  if (!it) return c.json({ error: "ITEM_NOT_FOUND" }, 404);
+  if (!canEditPlan(c.get("user"), it)) return c.json({ error: "READ_ONLY" }, 403);
   const b = (await c.req.json()) as Partial<{ planned_date: string; planned_qty: number; factory_committed_date: string; ghi_chu: string }>;
   const newQty = typeof b.planned_qty === "number" ? b.planned_qty : p.planned_qty;
   if (newQty <= 0) return c.json({ error: "BAD_QTY" }, 400);
@@ -78,11 +79,12 @@ app.patch("/:id", async (c) => {
 
 // DELETE /api/plans/:id  (soft-delete)
 app.delete("/:id", async (c) => {
-  if (!canEditPlan(c.get("user"))) return c.json({ error: "READ_ONLY" }, 403);
   const id = Number(c.req.param("id"));
   const p = await c.env.DB.prepare("SELECT * FROM item_plan WHERE id = ? AND deleted_at IS NULL").bind(id).first<any>();
   if (!p) return c.json({ error: "NOT_FOUND" }, 404);
   const it = await itemCtx(c.env.DB, p.eo_item_id);
+  if (!it) return c.json({ error: "ITEM_NOT_FOUND" }, 404);
+  if (!canEditPlan(c.get("user"), it)) return c.json({ error: "READ_ONLY" }, 403);
   const now = nowVN();
   await c.env.DB.batch([
     c.env.DB.prepare("UPDATE item_plan SET deleted_at = ?, deleted_by = ? WHERE id = ?").bind(now, c.get("user").email, id),

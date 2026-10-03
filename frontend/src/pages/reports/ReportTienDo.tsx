@@ -127,7 +127,7 @@ export default function ReportTienDo() {
           <DataTable
             minWidth={3600} pageSize={PAGE_SIZE}
             cols={cols} rows={allRows} keyOf={(_r, i) => i}
-            totalRow={["TỔNG", "", "", "", "", "", "", "", "", "", "", "", "", "", "", soLuong(rep.data?.tong?.so_dong),
+            totalRow={["TỔNG", "", "", "", "", "", "", "", "", "", "", "", "", "", "", `${soLuong(rep.data?.tong?.so_dong ?? 0)} dòng`,
               soLuong(rep.data?.tong?.so_luong_dat), soLuong(rep.data?.tong?.sl_nhap_amis_dung_eo),
               soLuong(rep.data?.tong?.doi_chieu_sai_thua), soLuong(rep.data?.tong?.so_luong_con_thieu),
               "", "", "", "", "", "", "", "", ""]}

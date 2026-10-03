@@ -249,7 +249,7 @@ app.get("/tien-do-tuan", async (c) => {
     sl_lk_eo: r.sl_eo, sl_ke_hoach_tuan: r.sl_ke_hoach_tuan,
     sl_ve_amis_theo_moc: r.sl_ve_theo_moc, sl_amis_sau_ke_hoach: r.sl_ve_sau_ke_hoach,
     can_bang: r.can_bang,
-    pc_ke_hoach_tuan_tren_eo: r.sl_lk_eo ? r.sl_ke_hoach_tuan / r.sl_eo : "",
+    pc_ke_hoach_tuan_tren_eo: r.sl_eo ? r.sl_ke_hoach_tuan / r.sl_eo : "",
     pc_hang_ve_tren_eo: r.sl_eo ? (r.sl_ke_hoach_tuan + r.sl_ve_theo_moc) / r.sl_eo : "",
     pc_hang_ve_can_doi: r.sl_ke_hoach_tuan ? r.can_bang / r.sl_ke_hoach_tuan : "",
   }));

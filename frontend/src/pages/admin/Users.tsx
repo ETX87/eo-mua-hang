@@ -5,10 +5,14 @@ import { PageHeader, Card, Spinner, Modal } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 
-const ROLE_OPTS = ["Admin", "KH cung ung", "Ke toan", "Kho", "Theo doi tien do", "View"];
+const ROLE_LABEL: Record<string, string> = {
+  Admin: "Admin", "KH cung ung": "KH cung ứng", "Ke toan": "Kế toán", Kho: "Kho",
+  "Theo doi tien do": "Theo dõi tiến độ", View: "Chỉ xem",
+};
+const ROLE_OPTS = Object.keys(ROLE_LABEL);
 
 function roleDisplay(u: any): string {
-  if (u.vai_tro) return u.vai_tro;
+  if (u.vai_tro) return ROLE_LABEL[u.vai_tro] ?? u.vai_tro;
   if (u.la_nv_dat_hang) return "Người đặt hàng";
   if (u.la_nv_kho) return "NV kho";
   if (u.la_ke_toan) return "Kế toán";
@@ -35,8 +39,8 @@ export default function Users() {
       key: "vt", header: "Vai trò", render: (r) => (
         <select className="select" style={{ width: 168 }} value={r.vai_tro ?? ""} onClick={(e) => e.stopPropagation()}
           onChange={(e) => patch(r.email, { vai_tro: e.target.value || null })}>
-          <option value="">{roleDisplay(r)}</option>
-          {ROLE_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
+          <option value="">{r.vai_tro ? "— Bỏ vai trò —" : roleDisplay(r)}</option>
+          {ROLE_OPTS.map((o) => <option key={o} value={o}>{ROLE_LABEL[o]}</option>)}
         </select>
       ),
     },
