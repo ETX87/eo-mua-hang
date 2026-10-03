@@ -90,7 +90,7 @@ function NotificationBell() {
   );
 }
 
-function AccountMenu({ uName, email, sub, subColor, nameColor }: { uName: string; email?: string | null; sub: string; subColor?: string; nameColor?: string }) {
+function AccountMenu({ uName, email, sub, subColor, nameColor, dropUp }: { uName: string; email?: string | null; sub: string; subColor?: string; nameColor?: string; dropUp?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside(() => setOpen(false));
   const logout = () => api.post("/auth/logout").then(() => (location.href = "/"));
@@ -105,7 +105,11 @@ function AccountMenu({ uName, email, sub, subColor, nameColor }: { uName: string
         <I.chevronDown width={16} height={16} color={nameColor} />
       </div>
       {open && (
-        <div style={{ position: "absolute", right: 0, top: 46, width: 220, background: "#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
+        <div style={{
+          position: "absolute",
+          // o cuoi sidebar (overflow hidden) -> mo len tren, gioi han trong be ngang the
+          ...(dropUp ? { left: 0, right: 0, bottom: 48 } : { right: 0, top: 46, width: 220 }),
+          background: "#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
           {email && (
             <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{uName}</div>
@@ -190,7 +194,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {open && (
           <div style={{ padding: 12 }}>
             <div style={{ padding: 10, borderRadius: 14, border: "1px solid rgba(120,100,20,.25)", background: "rgba(255,255,255,.28)" }}>
-              <AccountMenu uName={uName} email={me.data?.email} sub={me.data?.email ?? ""} nameColor="var(--brand-ink)" subColor="var(--brand-olive)" />
+              <AccountMenu uName={uName} email={me.data?.email} sub={me.data?.email ?? ""} nameColor="var(--brand-ink)" subColor="var(--brand-olive)" dropUp />
             </div>
             <div style={{ fontSize: 10.5, color: "var(--brand-olive)", textAlign: "center", marginTop: 12 }}>
               Phiên bản v{APP_VERSION} — Hệ thống nội bộ
