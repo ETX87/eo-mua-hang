@@ -161,7 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav style={{ flex: 1, overflowY: "auto", padding: open ? "6px 12px" : "6px 8px" }}>
-          {NAV.map((n) => {
+          {NAV.filter((n) => !n.adminOnly || me.data?.vai_tro === "Admin").map((n) => {
             const Icon = I[n.icon];
             return (
               <div key={n.to}>

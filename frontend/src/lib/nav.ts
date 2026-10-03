@@ -6,6 +6,8 @@ export interface NavItem {
   icon: keyof typeof I;
   section?: string;
   badgeKey?: "approvals";
+  /** backend chan bang requireAdmin -> an voi vai tro khac */
+  adminOnly?: boolean;
 }
 
 export const NAV: NavItem[] = [
@@ -20,10 +22,10 @@ export const NAV: NavItem[] = [
   { to: "/reports/tien-do-tuan", label: "Tiến độ tuần", icon: "calendar" },
   { to: "/reports/luy-ke-nam", label: "Lũy kế năm", icon: "grid" },
 
-  { to: "/admin/users", label: "Người dùng", icon: "user", section: "CÀI ĐẶT" },
-  { to: "/admin/roles", label: "Phân quyền", icon: "shield" },
-  { to: "/admin/danh-muc", label: "Danh mục", icon: "tag" },
-  { to: "/admin/cau-hinh", label: "Cấu hình hệ thống", icon: "gear" },
+  { to: "/admin/users", label: "Người dùng", icon: "user", section: "CÀI ĐẶT", adminOnly: true },
+  { to: "/admin/roles", label: "Phân quyền", icon: "shield", adminOnly: true },
+  { to: "/admin/danh-muc", label: "Danh mục", icon: "tag", adminOnly: true },
+  { to: "/admin/cau-hinh", label: "Cấu hình hệ thống", icon: "gear", adminOnly: true },
 ];
 
 export const PHONG_BAN = ["Phòng Tác Ngiệp KD", "Phòng kế hoạch cung ứng", "Kho vận Miền Bắc", "Kho vận Miền Nam", "Phòng tài chính kế toán"];

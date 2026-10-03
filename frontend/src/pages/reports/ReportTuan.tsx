@@ -35,7 +35,7 @@ export default function ReportTuan() {
       <PageHeader title="Báo cáo – Tiến độ tuần" />
       {tomtat.data && (
         <Card style={{ marginBottom: 16, maxWidth: 420 }}>
-          <select className="select" style={{ width: 220, marginBottom: 10 }} defaultValue="w"><option value="w">Tuần này</option></select>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Tóm tắt 7 ngày gần nhất</div>
           <table className="tbl" style={{ border: "1px solid var(--border)", borderRadius: 8 }}>
             <thead><tr><th>Chỉ tiêu</th><th className="right">Giá trị</th></tr></thead>
             <tbody>
