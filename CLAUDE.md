@@ -31,22 +31,39 @@ npm run deploy            # build + wrangler deploy
 ## wrangler.jsonc
 
 - `assets.run_worker_first: ["/api/*"]` **load-bearing** — không xóa.
-- `d1_databases[0].database_id` đang là `REPLACE_WITH_REAL_D1_ID` — điền sau `wrangler d1 create eo-mua-hang-db`.
+- Worker `muahang` (https://muahang.dichvu3t.workers.dev), D1 `eo-mua-hang-db` — `database_id` đã điền (production thật).
+- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`.
 - Bump `frontend/src/version.ts` (`+0.001`, sửa tay chuỗi) trước mỗi deploy.
 
 ## Cấu trúc
 
 ```
-migrations/0001_init.sql     schema đầy đủ (từ ../TARGET_DATABASE.md)
+migrations/                  0001 schema · 0002 don_gia · 0003 report_cache · 0004 google_drive_oauth
+                             · 0005 notifications · 0006 etx_nhan_su
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
-  types.ts                   Env + AppUser + AppVariables
-  lib/                        vnTime, jwt, idCounter, dataVersions
-  middleware/                 session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
-  routes/                     auth, users  (eo/items/plans/approvals/amis/reports thêm ở Phase 3+)
-frontend/src/                 khung React tối thiểu (App gọi /api/users/me)
-scripts/                     script migration từ Database EO MUA HANG.xlsx (Phase 2)
+  middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
+  lib/                       eoAccess (quyền hành động), amisMatch (khớp AMIS↔EO), reportCache + dataVersions,
+                             audit (event_log), notify, googleDrive + secretBox, etxNhanSu, week, vnTime, jwt
+  routes/                    auth, users, eo, approvals, plans, amis, reports (4 BC), dashboard, danhMuc
+                             (+ Google Drive OAuth), notifications, etxNhanSu
+frontend/src/
+  components/                AppShell (sidebar + topbar), DataTable (phân trang 10 dòng), ui
+  lib/nav.ts                 menu sidebar  ↔ quyền ở backend lib/eoAccess.ts (đồng bộ tay)
+  pages/                     Dashboard, eo/ (List/Detail/Form), Approvals, Plans, amis/, reports/ (4), admin/
+scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs, seed_demo.mjs
+../huong-dan/                tài liệu hướng dẫn .docx + _build/ (script dựng tài liệu + chụp ảnh)
 ```
+
+## Luồng duyệt — chú ý khi sửa `routes/approvals.ts`
+
+- Mỗi action trên phiếu **"giữ chỗ" bằng 1 UPDATE có điều kiện** (`WHERE status='PENDING'` + submission còn mở)
+  trước mọi ghi khác; `meta.changes = 0` → 409. Đây là chốt chống bấm đúp (duyệt cuối bấm 2 lần từng có thể
+  cấp 2 mã 3TDO). Batch lỗi → trả phiếu về PENDING.
+- Mở phiếu FINAL / chuyển `WAITING_FINAL_APPROVAL` kiểm tra "hết phiếu REVIEW PENDING" **trong SQL** của batch,
+  không tính trong JS — 2 reviewer cuối duyệt cùng lúc vẫn ra đúng 1 phiếu FINAL.
+- Sửa dòng (`PATCH /eo/items/:id`) chỉ khi EO `DRAFT` hoặc `ISSUED`.
+- Ban hành / thêm dòng sau ban hành / Admin hủy EO đã ban hành → `recomputeMatch([approval_code])`.
 
 ## Quy ước
 
@@ -70,5 +87,11 @@ chung key với `../../linh-kien-app`.
 
 ## Trạng thái
 
-Phase 1 (thiết kế) xong. Phase 2 (migration script) + Phase 3 (backend routes) đang chờ.
+Đã lên production (xem `frontend/src/version.ts`). Phase 1–4 + UAT báo cáo xong; tài liệu hướng dẫn KH cung ứng
+ở `../huong-dan/`. Còn mở: gộp chuỗi EO copy (`CPMH-`/`Copy-` → EO gốc, Phase 2b — chỉ ảnh hưởng màn chi tiết EO,
+không ảnh hưởng báo cáo); nút "Rút phiếu" thẩm định (backend có, UI chưa có).
 `../CHOT_OPEN_QUESTIONS.md` giữ trạng thái các quyết định nghiệp vụ.
+
+Local dev trên Windows: `wrangler dev` mồ côi giữ cổng 8790 / khóa `.wrangler/state` — tìm tiến trình
+`node … wrangler … dev` rồi `taskkill /F /T /PID <pid>` (chỉ kill `workerd.exe` thì wrangler sinh lại ngay).
+`.wrangler/state` hiện là bộ dữ liệu demo cho ảnh chụp hướng dẫn; bản DB migrate gốc ở `.wrangler/state.bak-*`.

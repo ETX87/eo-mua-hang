@@ -105,6 +105,7 @@ export default function EoDetail() {
       {tab === "Linh kiện" && (
         <TabLinhKien
           items={items} tong={tong} issued={issued} canManage={canManage}
+          canEditQty={canManage && (issued || eo.trang_thai === "DRAFT")}
           canApprovePostIssue={issued && (myEmail === eo.final_approver_email || myRole === "Admin")}
           onEditQty={setQtyItem} onAddItem={() => setShowAddItem(true)}
           onApproved={() => { refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["post-issue"] }); }}
@@ -125,7 +126,7 @@ export default function EoDetail() {
   );
 }
 
-function TabLinhKien({ items, tong, issued, canManage, canApprovePostIssue, onEditQty, onAddItem, onApproved }: any) {
+function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePostIssue, onEditQty, onAddItem, onApproved }: any) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState("");
   const approve = async (r: any) => {
@@ -163,7 +164,7 @@ function TabLinhKien({ items, tong, issued, canManage, canApprovePostIssue, onEd
     {
       key: "act", header: "", align: "center", render: (r) => (
         <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-          {canManage && <button className="btn ghost sm" onClick={() => onEditQty(r)} title="Sửa số lượng"><I.edit width={14} height={14} /></button>}
+          {canEditQty && <button className="btn ghost sm" onClick={() => onEditQty(r)} title="Sửa số lượng"><I.edit width={14} height={14} /></button>}
           {canApprovePostIssue && r.post_issue_status === "PENDING" && (
             <button className="btn sm primary" disabled={busyId === r.id} onClick={() => approve(r)}>Duyệt dòng này</button>
           )}

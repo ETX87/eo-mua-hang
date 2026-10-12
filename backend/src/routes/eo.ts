@@ -6,9 +6,14 @@ import { eventStmt } from "../lib/audit";
 import { canCreateEo, canManageEo } from "../lib/eoAccess";
 import { uploadPublicFile } from "../lib/googleDrive";
 import { notifyStmt } from "../lib/notify";
+import { recomputeMatch } from "../lib/amisMatch";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
+/** So luong hop le: so huu han, >= 0. */
+const validQty = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+/** Chi sua dong khi EO dang DRAFT (soan / bi yeu cau cap nhat) hoac ISSUED (sua SL sau ban hanh) - WORKFLOW_SPEC §6, §8. */
+const ITEM_EDITABLE_STATES = ["DRAFT", "ISSUED"];
 
 // ------------------------------------------------------------------ GET / (list)
 app.get("/", async (c) => {
@@ -18,8 +23,8 @@ app.get("/", async (c) => {
   const createdBy = url.searchParams.get("created_by");
   const loaiHinh = url.searchParams.get("loai_hinh");
   const phongBan = url.searchParams.get("phong_ban");
-  const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
-  const offset = Number(url.searchParams.get("offset") ?? 0);
+  const limit = Math.min(Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50), 200);
+  const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
 
   const where: string[] = [];
   const bind: unknown[] = [];
@@ -113,6 +118,9 @@ app.post("/", async (c) => {
   const b = (await c.req.json()) as CreateBody;
   if (!b.items?.length) return c.json({ error: "EO_MUST_HAVE_ITEM" }, 400);
   if (!b.final_approver_email) return c.json({ error: "FINAL_APPROVER_REQUIRED" }, 400);
+  if (b.items.some((it) => !it.part_code?.trim() || !it.warehouse || !validQty(it.current_qty))) {
+    return c.json({ error: "BAD_ITEM" }, 400);
+  }
 
   const now = nowVN();
   const seq = await c.env.DB.prepare(
@@ -123,7 +131,7 @@ app.post("/", async (c) => {
   const ins = await c.env.DB.prepare(
     `INSERT INTO eo (eo_code, tieu_de, noi_dung, loai_hinh, phong_ban, trang_thai, final_approver_email, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?) RETURNING id`,
-  ).bind(eoCode, b.tieu_de ?? "", b.noi_dung ?? "", b.loai_hinh ?? null, b.phong_ban ?? null, b.final_approver_email, u.email, now).first<{ id: number }>();
+  ).bind(eoCode, b.tieu_de ?? "", b.noi_dung ?? "", b.loai_hinh ?? null, b.phong_ban ?? null, b.final_approver_email.trim().toLowerCase(), u.email, now).first<{ id: number }>();
   const eoId = ins!.id;
 
   const batch = b.items.map((it) =>
@@ -131,7 +139,7 @@ app.post("/", async (c) => {
       `INSERT INTO eo_item (eo_id, part_code, part_name, warehouse, supplier, original_qty, current_qty,
         reason, crm_id, order_id, ghi_chu, line_status, don_gia_du_kien, created_by, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(eoId, it.part_code, it.part_name ?? "", it.warehouse, it.supplier ?? null,
+    ).bind(eoId, it.part_code.trim(), it.part_name ?? "", it.warehouse, it.supplier ?? null,
       it.current_qty, it.current_qty, it.reason ?? null, it.crm_id ?? null, it.order_id ?? null,
       it.ghi_chu ?? null, it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE",
       it.don_gia_du_kien ?? null, u.email, now),
@@ -173,7 +181,7 @@ app.patch("/:id", async (c) => {
 // ------------------------------------------------------------------ POST /:id/items (add item)
 app.post("/:id/items", async (c) => {
   const id = Number(c.req.param("id"));
-  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<{ id: number; eo_code: string; trang_thai: string; created_by: string; final_approver_email: string | null }>();
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<{ id: number; eo_code: string; approval_code: string | null; trang_thai: string; created_by: string; final_approver_email: string | null }>();
   if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
   if (!canManageEo(c.get("user"), eo)) return c.json({ error: "FORBIDDEN" }, 403);
   if (!["DRAFT", "ISSUED"].includes(eo.trang_thai)) return c.json({ error: "BAD_STATE" }, 409);
@@ -183,13 +191,14 @@ app.post("/:id/items", async (c) => {
     current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
   };
   if (!it.part_code?.trim() || !it.warehouse) return c.json({ error: "PART_AND_WAREHOUSE_REQUIRED" }, 400);
+  if (!validQty(it.current_qty)) return c.json({ error: "BAD_QTY" }, 400);
   const now = nowVN();
   const afterIssue = eo.trang_thai === "ISSUED";
   const ins = await c.env.DB.prepare(
     `INSERT INTO eo_item (eo_id, part_code, part_name, warehouse, supplier, original_qty, current_qty,
       reason, crm_id, order_id, ghi_chu, line_status, post_issue_status, created_by, created_at, created_after_issue)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-  ).bind(id, it.part_code, it.part_name ?? "", it.warehouse, it.supplier ?? null, it.current_qty, it.current_qty,
+  ).bind(id, it.part_code.trim(), it.part_name ?? "", it.warehouse, it.supplier ?? null, it.current_qty, it.current_qty,
     it.reason ?? null, it.crm_id ?? null, it.order_id ?? null, it.ghi_chu ?? null,
     it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE", afterIssue ? "PENDING" : null,
     c.get("user").email, now, afterIssue ? 1 : 0).first<{ id: number }>();
@@ -201,7 +210,9 @@ app.post("/:id/items", async (c) => {
     stmts.push(notifyStmt(c.env.DB, { email: eo.final_approver_email, loai: "post_issue_pending", noi_dung: `EO ${eo.eo_code}: dòng ${it.part_code} thêm sau ban hành đang chờ bạn duyệt`, eo_id: id, at: now }));
   }
   await c.env.DB.batch(stmts);
-  await bumpVersions(c.env.DB, ["eo"]);
+  // dong moi sau ban hanh: AMIS da ve cho (kho; ma hang; 3TDO) nay dang CODE_ONLY_NO_LINE -> khop lai
+  if (afterIssue && eo.approval_code) await recomputeMatch(c.env.DB, [eo.approval_code]);
+  await bumpVersions(c.env.DB, afterIssue ? ["eo", "amis"] : ["eo"]);
   return c.json({ id: ins!.id, post_issue_status: afterIssue ? "PENDING" : null });
 });
 
@@ -213,11 +224,13 @@ app.patch("/items/:itemId", async (c) => {
   ).bind(itemId).first<any>();
   if (!row) return c.json({ error: "NOT_FOUND" }, 404);
   if (!canManageEo(c.get("user"), { created_by: row.eo_created_by })) return c.json({ error: "FORBIDDEN" }, 403);
+  if (!ITEM_EDITABLE_STATES.includes(row.eo_status)) return c.json({ error: "BAD_STATE", trang_thai: row.eo_status }, 409);
 
   const b = (await c.req.json()) as { current_qty?: number; reason?: string; part_name?: string; supplier?: string; ghi_chu?: string; crm_id?: string; order_id?: string; don_gia_du_kien?: number };
   const now = nowVN();
   const stmts: any[] = [];
 
+  if (b.current_qty !== undefined && !validQty(b.current_qty)) return c.json({ error: "BAD_QTY" }, 400);
   if (typeof b.current_qty === "number" && b.current_qty !== row.current_qty) {
     if (row.eo_status === "ISSUED" && !b.reason) return c.json({ error: "REASON_REQUIRED" }, 400);
     // rang buoc: current_qty moi >= tong planned_qty song
@@ -358,7 +371,9 @@ app.post("/:id/cancel", async (c) => {
     c.env.DB.prepare("UPDATE eo_submission SET status = 'CANCELLED', closed_at = ? WHERE eo_id = ? AND status IN ('PENDING','REQUEST_UPDATE')").bind(now, id),
     eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "CANCEL_EO", user_email: u.email, at: now, metadata: { reason: b.reason ?? null, after_issue: !preIssue } }),
   ]);
-  await bumpVersions(c.env.DB, ["eo"]);
+  // huy sau ban hanh: dong AMIS chi khop ma (CODE_ONLY_NO_LINE) cua EO nay khong con tinh nua
+  if (!preIssue && eo.approval_code) await recomputeMatch(c.env.DB, [eo.approval_code]);
+  await bumpVersions(c.env.DB, preIssue ? ["eo"] : ["eo", "amis"]);
   return c.json({ ok: true });
 });
 
@@ -367,6 +382,7 @@ app.post("/:id/comments", async (c) => {
   const id = Number(c.req.param("id"));
   const b = (await c.req.json()) as { noi_dung: string; submission_id?: number };
   if (!b.noi_dung?.trim()) return c.json({ error: "EMPTY" }, 400);
+  if (!(await c.env.DB.prepare("SELECT 1 FROM eo WHERE id = ?").bind(id).first())) return c.json({ error: "NOT_FOUND" }, 404);
   await c.env.DB.prepare(
     "INSERT INTO eo_comment (eo_id, submission_id, user_email, noi_dung, created_at) VALUES (?, ?, ?, ?, ?)",
   ).bind(id, b.submission_id ?? null, c.get("user").email, b.noi_dung.trim(), nowVN()).run();

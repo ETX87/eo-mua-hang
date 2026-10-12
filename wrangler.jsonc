@@ -14,7 +14,7 @@
     "run_worker_first": ["/api/*"]
   },
 
-  // database_id la PLACEHOLDER - dien sau khi chay "wrangler d1 create eo-mua-hang-db" (xem DEPLOY.md).
+  // D1 production that (tao bang "wrangler d1 create eo-mua-hang-db", xem DEPLOY.md).
   "d1_databases": [
     {
       "binding": "DB",

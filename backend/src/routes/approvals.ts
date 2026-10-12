@@ -4,6 +4,7 @@ import { nowVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { notifyStmt } from "../lib/notify";
+import { recomputeMatch } from "../lib/amisMatch";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -71,18 +72,20 @@ app.post("/:id/act", async (c) => {
   const eoId = a.eo_id as number;
   const stmts: any[] = [];
 
-  // ---- WITHDRAW (chi phieu REVIEW da APPROVED) ----
+  // ---- WITHDRAW (chi phieu REVIEW da APPROVED, submission con dang mo) ----
   if (b.action === "withdraw") {
     if (a.step_type !== "REVIEW" || a.status !== "APPROVED") return c.json({ error: "CANT_WITHDRAW" }, 409);
+    if (a.sub_status !== "PENDING") return c.json({ error: "SUBMISSION_CLOSED", sub_status: a.sub_status }, 409);
+    const claim = await c.env.DB.prepare(
+      "UPDATE eo_approval SET status = 'WITHDRAWN', action_at = ?, comment = ? WHERE id = ? AND status = 'APPROVED'",
+    ).bind(now, b.comment ?? null, aid).run();
+    if (!claim.meta.changes) return c.json({ error: "CANT_WITHDRAW" }, 409);
     stmts.push(
-      c.env.DB.prepare("UPDATE eo_approval SET status = 'WITHDRAWN', action_at = ?, comment = ? WHERE id = ?").bind(now, b.comment ?? null, aid),
       c.env.DB.prepare(
         `INSERT INTO eo_approval (submission_id, step_type, step_no, approver_email, status, assigned_at)
          VALUES (?, 'REVIEW', 1, ?, 'PENDING', ?)`,
       ).bind(subId, a.approver_email, now),
-    );
-    // neu FINAL da mo ma review chua xong -> dua EO ve IN_REVIEW, huy phieu FINAL PENDING
-    stmts.push(
+      // neu FINAL da mo ma review chua xong -> dua EO ve IN_REVIEW, huy phieu FINAL PENDING
       c.env.DB.prepare("UPDATE eo_approval SET status = 'SKIPPED', action_at = ? WHERE submission_id = ? AND step_type = 'FINAL' AND status = 'PENDING'").bind(now, subId),
       c.env.DB.prepare("UPDATE eo SET trang_thai = 'IN_REVIEW', updated_by = ?, updated_at = ? WHERE id = ? AND trang_thai = 'WAITING_FINAL_APPROVAL'").bind(u.email, now, eoId),
       eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "WITHDRAW_REVIEW", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
@@ -94,55 +97,64 @@ app.post("/:id/act", async (c) => {
 
   if (a.status !== "PENDING") return c.json({ error: "ALREADY_ACTIONED", status: a.status }, 409);
   if (a.sub_status !== "PENDING") return c.json({ error: "SUBMISSION_CLOSED", sub_status: a.sub_status }, 409);
+  if (a.step_type !== "REVIEW" && a.step_type !== "FINAL") return c.json({ error: "UNKNOWN_STEP" }, 400);
 
-  // ================= REVIEW =================
-  if (a.step_type === "REVIEW") {
-    if (b.action === "request_update") {
-      stmts.push(
-        c.env.DB.prepare("UPDATE eo_approval SET status = 'REQUEST_UPDATE', action_at = ?, comment = ? WHERE id = ?").bind(now, b.comment ?? null, aid),
-        c.env.DB.prepare("UPDATE eo_submission SET status = 'REQUEST_UPDATE', closed_at = ? WHERE id = ?").bind(now, subId),
-        c.env.DB.prepare("UPDATE eo SET trang_thai = 'DRAFT', updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, eoId),
-        eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "REQUEST_UPDATE", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
-      );
-      if (a.eo_created_by !== u.email) {
-        stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "request_update", noi_dung: `EO ${a.eo_code} bị yêu cầu cập nhật${b.comment ? ": " + b.comment : ""}`, eo_id: eoId, at: now }));
+  const validActions = a.step_type === "REVIEW" ? ["approve", "reject", "request_update"] : ["approve", "reject"];
+  if (!validActions.includes(b.action)) return c.json({ error: "BAD_ACTION" }, 400);
+  const claimStatus = b.action === "approve" ? "APPROVED" : b.action === "reject" ? "REJECTED" : "REQUEST_UPDATE";
+
+  // "Giu cho" phieu bang 1 UPDATE co dieu kien TRUOC moi ghi khac: 2 request song song (bam dup,
+  // 2 tab) chi 1 request doi duoc PENDING -> claimStatus, request con lai nhan 409. Thieu buoc nay,
+  // duyet cuoi bam 2 lan se cap 2 ma 3TDO va ghi de approval_code cua EO.
+  const claim = await c.env.DB.prepare(
+    `UPDATE eo_approval SET status = ?, action_at = ?, comment = ?
+     WHERE id = ? AND status = 'PENDING'
+       AND EXISTS (SELECT 1 FROM eo_submission s WHERE s.id = eo_approval.submission_id AND s.status = 'PENDING')`,
+  ).bind(claimStatus, now, b.comment ?? null, aid).run();
+  if (!claim.meta.changes) return c.json({ error: "ALREADY_ACTIONED" }, 409);
+
+  try {
+    // ================= REVIEW =================
+    if (a.step_type === "REVIEW") {
+      if (b.action === "request_update") {
+        stmts.push(
+          c.env.DB.prepare("UPDATE eo_submission SET status = 'REQUEST_UPDATE', closed_at = ? WHERE id = ?").bind(now, subId),
+          c.env.DB.prepare("UPDATE eo SET trang_thai = 'DRAFT', updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, eoId),
+          eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "REQUEST_UPDATE", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
+        );
+        if (a.eo_created_by !== u.email) {
+          stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "request_update", noi_dung: `EO ${a.eo_code} bị yêu cầu cập nhật${b.comment ? ": " + b.comment : ""}`, eo_id: eoId, at: now }));
+        }
+        await c.env.DB.batch(stmts);
+        await bumpVersions(c.env.DB, ["eo"]);
+        return c.json({ ok: true, trang_thai: "DRAFT" });
       }
-      await c.env.DB.batch(stmts);
-      await bumpVersions(c.env.DB, ["eo"]);
-      return c.json({ ok: true, trang_thai: "DRAFT" });
-    }
-    if (b.action !== "approve" && b.action !== "reject") return c.json({ error: "BAD_ACTION" }, 400);
-    const newStatus = b.action === "approve" ? "APPROVED" : "REJECTED";
-    stmts.push(
-      c.env.DB.prepare("UPDATE eo_approval SET status = ?, action_at = ?, comment = ? WHERE id = ?").bind(newStatus, now, b.comment ?? null, aid),
-      eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: b.action === "approve" ? "APPROVE_REVIEW" : "REJECT_REVIEW", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
-    );
 
-    // con phieu REVIEW nao PENDING khong?
-    const pend = await c.env.DB.prepare(
-      "SELECT COUNT(*) n FROM eo_approval WHERE submission_id = ? AND step_type = 'REVIEW' AND status = 'PENDING' AND id <> ?",
-    ).bind(subId, aid).first<{ n: number }>();
-    if ((pend?.n ?? 0) === 0) {
-      // mo FINAL
+      // Mo FINAL khi khong con phieu REVIEW nao PENDING - kiem tra ngay trong SQL (batch D1 chay nhu 1
+      // transaction) de 2 reviewer cuoi duyet cung luc khong bi ket IN_REVIEW hay mo 2 phieu FINAL.
+      const noPendingReview =
+        "NOT EXISTS (SELECT 1 FROM eo_approval x WHERE x.submission_id = ? AND x.step_type = 'REVIEW' AND x.status = 'PENDING')";
       stmts.push(
+        eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: b.action === "approve" ? "APPROVE_REVIEW" : "REJECT_REVIEW", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
         c.env.DB.prepare(
           `INSERT INTO eo_approval (submission_id, step_type, step_no, approver_email, status, assigned_at)
-           VALUES (?, 'FINAL', 2, ?, 'PENDING', ?)`,
-        ).bind(subId, a.final_approver_email, now),
-        c.env.DB.prepare("UPDATE eo SET trang_thai = 'WAITING_FINAL_APPROVAL', updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, eoId),
+           SELECT ?, 'FINAL', 2, ?, 'PENDING', ?
+           WHERE ${noPendingReview}
+             AND NOT EXISTS (SELECT 1 FROM eo_approval y WHERE y.submission_id = ? AND y.step_type = 'FINAL' AND y.status = 'PENDING')`,
+        ).bind(subId, a.final_approver_email, now, subId, subId),
+        c.env.DB.prepare(
+          `UPDATE eo SET trang_thai = 'WAITING_FINAL_APPROVAL', updated_by = ?, updated_at = ?
+           WHERE id = ? AND trang_thai = 'IN_REVIEW' AND ${noPendingReview}`,
+        ).bind(u.email, now, eoId, subId),
       );
+      await c.env.DB.batch(stmts);
+      await bumpVersions(c.env.DB, ["eo"]);
+      return c.json({ ok: true });
     }
-    await c.env.DB.batch(stmts);
-    await bumpVersions(c.env.DB, ["eo"]);
-    return c.json({ ok: true });
-  }
 
-  // ================= FINAL =================
-  if (a.step_type === "FINAL") {
-    if (b.action !== "approve" && b.action !== "reject") return c.json({ error: "BAD_ACTION" }, 400);
+    // ================= FINAL =================
     if (b.action === "reject") {
       stmts.push(
-        c.env.DB.prepare("UPDATE eo_approval SET status = 'REJECTED', action_at = ?, comment = ? WHERE id = ?").bind(now, b.comment ?? null, aid),
         c.env.DB.prepare("UPDATE eo_submission SET status = 'REJECTED', closed_at = ? WHERE id = ?").bind(now, subId),
         c.env.DB.prepare("UPDATE eo SET trang_thai = 'REJECTED', updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, eoId),
         eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "REJECT_FINAL", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
@@ -160,7 +172,6 @@ app.post("/:id/act", async (c) => {
     ).first<{ gia_tri_hien_tai: number }>();
     const approvalCode = `3TDO-${String(seq?.gia_tri_hien_tai ?? 1).padStart(6, "0")}`;
     stmts.push(
-      c.env.DB.prepare("UPDATE eo_approval SET status = 'APPROVED', action_at = ?, comment = ? WHERE id = ?").bind(now, b.comment ?? null, aid),
       c.env.DB.prepare("UPDATE eo_submission SET status = 'APPROVED', closed_at = ? WHERE id = ?").bind(now, subId),
       c.env.DB.prepare(
         "UPDATE eo SET trang_thai = 'ISSUED', approval_code = ?, issued_by = ?, issued_at = ?, updated_by = ?, updated_at = ? WHERE id = ?",
@@ -174,11 +185,16 @@ app.post("/:id/act", async (c) => {
       stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "issued", noi_dung: `EO ${a.eo_code} đã được ban hành (mã duyệt ${approvalCode})`, eo_id: eoId, at: now }));
     }
     await c.env.DB.batch(stmts);
-    await bumpVersions(c.env.DB, ["eo", "amis"]); // amis: match_status can tinh lai khi co approval_code moi
+    // EO da ISSUED tu day - loi phia sau khong duoc tra phieu ve PENDING.
+    // Dong AMIS da nhap truoc voi dung ma nay (neu co) -> khop ngay, khong doi lan import sau.
+    await recomputeMatch(c.env.DB, [approvalCode]).catch((e) => console.error("recomputeMatch after issue", e));
+    await bumpVersions(c.env.DB, ["eo", "amis"]);
     return c.json({ ok: true, trang_thai: "ISSUED", approval_code: approvalCode });
+  } catch (err) {
+    // batch nghiep vu loi -> tra phieu ve PENDING de nguoi duyet bam lai duoc
+    await c.env.DB.prepare("UPDATE eo_approval SET status = 'PENDING', action_at = NULL, comment = NULL WHERE id = ?").bind(aid).run();
+    throw err;
   }
-
-  return c.json({ error: "UNKNOWN_STEP" }, 400);
 });
 
 export default app;

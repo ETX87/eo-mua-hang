@@ -48,6 +48,11 @@ app.post("/", requireAdmin, async (c) => {
 app.patch("/:email", requireAdmin, async (c) => {
   const email = c.req.param("email");
   const b = (await c.req.json()) as Record<string, unknown>;
+  // Khong tu khoa minh / ha quyen BOOTSTRAP_ADMIN (loadUser chi tu promote lai khi dong users bi mat).
+  const protectedEmails = [c.get("user").email, (c.env.BOOTSTRAP_ADMIN_EMAIL ?? "").toLowerCase()];
+  const demotes = ("vai_tro" in b && b.vai_tro !== "Admin") || ("active" in b && Number(b.active) !== 1) ||
+    ("trang_thai_duyet" in b && b.trang_thai_duyet !== "Da duyet");
+  if (protectedEmails.includes((email ?? "").toLowerCase()) && demotes) return c.json({ error: "CANNOT_DEMOTE_SELF_OR_BOOTSTRAP" }, 400);
   const allowed = [
     "ho_ten", "vai_tro", "la_nv_dat_hang", "la_nv_kho", "la_ke_toan", "la_theo_doi_td",
     "la_view", "khu_vuc_kho", "trang_thai_duyet", "active",
