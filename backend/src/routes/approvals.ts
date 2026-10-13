@@ -38,7 +38,8 @@ app.get("/inbox", async (c) => {
   const email = c.get("user").email;
   const rows = await c.env.DB.prepare(
     `SELECT a.id, a.submission_id, a.step_type, a.status, a.assigned_at,
-            s.eo_id, s.version, e.eo_code, e.tieu_de, e.trang_thai eo_status
+            s.eo_id, s.version, e.eo_code, e.tieu_de, e.trang_thai eo_status,
+            (SELECT COUNT(*) FROM eo_file f WHERE f.eo_id = e.id) so_file
      FROM eo_approval a
      JOIN eo_submission s ON s.id = a.submission_id
      JOIN eo e ON e.id = s.eo_id

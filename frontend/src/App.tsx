@@ -9,6 +9,7 @@ import EoDetail from "./pages/eo/EoDetail";
 import EoForm from "./pages/eo/EoForm";
 import Approvals from "./pages/Approvals";
 import Plans from "./pages/Plans";
+import KeHoachTuan from "./pages/KeHoachTuan";
 import AmisImport from "./pages/amis/AmisImport";
 import ReportTienDo from "./pages/reports/ReportTienDo";
 import ReportAmisKhongEo from "./pages/reports/ReportAmisKhongEo";
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/eo/:id/edit" element={<EoForm key="edit" mode="edit" />} />
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/plans" element={<Plans />} />
+        <Route path="/plans/tuan" element={<KeHoachTuan />} />
         <Route path="/amis" element={<AmisImport />} />
         <Route path="/reports/tien-do-don-hang" element={<ReportTienDo />} />
         <Route path="/reports/amis-khong-eo" element={<ReportAmisKhongEo />} />

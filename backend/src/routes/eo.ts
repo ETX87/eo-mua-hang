@@ -105,6 +105,8 @@ interface CreateBody {
   final_approver_email: string;
   reviewers?: string[];
   skip_review?: boolean;
+  /** 'excel' khi dong linh kien duoc import tu file mau (ghi vao lich su). */
+  nguon_dong?: string;
   items: Array<{
     part_code: string; part_name?: string; warehouse: string; supplier?: string;
     current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
@@ -144,7 +146,7 @@ app.post("/", async (c) => {
       it.ghi_chu ?? null, it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE",
       it.don_gia_du_kien ?? null, u.email, now),
   );
-  batch.push(eventStmt(c.env.DB, { entity_type: "eo", entity_id: eoId, eo_id: eoId, event_type: "CREATE_EO", user_email: u.email, at: now, metadata: { eo_code: eoCode, reviewers: b.reviewers ?? [], skip_review: !!b.skip_review } }));
+  batch.push(eventStmt(c.env.DB, { entity_type: "eo", entity_id: eoId, eo_id: eoId, event_type: "CREATE_EO", user_email: u.email, at: now, metadata: { eo_code: eoCode, reviewers: b.reviewers ?? [], skip_review: !!b.skip_review, so_dong: b.items.length, nguon_dong: b.nguon_dong ?? null } }));
   await c.env.DB.batch(batch);
   await bumpVersions(c.env.DB, ["eo"]);
 
@@ -186,7 +188,33 @@ app.post("/:id/items", async (c) => {
   if (!canManageEo(c.get("user"), eo)) return c.json({ error: "FORBIDDEN" }, 403);
   if (!["DRAFT", "ISSUED"].includes(eo.trang_thai)) return c.json({ error: "BAD_STATE" }, 409);
 
-  const it = (await c.req.json()) as {
+  const body = (await c.req.json()) as any;
+
+  // Them nhieu dong 1 lan (import Excel o form Sua EO) - chi khi DRAFT, 1 batch.
+  if (Array.isArray(body?.items)) {
+    if (eo.trang_thai !== "DRAFT") return c.json({ error: "BULK_ONLY_DRAFT" }, 409);
+    const list = body.items as CreateBody["items"];
+    if (!list.length || list.length > 2000) return c.json({ error: "BAD_ITEMS" }, 400);
+    if (list.some((x) => !x.part_code?.trim() || !x.warehouse || !validQty(x.current_qty))) return c.json({ error: "BAD_ITEM" }, 400);
+    const now = nowVN();
+    const email = c.get("user").email;
+    const stmts = list.map((x) =>
+      c.env.DB.prepare(
+        `INSERT INTO eo_item (eo_id, part_code, part_name, warehouse, supplier, original_qty, current_qty,
+          reason, crm_id, order_id, ghi_chu, line_status, don_gia_du_kien, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(id, x.part_code.trim(), x.part_name ?? "", x.warehouse, x.supplier ?? null, x.current_qty, x.current_qty,
+        x.reason ?? null, x.crm_id ?? null, x.order_id ?? null, x.ghi_chu ?? null,
+        x.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE", x.don_gia_du_kien ?? null, email, now),
+    );
+    stmts.push(eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "IMPORT_ITEMS", user_email: email, at: now,
+      after: list.map((x) => ({ part_code: x.part_code.trim(), warehouse: x.warehouse, qty: x.current_qty })), metadata: { so_dong: list.length } }));
+    await c.env.DB.batch(stmts);
+    await bumpVersions(c.env.DB, ["eo"]);
+    return c.json({ ok: true, so_dong: list.length });
+  }
+
+  const it = body as {
     part_code: string; part_name?: string; warehouse: string; supplier?: string;
     current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
   };
@@ -390,16 +418,23 @@ app.post("/:id/comments", async (c) => {
 });
 
 // ------------------------------------------------------------------ POST /:id/files (upload tai lieu dinh kem qua Google Drive)
+// Excel / anh / PDF / Word, toi da 20MB. Ghi event_log UPLOAD_FILE (gan lan trinh hien tai neu co) de
+// lich su EO the hien tai lieu bo sung luc nao, o giai doan nao (nhap / dang duyet / sau ban hanh).
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const ALLOWED_EXT = /\.(xlsx|xlsm|xls|csv|png|jpe?g|gif|webp|heic|bmp|pdf|docx?)$/i;
 app.post("/:id/files", async (c) => {
   const id = Number(c.req.param("id"));
-  const eo = await c.env.DB.prepare("SELECT id FROM eo WHERE id = ?").bind(id).first();
+  const eo = await c.env.DB.prepare("SELECT id, trang_thai, current_submission_id FROM eo WHERE id = ?").bind(id).first<{ id: number; trang_thai: string; current_submission_id: number | null }>();
   if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
 
   const filename = c.req.query("filename")?.trim();
   if (!filename) return c.json({ error: "MISSING_FILENAME" }, 400);
+  if (!ALLOWED_EXT.test(filename)) return c.json({ error: "BAD_FILE_TYPE" }, 400);
+  const ghiChu = c.req.query("ghi_chu")?.trim() || null;
   const contentType = c.req.header("Content-Type") || "application/octet-stream";
   const bytes = await c.req.arrayBuffer();
   if (bytes.byteLength === 0) return c.json({ error: "EMPTY_FILE" }, 400);
+  if (bytes.byteLength > MAX_FILE_BYTES) return c.json({ error: "FILE_TOO_LARGE" }, 413);
 
   let uploaded: { id: string; url: string };
   try {
@@ -413,11 +448,60 @@ app.post("/:id/files", async (c) => {
   }
 
   const now = nowVN();
+  const u = c.get("user");
   const ins = await c.env.DB.prepare(
-    `INSERT INTO eo_file (eo_id, file_name, drive_file_id, drive_url, file_type, uploaded_by, uploaded_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-  ).bind(id, filename, uploaded.id, uploaded.url, contentType, c.get("user").email, now).first();
+    `INSERT INTO eo_file (eo_id, submission_id, file_name, drive_file_id, drive_url, file_type, file_size, uploaded_by, uploaded_at, ghi_chu)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+  ).bind(id, eo.current_submission_id, filename, uploaded.id, uploaded.url, contentType, bytes.byteLength, u.email, now, ghiChu).first<{ id: number }>();
+  await c.env.DB.batch([
+    eventStmt(c.env.DB, { entity_type: "eo_file", entity_id: ins!.id, eo_id: id, event_type: "UPLOAD_FILE", user_email: u.email, at: now, after: { file_name: filename, file_size: bytes.byteLength, ghi_chu: ghiChu }, metadata: { trang_thai_eo: eo.trang_thai, submission_id: eo.current_submission_id } }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
   return c.json(ins, 201);
+});
+
+// ------------------------------------------------------------------ POST /items/:itemId/replace-part
+// NCC/KRF giao ma tuong duong (B) thay cho ma da duyet (A): doi ma dang dung cua dong, giu ma goc o
+// part_code_goc (chi ghi lan dau - thay tiep B->C van giu A). Doi ve dung ma goc = bo thay the.
+// AMIS khop theo ca 2 ma (lib/amisMatch.ts) -> phieu nhap da ve theo ma A van tinh cho dong.
+app.post("/items/:itemId/replace-part", async (c) => {
+  const itemId = Number(c.req.param("itemId"));
+  const row = await c.env.DB.prepare(
+    `SELECT i.*, e.trang_thai eo_status, e.created_by eo_created_by, e.approval_code
+     FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?`,
+  ).bind(itemId).first<any>();
+  if (!row) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (!canManageEo(u, { created_by: row.eo_created_by })) return c.json({ error: "FORBIDDEN" }, 403);
+  if (row.eo_status !== "ISSUED") return c.json({ error: "ONLY_ISSUED" }, 409);
+
+  const b = (await c.req.json()) as { part_code?: string; part_name?: string; reason?: string };
+  const newCode = b.part_code?.trim() ?? "";
+  const reason = b.reason?.trim() ?? "";
+  if (!newCode) return c.json({ error: "PART_REQUIRED" }, 400);
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+  if (newCode === row.part_code) return c.json({ error: "SAME_PART" }, 400);
+  const dup = await c.env.DB.prepare(
+    "SELECT id FROM eo_item WHERE eo_id = ? AND id <> ? AND warehouse = ? AND part_code = ? AND line_status = 'ACTIVE'",
+  ).bind(row.eo_id, itemId, row.warehouse, newCode).first();
+  if (dup) return c.json({ error: "DUPLICATE_LINE" }, 409);
+
+  const goc = row.part_code_goc ?? row.part_code;
+  const tenGoc = row.part_code_goc ? row.part_name_goc : row.part_name;
+  const revert = newCode === goc;
+  const newName = b.part_name?.trim() || (revert ? tenGoc : row.part_name) || "";
+  const now = nowVN();
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      "UPDATE eo_item SET part_code = ?, part_name = ?, part_code_goc = ?, part_name_goc = ?, updated_by = ?, updated_at = ? WHERE id = ?",
+    ).bind(newCode, newName, revert ? null : goc, revert ? null : tenGoc, u.email, now, itemId),
+    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "REPLACE_PART", user_email: u.email, at: now,
+      before: { part_code: row.part_code, part_name: row.part_name }, after: { part_code: newCode, part_name: newName },
+      metadata: { reason, part_code_goc: revert ? null : goc, warehouse: row.warehouse } }),
+  ]);
+  if (row.approval_code) await recomputeMatch(c.env.DB, [row.approval_code]);
+  await bumpVersions(c.env.DB, ["eo", "amis"]);
+  return c.json({ ok: true, part_code: newCode, part_code_goc: revert ? null : goc });
 });
 
 // ------------------------------------------------------------------ POST /items/:itemId/approve-post-issue

@@ -33,3 +33,19 @@ export function weekLabel(dateStr: string): WeekLabel {
   const mm = String(sat.getUTCMonth() + 1).padStart(2, "0");
   return { nam: `Y${yy}`, namFull, wk, label: `Y${yy}-W${String(wk).padStart(2, "0")}`, ky: `Y${yy}${mm}` };
 }
+
+/**
+ * Nguoc cua weekLabel: 'Y26-W18' | '2026-W18' | '26-W18' -> ngay Thu Bay cuoi tuan do (YYYY-MM-DD).
+ * Tra null neu sai dinh dang / tuan khong ton tai trong nam.
+ */
+export function weekSaturday(label: string): string | null {
+  const m = /^\s*Y?(\d{2}|\d{4})\s*-?\s*W\s*(\d{1,2})\s*$/i.exec(label);
+  if (!m) return null;
+  const namFull = m[1].length === 2 ? 2000 + Number(m[1]) : Number(m[1]);
+  const wk = Number(m[2]);
+  if (wk < 1 || wk > 53) return null;
+  const sat = d(weekStart(`${namFull}-01-01`));
+  sat.setUTCDate(sat.getUTCDate() + (wk - 1) * 7 + 6);
+  const iso = sat.toISOString().slice(0, 10);
+  return weekLabel(iso).wk === wk && weekLabel(iso).namFull === namFull ? iso : null;
+}

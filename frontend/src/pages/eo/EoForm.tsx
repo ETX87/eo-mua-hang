@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -7,6 +7,8 @@ import { type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ten } from "../../lib/format";
 import { PHONG_BAN } from "../../lib/nav";
+import { readSheet, pick, str, parseNum, normKey, writeBook } from "../../lib/excel";
+import { FILE_ACCEPT, checkFile, fileSize, uploadEoFiles } from "../../lib/files";
 
 interface ItemRow {
   id?: number; part_code: string; part_name: string; warehouse: string; supplier: string;
@@ -37,6 +39,12 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const [finalApprover, setFinalApprover] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [importMsg, setImportMsg] = useState<{ ok: number; errs: string[] } | null>(null);
+  const [importedFromExcel, setImportedFromExcel] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [fileErrs, setFileErrs] = useState<string[]>([]);
+  const importRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (mode !== "edit" || loaded || !eoQ.data) return;
@@ -79,8 +87,9 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     const its = payloadItems();
     const res = await api.post<{ id: number }>("/eo", {
       tieu_de: tieuDe, noi_dung: noiDung, loai_hinh: loaiHinh || undefined, phong_ban: phongBan || undefined,
-      final_approver_email: finalApprover, items: its,
+      final_approver_email: finalApprover, items: its, nguon_dong: importedFromExcel ? "excel" : undefined,
     });
+    await uploadPending(res.id);
     if (send) {
       try {
         await api.post(`/eo/${res.id}/submit`, { reviewers, final_approver_email: finalApprover });
@@ -100,15 +109,15 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       final_approver_email: finalApprover,
     });
 
+    // dong moi (go tay / import Excel) gui 1 lan
+    const newRows = items.filter((r) => r.id == null && r.part_code.trim() && r.warehouse).map((r) => ({
+      part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: r.warehouse,
+      supplier: r.supplier.trim() || undefined, current_qty: Number(r.current_qty) || 0,
+      reason: r.reason.trim() || undefined,
+    }));
+    if (newRows.length) await api.post(`/eo/${id}/items`, { items: newRows });
     for (const r of items) {
-      if (r.id == null) {
-        if (!r.part_code.trim() || !r.warehouse) continue;
-        await api.post(`/eo/${id}/items`, {
-          part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: r.warehouse,
-          supplier: r.supplier.trim() || undefined, current_qty: Number(r.current_qty) || 0,
-          reason: r.reason.trim() || undefined,
-        });
-      } else {
+      if (r.id != null) {
         const orig = originalItems[r.id];
         const patch: Record<string, unknown> = {};
         const qty = Number(r.current_qty) || 0;
@@ -122,8 +131,69 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       if (!items.some((r) => r.id === oid)) await api.patch(`/eo/items/${oid}`, { current_qty: 0 });
     }
 
+    await uploadPending(id!);
     if (send) await api.post(`/eo/${id}/submit`, { reviewers, final_approver_email: finalApprover });
     nav(`/eo/${id}`);
+  };
+
+  // tai lieu chon o form: upload sau khi EO co id, TRUOC khi gui trinh (nguoi duyet thay ngay)
+  const uploadPending = async (eoId: number | string) => {
+    if (!pendingFiles.length) return;
+    const errs = await uploadEoFiles(eoId, pendingFiles);
+    setPendingFiles([]);
+    if (errs.length) alert(`EO đã lưu nhưng ${errs.length} tệp đính kèm chưa tải lên được:\n- ${errs.join("\n- ")}\n\nCó thể tải lại ở Chi tiết EO › tab "Tài liệu đính kèm".`);
+  };
+  const onPickFiles = (list: FileList | null) => {
+    const fs = [...(list ?? [])];
+    setFileErrs(fs.map(checkFile).filter(Boolean) as string[]);
+    setPendingFiles((cur) => [...cur, ...fs.filter((f) => !checkFile(f) && !cur.some((c) => c.name === f.name && c.size === f.size))]);
+  };
+
+  // ---- import dong linh kien tu Excel (file mau)
+  const downloadTemplate = () => {
+    const kho = (khos.data ?? []).filter((k: any) => k.active !== 0);
+    writeBook("Mau_import_linh_kien_EO.xlsx", [
+      {
+        name: "Linh kien",
+        rows: [
+          ["Mã linh kiện", "Tên linh kiện", "Kho cần đặt", "Đối tác", "Số lượng", "Lý do PS"],
+          ["VD-LK-001", "Dòng ví dụ - mã bắt đầu bằng VD- sẽ được bỏ qua", kho[0]?.ten_kho ?? "", "KRF", 10, "Bảo hành"],
+        ],
+        widths: [18, 40, 24, 16, 10, 26],
+      },
+      { name: "Danh sach kho", rows: [["Tên kho (ghi đúng vào cột Kho cần đặt)", "Mã kho"], ...kho.map((k: any) => [k.ten_kho, k.ma_kho ?? ""])], widths: [40, 12] },
+    ]);
+  };
+  const onImportFile = async (file: File) => {
+    setImportMsg(null);
+    let rows: Record<string, unknown>[] = [];
+    try { rows = (await readSheet(file)).rows; } catch { setImportMsg({ ok: 0, errs: ["Không đọc được file Excel."] }); return; }
+    const khoMap = new Map<string, string>();
+    for (const k of khos.data ?? []) {
+      khoMap.set(normKey(k.ten_kho), k.ten_kho);
+      if (k.ma_kho) khoMap.set(normKey(k.ma_kho), k.ten_kho);
+    }
+    const ok: ItemRow[] = [];
+    const errs: string[] = [];
+    for (const r of rows) {
+      const pc = str(pick(r, "Mã linh kiện", "Mã LK", "Mã hàng", "Part code"));
+      const khoRaw = str(pick(r, "Kho cần đặt", "Kho"));
+      const qty = parseNum(pick(r, "Số lượng", "SL", "Số lượng đặt"));
+      if (!pc) { errs.push(`Dòng ${r._row}: thiếu Mã linh kiện`); continue; }
+      if (/^VD-/i.test(pc)) continue; // dong vi du trong file mau
+      const kho = khoMap.get(normKey(khoRaw));
+      if (!kho) { errs.push(`Dòng ${r._row} (${pc}): kho "${khoRaw}" không có trong danh mục`); continue; }
+      if (qty == null || !(qty > 0)) { errs.push(`Dòng ${r._row} (${pc}): số lượng không hợp lệ`); continue; }
+      ok.push({
+        part_code: pc, part_name: str(pick(r, "Tên linh kiện", "Tên LK", "Tên hàng")), warehouse: kho,
+        supplier: str(pick(r, "Đối tác", "Nhà cung cấp", "NCC")), current_qty: String(qty), reason: str(pick(r, "Lý do PS", "Lý do")),
+      });
+    }
+    if (ok.length) {
+      setItems((rs) => [...rs.filter((x) => x.id != null || x.part_code.trim() || x.current_qty.trim()), ...ok]);
+      setImportedFromExcel(true);
+    }
+    setImportMsg({ ok: ok.length, errs });
   };
 
   const submit = async (send: boolean) => {
@@ -247,8 +317,22 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
             </div>
             <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 12 }}>
               <button className="btn primary" onClick={() => setItems((rs) => [...rs, emptyItem()])}><I.plus width={14} height={14} /> Thêm dòng</button>
-              <span className="badge nhap" style={{ fontSize: 13 }}>Tổng SL: {soLuong(tongSL)}</span>
+              <button className="btn" onClick={() => importRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
+              <button className="btn ghost" onClick={downloadTemplate}><I.download width={14} height={14} /> Tải file mẫu</button>
+              <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onImportFile(f); }} />
+              <span className="badge nhap" style={{ fontSize: 13, marginLeft: "auto" }}>{items.filter((r) => r.part_code.trim()).length} dòng · Tổng SL: {soLuong(tongSL)}</span>
             </div>
+            {importMsg && (
+              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 8, background: importMsg.errs.length ? "#FEF3C7" : "#DCFCE7" }}>
+                Đã thêm <b>{importMsg.ok}</b> dòng từ Excel{importMsg.errs.length ? `, bỏ qua ${importMsg.errs.length} dòng lỗi:` : "."}
+                {importMsg.errs.length > 0 && (
+                  <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                    {importMsg.errs.slice(0, 15).map((e) => <li key={e}>{e}</li>)}
+                    {importMsg.errs.length > 15 && <li>… và {importMsg.errs.length - 15} dòng khác</li>}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="card card-pad" style={{ marginTop: 16 }}>
@@ -279,6 +363,35 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 </select>
               </div>
             </div>
+          </div>
+
+          <div className="card card-pad" style={{ marginTop: 16 }}>
+            <h3 style={{ marginTop: 0, fontSize: 15 }}>4. Tài liệu đính kèm <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>(Excel, ảnh, PDF, Word — tối đa 20MB/tệp)</span></h3>
+            {mode === "edit" && (eoQ.data?.files ?? []).length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                {(eoQ.data.files as any[]).map((f) => (
+                  <a key={f.id} href={f.drive_url || undefined} target="_blank" rel="noopener" className="badge issued" style={{ textDecoration: "none", gap: 4 }} title={`${ten(f.uploaded_by)} · ${f.uploaded_at}`}>
+                    <I.file width={12} height={12} /> {f.file_name}
+                  </a>
+                ))}
+              </div>
+            )}
+            {pendingFiles.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                {pendingFiles.map((f, i) => (
+                  <span key={`${f.name}-${i}`} className="badge nhap" style={{ gap: 6 }}>
+                    <I.file width={12} height={12} /> {f.name} <span className="muted">{fileSize(f.size)}</span>
+                    <span onClick={() => setPendingFiles((fs) => fs.filter((_, j) => j !== i))} style={{ cursor: "pointer", fontWeight: 800 }}>×</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Chọn tệp đính kèm</button>
+            <input ref={fileRef} type="file" multiple accept={FILE_ACCEPT} hidden onChange={(e) => { onPickFiles(e.target.files); e.target.value = ""; }} />
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+              Tệp được tải lên khi bấm Lưu nháp / Gửi trình duyệt và ghi vào lịch sử EO. Người thẩm định, duyệt cuối xem ở tab "Tài liệu đính kèm".
+            </div>
+            {fileErrs.length > 0 && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 6 }}>{fileErrs.join(" · ")}</div>}
           </div>
         </div>
       </div>

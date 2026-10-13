@@ -29,21 +29,22 @@ async function recomputeMatchChunk(db: D1Database, scopeCodes?: string[]): Promi
     `UPDATE amis_receipt SET match_status = 'UNMATCHED', matched_eo_item_id = NULL ${scopeSql}`,
   ).bind(...bind).run();
 
-  // 1. MATCHED_EO: (kho ; ma hang ; approval_code) khop 1 eo_item cua EO da ISSUED/CANCELLED
+  // 1. MATCHED_EO: (kho ; ma hang ; approval_code) khop 1 eo_item cua EO da ISSUED/CANCELLED.
+  //    Ma hang khop ma dang dung HOAC ma goc truoc khi thay ma tuong duong (eo_item.part_code_goc).
   await db.prepare(
     `UPDATE amis_receipt SET
        match_status = 'MATCHED_EO',
        matched_eo_item_id = (
          SELECT i.id FROM eo_item i JOIN eo e ON e.id = i.eo_id
          WHERE i.warehouse = amis_receipt.warehouse_name
-           AND i.part_code = amis_receipt.part_code
+           AND (i.part_code = amis_receipt.part_code OR i.part_code_goc = amis_receipt.part_code)
            AND e.approval_code = amis_receipt.approval_code_raw
            AND e.trang_thai IN ('ISSUED','CANCELLED')
          ORDER BY i.created_at, i.id LIMIT 1)
      ${scopeSql ? scopeSql + " AND" : "WHERE"} EXISTS (
        SELECT 1 FROM eo_item i JOIN eo e ON e.id = i.eo_id
        WHERE i.warehouse = amis_receipt.warehouse_name
-         AND i.part_code = amis_receipt.part_code
+         AND (i.part_code = amis_receipt.part_code OR i.part_code_goc = amis_receipt.part_code)
          AND e.approval_code = amis_receipt.approval_code_raw
          AND e.trang_thai IN ('ISSUED','CANCELLED'))`,
   ).bind(...bind).run();

@@ -86,6 +86,7 @@ export default function Approvals() {
               <div className="muted" style={{ fontSize: 12, marginTop: 3, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <span>Lần trình #{r.version}</span><span>Giao lúc {ngayGio(r.assigned_at)}</span>
                 <span className="badge nhap">{r.step_type === "FINAL" ? "Duyệt cuối" : "Thẩm định"}</span>
+                {r.so_file > 0 && <span className="badge issued" title="Mở EO › tab Tài liệu đính kèm"><I.file width={11} height={11} /> {r.so_file} tệp đính kèm</span>}
               </div>
             </div>
             <StatusBadge status={r.eo_status} />

@@ -39,7 +39,7 @@ npm run deploy            # build + wrangler deploy
 
 ```
 migrations/                  0001 schema · 0002 don_gia · 0003 report_cache · 0004 google_drive_oauth
-                             · 0005 notifications · 0006 etx_nhan_su
+                             · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -63,7 +63,19 @@ scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs
 - Mở phiếu FINAL / chuyển `WAITING_FINAL_APPROVAL` kiểm tra "hết phiếu REVIEW PENDING" **trong SQL** của batch,
   không tính trong JS — 2 reviewer cuối duyệt cùng lúc vẫn ra đúng 1 phiếu FINAL.
 - Sửa dòng (`PATCH /eo/items/:id`) chỉ khi EO `DRAFT` hoặc `ISSUED`.
-- Ban hành / thêm dòng sau ban hành / Admin hủy EO đã ban hành → `recomputeMatch([approval_code])`.
+- Ban hành / thêm dòng sau ban hành / Admin hủy EO đã ban hành / thay mã LK → `recomputeMatch([approval_code])`.
+
+## Kế hoạch hàng về, thay mã, đính kèm
+
+- `item_plan.loai`: `NGAY` (ngày về cụ thể) | `TUAN` (đơn KH tháng KRF, màn `/plans/tuan`; `planned_date` = Thứ Bảy
+  của tuần, `tuan` = `Yyy-Wnn`). Tổng 2 loại ≤ `current_qty`. Ghi hàng loạt/import Excel qua `POST /plans/bulk`
+  (dry_run xem trước, tất cả-hoặc-không, `thay_the` = xóa mềm KH cùng loại của các dòng trong file rồi ghi lại;
+  danh sách id truyền qua `json_each(?)` — không bind từng biến vì D1 giới hạn 100 biến/statement).
+  File mẫu/đọc Excel ở FE `lib/planExcel.ts` + `lib/excel.ts` (đọc bằng `xlsx` phía trình duyệt, gửi JSON).
+- Thay mã tương đương (`POST /eo/items/:id/replace-part`, EO ISSUED): `part_code` = mã đang dùng,
+  `part_code_goc` = mã đã duyệt ban đầu; AMIS khớp theo **cả 2 mã** (`lib/amisMatch.ts`).
+- Đính kèm (`POST /eo/:id/files`, Google Drive): Excel/ảnh/PDF/Word ≤ 20MB, ghi `UPLOAD_FILE` vào event_log.
+  Form Tạo/Sửa EO upload sau khi lưu, trước khi gửi trình.
 
 ## Quy ước
 

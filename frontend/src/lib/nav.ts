@@ -15,6 +15,7 @@ export const NAV: NavItem[] = [
   { to: "/eo", label: "Danh sách EO", icon: "clipboard" },
   { to: "/approvals", label: "Việc cần duyệt", icon: "bell", badgeKey: "approvals" },
   { to: "/plans", label: "Kế hoạch hàng về", icon: "trend" },
+  { to: "/plans/tuan", label: "Kế hoạch tuần (KRF)", icon: "calendar" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },
 
   { to: "/reports/tien-do-don-hang", label: "Tiến độ đơn hàng", icon: "trend", section: "BÁO CÁO" },
