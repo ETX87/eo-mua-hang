@@ -40,6 +40,7 @@ npm run deploy            # build + wrangler deploy
 ```
 migrations/                  0001 schema · 0002 don_gia · 0003 report_cache · 0004 google_drive_oauth
                              · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
+                             · 0008 hủy / đồng bộ lại AMIS
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -76,6 +77,15 @@ scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs
   `part_code_goc` = mã đã duyệt ban đầu; AMIS khớp theo **cả 2 mã** (`lib/amisMatch.ts`).
 - Đính kèm (`POST /eo/:id/files`, Google Drive): Excel/ảnh/PDF/Word ≤ 20MB, ghi `UPLOAD_FILE` vào event_log.
   Form Tạo/Sửa EO upload sau khi lưu, trước khi gửi trình.
+
+## Sửa dữ liệu AMIS (kế toán)
+
+`amis_receipt` không xóa — dòng sai được **đánh dấu hủy** (`voided_at`, `void_reason`); dòng hủy luôn
+`UNMATCHED` và `amisMatch` bỏ qua, nên mọi truy vấn lọc `MATCHED_EO` / `CODE_ONLY_NO_LINE` tự loại. Truy vấn
+AMIS **không** lọc match_status phải thêm `voided_at IS NULL`. 3 cách (Kế toán/Admin, bắt buộc lý do):
+`POST /amis/import` `mode=SYNC` (đồng bộ lại kỳ: dòng sống trong kỳ ngày CT + phạm vi kho mà không còn trong
+file → hủy; có `dry_run`), `POST /amis/batches/:id/void` (hủy dòng do lô đó thêm), `POST /amis/receipts/:id/void|restore`.
+Import lại đúng chứng từ (cùng natural_key) đã hủy → tự khôi phục.
 
 ## Quy ước
 

@@ -25,9 +25,9 @@ async function computeTienDo01(env: Env) {
         GROUP BY matched_eo_item_id),
       actual_wh AS MATERIALIZED (
         SELECT warehouse_name, part_code, MAX(doc_date) last_date
-        FROM amis_receipt GROUP BY warehouse_name, part_code),
+        FROM amis_receipt WHERE voided_at IS NULL GROUP BY warehouse_name, part_code),
       actual_nat AS MATERIALIZED (
-        SELECT part_code, MAX(doc_date) last_date FROM amis_receipt GROUP BY part_code),
+        SELECT part_code, MAX(doc_date) last_date FROM amis_receipt WHERE voided_at IS NULL GROUP BY part_code),
       plan_live AS MATERIALIZED (
         SELECT eo_item_id, planned_date, COALESCE(updated_at, created_at) || '#' || id ord
         FROM item_plan WHERE deleted_at IS NULL),

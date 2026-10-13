@@ -2,10 +2,10 @@ import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { PageHeader, Card, StatTile, Spinner } from "../../components/ui";
+import { PageHeader, Card, StatTile, Modal } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
-import { soLuong, ngay } from "../../lib/format";
+import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 
 const COLS = ["Mã kho", "Tên kho", "Mã hàng", "Tên hàng", "Ngày hạch toán", "Ngày chứng từ", "Số chứng từ", "ĐVT", "Diễn giải", "Số lượng Nhập", "Số lượng Xuất", "Số lượng Tồn", "TK Kho", "TK đối ứng", "Mã phê duyệt"];
 
@@ -15,15 +15,32 @@ export default function AmisImport() {
   const [filename, setFilename] = useState("");
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"APPEND" | "SYNC">("APPEND");
+  const [kyTu, setKyTu] = useState("");
+  const [kyDen, setKyDen] = useState("");
+  const [khoAll, setKhoAll] = useState(false);
+  const [lyDo, setLyDo] = useState("");
+  const [check, setCheck] = useState<any>(null);
+  const [err, setErr] = useState("");
+  const [voidBatch, setVoidBatch] = useState<any>(null);
+  const [q, setQ] = useState("");
+  const [showVoided, setShowVoided] = useState<"" | "1" | "only">("");
 
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
+  const canEdit = me.data?.vai_tro === "Admin" || me.data?.vai_tro === "Ke toan" || me.data?.la_ke_toan === 1;
   const batches = useQuery({ queryKey: ["amis-batches"], queryFn: () => api.get<any[]>("/amis/batches") });
   const unmatched = useQuery({ queryKey: ["amis-unmatched"], queryFn: () => api.get<{ rows: any[]; total: any }>("/amis/unmatched") });
   const tomtat = useQuery({ queryKey: ["amis-tomtat"], queryFn: () => api.get<any>("/dashboard/amis-tomtat") });
   const kho = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
+  const receipts = useQuery({
+    queryKey: ["amis-receipts", q, showVoided],
+    queryFn: () => api.get<any[]>(`/amis/receipts?q=${encodeURIComponent(q.trim())}${showVoided ? `&include_voided=${showVoided}` : ""}`),
+  });
   const validKho = new Set((kho.data ?? []).filter((k) => k.active).map((k) => k.ten_kho));
+  const refreshAll = () => { batches.refetch(); unmatched.refetch(); receipts.refetch(); tomtat.refetch(); };
 
   const onFile = (f: File) => {
-    setFilename(f.name); setResult(null);
+    setFilename(f.name); setResult(null); setCheck(null); setErr(""); setKyTu(""); setKyDen("");
     const reader = new FileReader();
     reader.onload = (e) => {
       const wb = XLSX.read(e.target!.result, { type: "binary", cellDates: true });
@@ -43,14 +60,45 @@ export default function AmisImport() {
   const seNhap = rows?.filter((r) => classify(r) === "nhap").length ?? 0;
   const boQua = (rows?.length ?? 0) - seNhap;
 
+  const payload = (dry: boolean) => ({
+    filename, rows, mode, dry_run: dry,
+    ky_tu: kyTu || undefined, ky_den: kyDen || undefined, kho: khoAll ? null : undefined, ly_do: lyDo.trim() || undefined,
+  });
+  // Dong bo lai ky: kiem tra truoc (them moi / khoi phuc / se huy) roi moi cho xac nhan
+  const doCheck = async () => {
+    if (!rows) return;
+    setBusy(true); setErr("");
+    try {
+      const res = await api.post<any>("/amis/import", payload(true));
+      setCheck(res);
+      if (!kyTu) setKyTu(res.summary.ky_tu ?? "");
+      if (!kyDen) setKyDen(res.summary.ky_den ?? "");
+    } catch (e: any) {
+      setErr(e?.body?.error === "BAD_PERIOD" ? "Kỳ không hợp lệ (từ ngày phải ≤ đến ngày)." : "Lỗi kiểm tra file.");
+    } finally { setBusy(false); }
+  };
   const doImport = async () => {
     if (!rows) return;
-    setBusy(true);
+    if (mode === "SYNC" && !lyDo.trim()) return setErr("Nhập lý do đồng bộ lại (vd: kế toán sửa chứng từ NK0123 trên MISA).");
+    setBusy(true); setErr("");
     try {
-      const res = await api.post("/amis/import", { filename, rows });
-      setResult(res);
-      batches.refetch(); unmatched.refetch();
+      const res = await api.post("/amis/import", payload(false));
+      setResult(res); setCheck(null);
+      refreshAll();
+    } catch (e: any) {
+      setErr(e?.body?.error === "REASON_REQUIRED" ? "Nhập lý do." : "Lỗi nhập dữ liệu.");
     } finally { setBusy(false); }
+  };
+
+  const actReceipt = async (r: any, act: "void" | "restore") => {
+    const lyDoX = prompt(act === "void"
+      ? `Hủy chứng từ ${r.doc_no} · ${r.part_code} · SL ${r.qty_in}?\nNhập lý do (bắt buộc):`
+      : `Khôi phục chứng từ ${r.doc_no} · ${r.part_code}?\nNhập lý do (bắt buộc):`);
+    if (!lyDoX?.trim()) return;
+    try {
+      await api.post(`/amis/receipts/${r.id}/${act}`, { ly_do: lyDoX.trim() });
+      refreshAll();
+    } catch { alert("Lỗi cập nhật chứng từ."); }
   };
 
   const previewCols: Col<any>[] = [
@@ -59,6 +107,14 @@ export default function AmisImport() {
       return <span className={`badge ${c === "nhap" ? "issued" : "nhap"}`}>{c === "nhap" ? "Sẽ nhập" : "Bỏ qua"}</span>;
     } },
     ...COLS.map((c) => ({ key: c, header: c, align: /Số lượng/.test(c) ? "right" as const : undefined, render: (r: any) => /Ngày/.test(c) ? ngay(r[c]) : String(r[c] ?? "") })),
+  ];
+  const receiptCols: Col<any>[] = [
+    { key: "d", header: "Số CT", render: (r) => r.doc_no },
+    { key: "n", header: "Ngày CT", render: (r) => ngay(r.doc_date) },
+    { key: "k", header: "Kho", render: (r) => r.warehouse_name },
+    { key: "m", header: "Mã hàng", render: (r) => r.part_code },
+    { key: "sl", header: "SL nhập", align: "right", render: (r) => soLuong(r.qty_in) },
+    { key: "a", header: "Mã phê duyệt", render: (r) => r.approval_code_raw },
   ];
 
   const scrollUpload = () => document.getElementById("amis-upload")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -103,7 +159,7 @@ export default function AmisImport() {
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ nhận dòng có "Mã phê duyệt", "SL Nhập" &gt; 0, kho hợp lệ.</div>
           {filename && <div style={{ marginTop: 8, fontSize: 12.5 }}>Đã chọn: <b>{filename}</b></div>}
         </div>
-        <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+        <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
       </Card>
 
       {/* B2 preview */}
@@ -111,8 +167,58 @@ export default function AmisImport() {
         <Card style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <strong style={{ fontSize: 14 }}>2. Xem trước &amp; kiểm tra</strong>
-            <button className="btn primary" disabled={busy || seNhap === 0} onClick={doImport}>{busy ? "Đang nhập…" : "Nhập dữ liệu"}</button>
+            {canEdit && (mode === "APPEND"
+              ? <button className="btn primary" disabled={busy || seNhap === 0} onClick={doImport}>{busy ? "Đang nhập…" : "Nhập dữ liệu"}</button>
+              : <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn" disabled={busy || seNhap === 0} onClick={doCheck}>{busy ? "Đang kiểm tra…" : "Kiểm tra thay đổi"}</button>
+                  <button className="btn primary" disabled={busy || !check} onClick={doImport}>Xác nhận đồng bộ</button>
+                </div>)}
           </div>
+          {canEdit && (
+            <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, marginBottom: 12, fontSize: 13 }}>
+              <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input type="radio" checked={mode === "APPEND"} onChange={() => { setMode("APPEND"); setCheck(null); }} />
+                  <b>Thêm mới</b> <span className="muted">— chỉ thêm chứng từ chưa có (dùng hằng ngày)</span>
+                </label>
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input type="radio" checked={mode === "SYNC"} onChange={() => { setMode("SYNC"); setCheck(null); }} />
+                  <b>Đồng bộ lại kỳ</b> <span className="muted">— chứng từ MISA đã sửa / xóa: thay dữ liệu của kỳ bằng file này</span>
+                </label>
+              </div>
+              {mode === "SYNC" && (
+                <div style={{ marginTop: 10, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+                  <div><label className="field-label">Kỳ từ ngày CT</label><input className="input" type="date" value={kyTu} onChange={(e) => { setKyTu(e.target.value); setCheck(null); }} /></div>
+                  <div><label className="field-label">đến ngày CT</label><input className="input" type="date" value={kyDen} onChange={(e) => { setKyDen(e.target.value); setCheck(null); }} /></div>
+                  <div><label className="field-label">Phạm vi kho</label>
+                    <select className="select" value={khoAll ? "all" : "file"} onChange={(e) => { setKhoAll(e.target.value === "all"); setCheck(null); }}>
+                      <option value="file">Chỉ các kho có trong file</option><option value="all">Tất cả kho</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 260 }}><label className="field-label">Lý do <span className="req">*</span></label>
+                    <input className="input" value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="vd: Kế toán sửa SL chứng từ NK0123 trên MISA" />
+                  </div>
+                  <div className="muted" style={{ fontSize: 12, width: "100%" }}>
+                    Để trống kỳ = tự lấy ngày chứng từ nhỏ nhất – lớn nhất trong file. Xuất MISA đủ cả kỳ (không lọc bớt),
+                    vì chứng từ trong kỳ + phạm vi kho mà không có trong file sẽ bị đánh dấu hủy.
+                  </div>
+                </div>
+              )}
+              {err && <div style={{ color: "var(--danger)", marginTop: 8 }}>{err}</div>}
+              {check && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                    <span className="badge nhap">Kỳ {ngay(check.summary.ky_tu)} – {ngay(check.summary.ky_den)} · {check.summary.kho ? `${check.summary.kho.length} kho` : "tất cả kho"}</span>
+                    <span className="badge issued">Thêm mới {soLuong(check.summary.them_moi)}</span>
+                    <span className="badge nhap">Giữ nguyên {soLuong(check.summary.giu_nguyen)}</span>
+                    {check.summary.khoi_phuc > 0 && <span className="badge final">Khôi phục {soLuong(check.summary.khoi_phuc)}</span>}
+                    <span className={`badge ${check.summary.se_huy ? "reject" : "nhap"}`}>Sẽ hủy {soLuong(check.summary.se_huy)}</span>
+                  </div>
+                  {check.huy.length > 0 && <DataTable cols={receiptCols} rows={check.huy} keyOf={(r) => r.id} pageSize={PAGE_SIZE} />}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             <StatTile label="Tổng dòng" value={soLuong(rows.length)} />
             <StatTile label="Sẽ nhập" value={soLuong(seNhap)} tint="#F0FDF4" />
@@ -130,6 +236,8 @@ export default function AmisImport() {
             <StatTile label="Đã nhập" value={soLuong(result.inserted)} tint="#F0FDF4" />
             <StatTile label="Trùng" value={soLuong(result.duplicate)} tint="#FFFBEB" />
             <StatTile label="Bỏ qua" value={soLuong(result.skipped)} tint="#F9FAFB" />
+            {result.restored > 0 && <StatTile label="Khôi phục" value={soLuong(result.restored)} tint="#EFF6FF" />}
+            {result.voided > 0 && <StatTile label="Đã hủy (đồng bộ)" value={soLuong(result.voided)} tint="#FEF2F2" />}
           </div>
         </Card>
       )}
@@ -140,11 +248,16 @@ export default function AmisImport() {
           <DataTable
             cols={[
               { key: "f", header: "File", render: (r) => r.source_filename || "—" },
-              { key: "u", header: "Người nhập", render: (r) => r.imported_by },
+              { key: "u", header: "Người nhập", render: (r) => ten(r.imported_by) },
               { key: "t", header: "Thời gian", render: (r) => ngay(r.imported_at) },
-              { key: "r", header: "Dòng", align: "right", render: (r) => soLuong(r.row_count) },
               { key: "i", header: "Đã nhập", align: "right", render: (r) => soLuong(r.inserted_count) },
               { key: "d", header: "Trùng", align: "right", render: (r) => soLuong(r.duplicate_count) },
+              { key: "m", header: "Chế độ", render: (r) => r.cancelled_at
+                ? <span className="badge reject" title={`${ten(r.cancelled_by)} · ${ngayGio(r.cancelled_at)} · ${r.cancel_reason ?? ""}`}>Đã hủy lô</span>
+                : r.mode === "SYNC" ? <span className="badge final" title={r.ghi_chu ?? ""}>Đồng bộ {ngay(r.ky_tu)}–{ngay(r.ky_den)} · hủy {r.voided_count}</span>
+                : "Thêm mới" },
+              { key: "x", header: "", render: (r) => canEdit && !r.cancelled_at && r.inserted_count > 0
+                ? <button className="btn ghost sm danger" title="Hủy các dòng do lô này thêm vào" onClick={() => setVoidBatch(r)}>Hủy lô</button> : null },
             ]}
             rows={batches.data ?? []} keyOf={(r) => r.id} pageSize={PAGE_SIZE} empty="Chưa có lần import nào."
           />
@@ -167,6 +280,61 @@ export default function AmisImport() {
           />
         </Card>
       </div>
+
+      <Card style={{ marginTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <strong style={{ fontSize: 14 }}>Tra cứu &amp; hủy chứng từ AMIS</strong>
+          <input className="input" style={{ width: 300 }} placeholder="Số CT / mã hàng / mã 3TDO / tên hàng..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <select className="select" style={{ width: 200 }} value={showVoided} onChange={(e) => setShowVoided(e.target.value as any)}>
+            <option value="">Chứng từ đang tính</option><option value="1">Tất cả (cả đã hủy)</option><option value="only">Chỉ chứng từ đã hủy</option>
+          </select>
+          <span className="muted" style={{ fontSize: 12 }}>300 dòng mới nhất khớp tìm kiếm. Chứng từ đã hủy không tính vào EO / báo cáo; import lại đúng chứng từ sẽ tự khôi phục.</span>
+        </div>
+        <DataTable
+          cols={[
+            ...receiptCols.slice(0, 4),
+            { key: "t", header: "Tên hàng", render: (r) => r.part_name || "" },
+            ...receiptCols.slice(4),
+            { key: "e", header: "Khớp EO", render: (r) => r.voided_at
+              ? <span className="badge reject" title={`${ten(r.voided_by)} · ${ngayGio(r.voided_at)}`}>Đã hủy: {r.void_reason}</span>
+              : r.eo_code ? <a className="cell-link" href={`/eo/${r.eo_id}`}>{r.eo_code}</a>
+              : r.match_status === "CODE_ONLY_NO_LINE" ? <span className="badge final">Có mã, không có dòng</span> : <span className="muted">Không khớp</span> },
+            { key: "x", header: "", render: (r) => !canEdit ? null : r.voided_at
+              ? <button className="btn ghost sm" onClick={() => actReceipt(r, "restore")}>Khôi phục</button>
+              : <button className="btn ghost sm danger" onClick={() => actReceipt(r, "void")}>Hủy</button> },
+          ]}
+          rows={receipts.data ?? []} keyOf={(r) => r.id} pageSize={PAGE_SIZE} empty="Không có chứng từ khớp."
+        />
+      </Card>
+
+      {voidBatch && <VoidBatchModal batch={voidBatch} onClose={() => setVoidBatch(null)} onDone={() => { setVoidBatch(null); refreshAll(); }} />}
     </div>
+  );
+}
+
+function VoidBatchModal({ batch, onClose, onDone }: { batch: any; onClose: () => void; onDone: () => void }) {
+  const [lyDo, setLyDo] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!lyDo.trim()) return setErr("Nhập lý do.");
+    setBusy(true); setErr("");
+    try { await api.post(`/amis/batches/${batch.id}/void`, { ly_do: lyDo.trim() }); onDone(); }
+    catch (e: any) { setErr(e?.body?.error === "ALREADY_CANCELLED" ? "Lô này đã hủy." : "Lỗi hủy lô."); setBusy(false); }
+  };
+  return (
+    <Modal title={`Hủy lô import #${batch.id}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>Hủy {soLuong(batch.inserted_count)} dòng</button></>}>
+      <div style={{ fontSize: 13, marginBottom: 10 }}>
+        File <b>{batch.source_filename || "—"}</b> · {ten(batch.imported_by)} · {ngayGio(batch.imported_at)}
+      </div>
+      <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+        Các dòng do lần import này thêm vào sẽ được đánh dấu hủy (không xóa) và không còn tính vào EO / báo cáo.
+        Dòng trùng với lần import trước không bị ảnh hưởng. Sau đó import lại file đúng — chứng từ trùng khớp sẽ tự khôi phục.
+      </div>
+      <label className="field-label">Lý do <span className="req">*</span></label>
+      <input className="input" value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="vd: chọn nhầm file kỳ tháng 8" />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
   );
 }

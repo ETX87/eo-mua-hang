@@ -28,6 +28,7 @@ async function recomputeMatchChunk(db: D1Database, scopeCodes?: string[]): Promi
   await db.prepare(
     `UPDATE amis_receipt SET match_status = 'UNMATCHED', matched_eo_item_id = NULL ${scopeSql}`,
   ).bind(...bind).run();
+  const live = "amis_receipt.voided_at IS NULL"; // dong da huy (0008) khong bao gio khop
 
   // 1. MATCHED_EO: (kho ; ma hang ; approval_code) khop 1 eo_item cua EO da ISSUED/CANCELLED.
   //    Ma hang khop ma dang dung HOAC ma goc truoc khi thay ma tuong duong (eo_item.part_code_goc).
@@ -41,7 +42,7 @@ async function recomputeMatchChunk(db: D1Database, scopeCodes?: string[]): Promi
            AND e.approval_code = amis_receipt.approval_code_raw
            AND e.trang_thai IN ('ISSUED','CANCELLED')
          ORDER BY i.created_at, i.id LIMIT 1)
-     ${scopeSql ? scopeSql + " AND" : "WHERE"} EXISTS (
+     ${scopeSql ? scopeSql + " AND" : "WHERE"} ${live} AND EXISTS (
        SELECT 1 FROM eo_item i JOIN eo e ON e.id = i.eo_id
        WHERE i.warehouse = amis_receipt.warehouse_name
          AND (i.part_code = amis_receipt.part_code OR i.part_code_goc = amis_receipt.part_code)
@@ -52,7 +53,7 @@ async function recomputeMatchChunk(db: D1Database, scopeCodes?: string[]): Promi
   // 2. CODE_ONLY_NO_LINE: chua khop item nhung approval_code_raw la ma cua 1 EO da ISSUED
   await db.prepare(
     `UPDATE amis_receipt SET match_status = 'CODE_ONLY_NO_LINE', matched_eo_item_id = NULL
-     ${scopeSql ? scopeSql + " AND" : "WHERE"} match_status <> 'MATCHED_EO'
+     ${scopeSql ? scopeSql + " AND" : "WHERE"} ${live} AND match_status <> 'MATCHED_EO'
        AND EXISTS (SELECT 1 FROM eo e WHERE e.approval_code = amis_receipt.approval_code_raw AND e.trang_thai = 'ISSUED')`,
   ).bind(...bind).run();
 }
