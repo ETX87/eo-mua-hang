@@ -34,16 +34,31 @@ const n = (v: unknown) => {
   const x = typeof v === "number" ? v : parseFloat(String(v).replace(/,/g, ""));
   return Number.isFinite(x) ? x : 0;
 };
-const dOnly = (v: unknown) => {
+const p2 = (x: string | number) => String(x).padStart(2, "0");
+function isoOk(y: number, m: number, d: number): string | null {
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? `${y}-${p2(m)}-${p2(d)}` : null;
+}
+/** Ngay -> 'YYYY-MM-DD' hoac null (khong doan bua - dong ngay sai bi bo qua co ly do).
+ *  '2026-09-08 00:00:00' | '2026-09-08T..' | '08/09/2026' (dd/mm/yyyy go tay) | '9/8/26' (m/d/yy - SheetJS
+ *  hien thi o ngay Excel theo dinh dang mac dinh; FE moi da gui ISO, giu nhanh nay cho file/client cu). */
+const dOnly = (v: unknown): string | null => {
   const t = s(v);
   if (!t) return null;
-  // '2026-09-08 00:00:00' | '2026-09-08T00:00:00.000Z' | '08/09/2026'
-  const m1 = /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
-  if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
-  const m2 = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(t);
-  if (m2) return `${m2[3]}-${m2[2].padStart(2, "0")}-${m2[1].padStart(2, "0")}`;
-  return t.slice(0, 10);
+  const m1 = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(t);
+  if (m1) return isoOk(+m1[1], +m1[2], +m1[3]);
+  const m2 = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+  if (m2) return isoOk(+m2[3], +m2[2], +m2[1]);
+  const m3 = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(t);
+  if (m3) return isoOk(2000 + +m3[3], +m3[1], +m3[2]);
+  return null;
 };
+/** Chi in hoa a-z (khop UPPER() cua SQLite - migrations/0009). */
+const upA = (x: string) => x.replace(/[a-z]/g, (ch) => ch.toUpperCase());
+/** Khoa chong trung = "ID tu sinh" cua 1 dong MISA (MISA khong co ID dong). PHAI khop bieu thuc SQL o
+ *  migrations/0009_amis_khoa_trung.sql. Dong giong het thu n (n>=2) trong cung file them hau to '#n'. */
+const khoaTrung = (docNo: string, wh: string, part: string, qty: number, docDate: string, approval: string) =>
+  [upA(docNo), wh, upA(part), String(qty), docDate, upA(approval)].join("|");
 
 // ------------------------------------------------------------------ POST /import
 // body: { filename, file_hash?, rows: MisaRow[], mode?: 'APPEND'|'SYNC', dry_run?, ky_tu?, ky_den?, kho?: string[]|null, ly_do? }
@@ -69,10 +84,13 @@ app.post("/import", async (c) => {
   const whRows = await db.prepare("SELECT ten_kho FROM settings_warehouse WHERE active = 1").all<{ ten_kho: string }>();
   const validWh = new Set(whRows.results.map((r) => r.ten_kho));
 
-  // ---- 1. loc + natural key (mo phong '2.1 Amis 30 ngay')
+  // ---- 1. loc + khoa chong trung (mo phong '2.1 Amis 30 ngay'). dong[idx] = trang thai tung dong cua file.
   interface Valid { idx: number; r: MisaRow; approval: string; whName: string; part: string; qtyIn: number; docDate: string; docNo: string; key: string }
   const valid: Valid[] = [];
-  let skipped = 0;
+  const dong: string[] = new Array(body.rows.length);
+  const lyDoBo: Record<string, number> = {};
+  const bo = (idx: number, why: string) => { dong[idx] = `bo:${why}`; lyDoBo[why] = (lyDoBo[why] ?? 0) + 1; };
+  const lan = new Map<string, number>(); // so lan 1 bo (CT, kho, ma, SL, ngay, 3TDO) xuat hien trong file
   for (let idx = 0; idx < body.rows.length; idx++) {
     const r = body.rows[idx];
     const approval = s(r["Mã phê duyệt"]);
@@ -81,26 +99,36 @@ app.post("/import", async (c) => {
     const qtyIn = n(r["Số lượng Nhập"]);
     const docDate = dOnly(r["Ngày chứng từ"]);
     const docNo = s(r["Số chứng từ"]);
-    if (!approval || qtyIn <= 0 || !whName || !part || !docNo || !docDate || !validWh.has(whName)) { skipped++; continue; }
-    const key = await sha256Hex([docNo, whName, part, qtyIn, docDate, approval].join("|"));
-    valid.push({ idx, r, approval, whName, part, qtyIn, docDate, docNo, key });
+    if (!approval) { bo(idx, "Không có mã phê duyệt"); continue; }
+    if (qtyIn <= 0) { bo(idx, "SL nhập = 0 (dòng xuất / tồn)"); continue; }
+    if (!whName || !validWh.has(whName)) { bo(idx, "Kho không có trong danh mục"); continue; }
+    if (!part || !docNo) { bo(idx, "Thiếu mã hàng / số chứng từ"); continue; }
+    if (!docDate) { bo(idx, "Ngày chứng từ sai định dạng"); continue; }
+    const base = khoaTrung(docNo, whName, part, qtyIn, docDate, approval);
+    const k = (lan.get(base) ?? 0) + 1;
+    lan.set(base, k);
+    valid.push({ idx, r, approval, whName, part, qtyIn, docDate, docNo, key: k === 1 ? base : `${base}#${k}` });
   }
+  const skipped = body.rows.length - valid.length;
   const fileKeys = new Set(valid.map((v) => v.key));
 
-  // ---- 2. chung tu da co trong he (song / da huy)
+  // ---- 2. chung tu da co trong he (song / da huy) - so theo khoa_trung
   const existing = new Map<string, { id: number; voided: boolean; approval: string }>();
   const keyList = [...fileKeys];
   for (let i = 0; i < keyList.length; i += CHUNK) {
     const rs = await db.prepare(
-      "SELECT id, natural_key, voided_at, approval_code_raw FROM amis_receipt WHERE natural_key IN (SELECT value FROM json_each(?))",
-    ).bind(JSON.stringify(keyList.slice(i, i + CHUNK))).all<{ id: number; natural_key: string; voided_at: string | null; approval_code_raw: string }>();
-    for (const e of rs.results) existing.set(e.natural_key, { id: e.id, voided: !!e.voided_at, approval: e.approval_code_raw });
+      "SELECT id, khoa_trung, voided_at, approval_code_raw FROM amis_receipt WHERE khoa_trung IN (SELECT value FROM json_each(?))",
+    ).bind(JSON.stringify(keyList.slice(i, i + CHUNK))).all<{ id: number; khoa_trung: string; voided_at: string | null; approval_code_raw: string }>();
+    for (const e of rs.results) existing.set(e.khoa_trung, { id: e.id, voided: !!e.voided_at, approval: e.approval_code_raw });
   }
-  const seen = new Set<string>();
-  const toInsert = valid.filter((v) => !existing.has(v.key) && !seen.has(v.key) && seen.add(v.key));
+  const toInsert: Valid[] = [];
+  for (const v of valid) {
+    const e = existing.get(v.key);
+    dong[v.idx] = !e ? "moi" : e.voided ? "khoi_phuc" : "da_co";
+    if (!e) toInsert.push(v);
+  }
   const restore = [...existing.values()].filter((e) => e.voided);
   const unchanged = [...existing.values()].filter((e) => !e.voided).length;
-  const dupInFile = valid.length - toInsert.length - restore.length - unchanged;
 
   // ---- 3. SYNC: dong song trong ky + pham vi kho khong con trong file -> huy
   let kyTu: string | null = null, kyDen: string | null = null, khoScope: string[] | null = null;
@@ -112,20 +140,20 @@ app.post("/import", async (c) => {
     if (!kyTu || !kyDen || kyTu > kyDen) return c.json({ error: "BAD_PERIOD" }, 400);
     khoScope = body.kho === null ? null : Array.isArray(body.kho) && body.kho.length ? body.kho : [...new Set(valid.map((v) => v.whName))];
     const live = await db.prepare(
-      `SELECT id, natural_key, doc_no, doc_date, warehouse_name, part_code, part_name, qty_in, approval_code_raw, match_status
+      `SELECT id, khoa_trung, doc_no, doc_date, warehouse_name, part_code, part_name, qty_in, approval_code_raw, match_status
        FROM amis_receipt WHERE voided_at IS NULL AND doc_date BETWEEN ? AND ?
        ${khoScope ? "AND warehouse_name IN (SELECT value FROM json_each(?))" : ""}
        ORDER BY doc_date, doc_no`,
     ).bind(...(khoScope ? [kyTu, kyDen, JSON.stringify(khoScope)] : [kyTu, kyDen])).all<any>();
-    toVoid = live.results.filter((r) => !fileKeys.has(r.natural_key));
+    toVoid = live.results.filter((r) => !fileKeys.has(r.khoa_trung));
   }
 
   const summary = {
     mode, rows: body.rows.length, skipped, hop_le: valid.length, them_moi: toInsert.length, giu_nguyen: unchanged,
-    khoi_phuc: restore.length, trung_trong_file: dupInFile, se_huy: toVoid.length, ky_tu: kyTu, ky_den: kyDen, kho: khoScope,
+    khoi_phuc: restore.length, ly_do_bo: lyDoBo, se_huy: toVoid.length, ky_tu: kyTu, ky_den: kyDen, kho: khoScope,
   };
   if (body.dry_run) {
-    return c.json({ dry_run: true, summary, huy: toVoid.slice(0, 1000).map(({ natural_key, ...r }) => r) });
+    return c.json({ dry_run: true, summary, dong, huy: toVoid.slice(0, 1000).map(({ khoa_trung, ...r }) => r) });
   }
   if (mode === "SYNC" && !body.ly_do?.trim()) return c.json({ error: "REASON_REQUIRED" }, 400);
 
@@ -140,19 +168,20 @@ app.post("/import", async (c) => {
   const batchId = batchIns!.id;
 
   const affectedCodes = new Set<string>();
-  const stmts: any[] = toInsert.map((v) => {
+  const naturalKeys = await Promise.all(toInsert.map((v) => sha256Hex(v.key)));
+  const stmts: any[] = toInsert.map((v, i) => {
     affectedCodes.add(v.approval);
     const r = v.r;
     return db.prepare(
       `INSERT OR IGNORE INTO amis_receipt
         (import_batch_id, warehouse_code, warehouse_name, part_code, part_name, posting_date, doc_date,
          doc_no, uom, description, qty_in, qty_out, qty_balance, tk_kho, tk_doi_ung, approval_code_raw,
-         match_key, match_status, natural_key, source_row, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNMATCHED', ?, ?, ?)`,
+         match_key, match_status, natural_key, khoa_trung, source_row, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNMATCHED', ?, ?, ?, ?)`,
     ).bind(
       batchId, s(r["Mã kho"]), v.whName, v.part, s(r["Tên hàng"]), dOnly(r["Ngày hạch toán"]), v.docDate,
       v.docNo, s(r["ĐVT"]), s(r["Diễn giải"]), v.qtyIn, n(r["Số lượng Xuất"]), n(r["Số lượng Tồn"]),
-      s(r["TK Kho"]), s(r["TK đối ứng"]), v.approval, `${v.whName};${v.part};${v.approval}`, v.key, v.idx + 2, now,
+      s(r["TK Kho"]), s(r["TK đối ứng"]), v.approval, `${v.whName};${v.part};${v.approval}`, naturalKeys[i], v.key, v.idx + 2, now,
     );
   });
   const restoreIds = restore.map((e) => e.id);

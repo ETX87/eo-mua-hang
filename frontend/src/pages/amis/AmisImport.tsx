@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -43,11 +43,24 @@ export default function AmisImport() {
     setFilename(f.name); setResult(null); setCheck(null); setErr(""); setKyTu(""); setKyDen("");
     const reader = new FileReader();
     reader.onload = (e) => {
-      const wb = XLSX.read(e.target!.result, { type: "binary", cellDates: true });
+      // dateNF: o ngay Excel -> 'YYYY-MM-DD' (mac dinh SheetJS ra 'm/d/yy' -> lech khoa chong trung / ky)
+      const wb = XLSX.read(e.target!.result, { type: "binary", cellDates: true, dateNF: "yyyy-mm-dd" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      setRows(XLSX.utils.sheet_to_json(ws, { defval: null, raw: false }));
+      setRows(XLSX.utils.sheet_to_json(ws, { defval: null, raw: false, dateNF: "yyyy-mm-dd" }));
     };
     reader.readAsBinaryString(f);
+  };
+
+  // kiem tra truoc voi he thong ngay khi chon file: dong nao Moi / Da co (trung lan import truoc) / Khoi phuc / Bo qua
+  const [pre, setPre] = useState<any>(null);
+  useEffect(() => {
+    setPre(null);
+    if (!rows?.length || !canEdit) return;
+    api.post<any>("/amis/import", { filename, rows, mode: "APPEND", dry_run: true }).then(setPre).catch(() => setPre(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, canEdit]);
+  const DONG: Record<string, { l: string; c: string }> = {
+    moi: { l: "Mới", c: "issued" }, da_co: { l: "Đã có — bỏ qua", c: "nhap" }, khoi_phuc: { l: "Khôi phục", c: "final" },
   };
 
   const classify = (r: any): "nhap" | "bo" => {
@@ -83,7 +96,7 @@ export default function AmisImport() {
     setBusy(true); setErr("");
     try {
       const res = await api.post("/amis/import", payload(false));
-      setResult(res); setCheck(null);
+      setResult(res); setCheck(null); setPre(null);
       refreshAll();
     } catch (e: any) {
       setErr(e?.body?.error === "REASON_REQUIRED" ? "Nhập lý do." : "Lỗi nhập dữ liệu.");
@@ -103,6 +116,11 @@ export default function AmisImport() {
 
   const previewCols: Col<any>[] = [
     { key: "st", header: "Trạng thái", render: (r) => {
+      const d: string | undefined = pre?.dong?.[r.__i];
+      if (d) {
+        if (d.startsWith("bo:")) return <span className="badge nhap" title={d.slice(3)}>Bỏ qua: {d.slice(3)}</span>;
+        return <span className={`badge ${DONG[d]?.c ?? "nhap"}`}>{DONG[d]?.l ?? d}</span>;
+      }
       const c = classify(r);
       return <span className={`badge ${c === "nhap" ? "issued" : "nhap"}`}>{c === "nhap" ? "Sẽ nhập" : "Bỏ qua"}</span>;
     } },
@@ -221,10 +239,26 @@ export default function AmisImport() {
           )}
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             <StatTile label="Tổng dòng" value={soLuong(rows.length)} />
-            <StatTile label="Sẽ nhập" value={soLuong(seNhap)} tint="#F0FDF4" />
-            <StatTile label="Bỏ qua" value={soLuong(boQua)} tint="#F9FAFB" />
+            {pre ? <>
+              <StatTile label="Mới — sẽ nhập" value={soLuong(pre.summary.them_moi)} tint="#F0FDF4" />
+              <StatTile label="Đã có (trùng lần trước)" value={soLuong(pre.summary.giu_nguyen)} tint="#F9FAFB" />
+              {pre.summary.khoi_phuc > 0 && <StatTile label="Khôi phục (đã hủy trước đó)" value={soLuong(pre.summary.khoi_phuc)} tint="#EFF6FF" />}
+              <StatTile label="Bỏ qua" value={soLuong(pre.summary.skipped)} tint="#F9FAFB" />
+            </> : <>
+              <StatTile label="Sẽ nhập" value={soLuong(seNhap)} tint="#F0FDF4" />
+              <StatTile label="Bỏ qua" value={soLuong(boQua)} tint="#F9FAFB" />
+            </>}
           </div>
-          <DataTable cols={previewCols} rows={rows} keyOf={(_r, i) => i} pageSize={PAGE_SIZE} />
+          {pre && Object.keys(pre.summary.ly_do_bo ?? {}).length > 0 && (
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+              Bỏ qua: {Object.entries(pre.summary.ly_do_bo).map(([k, v]) => `${k} (${soLuong(v as number)})`).join(" · ")}
+            </div>
+          )}
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+            File tải lại chồng lấn kỳ cũ không sao: mỗi dòng có ID tự sinh từ Số CT + Kho + Mã hàng + SL nhập + Ngày CT + Mã phê duyệt,
+            dòng đã nhập trước đó tự bỏ qua. Chứng từ đã <b>sửa</b> trên MISA (đổi SL / ngày / mã…) là ID mới — dùng "Đồng bộ lại kỳ" để hủy dòng cũ.
+          </div>
+          <DataTable cols={previewCols} rows={rows.map((r, i) => ({ ...r, __i: i }))} keyOf={(_r, i) => i} pageSize={PAGE_SIZE} />
         </Card>
       )}
 

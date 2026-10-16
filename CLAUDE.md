@@ -40,7 +40,7 @@ npm run deploy            # build + wrangler deploy
 ```
 migrations/                  0001 schema · 0002 don_gia · 0003 report_cache · 0004 google_drive_oauth
                              · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
-                             · 0008 hủy / đồng bộ lại AMIS
+                             · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -85,7 +85,13 @@ scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs
 AMIS **không** lọc match_status phải thêm `voided_at IS NULL`. 3 cách (Kế toán/Admin, bắt buộc lý do):
 `POST /amis/import` `mode=SYNC` (đồng bộ lại kỳ: dòng sống trong kỳ ngày CT + phạm vi kho mà không còn trong
 file → hủy; có `dry_run`), `POST /amis/batches/:id/void` (hủy dòng do lô đó thêm), `POST /amis/receipts/:id/void|restore`.
-Import lại đúng chứng từ (cùng natural_key) đã hủy → tự khôi phục.
+Import lại đúng chứng từ đã hủy → tự khôi phục.
+
+**Chống trùng AMIS** (MISA không có ID dòng; kế toán tải lại file chồng lấn kỳ cũ): `amis_receipt.khoa_trung`
+(UNIQUE) = `SỐ_CT|Tên kho|MÃ_HÀNG|SL nhập|Ngày CT ISO|MÃ_PHÊ_DUYỆT` (in hoa a-z, + `#n` cho dòng giống hệt thứ n
+trong cùng file). Hàm `khoaTrung()` ở `routes/amis.ts` phải khớp biểu thức SQL ở `migrations/0009`. FE đọc
+Excel với `dateNF: "yyyy-mm-dd"` — mặc định SheetJS ra `m/d/yy` (trước 0009 đã lưu nguyên chuỗi đó vào doc_date).
+`natural_key` (sha256) chỉ còn để tương thích, không dùng so trùng.
 
 ## Quy ước
 
