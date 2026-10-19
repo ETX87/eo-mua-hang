@@ -119,7 +119,7 @@ app.get("/lines", async (c) => {
   const loai = c.req.query("loai") === "TUAN" ? "TUAN" : "NGAY";
   const conLai = c.req.query("con_lai") === "1";
   const lines = await c.env.DB.prepare(
-    `SELECT i.id, i.eo_id, i.part_code, i.part_code_goc, i.part_name, i.warehouse, i.supplier, i.current_qty,
+    `SELECT i.id, i.eo_id, i.part_code, i.part_code_goc, i.part_name, i.warehouse, i.supplier, i.current_qty, i.ghi_chu,
             e.eo_code, e.approval_code, e.tieu_de,
             COALESCE((SELECT SUM(p.planned_qty) FROM item_plan p WHERE p.eo_item_id = i.id AND p.deleted_at IS NULL), 0) da_len_kh,
             COALESCE((SELECT SUM(p.planned_qty) FROM item_plan p WHERE p.eo_item_id = i.id AND p.deleted_at IS NULL AND p.loai = ?), 0) da_len_kh_loai,

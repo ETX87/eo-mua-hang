@@ -11,7 +11,7 @@ export interface BulkRow {
 }
 export interface PlanLine {
   id: number; eo_id: number; eo_code: string; approval_code: string | null; part_code: string; part_code_goc: string | null;
-  part_name: string; warehouse: string; supplier?: string | null; current_qty: number; da_len_kh: number; da_len_kh_loai: number; da_ve: number;
+  part_name: string; warehouse: string; supplier?: string | null; ghi_chu?: string | null; current_qty: number; da_len_kh: number; da_len_kh_loai: number; da_ve: number;
 }
 export const maPO = (l: { eo_code: string; approval_code?: string | null }) => l.approval_code || l.eo_code;
 

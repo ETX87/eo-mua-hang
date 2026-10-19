@@ -71,6 +71,7 @@ export default function Approvals() {
                 <span>Kho {r.warehouse}</span><span>SL {soLuong(r.current_qty)}</span>
                 <span>Thêm bởi {ten(r.created_by)} lúc {ngayGio(r.created_at)}</span>
                 {r.reason && <span>Lý do: {r.reason}</span>}
+                {r.ghi_chu && <span>Ghi chú: {r.ghi_chu}</span>}
                 <span className="badge final">Dòng thêm sau ban hành</span>
               </div>
             </div>

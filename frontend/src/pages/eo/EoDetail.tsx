@@ -170,10 +170,11 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
     { key: "don_gia", header: "Đơn giá dự kiến", align: "right", render: (r) => r.don_gia_du_kien != null ? soLuong(r.don_gia_du_kien) : "" },
     { key: "thanh_tien", header: "Thành tiền dự kiến", align: "right", render: (r) => r.thanh_tien_du_kien ? soLuong(r.thanh_tien_du_kien) : "" },
     { key: "reason", header: "Lý do PS", render: (r) => r.reason || "" },
+    { key: "ghi_chu", header: "Ghi chú", render: (r) => r.ghi_chu ? <span style={{ display: "block", minWidth: 180 }}>{r.ghi_chu}</span> : "" },
     {
       key: "act", header: "", align: "center", render: (r) => (
         <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-          {canEditQty && <button className="btn ghost sm" onClick={() => onEditQty(r)} title="Sửa số lượng"><I.edit width={14} height={14} /></button>}
+          {canEditQty && <button className="btn ghost sm" onClick={() => onEditQty(r)} title="Sửa số lượng / ghi chú"><I.edit width={14} height={14} /></button>}
           {issued && canManage && r.line_status === "ACTIVE" && (
             <button className="btn ghost sm" onClick={() => onReplacePart(r)} title="Thay mã linh kiện tương đương (NCC giao mã khác)"><I.refresh width={14} height={14} /></button>
           )}
@@ -192,7 +193,7 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
     <>
       <DataTable
         cols={cols} rows={withStt} keyOf={(r) => r.id} pageSize={PAGE_SIZE}
-        totalRow={["", <b key="t">TỔNG</b>, "", "", "", <b key="q">{soLuong(tong.tong_sl_dat)}</b>, <b key="d">{soLuong(tong.sl_da_dat)}</b>, <b key="c">{soLuong(tong.sl_chua_dat)}</b>, "", <b key="tt">{soLuong(tong.tong_tien_du_kien)}</b>, "", ""]}
+        totalRow={["", <b key="t">TỔNG</b>, "", "", "", <b key="q">{soLuong(tong.tong_sl_dat)}</b>, <b key="d">{soLuong(tong.sl_da_dat)}</b>, <b key="c">{soLuong(tong.sl_chua_dat)}</b>, "", <b key="tt">{soLuong(tong.tong_tien_du_kien)}</b>, "", "", ""]}
       />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginTop: 16 }}>
         <StatTile label="Tổng số dòng" value={soLuong(tong.so_dong)} />
@@ -271,6 +272,7 @@ function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any) {
             <div key={i.id} className="card card-pad" style={{ fontSize: 12.5 }}>
               <b>{i.part_code}</b> · {i.warehouse}
               {i.part_name && <div className="muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{i.part_name}</div>}
+              {i.ghi_chu && <div style={{ fontSize: 12, color: "var(--text-muted)" }} title={i.ghi_chu}>Ghi chú: {i.ghi_chu}</div>}
               <div className="muted">Đã lên KH {soLuong(sum)} / {soLuong(i.current_qty)}</div>
             </div>
           );
@@ -448,7 +450,7 @@ function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
                   <td style={cell}><input type="checkbox" checked={r.chon} onChange={(ev) => set(i.id, { chon: ev.target.checked })} /></td>
                   <td style={cell}>{po}</td>
                   <td style={cell}><b>{i.part_code}</b></td>
-                  <td style={{ ...cell, maxWidth: 220 }}>{i.part_name}</td>
+                  <td style={{ ...cell, maxWidth: 220 }}>{i.part_name}{i.ghi_chu && <div className="muted" style={{ fontSize: 11 }}>Ghi chú: {i.ghi_chu}</div>}</td>
                   <td style={cell}>{i.warehouse}</td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(i.current_qty)}</td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(sumOf(i.id))}</td>
@@ -675,11 +677,17 @@ function TabTaiLieu({ eoId, files, onUploaded }: any) {
 function QtyModal({ item, issued, onClose, onSaved }: any) {
   const [qty, setQty] = useState(String(item.current_qty));
   const [reason, setReason] = useState("");
+  const [note, setNote] = useState(item.ghi_chu ?? "");
   const [err, setErr] = useState("");
+  const qtyChanged = Number(qty) !== Number(item.current_qty);
   const save = async () => {
     setErr("");
+    const body: Record<string, unknown> = {};
+    if (qtyChanged) { body.current_qty = Number(qty); body.reason = reason || undefined; }
+    if (note.trim() !== (item.ghi_chu ?? "")) body.ghi_chu = note.trim() || null;
+    if (!Object.keys(body).length) return onClose();
     try {
-      await api.patch(`/eo/items/${item.id}`, { current_qty: Number(qty), reason: reason || undefined });
+      await api.patch(`/eo/items/${item.id}`, body);
       onSaved();
     } catch (e: any) {
       setErr(e?.body?.error === "REASON_REQUIRED" ? "Cần nhập lý do." :
@@ -687,12 +695,15 @@ function QtyModal({ item, issued, onClose, onSaved }: any) {
     }
   };
   return (
-    <Modal title={`Sửa số lượng — ${item.part_code}`} onClose={onClose}
+    <Modal title={`Sửa dòng — ${item.part_code}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" onClick={save}>Lưu</button></>}>
       <label className="field-label">Số lượng mới</label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Lý do {issued && <span className="req">*</span>}</label>
+      <label className="field-label" style={{ marginTop: 12 }}>Lý do {issued && qtyChanged && <span className="req">*</span>}</label>
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do thay đổi số lượng" />
+      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú dòng</label>
+      <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
+      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ sửa ghi chú thì không cần lý do.</div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
@@ -733,6 +744,7 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
   const [supplier, setSupplier] = useState("");
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const save = async () => {
@@ -745,6 +757,7 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
       await api.post(`/eo/${eoId}/items`, {
         part_code: partCode.trim(), part_name: partName.trim() || undefined, warehouse,
         supplier: supplier.trim() || undefined, current_qty: Number(qty), reason: reason.trim() || undefined,
+        ghi_chu: note.trim() || undefined,
       });
       onSaved();
     } catch {
@@ -771,6 +784,8 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
       <label className="field-label" style={{ marginTop: 12 }}>Lý do PS</label>
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do..." />
+      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
+      <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
