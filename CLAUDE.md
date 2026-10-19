@@ -63,7 +63,8 @@ scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs
   cấp 2 mã 3TDO). Batch lỗi → trả phiếu về PENDING.
 - Mở phiếu FINAL / chuyển `WAITING_FINAL_APPROVAL` kiểm tra "hết phiếu REVIEW PENDING" **trong SQL** của batch,
   không tính trong JS — 2 reviewer cuối duyệt cùng lúc vẫn ra đúng 1 phiếu FINAL.
-- Sửa dòng (`PATCH /eo/items/:id`) chỉ khi EO `DRAFT` hoặc `ISSUED`.
+- Sửa dòng (`PATCH /eo/items/:id`) chỉ khi EO `DRAFT` hoặc `ISSUED`. Người tạo sửa EO đang `IN_REVIEW`/`WAITING_FINAL_APPROVAL`
+  qua `POST /eo/:id/recall`: đóng submission (UPDATE có điều kiện, chặn duyệt muộn) → phiếu PENDING `WITHDRAWN` → EO `DRAFT`.
 - Ban hành / thêm dòng sau ban hành / Admin hủy EO đã ban hành / thay mã LK → `recomputeMatch([approval_code])`.
 
 ## Kế hoạch hàng về, thay mã, đính kèm

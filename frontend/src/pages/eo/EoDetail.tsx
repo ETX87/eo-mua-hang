@@ -27,7 +27,7 @@ const EVENT_LABEL: Record<string, string> = {
   UPDATE_QUANTITY: "Sửa số lượng", CANCEL_LINE: "Hủy dòng", APPROVE_POST_ISSUE_ITEM: "Duyệt dòng thêm sau ban hành",
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
-  IMPORT_ITEMS: "Import dòng linh kiện từ Excel",
+  IMPORT_ITEMS: "Import dòng linh kiện từ Excel", RECALL_EO: "Rút về nháp để sửa",
 };
 
 const PRE_ISSUE_STATES = ["DRAFT", "IN_REVIEW", "WAITING_FINAL_APPROVAL"];
@@ -41,6 +41,7 @@ export default function EoDetail() {
   const [showCancel, setShowCancel] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
   const [replaceItem, setReplaceItem] = useState<any>(null);
+  const [showRecall, setShowRecall] = useState(false);
 
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const q = useQuery({ queryKey: ["eo", id], queryFn: () => api.get<any>(`/eo/${id}`) });
@@ -68,6 +69,9 @@ export default function EoDetail() {
         actions={<>
           {eo.trang_thai === "DRAFT" && canManage && (
             <button className="btn primary" onClick={() => nav(`/eo/${id}/edit`)}><I.edit width={14} height={14} /> Sửa EO</button>
+          )}
+          {["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(eo.trang_thai) && canManage && (
+            <button className="btn primary" onClick={() => setShowRecall(true)}><I.edit width={14} height={14} /> Sửa EO</button>
           )}
           <button className="btn" onClick={() => setTab("Lịch sử thay đổi")}><I.clock width={14} height={14} /> Lịch sử</button>
           {canCancel && <button className="btn danger" onClick={() => setShowCancel(true)}><I.x width={14} height={14} /> Hủy EO</button>}
@@ -128,6 +132,7 @@ export default function EoDetail() {
 
       {qtyItem && <QtyModal item={qtyItem} issued={issued} onClose={() => setQtyItem(null)} onSaved={() => { setQtyItem(null); refresh(); }} />}
       {showCancel && <CancelModal eo={eo} onClose={() => setShowCancel(false)} onDone={() => { setShowCancel(false); refresh(); }} />}
+      {showRecall && <RecallModal eo={eo} onClose={() => setShowRecall(false)} onDone={() => { setShowRecall(false); refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); nav(`/eo/${id}/edit`); }} />}
       {replaceItem && <ReplacePartModal item={replaceItem} onClose={() => setReplaceItem(null)} onSaved={() => { setReplaceItem(null); refresh(); }} />}
       {showAddItem && <AddItemModal eoId={id!} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); refresh(); }} />}
     </div>
@@ -786,6 +791,40 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do..." />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+/** Nguoi tao sua EO khi chua duyet xong: rut ve Nhap (huy phieu duyet dang cho) roi mo form sua. */
+function RecallModal({ eo, onClose, onDone }: any) {
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setErr(""); setBusy(true);
+    try {
+      await api.post(`/eo/${eo.id}/recall`, { reason: reason.trim() || undefined });
+      onDone();
+    } catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "SUBMISSION_CLOSED" || c === "BAD_STATE" ? "EO vừa được duyệt / xử lý xong — tải lại trang để xem trạng thái mới." :
+        c === "FORBIDDEN" ? "Bạn không có quyền sửa EO này." : "Lỗi rút EO về nháp.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Sửa EO đang chờ duyệt — ${eo.eo_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn primary" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Rút về nháp & sửa"}</button></>}>
+      <div style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 10 }}>
+        EO đang <b>{eo.trang_thai === "IN_REVIEW" ? "thẩm định" : "chờ duyệt cuối"}</b>. Để sửa, EO sẽ được <b>rút về Nháp</b>:
+        <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+          <li>Các phiếu duyệt đang chờ bị hủy, người duyệt nhận thông báo.</li>
+          <li>Sửa xong bấm <b>Gửi trình duyệt</b> lại. Người thẩm định đã đồng ý ở lần này được giữ kết quả.</li>
+        </ul>
+      </div>
+      <label className="field-label">Lý do sửa <span className="muted">(tuỳ chọn)</span></label>
+      <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: bổ sung 2 mã linh kiện" />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );

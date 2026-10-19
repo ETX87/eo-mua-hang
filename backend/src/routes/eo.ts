@@ -405,6 +405,45 @@ app.post("/:id/cancel", async (c) => {
   return c.json({ ok: true });
 });
 
+// ------------------------------------------------------------------ POST /:id/recall (rut ve nhap de sua)
+// Nguoi tao (canManageEo) sua EO khi CHUA duyet xong: dong lan trinh hien tai (SUPERSEDED) TRUOC moi ghi
+// khac bang UPDATE co dieu kien - phieu duyet claim deu kiem tra submission con PENDING (routes/approvals.ts)
+// nen nguoi duyet bam cung luc se nhan SUBMISSION_CLOSED. Phieu PENDING -> WITHDRAWN, EO -> DRAFT.
+// Trinh lai: nguoi tham dinh da APPROVED o lan nay duoc carry-forward (POST /:id/submit).
+app.post("/:id/recall", async (c) => {
+  const id = Number(c.req.param("id"));
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<any>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (!canManageEo(u, eo)) return c.json({ error: "FORBIDDEN" }, 403);
+  if (!["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(eo.trang_thai) || !eo.current_submission_id) return c.json({ error: "BAD_STATE", trang_thai: eo.trang_thai }, 409);
+  const b = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const now = nowVN();
+  const subId = eo.current_submission_id as number;
+
+  const claim = await c.env.DB.prepare(
+    "UPDATE eo_submission SET status = 'SUPERSEDED', closed_at = ?, note = ? WHERE id = ? AND status = 'PENDING'",
+  ).bind(now, `Người tạo rút về để sửa${b.reason ? ": " + b.reason : ""}`, subId).run();
+  if (!claim.meta.changes) return c.json({ error: "SUBMISSION_CLOSED" }, 409);
+
+  const pending = await c.env.DB.prepare(
+    "SELECT approver_email FROM eo_approval WHERE submission_id = ? AND status = 'PENDING'",
+  ).bind(subId).all<{ approver_email: string }>();
+  const stmts: any[] = [
+    c.env.DB.prepare("UPDATE eo_approval SET status = 'WITHDRAWN', action_at = ?, comment = 'Người tạo rút EO về để sửa' WHERE submission_id = ? AND status = 'PENDING'").bind(now, subId),
+    c.env.DB.prepare("UPDATE eo SET trang_thai = 'DRAFT', updated_by = ?, updated_at = ? WHERE id = ? AND trang_thai IN ('IN_REVIEW','WAITING_FINAL_APPROVAL')").bind(u.email, now, id),
+    eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "RECALL_EO", user_email: u.email, at: now, before: { trang_thai: eo.trang_thai }, after: { trang_thai: "DRAFT" }, metadata: { submission_id: subId, reason: b.reason ?? null } }),
+  ];
+  for (const p of pending.results) {
+    if (p.approver_email !== u.email) {
+      stmts.push(notifyStmt(c.env.DB, { email: p.approver_email, loai: "recalled", noi_dung: `EO ${eo.eo_code} đã được người tạo rút về để sửa — không cần duyệt lần trình này`, eo_id: id, at: now }));
+    }
+  }
+  await c.env.DB.batch(stmts);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true, trang_thai: "DRAFT" });
+});
+
 // ------------------------------------------------------------------ POST /:id/comments
 app.post("/:id/comments", async (c) => {
   const id = Number(c.req.param("id"));
