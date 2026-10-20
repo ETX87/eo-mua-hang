@@ -13,6 +13,8 @@ import dashboardRoutes from "./routes/dashboard";
 import danhMucRoutes from "./routes/danhMuc";
 import notificationsRoutes from "./routes/notifications";
 import etxNhanSuRoutes from "./routes/etxNhanSu";
+import dvbhSyncRoutes from "./routes/dvbhSync";
+import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
 
 // EO MUA HANG - Worker doc lap (Hono + D1). Phuc vu ca API lan frontend tinh tu 1 Worker.
 // Khong cron, khong R2 (xem TARGET_ARCHITECTURE.md).
@@ -21,6 +23,15 @@ const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 app.use("*", async (c, next) => {
   c.set("requestId", crypto.randomUUID());
   await next();
+});
+
+// Day PO thay doi sang DVBH sau moi request API (khong cron - xem lib/dvbhSync.ts). Chay nen bang
+// waitUntil, khong lam cham response; tu bo qua khi version du lieu + ngay chua doi.
+app.use("/api/*", async (c, next) => {
+  await next();
+  if (dvbhEnabled(c.env) && !c.req.path.startsWith("/api/dvbh-sync")) {
+    c.executionCtx.waitUntil(maybeSyncDvbh(c.env).catch((e) => console.error("dvbh sync", e)));
+  }
 });
 
 // --- auth: khong yeu cau session ---
@@ -45,6 +56,7 @@ app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/danh-muc", danhMucRoutes);
 app.route("/api/notifications", notificationsRoutes);
 app.route("/api/etx-nhan-su", etxNhanSuRoutes);
+app.route("/api/dvbh-sync", dvbhSyncRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 

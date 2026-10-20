@@ -32,7 +32,8 @@ npm run deploy            # build + wrangler deploy
 
 - `assets.run_worker_first: ["/api/*"]` **load-bearing** — không xóa.
 - Worker `muahang` (https://muahang.dichvu3t.workers.dev), D1 `eo-mua-hang-db` — `database_id` đã điền (production thật).
-- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`.
+- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`, `DVBH_API_KEY`.
+- Service Binding `DVBH` → Worker `dvbh` (app DVBH, repo `../../cloudflare smarttrade base`).
 - Bump `frontend/src/version.ts` (`+0.001`, sửa tay chuỗi) trước mỗi deploy.
 
 ## Cấu trúc
@@ -41,6 +42,7 @@ npm run deploy            # build + wrangler deploy
 migrations/                  0001 schema · 0002 don_gia · 0003 report_cache · 0004 google_drive_oauth
                              · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
+                             · 0010 đồng bộ PO sang DVBH
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -93,6 +95,17 @@ Import lại đúng chứng từ đã hủy → tự khôi phục.
 trong cùng file). Hàm `khoaTrung()` ở `routes/amis.ts` phải khớp biểu thức SQL ở `migrations/0009`. FE đọc
 Excel với `dateNF: "yyyy-mm-dd"` — mặc định SheetJS ra `m/d/yy` (trước 0009 đã lưu nguyên chuỗi đó vào doc_date).
 `natural_key` (sha256) chỉ còn để tương thích, không dùng so trùng.
+
+## Đồng bộ PO sang app DVBH
+
+`lib/dvbhSync.ts`: mỗi dòng `eo_item` = 1 PO (payload = báo cáo 0.1 `computeTienDo01` + kế hoạch hàng về + phiếu nhập
+AMIS + ID CRM/ID đặt hàng/link EO) đẩy sang DVBH `POST /api/partner/sync/po-dat-hang` (X-API-Key = `DVBH_API_KEY`,
+key nằm ở bảng `partner_api_keys` bên DVBH, tên đối tác `muahang`). **Không cron:** middleware `index.ts` gọi
+`maybeSyncDvbh` (waitUntil) sau mọi request `/api/*`; chỉ chạy khi version `eo/amis/settings` hoặc ngày VN đổi,
+cách lần trước ≥ 20s, có khóa `running_until`; chỉ gửi dòng có hash khác lần gửi thành công (`dvbh_sync_item`).
+Khóa dòng `id_dat_lk` = `legacy_id` (LK-…) hoặc `EOI-<eo_item.id>`. Admin: Cấu hình hệ thống › "Đồng bộ PO sang
+app DVBH" (gửi ngay / đồng bộ toàn bộ). DVBH dùng song song với Google Sheet cũ (~1 tháng). Thêm field vào
+payload = DVBH nhận nguyên JSON (`po_dat_hang_eo.payload`), map ở `frontend/src/lib/poDatHangEo.ts` bên đó.
 
 ## Quy ước
 

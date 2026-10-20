@@ -13,8 +13,10 @@ import { FILE_ACCEPT, checkFile, fileSize, uploadEoFiles } from "../../lib/files
 interface ItemRow {
   id?: number; part_code: string; part_name: string; warehouse: string; supplier: string;
   current_qty: string; reason: string; ghi_chu: string;
+  /** ID CRM = ma ca bao hanh (tuy chon) - DVBH khop PO ve dung ca; ID dat hang = ma don linh-kien-app (TLK-...). */
+  crm_id: string; order_id: string;
 }
-const emptyItem = (): ItemRow => ({ part_code: "", part_name: "", warehouse: "", supplier: "", current_qty: "", reason: "", ghi_chu: "" });
+const emptyItem = (): ItemRow => ({ part_code: "", part_name: "", warehouse: "", supplier: "", current_qty: "", reason: "", ghi_chu: "", crm_id: "", order_id: "" });
 
 export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const nav = useNavigate();
@@ -57,7 +59,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     const rows: ItemRow[] = (srvItems ?? []).map((it: any) => ({
       id: it.id, part_code: it.part_code, part_name: it.part_name || "", warehouse: it.warehouse,
       supplier: it.supplier || "", current_qty: String(it.current_qty ?? ""), reason: it.reason || "",
-      ghi_chu: it.ghi_chu || "",
+      ghi_chu: it.ghi_chu || "", crm_id: it.crm_id || "", order_id: it.order_id || "",
     }));
     setItems(rows.length ? rows : [emptyItem(), emptyItem()]);
     setOriginalItems(Object.fromEntries(rows.filter((r) => r.id != null).map((r) => [r.id as number, r])));
@@ -82,6 +84,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: r.warehouse,
       supplier: r.supplier.trim() || undefined, current_qty: Number(r.current_qty) || 0,
       reason: r.reason.trim() || undefined, ghi_chu: r.ghi_chu.trim() || undefined,
+      crm_id: r.crm_id.trim() || undefined, order_id: r.order_id.trim() || undefined,
     }));
 
   const submitCreate = async (send: boolean) => {
@@ -115,6 +118,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: r.warehouse,
       supplier: r.supplier.trim() || undefined, current_qty: Number(r.current_qty) || 0,
       reason: r.reason.trim() || undefined, ghi_chu: r.ghi_chu.trim() || undefined,
+      crm_id: r.crm_id.trim() || undefined, order_id: r.order_id.trim() || undefined,
     }));
     if (newRows.length) await api.post(`/eo/${id}/items`, { items: newRows });
     for (const r of items) {
@@ -126,6 +130,8 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         if (orig && r.part_name.trim() !== orig.part_name) patch.part_name = r.part_name.trim();
         if (orig && r.supplier.trim() !== orig.supplier) patch.supplier = r.supplier.trim() || null;
         if (orig && r.ghi_chu.trim() !== orig.ghi_chu) patch.ghi_chu = r.ghi_chu.trim() || null;
+        if (orig && r.crm_id.trim() !== orig.crm_id) patch.crm_id = r.crm_id.trim() || null;
+        if (orig && r.order_id.trim() !== orig.order_id) patch.order_id = r.order_id.trim() || null;
         if (Object.keys(patch).length) await api.patch(`/eo/items/${r.id}`, patch);
       }
     }
@@ -158,10 +164,10 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       {
         name: "Linh kien",
         rows: [
-          ["Mã linh kiện", "Tên linh kiện", "Kho cần đặt", "Đối tác", "Số lượng", "Lý do PS", "Ghi chú"],
-          ["VD-LK-001", "Dòng ví dụ - mã bắt đầu bằng VD- sẽ được bỏ qua", kho[0]?.ten_kho ?? "", "KRF", 10, "Bảo hành", "Giao trước 25/10"],
+          ["Mã linh kiện", "Tên linh kiện", "Kho cần đặt", "Đối tác", "Số lượng", "Lý do PS", "Ghi chú", "ID CRM (mã ca)", "ID đặt hàng"],
+          ["VD-LK-001", "Dòng ví dụ - mã bắt đầu bằng VD- sẽ được bỏ qua", kho[0]?.ten_kho ?? "", "KRF", 10, "Bảo hành", "Giao trước 25/10", "T21689", ""],
         ],
-        widths: [18, 40, 24, 16, 10, 26, 30],
+        widths: [18, 40, 24, 16, 10, 26, 30, 16, 16],
       },
       { name: "Danh sach kho", rows: [["Tên kho (ghi đúng vào cột Kho cần đặt)", "Mã kho"], ...kho.map((k: any) => [k.ten_kho, k.ma_kho ?? ""])], widths: [40, 12] },
     ]);
@@ -190,6 +196,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         part_code: pc, part_name: str(pick(r, "Tên linh kiện", "Tên LK", "Tên hàng")), warehouse: kho,
         supplier: str(pick(r, "Đối tác", "Nhà cung cấp", "NCC")), current_qty: String(qty), reason: str(pick(r, "Lý do PS", "Lý do")),
         ghi_chu: str(pick(r, "Ghi chú", "Ghi chú dòng", "Note")),
+        crm_id: str(pick(r, "ID CRM (mã ca)", "ID CRM", "Mã ca")), order_id: str(pick(r, "ID đặt hàng", "Mã đơn đặt hàng")),
       });
     }
     if (ok.length) {
@@ -230,6 +237,8 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     { key: "qty", header: <>Số lượng <span className="req">*</span></>, align: "right", render: () => null },
     { key: "rs", header: "Lý do PS", render: () => null },
     { key: "gc", header: "Ghi chú", render: () => null },
+    { key: "crm", header: <span title="Mã ca bảo hành (tuỳ chọn) - app DVBH dùng để gắn PO vào đúng ca">ID CRM</span>, render: () => null },
+    { key: "od", header: <span title="Mã đơn đặt linh kiện (TLK-...) - tuỳ chọn">ID đặt hàng</span>, render: () => null },
     { key: "act", header: "Thao tác", align: "center", width: 60, render: () => null },
   ];
 
@@ -311,6 +320,8 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                           <input className="input" placeholder="Nhập lý do..." value={r.reason} onChange={(e) => setItem(i, "reason", e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập ghi chú..." value={r.ghi_chu} onChange={(e) => setItem(i, "ghi_chu", e.target.value)} /></td>
+                        <td><input className="input" style={{ minWidth: 90 }} placeholder="Mã ca" value={r.crm_id} onChange={(e) => setItem(i, "crm_id", e.target.value)} /></td>
+                        <td><input className="input" style={{ minWidth: 100 }} placeholder="TLK-..." value={r.order_id} onChange={(e) => setItem(i, "order_id", e.target.value)} /></td>
                         <td style={{ textAlign: "center" }}>
                           <button className="btn ghost sm danger" onClick={() => setItems((rs) => rs.filter((_, j) => j !== i))}><I.trash width={15} height={15} /></button>
                         </td>

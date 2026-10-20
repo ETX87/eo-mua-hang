@@ -26,14 +26,20 @@
 
   // Khong cron, khong R2 (xem TARGET_ARCHITECTURE.md).
 
+  // Day PO sang app DVBH (lib/dvbhSync.ts) - Service Binding toi Worker "dvbh" cung account (fetch
+  // workers.dev <-> workers.dev cung account bi loi 1042). URL chi lam Request URL cho binding.
+  "services": [{ "binding": "DVBH", "service": "dvbh" }],
+
   "vars": {
     "BOOTSTRAP_ADMIN_EMAIL": "smarttrade.vp@gmail.com",
     "GOOGLE_REDIRECT_URI": "https://muahang.dichvu3t.workers.dev/api/auth/callback",
     "FRONTEND_URL": "https://muahang.dichvu3t.workers.dev",
     // Nguon danh ba "ETX nhan su" (lib/etxNhanSu.ts) - Google Cloud Function, khong nhay cam.
-    "ETX_HR_BASE_URL": "https://asia-southeast1-etx-nhan-su.cloudfunctions.net"
+    "ETX_HR_BASE_URL": "https://asia-southeast1-etx-nhan-su.cloudfunctions.net",
+    "DVBH_BASE_URL": "https://dvbh.dichvu3t.workers.dev"
   }
 
   // Gia tri NHAY CAM (dat qua "wrangler secret put", KHONG de trong "vars"):
-  //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, ETX_HR_API_KEY (dung chung key cua linh-kien-app)
+  //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, ETX_HR_API_KEY (dung chung key cua linh-kien-app),
+  //   DVBH_API_KEY (partner key do DVBH cap - bang partner_api_keys ben DVBH)
 }

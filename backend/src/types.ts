@@ -12,6 +12,11 @@ export interface Env {
   // Danh ba "ETX nhan su" (lib/etxNhanSu.ts). Base URL de trong vars, key qua "wrangler secret put".
   ETX_HR_BASE_URL: string;
   ETX_HR_API_KEY: string;
+  // Day PO sang app DVBH (lib/dvbhSync.ts). Base URL de trong vars, key do DVBH cap (wrangler secret put
+  // DVBH_API_KEY). DVBH = Service Binding toi Worker "dvbh" (thieu binding -> fetch URL, chi dung local).
+  DVBH_BASE_URL?: string;
+  DVBH_API_KEY?: string;
+  DVBH?: Fetcher;
 }
 
 export type VaiTro = "Admin" | "KH cung ung" | "Ke toan" | "Kho" | "Theo doi tien do" | "View";

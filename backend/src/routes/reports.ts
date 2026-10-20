@@ -11,7 +11,8 @@ function sum(arr: any[], k: string) {
 }
 
 // ==================================================================== 0.1 - tinh full dataset (cache)
-async function computeTienDo01(env: Env) {
+/** Bao cao 0.1 day du (1 dong / eo_item). Dung chung cho GET /tien-do-don-hang va dong bo sang DVBH (lib/dvbhSync.ts). */
+export async function computeTienDo01(env: Env) {
   const buckets = (
     await env.DB.prepare("SELECT min_days, label FROM settings_speed_bucket ORDER BY min_days").all<{ min_days: number; label: string }>()
   ).results;
@@ -56,9 +57,10 @@ async function computeTienDo01(env: Env) {
         FROM event_log WHERE entity_type = 'eo_item' AND event_type = 'UPDATE_QUANTITY'
         GROUP BY entity_id)
       SELECT
-        i.id item_id, i.legacy_id id_dat_lk, e.eo_code, e.legacy_id id_tai_lieu, e.approval_code,
+        i.id item_id, e.id eo_id, i.legacy_id id_dat_lk, e.eo_code, e.legacy_id id_tai_lieu, e.approval_code,
         e.loai_hinh, i.reason ly_do, i.crm_id, i.order_id, i.ghi_chu, i.warehouse kho, i.supplier doi_tac,
-        i.part_code, i.part_name, i.current_qty,
+        i.part_code, i.part_code_goc, i.part_name, i.current_qty, COALESCE(i.updated_at, i.created_at) item_updated_at,
+        e.final_approver_email, e.issued_at,
         COALESCE(ae.qty, 0) actual_eo,
         ae.last_date ngay_ve_eo, aw.last_date ngay_ve_kho, an.last_date ngay_ve_nat,
         COALESCE(ea.cnt, 0) so_lan_doi_ngay,
@@ -114,7 +116,8 @@ async function computeTienDo01(env: Env) {
     return {
       trang_thai_don_hang: trang_thai, canh_bao, toc_do_hang_ve: speed(tg),
       ma_phe_duyet: r.approval_code, phan_loai_thoi_diem_dat: phan_loai,
-      id_dat_lk: r.id_dat_lk, id_tai_lieu: r.id_tai_lieu,
+      // dong tao tren app moi khong co ID DAT LK cu -> 'EOI-<id>' (khoa dong dung chung voi DVBH)
+      id_dat_lk: r.id_dat_lk || `EOI-${r.item_id}`, id_tai_lieu: r.id_tai_lieu,
       loai_hinh: r.loai_hinh, ly_do_ps: r.ly_do, id_crm: r.crm_id, id_dat_hang: r.order_id, ghi_chu: r.ghi_chu,
       kho: r.kho, doi_tac: r.doi_tac, part_code: r.part_code, part_name: r.part_name,
       so_luong_dat: r.current_qty, sl_nhap_amis_dung_eo: r.actual_eo,
@@ -124,6 +127,10 @@ async function computeTienDo01(env: Env) {
       ngay_du_kien_lan_dau: r.ngay_dk_dau, ngay_du_kien_gan_nhat: r.ngay_dk_gan_nhat,
       ngay_nhap_kho_amis_theo_eo: r.ngay_ve_eo, ngay_nhap_kho_amis: r.ngay_ve_kho,
       ngay_nhap_toan_quoc_amis: r.ngay_ve_nat, ngay_cap_nhat_so_luong: r.ngay_cap_nhat_sl, ngay_tao: r.ngay_tao,
+      // them cho dong bo DVBH (bang bao cao FE khong dung)
+      item_id: r.item_id as number, eo_id: r.eo_id as number, eo_code: r.eo_code as string, trang_thai_eo: r.eo_status as string,
+      part_code_goc: r.part_code_goc as string | null, ngay_cap_nhat_dong: r.item_updated_at as string,
+      nguoi_duyet_cuoi: r.final_approver_email as string | null, ngay_ban_hanh: r.issued_at as string | null,
     };
   });
 }

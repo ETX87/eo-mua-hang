@@ -163,6 +163,13 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
           {r.post_issue_status === "PENDING" && <span className="badge final" style={{ marginLeft: 6 }}>Chờ duyệt sau BH</span>}
           {r.post_issue_status === "APPROVED" && <span className="badge issued" style={{ marginLeft: 6 }}>Thêm sau BH</span>}
           {r.part_code_goc && <span className="badge final" style={{ marginLeft: 6 }} title={`Mã đã duyệt: ${r.part_code_goc}${r.part_name_goc ? ` — ${r.part_name_goc}` : ""}`}>Thay từ {r.part_code_goc}</span>}
+          {(r.crm_id || r.order_id) && (
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
+              {r.crm_id && <span title="ID CRM - mã ca bảo hành">Ca {r.crm_id}</span>}
+              {r.crm_id && r.order_id && " · "}
+              {r.order_id && <span title="ID đặt hàng">{r.order_id}</span>}
+            </div>
+          )}
         </>
       ),
     },
@@ -683,6 +690,8 @@ function QtyModal({ item, issued, onClose, onSaved }: any) {
   const [qty, setQty] = useState(String(item.current_qty));
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(item.ghi_chu ?? "");
+  const [crm, setCrm] = useState(item.crm_id ?? "");
+  const [order, setOrder] = useState(item.order_id ?? "");
   const [err, setErr] = useState("");
   const qtyChanged = Number(qty) !== Number(item.current_qty);
   const save = async () => {
@@ -690,6 +699,8 @@ function QtyModal({ item, issued, onClose, onSaved }: any) {
     const body: Record<string, unknown> = {};
     if (qtyChanged) { body.current_qty = Number(qty); body.reason = reason || undefined; }
     if (note.trim() !== (item.ghi_chu ?? "")) body.ghi_chu = note.trim() || null;
+    if (crm.trim() !== (item.crm_id ?? "")) body.crm_id = crm.trim() || null;
+    if (order.trim() !== (item.order_id ?? "")) body.order_id = order.trim() || null;
     if (!Object.keys(body).length) return onClose();
     try {
       await api.patch(`/eo/items/${item.id}`, body);
@@ -708,7 +719,17 @@ function QtyModal({ item, issued, onClose, onSaved }: any) {
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do thay đổi số lượng" />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú dòng</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
-      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ sửa ghi chú thì không cần lý do.</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+        <div>
+          <label className="field-label">ID CRM (mã ca)</label>
+          <input className="input" value={crm} onChange={(e) => setCrm(e.target.value)} placeholder="Tuỳ chọn" />
+        </div>
+        <div>
+          <label className="field-label">ID đặt hàng</label>
+          <input className="input" value={order} onChange={(e) => setOrder(e.target.value)} placeholder="TLK-..." />
+        </div>
+      </div>
+      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ sửa ghi chú / ID CRM / ID đặt hàng thì không cần lý do.</div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
@@ -750,6 +771,8 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
+  const [crm, setCrm] = useState("");
+  const [order, setOrder] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const save = async () => {
@@ -762,7 +785,7 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
       await api.post(`/eo/${eoId}/items`, {
         part_code: partCode.trim(), part_name: partName.trim() || undefined, warehouse,
         supplier: supplier.trim() || undefined, current_qty: Number(qty), reason: reason.trim() || undefined,
-        ghi_chu: note.trim() || undefined,
+        ghi_chu: note.trim() || undefined, crm_id: crm.trim() || undefined, order_id: order.trim() || undefined,
       });
       onSaved();
     } catch {
@@ -791,6 +814,10 @@ function AddItemModal({ eoId, onClose, onSaved }: any) {
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do..." />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+        <div><label className="field-label">ID CRM (mã ca)</label><input className="input" value={crm} onChange={(e) => setCrm(e.target.value)} placeholder="Tuỳ chọn" /></div>
+        <div><label className="field-label">ID đặt hàng</label><input className="input" value={order} onChange={(e) => setOrder(e.target.value)} placeholder="TLK-..." /></div>
+      </div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
