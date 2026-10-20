@@ -6,7 +6,7 @@ import { PageHeader, Spinner } from "../../components/ui";
 import { type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ten } from "../../lib/format";
-import { PHONG_BAN } from "../../lib/nav";
+import { PHONG_BAN, KHO_THEO_PHONG_BAN } from "../../lib/nav";
 import { readSheet, pick, str, parseNum, normKey, writeBook } from "../../lib/excel";
 import { FILE_ACCEPT, checkFile, fileSize, uploadEoFiles } from "../../lib/files";
 
@@ -72,6 +72,10 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     setLoaded(true);
   }, [mode, loaded, eoQ.data]);
 
+  // Phong ban Kho van MB/MN -> kho co dinh cho moi dong MOI (dong da luu giu kho cu)
+  const khoMacDinh = KHO_THEO_PHONG_BAN[phongBan] ?? "";
+  const whOf = (r: ItemRow) => (r.id == null && khoMacDinh ? khoMacDinh : r.warehouse);
+
   const setItem = (i: number, k: keyof ItemRow, v: string) =>
     setItems((rows) => rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const tongSL = items.reduce((s, r) => s + (Number(r.current_qty) || 0), 0);
@@ -80,8 +84,8 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const noReviewer = reviewers.length === 0;
 
   const payloadItems = () =>
-    items.filter((r) => r.part_code.trim() && r.warehouse).map((r) => ({
-      part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: r.warehouse,
+    items.filter((r) => r.part_code.trim() && whOf(r)).map((r) => ({
+      part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: whOf(r),
       supplier: r.supplier.trim() || undefined, current_qty: Number(r.current_qty) || 0,
       reason: r.reason.trim() || undefined, ghi_chu: r.ghi_chu.trim() || undefined,
       crm_id: r.crm_id.trim() || undefined, order_id: r.order_id.trim() || undefined,
@@ -114,8 +118,8 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     });
 
     // dong moi (go tay / import Excel) gui 1 lan
-    const newRows = items.filter((r) => r.id == null && r.part_code.trim() && r.warehouse).map((r) => ({
-      part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: r.warehouse,
+    const newRows = items.filter((r) => r.id == null && r.part_code.trim() && whOf(r)).map((r) => ({
+      part_code: r.part_code.trim(), part_name: r.part_name.trim(), warehouse: whOf(r),
       supplier: r.supplier.trim() || undefined, current_qty: Number(r.current_qty) || 0,
       reason: r.reason.trim() || undefined, ghi_chu: r.ghi_chu.trim() || undefined,
       crm_id: r.crm_id.trim() || undefined, order_id: r.order_id.trim() || undefined,
@@ -189,7 +193,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       const qty = parseNum(pick(r, "Số lượng", "SL", "Số lượng đặt"));
       if (!pc) { errs.push(`Dòng ${r._row}: thiếu Mã linh kiện`); continue; }
       if (/^VD-/i.test(pc)) continue; // dong vi du trong file mau
-      const kho = khoMap.get(normKey(khoRaw));
+      const kho = khoMacDinh || khoMap.get(normKey(khoRaw));
       if (!kho) { errs.push(`Dòng ${r._row} (${pc}): kho "${khoRaw}" không có trong danh mục`); continue; }
       if (qty == null || !(qty > 0)) { errs.push(`Dòng ${r._row} (${pc}): số lượng không hợp lệ`); continue; }
       ok.push({
@@ -283,6 +287,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
             <option value="">Chọn phòng ban</option>
             {[...new Set([...PHONG_BAN, ...(phongBan ? [phongBan] : [])])].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
+          {khoMacDinh && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng linh kiện mới tự đặt kho <b>{khoMacDinh}</b> — không cần chọn kho.</div>}
           <label className="field-label" style={{ marginTop: 14 }}>Nội dung / lý do trình <span className="req">*</span></label>
           <textarea className="textarea" placeholder="Nhập nội dung / lý do trình..." value={noiDung} onChange={(e) => setNoiDung(e.target.value)} />
         </div>
@@ -308,7 +313,9 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                           <input className="input" placeholder="Nhập mã LK" value={r.part_code} onChange={(e) => setItem(i, "part_code", e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập tên linh kiện" value={r.part_name} onChange={(e) => setItem(i, "part_name", e.target.value)} /></td>
-                        <td>{existing ? r.warehouse : (
+                        <td>{existing ? r.warehouse : khoMacDinh ? (
+                          <span title={`Theo phòng ban ${phongBan}`} style={{ whiteSpace: "nowrap", fontSize: 13 }}>{khoMacDinh}</span>
+                        ) : (
                           <select className="select" value={r.warehouse} onChange={(e) => setItem(i, "warehouse", e.target.value)}>
                             <option value="">Chọn kho</option>
                             {(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}

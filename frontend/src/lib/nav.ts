@@ -31,6 +31,12 @@ export const NAV: NavItem[] = [
 
 export const PHONG_BAN = ["Phòng Tác Ngiệp KD", "Phòng kế hoạch cung ứng", "Kho vận Miền Bắc", "Kho vận Miền Nam", "Phòng tài chính kế toán"];
 
+/** Phong ban kho van -> kho dat hang co dinh: chon phong ban la tu gan kho cho moi dong moi, khong phai chon tay. */
+export const KHO_THEO_PHONG_BAN: Record<string, string> = {
+  "Kho vận Miền Bắc": "Kho 6804 - Nguyễn Hữu Thọ",
+  "Kho vận Miền Nam": "Kho 6803 - Q2 HCM",
+};
+
 export const STATUS_META: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: "Nháp", cls: "nhap" },
   IN_REVIEW: { label: "Đang thẩm định", cls: "review" },

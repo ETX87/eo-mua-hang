@@ -6,7 +6,7 @@ import { PageHeader, Card, StatusBadge, StatTile, Modal, Avatar, Spinner } from 
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, tien, ngay, ngayGio, ten } from "../../lib/format";
-import { STATUS_META } from "../../lib/nav";
+import { STATUS_META, KHO_THEO_PHONG_BAN } from "../../lib/nav";
 import { FILE_ACCEPT, checkFile, driveThumb, fileSize, isExcel, isImage, uploadEoFiles } from "../../lib/files";
 import { dailyTemplate, parseDailyFile, type Parsed } from "../../lib/planExcel";
 import { PlanImportModal } from "../../components/PlanImportModal";
@@ -134,7 +134,7 @@ export default function EoDetail() {
       {showCancel && <CancelModal eo={eo} onClose={() => setShowCancel(false)} onDone={() => { setShowCancel(false); refresh(); }} />}
       {showRecall && <RecallModal eo={eo} onClose={() => setShowRecall(false)} onDone={() => { setShowRecall(false); refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); nav(`/eo/${id}/edit`); }} />}
       {replaceItem && <ReplacePartModal item={replaceItem} onClose={() => setReplaceItem(null)} onSaved={() => { setReplaceItem(null); refresh(); }} />}
-      {showAddItem && <AddItemModal eoId={id!} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); refresh(); }} />}
+      {showAddItem && <AddItemModal eoId={id!} phongBan={eo.phong_ban} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); refresh(); }} />}
     </div>
   );
 }
@@ -762,11 +762,11 @@ function CancelModal({ eo, onClose, onDone }: any) {
   );
 }
 
-function AddItemModal({ eoId, onClose, onSaved }: any) {
+function AddItemModal({ eoId, phongBan, onClose, onSaved }: any) {
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const [partCode, setPartCode] = useState("");
   const [partName, setPartName] = useState("");
-  const [warehouse, setWarehouse] = useState("");
+  const [warehouse, setWarehouse] = useState<string>(KHO_THEO_PHONG_BAN[phongBan ?? ""] ?? "");
   const [supplier, setSupplier] = useState("");
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
