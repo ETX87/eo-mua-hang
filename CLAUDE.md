@@ -42,7 +42,7 @@ npm run deploy            # build + wrangler deploy
 migrations/                  0001 schema · 0002 don_gia · 0003 report_cache · 0004 google_drive_oauth
                              · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
-                             · 0010 đồng bộ PO sang DVBH
+                             · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -79,7 +79,8 @@ scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs
 - Thay mã tương đương (`POST /eo/items/:id/replace-part`, EO ISSUED): `part_code` = mã đang dùng,
   `part_code_goc` = mã đã duyệt ban đầu; AMIS khớp theo **cả 2 mã** (`lib/amisMatch.ts`).
 - Đính kèm (`POST /eo/:id/files`, Google Drive): Excel/ảnh/PDF/Word ≤ 20MB, ghi `UPLOAD_FILE` vào event_log.
-  Form Tạo/Sửa EO upload sau khi lưu, trước khi gửi trình.
+  Form Tạo/Sửa EO upload sau khi lưu, trước khi gửi trình. Xóa (`DELETE /eo/:id/files/:fileId`) = xóa mềm
+  (`deleted_at`, file vẫn trên Drive), ghi `DELETE_FILE`; trước ban hành: người quản lý EO / người tải lên, sau: chỉ Admin.
 
 ## Sửa dữ liệu AMIS (kế toán)
 

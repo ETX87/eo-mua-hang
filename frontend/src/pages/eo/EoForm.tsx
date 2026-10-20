@@ -45,6 +45,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const [importedFromExcel, setImportedFromExcel] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileErrs, setFileErrs] = useState<string[]>([]);
+  const [deletedFileIds, setDeletedFileIds] = useState<number[]>([]);
   const importRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -154,6 +155,16 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     const errs = await uploadEoFiles(eoId, pendingFiles);
     setPendingFiles([]);
     if (errs.length) alert(`EO đã lưu nhưng ${errs.length} tệp đính kèm chưa tải lên được:\n- ${errs.join("\n- ")}\n\nCó thể tải lại ở Chi tiết EO › tab "Tài liệu đính kèm".`);
+  };
+  // xoa tep DA tai len (che do Sua) - xoa mem phia server, ghi lich su EO
+  const deleteSavedFile = async (f: any) => {
+    if (!confirm(`Xóa tệp đính kèm "${f.file_name}"?`)) return;
+    try {
+      await api.del(`/eo/${id}/files/${f.id}`);
+      setDeletedFileIds((ids) => [...ids, f.id]);
+    } catch (e: any) {
+      setFileErrs([e?.body?.error === "FORBIDDEN" ? "Bạn không có quyền xóa tệp này." : e?.body?.error === "ADMIN_ONLY_AFTER_ISSUE" ? "EO đã ban hành — chỉ Admin được xóa tệp." : "Lỗi xóa tệp."]);
+    }
   };
   const onPickFiles = (list: FileList | null) => {
     const fs = [...(list ?? [])];
@@ -392,10 +403,13 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
             <h3 style={{ marginTop: 0, fontSize: 15 }}>4. Tài liệu đính kèm <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>(Excel, ảnh, PDF, Word — tối đa 20MB/tệp)</span></h3>
             {mode === "edit" && (eoQ.data?.files ?? []).length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                {(eoQ.data.files as any[]).map((f) => (
-                  <a key={f.id} href={f.drive_url || undefined} target="_blank" rel="noopener" className="badge issued" style={{ textDecoration: "none", gap: 4 }} title={`${ten(f.uploaded_by)} · ${f.uploaded_at}`}>
-                    <I.file width={12} height={12} /> {f.file_name}
-                  </a>
+                {(eoQ.data.files as any[]).filter((f) => !deletedFileIds.includes(f.id)).map((f) => (
+                  <span key={f.id} className="badge issued" style={{ gap: 6 }}>
+                    <a href={f.drive_url || undefined} target="_blank" rel="noopener" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", gap: 4, alignItems: "center" }} title={`${ten(f.uploaded_by)} · ${f.uploaded_at}`}>
+                      <I.file width={12} height={12} /> {f.file_name}
+                    </a>
+                    <span role="button" title="Xóa tệp đính kèm" onClick={() => deleteSavedFile(f)} style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }}>×</span>
+                  </span>
                 ))}
               </div>
             )}
@@ -404,7 +418,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 {pendingFiles.map((f, i) => (
                   <span key={`${f.name}-${i}`} className="badge nhap" style={{ gap: 6 }}>
                     <I.file width={12} height={12} /> {f.name} <span className="muted">{fileSize(f.size)}</span>
-                    <span onClick={() => setPendingFiles((fs) => fs.filter((_, j) => j !== i))} style={{ cursor: "pointer", fontWeight: 800 }}>×</span>
+                    <span role="button" title="Bỏ tệp này" onClick={() => setPendingFiles((fs) => fs.filter((_, j) => j !== i))} style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }}>×</span>
                   </span>
                 ))}
               </div>

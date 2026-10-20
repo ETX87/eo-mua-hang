@@ -70,7 +70,7 @@ app.get("/:id", async (c) => {
       `SELECT p.* FROM item_plan p JOIN eo_item i ON i.id = p.eo_item_id
        WHERE i.eo_id = ? AND p.deleted_at IS NULL ORDER BY p.eo_item_id, p.planned_date`,
     ).bind(id).all(),
-    c.env.DB.prepare("SELECT * FROM eo_file WHERE eo_id = ? ORDER BY id").bind(id).all(),
+    c.env.DB.prepare("SELECT * FROM eo_file WHERE eo_id = ? AND deleted_at IS NULL ORDER BY id").bind(id).all(),
     c.env.DB.prepare("SELECT * FROM eo_comment WHERE eo_id = ? ORDER BY created_at").bind(id).all(),
     c.env.DB.prepare("SELECT * FROM event_log WHERE eo_id = ? ORDER BY created_at, id").bind(id).all(),
   ]);
@@ -497,6 +497,30 @@ app.post("/:id/files", async (c) => {
   ]);
   await bumpVersions(c.env.DB, ["eo"]);
   return c.json(ins, 201);
+});
+
+// ------------------------------------------------------------------ DELETE /:id/files/:fileId (xoa file dinh kem)
+// Xoa mem (giu file tren Drive de truy vet), ghi DELETE_FILE vao lich su. Truoc ban hanh: nguoi quan ly EO
+// (canManageEo) hoac chinh nguoi tai len; sau ban hanh / huy: chi Admin.
+app.delete("/:id/files/:fileId", async (c) => {
+  const id = Number(c.req.param("id"));
+  const fileId = Number(c.req.param("fileId"));
+  const eo = await c.env.DB.prepare("SELECT id, trang_thai, created_by FROM eo WHERE id = ?").bind(id).first<{ id: number; trang_thai: string; created_by: string }>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  const f = await c.env.DB.prepare("SELECT * FROM eo_file WHERE id = ? AND eo_id = ? AND deleted_at IS NULL").bind(fileId, id).first<any>();
+  if (!f) return c.json({ error: "FILE_NOT_FOUND" }, 404);
+  const u = c.get("user");
+  const preIssue = ["DRAFT", "IN_REVIEW", "WAITING_FINAL_APPROVAL", "REJECTED"].includes(eo.trang_thai);
+  const allowed = u.vai_tro === "Admin" || (preIssue && (canManageEo(u, eo) || f.uploaded_by === u.email));
+  if (!allowed) return c.json({ error: preIssue ? "FORBIDDEN" : "ADMIN_ONLY_AFTER_ISSUE" }, 403);
+  const now = nowVN();
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE eo_file SET deleted_at = ?, deleted_by = ? WHERE id = ? AND deleted_at IS NULL").bind(now, u.email, fileId),
+    eventStmt(c.env.DB, { entity_type: "eo_file", entity_id: fileId, eo_id: id, event_type: "DELETE_FILE", user_email: u.email, at: now,
+      before: { file_name: f.file_name, file_size: f.file_size, drive_url: f.drive_url }, metadata: { trang_thai_eo: eo.trang_thai } }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true });
 });
 
 // ------------------------------------------------------------------ POST /items/:itemId/replace-part

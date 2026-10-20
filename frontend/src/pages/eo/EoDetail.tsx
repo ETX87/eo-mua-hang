@@ -27,7 +27,7 @@ const EVENT_LABEL: Record<string, string> = {
   UPDATE_QUANTITY: "Sửa số lượng", CANCEL_LINE: "Hủy dòng", APPROVE_POST_ISSUE_ITEM: "Duyệt dòng thêm sau ban hành",
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
-  IMPORT_ITEMS: "Import dòng linh kiện từ Excel", RECALL_EO: "Rút về nháp để sửa",
+  IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
 };
 
 const PRE_ISSUE_STATES = ["DRAFT", "IN_REVIEW", "WAITING_FINAL_APPROVAL"];
@@ -128,7 +128,7 @@ export default function EoDetail() {
       {tab === "Quy trình duyệt" && <TabQuyTrinh submissions={submissions} approvals={approvals} />}
       {tab === "Lịch sử thay đổi" && <TabLichSu events={events} />}
       {tab === "Bình luận" && <TabBinhLuan eoId={id!} comments={comments} onSent={refresh} />}
-      {tab === "Tài liệu đính kèm" && <TabTaiLieu eoId={id!} files={files} onUploaded={refresh} />}
+      {tab === "Tài liệu đính kèm" && <TabTaiLieu eoId={id!} files={files} onUploaded={refresh} canDelete={myRole === "Admin" || (canManage && !["ISSUED", "CANCELLED"].includes(eo.trang_thai))} myEmail={myEmail} preIssue={!["ISSUED", "CANCELLED"].includes(eo.trang_thai)} />}
 
       {qtyItem && <QtyModal item={qtyItem} issued={issued} onClose={() => setQtyItem(null)} onSaved={() => { setQtyItem(null); refresh(); }} />}
       {showCancel && <CancelModal eo={eo} onClose={() => setShowCancel(false)} onDone={() => { setShowCancel(false); refresh(); }} />}
@@ -585,6 +585,7 @@ function TabLichSu({ events }: any) {
           if (m?.trang_thai_eo) parts.push(`Lúc EO: ${STATUS_META[m.trang_thai_eo]?.label ?? m.trang_thai_eo}`);
           if (a?.ghi_chu) parts.push(a.ghi_chu);
         }
+        if (r.event_type === "DELETE_FILE" && b?.file_name) parts.push(b.file_name);
         if (r.event_type === "REPLACE_PART") parts.unshift(`${b?.part_code} → ${a?.part_code}${a?.part_name ? ` (${a.part_name})` : ""}`);
         if (r.event_type === "BULK_PLAN" && Array.isArray(a)) {
           parts.push(`${m?.part_code ?? ""}: ${a.length} mốc ${m?.loai === "TUAN" ? "tuần" : "ngày"}` +
@@ -630,7 +631,12 @@ function TabBinhLuan({ eoId, comments, onSent }: any) {
   );
 }
 
-function TabTaiLieu({ eoId, files, onUploaded }: any) {
+function TabTaiLieu({ eoId, files, onUploaded, canDelete, myEmail, preIssue }: any) {
+  const del = async (f: any) => {
+    if (!confirm(`Xóa tệp đính kèm "${f.file_name}"?`)) return;
+    try { await api.del(`/eo/${eoId}/files/${f.id}`); onUploaded(); }
+    catch (e: any) { alert(e?.body?.error === "ADMIN_ONLY_AFTER_ISSUE" ? "EO đã ban hành — chỉ Admin được xóa tệp." : e?.body?.error === "FORBIDDEN" ? "Bạn không có quyền xóa tệp này." : "Lỗi xóa tệp."); }
+  };
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
@@ -676,6 +682,11 @@ function TabTaiLieu({ eoId, files, onUploaded }: any) {
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{ten(f.uploaded_by)} · {ngayGio(f.uploaded_at)}{f.file_size ? ` · ${fileSize(f.file_size)}` : ""}</div>
                   {f.ghi_chu && <div style={{ fontSize: 12, marginTop: 3 }}>{f.ghi_chu}</div>}
                   {!f.drive_url && <span className="badge nhap" style={{ marginTop: 6 }}>Chưa đồng bộ</span>}
+                  {(canDelete || (preIssue && f.uploaded_by === myEmail)) && (
+                    <button className="btn ghost sm danger" style={{ marginTop: 6 }} onClick={(e) => { e.stopPropagation(); del(f); }}>
+                      <I.trash width={13} height={13} /> Xóa
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
