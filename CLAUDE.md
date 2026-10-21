@@ -125,7 +125,9 @@ trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate ke
 - **Ngày dự kiến** (`item_plan.planned_date`): ước tính hàng về; quy tắc R1/R4, số lần lùi, cấp CEO dựa vào ngày này.
 - **Ngày nhà máy cam kết** (`item_plan.factory_committed_date`): NM/NCC xác nhận. Thường = ngày dự kiến → form / import
   Excel tự lấy ngày dự kiến theo ngày NM khi để trống.
-Không dùng chữ "ngày về" trần cho ngày dự kiến. Một màn duy nhất cho cả 3 ngày của 1 dòng: `NgayHangVeModal`
+Ngày hàng về **không có đường nhập tay nào** (không cột DB, không API ghi): import Excel kế hoạch (`parseDailyFile`) chặn cả file
+nếu có cột mang nghĩa thực tế (`COT_THUC_TE`: "Ngày hàng về", "Ngày về", "Ngày nhập kho", "SL đã về"…) có dữ liệu — không thêm
+alias "Ngày về" / "SL về" cho ngày dự kiến / SL kế hoạch. Không dùng chữ "ngày về" trần cho ngày dự kiến. Một màn duy nhất cho cả 3 ngày của 1 dòng: `NgayHangVeModal`
 (`pages/theodoi/shared.tsx`, dữ liệu `GET /api/theo-doi/dong/:id` → `item`, `ke_hoach`, `phieu_nhap`). Ô bảng dùng `<BaNgay>`.
 
 ## Popup xem nhanh (95% màn hình)

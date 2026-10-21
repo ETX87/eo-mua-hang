@@ -1,4 +1,4 @@
-import { readSheet, pick, str, parseNum, parseDate, normWeek, writeBook, weekSat, weekStartOf } from "./excel";
+import { readSheet, pick, str, normKey, parseNum, parseDate, normWeek, writeBook, weekSat, weekStartOf } from "./excel";
 import { ngay } from "./format";
 
 /** Dong gui len POST /api/plans/bulk (khop backend routes/plans.ts BulkRow). */
@@ -63,16 +63,27 @@ export function dailyTemplate(lines: PlanLine[], filename: string) {
   ]);
 }
 
+/** Cot mang nghia hang DA VE thuc te - lay tu dong tu phieu nhap AMIS, khong cho import (tranh nhap tay ngay hang ve). */
+const COT_THUC_TE = ["Ngày hàng về", "Ngày về", "Ngày hàng về thực tế", "Ngày về thực tế", "Ngày nhập kho", "Ngày nhập",
+  "SL về", "SL đã về", "SL hàng về", "SL nhập kho", "Đã về", "Đã về (AMIS)"];
+
 export async function parseDailyFile(file: File): Promise<Parsed> {
-  const { rows } = await readSheet(file);
+  const { headers, rows } = await readSheet(file);
   const out: BulkRow[] = [];
   const errs: string[] = [];
   let skipped = 0;
+  const cam = new Set(COT_THUC_TE.map(normKey));
+  const cotCam = headers.filter((h) => cam.has(normKey(h)) && rows.some((r) => str(r[normKey(h)]) !== ""));
+  if (cotCam.length) {
+    errs.push(`File có cột ${cotCam.map((h) => `"${h}"`).join(", ")}: ngày hàng về / số lượng đã về lấy TỰ ĐỘNG từ phiếu nhập AMIS, không nhập tay được. `
+      + `Nếu đó là ngày ước tính hàng sẽ về, đổi tên cột thành "Ngày dự kiến" (số lượng: "SL kế hoạch"); nếu là số liệu thực tế, xóa cột rồi import lại.`);
+    return { rows: [], errs, skipped: 0 };
+  }
   for (const r of rows) {
     const nm = parseDate(pick(r, "Ngày nhà máy cam kết", "Ngày NM cam kết"));
     // Ngay du kien de trong -> lay theo ngay nha may cam ket (thuong 2 ngay trung nhau)
-    const d = parseDate(pick(r, "Ngày dự kiến", "Ngày về dự kiến", "Ngày về", "Ngày đáp ứng", "Ngày")) ?? (nm && nm !== "INVALID" ? nm : null);
-    const q = parseNum(pick(r, "SL kế hoạch", "Số lượng", "SL về", "SL"));
+    const d = parseDate(pick(r, "Ngày dự kiến", "Ngày về dự kiến", "Ngày đáp ứng", "Ngày")) ?? (nm && nm !== "INVALID" ? nm : null);
+    const q = parseNum(pick(r, "SL kế hoạch", "Số lượng", "SL"));
     if (d == null && q == null) { skipped++; continue; }
     const id = ident(r, errs);
     if (!id) continue;
