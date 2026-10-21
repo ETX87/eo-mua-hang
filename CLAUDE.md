@@ -116,6 +116,8 @@ Quy tắc R1/R3/R4, giải trình (Ai + Lỗi gì + ảnh), cấp CEO, form push
 `lib/theoDoi.ts`: `layDongTheoDoi` (dựa trên báo cáo 0.1 + item_plan + event_log + tl_loi), `danhGiaQuyTac` (ghi lỗi
 idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state` trước, không ghi khóa mỗi request).
 `/api/partner/*` (`routes/partner.ts`) mount TRƯỚC session middleware. Domain version `theo_doi` (DVBH tag có).
+Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file
+trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate key này).
 
 ## Quy ước
 

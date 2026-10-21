@@ -133,13 +133,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(true);
   const loc = useLocation();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<Me>("/users/me") });
-  const inbox = useQuery({
+  // "Viec can xu ly" theo vai tro (backend routes/viecCanLam.ts) -> so do sau ten menu. Giu queryKey "inbox-count"
+  // vi nhieu man da invalidate key nay sau khi duyet / sua.
+  const viec = useQuery({
     queryKey: ["inbox-count"],
-    queryFn: () => api.get<{ count: number }>("/approvals/count"),
-    refetchInterval: 120000,
+    queryFn: () => api.get<{ items: { to: string; count: number }[]; tong: number }>("/viec-can-lam"),
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
   });
-  const approvalsBadge = inbox.data?.count ?? 0;
+  const badgeOf = (to: string) => (viec.data?.items ?? []).filter((x) => x.to === to).reduce((s, x) => s + x.count, 0);
   const uName = me.data?.ho_ten && !me.data.ho_ten.includes("@") ? me.data.ho_ten : ten(me.data?.email) || "—";
 
   return (
@@ -172,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   to={n.to}
                   end={n.to === "/" || n.to === "/plans"}
                   style={({ isActive }) => ({
-                    display: "flex", alignItems: "center", gap: 13, padding: open ? "11px 14px" : "11px",
+                    display: "flex", alignItems: "center", gap: 13, padding: open ? "11px 14px" : "11px", position: "relative",
                     borderRadius: 14, margin: "3px 0", fontWeight: 600, fontSize: 14,
                     color: "var(--brand-ink)",
                     background: isActive ? "#fff" : "transparent",
@@ -182,9 +184,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <Icon width={21} height={21} style={{ flexShrink: 0 }} />
                   {open && <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label}</span>}
-                  {open && n.badgeKey === "approvals" && approvalsBadge > 0 && (
-                    <span style={{ background: "#EF4444", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 800, padding: "2px 8px", lineHeight: 1.3 }}>{approvalsBadge}</span>
+                  {open && badgeOf(n.to) > 0 && (
+                    <span title="Việc cần xử lý" style={{ background: "#EF4444", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 800, padding: "2px 8px", lineHeight: 1.3 }}>{badgeOf(n.to) > 999 ? "999+" : badgeOf(n.to)}</span>
                   )}
+                  {!open && badgeOf(n.to) > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
                 </NavLink>
               </div>
             );
