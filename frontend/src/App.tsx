@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api/client";
 import { AppShell } from "./components/AppShell";
+import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
 import EoList from "./pages/eo/EoList";
@@ -32,6 +33,7 @@ export default function App() {
   if (me.data && me.data.trang_thai_duyet !== "Da duyet") return <Pending me={me.data} />;
 
   return (
+    <QuickViewProvider>
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -56,5 +58,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
+    </QuickViewProvider>
   );
 }

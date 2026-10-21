@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { EoLink, PartLink } from "../../components/quickview/QuickView";
 import { PageHeader, Card, Spinner } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
@@ -45,8 +46,8 @@ export default function CanhBaoCeo() {
               {rows.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có đơn hàng ở cấp CEO.</td></tr>}
               {rows.map((r) => (
                 <tr key={r.item_id}>
-                  <td><span className="cell-link" onClick={() => nav(`/eo/${r.eo_id}`)}>{r.ma_phe_duyet || r.eo_code}</span><div className="muted" style={{ fontSize: 11 }}>{ten(r.nguoi_dat)}</div></td>
-                  <td><b>{r.part_code}</b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></td>
+                  <td><EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink><div className="muted" style={{ fontSize: 11 }}>{ten(r.nguoi_dat)}</div></td>
+                  <td><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></td>
                   <td>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
                   <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
                   <td>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</td>

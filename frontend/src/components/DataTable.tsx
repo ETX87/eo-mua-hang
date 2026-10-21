@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { I } from "../lib/icons";
+import { Clip } from "./Clip";
 
 export interface Col<T> {
   key: string;
@@ -8,6 +9,10 @@ export interface Col<T> {
   align?: "left" | "right" | "center";
   width?: number | string;
   sticky?: boolean;
+  /** Rong toi da cua o chu (mac dinh = width hoac 240px); qua dai hien "…" + tooltip. Cot so / can giua khong cat. */
+  maxW?: number | string;
+  /** true = khong cat chu (cho o can xuong dong, vd o nhap lieu). */
+  wrap?: boolean;
 }
 
 export const PAGE_SIZE = 10; // quy uoc: moi bang 10 dong / trang
@@ -62,7 +67,7 @@ export function DataTable<T>({
                 {cols.map((c) => (
                   <td key={c.key} style={{ textAlign: c.align ?? "left",
                     position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined }}>
-                    {c.render(row)}
+                    {c.wrap || c.align === "right" || c.align === "center" ? c.render(row) : <Clip w={c.maxW ?? c.width ?? 240}>{c.render(row)}</Clip>}
                   </td>
                 ))}
               </tr>

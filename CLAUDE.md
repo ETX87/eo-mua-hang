@@ -119,6 +119,15 @@ idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state
 Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file
 trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate key này).
 
+## Popup xem nhanh (95% màn hình)
+
+`components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,
+Esc đóng popup trên cùng. Mở từ bất kỳ đâu bằng `useQuickView().openEo/openPart`, `<EoLink id>`, `<PartLink ma>`.
+Dữ liệu bổ sung: `routes/xemNhanh.ts` mount `/api/xem` — `GET /eo/:id/bo-sung` (theo dõi, lỗi, giải trình, push, mail,
+phiếu AMIS, cảnh báo) và `GET /linh-kien?ma=` (lịch sử EO/đặt hàng, AMIS, log, lỗi theo mã). Nhãn sự kiện dùng chung
+`lib/eventLabels.ts`. Bảng: `DataTable` cột có `maxW` → `<Clip>` cắt "…" + title khi bị cắt; form EO `table.eo-lines`
+table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
+
 ## Quy ước
 
 - Cột & comment DB/code **không dấu**; chuỗi UI có dấu.

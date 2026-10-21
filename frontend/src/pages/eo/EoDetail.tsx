@@ -2,11 +2,13 @@ import { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { PartLink } from "../../components/quickview/QuickView";
 import { PageHeader, Card, StatusBadge, StatTile, Modal, Avatar, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, tien, ngay, ngayGio, ten } from "../../lib/format";
 import { STATUS_META, KHO_THEO_PHONG_BAN } from "../../lib/nav";
+import { EVENT_LABEL } from "../../lib/eventLabels";
 import { FILE_ACCEPT, checkFile, driveThumb, fileSize, isExcel, isImage, uploadEoFiles } from "../../lib/files";
 import { dailyTemplate, parseDailyFile, type Parsed } from "../../lib/planExcel";
 import { PlanImportModal } from "../../components/PlanImportModal";
@@ -19,16 +21,7 @@ const APR_STATUS: Record<string, { label: string; cls: string }> = {
   REJECTED: { label: "Từ chối", cls: "reject" }, REQUEST_UPDATE: { label: "Yêu cầu cập nhật", cls: "final" },
   WITHDRAWN: { label: "Đã rút", cls: "nhap" }, SKIPPED: { label: "Bỏ qua", cls: "nhap" },
 };
-const EVENT_LABEL: Record<string, string> = {
-  CREATE_EO: "Tạo EO", UPDATE_EO: "Sửa thông tin EO", SUBMIT_EO: "Gửi trình duyệt", RESUBMIT_EO: "Trình lại",
-  APPROVE_REVIEW: "Duyệt thẩm định", REJECT_REVIEW: "Từ chối thẩm định", REQUEST_UPDATE: "Yêu cầu cập nhật",
-  WITHDRAW_REVIEW: "Rút phiếu thẩm định", APPROVE_FINAL: "Duyệt cuối", REJECT_FINAL: "Từ chối duyệt cuối",
-  ISSUE_EO: "Ban hành EO", CANCEL_EO: "Hủy EO", ADD_ITEM: "Thêm dòng linh kiện", UPDATE_ITEM: "Sửa dòng linh kiện",
-  UPDATE_QUANTITY: "Sửa số lượng", CANCEL_LINE: "Hủy dòng", APPROVE_POST_ISSUE_ITEM: "Duyệt dòng thêm sau ban hành",
-  ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
-  UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
-  IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
-};
+
 
 const PRE_ISSUE_STATES = ["DRAFT", "IN_REVIEW", "WAITING_FINAL_APPROVAL"];
 
@@ -159,7 +152,7 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
     {
       key: "part_code", header: "Mã linh kiện", render: (r) => (
         <>
-          <span className="cell-link" style={{ textDecoration: "underline" }}>{r.legacy_id || r.part_code}</span>
+          <PartLink ma={r.part_code} />{r.legacy_id && <span className="muted" style={{ fontSize: 10.5, marginLeft: 4 }}>{r.legacy_id}</span>}
           {r.post_issue_status === "PENDING" && <span className="badge final" style={{ marginLeft: 6 }}>Chờ duyệt sau BH</span>}
           {r.post_issue_status === "APPROVED" && <span className="badge issued" style={{ marginLeft: 6 }}>Thêm sau BH</span>}
           {r.part_code_goc && <span className="badge final" style={{ marginLeft: 6 }} title={`Mã đã duyệt: ${r.part_code_goc}${r.part_name_goc ? ` — ${r.part_name_goc}` : ""}`}>Thay từ {r.part_code_goc}</span>}

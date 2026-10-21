@@ -83,6 +83,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
 
   const userOpts = (users.data ?? []).map((u: any) => u.email);
   const noReviewer = reviewers.length === 0;
+  const tenNguoi = (email: string) => { const x = (users.data ?? []).find((u: any) => u.email === email); return x?.ho_ten ? `${x.ho_ten} — ${email}` : email; };
 
   const payloadItems = () =>
     items.filter((r) => r.part_code.trim() && whOf(r)).map((r) => ({
@@ -244,17 +245,17 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   };
 
   const itemCols: Col<ItemRow>[] = [
-    { key: "stt", header: "STT", align: "center", width: 44, render: () => "" },
-    { key: "pc", header: <>Mã linh kiện <span className="req">*</span></>, render: (_r) => null },
-    { key: "pn", header: "Tên linh kiện", render: () => null },
-    { key: "wh", header: <>Kho cần đặt <span className="req">*</span></>, render: () => null },
-    { key: "sp", header: "Đối tác", render: () => null },
-    { key: "qty", header: <>Số lượng <span className="req">*</span></>, align: "right", render: () => null },
-    { key: "rs", header: "Lý do PS", render: () => null },
-    { key: "gc", header: "Ghi chú", render: () => null },
-    { key: "crm", header: <span title="Mã ca bảo hành (tuỳ chọn) - app DVBH dùng để gắn PO vào đúng ca">ID CRM</span>, render: () => null },
-    { key: "od", header: <span title="Mã đơn đặt linh kiện (TLK-...) - tuỳ chọn">ID đặt hàng</span>, render: () => null },
-    { key: "act", header: "Thao tác", align: "center", width: 60, render: () => null },
+    { key: "stt", header: "#", align: "center", width: 36, render: () => "" },
+    { key: "pc", header: <>Mã linh kiện <span className="req">*</span></>, width: 150, render: (_r) => null },
+    { key: "pn", header: "Tên linh kiện", width: 260, render: () => null },
+    { key: "wh", header: <>Kho cần đặt <span className="req">*</span></>, width: 230, render: () => null },
+    { key: "sp", header: "Đối tác", width: 140, render: () => null },
+    { key: "qty", header: <>SL <span className="req">*</span></>, align: "right", width: 84, render: () => null },
+    { key: "rs", header: "Lý do PS", width: 170, render: () => null },
+    { key: "gc", header: "Ghi chú", width: 190, render: () => null },
+    { key: "crm", header: <span title="Mã ca bảo hành (tuỳ chọn) - app DVBH dùng để gắn PO vào đúng ca">ID CRM</span>, width: 110, render: () => null },
+    { key: "od", header: <span title="Mã đơn đặt linh kiện (TLK-...) - tuỳ chọn">ID đặt hàng</span>, width: 120, render: () => null },
+    { key: "act", header: "", align: "center", width: 40, render: () => null },
   ];
 
   if (mode === "edit" && (!loaded || eoQ.isLoading)) return <Spinner />;
@@ -279,12 +280,16 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       )}
       {err && <div style={{ color: "var(--danger)", marginBottom: 12, fontSize: 13 }}>{err}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div className="card card-pad">
           <h3 style={{ marginTop: 0, fontSize: 15 }}>1. Thông tin chung</h3>
+          <div className="eo-form-info">
+          <div style={{ gridColumn: "span 2" }}>
           <label className="field-label">Tiêu đề <span className="req">*</span></label>
           <input className="input" placeholder="Nhập tiêu đề..." value={tieuDe} onChange={(e) => setTieuDe(e.target.value)} />
-          <label className="field-label" style={{ marginTop: 14 }}>Loại hình <span className="req">*</span></label>
+          </div>
+          <div>
+          <label className="field-label">Loại hình <span className="req">*</span></label>
           <select className="select" value={loaiHinh} onChange={(e) => setLoaiHinh(e.target.value)}>
             <option value="">Chọn loại hình</option>
             {loaiHinh && !(cats.data ?? []).some((c) => c.code === loaiHinh) && <option value={loaiHinh}>{loaiHinh}</option>}
@@ -293,14 +298,20 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           {cats.data && cats.data.length === 0 && (
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chưa có danh mục Loại hình — Admin thêm ở Cài đặt › Danh mục.</div>
           )}
-          <label className="field-label" style={{ marginTop: 14 }}>Phòng ban <span className="req">*</span></label>
+          </div>
+          <div>
+          <label className="field-label">Phòng ban <span className="req">*</span></label>
           <select className="select" value={phongBan} onChange={(e) => setPhongBan(e.target.value)}>
             <option value="">Chọn phòng ban</option>
             {[...new Set([...PHONG_BAN, ...(phongBan ? [phongBan] : [])])].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           {khoMacDinh && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng linh kiện mới tự đặt kho <b>{khoMacDinh}</b> — không cần chọn kho.</div>}
-          <label className="field-label" style={{ marginTop: 14 }}>Nội dung / lý do trình <span className="req">*</span></label>
-          <textarea className="textarea" placeholder="Nhập nội dung / lý do trình..." value={noiDung} onChange={(e) => setNoiDung(e.target.value)} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+          <label className="field-label">Nội dung / lý do trình <span className="req">*</span></label>
+          <textarea className="textarea" style={{ minHeight: 64 }} placeholder="Nhập nội dung / lý do trình..." value={noiDung} onChange={(e) => setNoiDung(e.target.value)} />
+          </div>
+          </div>
         </div>
 
         <div>
@@ -312,34 +323,35 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
               </div>
             )}
             <div className="tbl-wrap">
-              <table className="tbl">
-                <thead><tr>{itemCols.map((c) => <th key={c.key} style={{ textAlign: c.align ?? "left", width: c.width }}>{c.header}</th>)}</tr></thead>
+              <table className="tbl tbl-dense eo-lines">
+                <colgroup>{itemCols.map((c) => <col key={c.key} style={{ width: c.width }} />)}</colgroup>
+                <thead><tr>{itemCols.map((c) => <th key={c.key} style={{ textAlign: c.align ?? "left" }}>{c.header}</th>)}</tr></thead>
                 <tbody>
                   {items.map((r, i) => {
                     const existing = r.id != null;
                     return (
                       <tr key={r.id ?? `new-${i}`}>
                         <td style={{ textAlign: "center" }}>{i + 1}</td>
-                        <td>{existing ? r.part_code : (
+                        <td>{existing ? <b>{r.part_code}</b> : (
                           <input className="input" placeholder="Nhập mã LK" value={r.part_code} onChange={(e) => setItem(i, "part_code", e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập tên linh kiện" value={r.part_name} onChange={(e) => setItem(i, "part_name", e.target.value)} /></td>
-                        <td>{existing ? r.warehouse : khoMacDinh ? (
-                          <span title={`Theo phòng ban ${phongBan}`} style={{ whiteSpace: "nowrap", fontSize: 13 }}>{khoMacDinh}</span>
+                        <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.warehouse}>{r.warehouse}</span> : khoMacDinh ? (
+                          <span className="clip" style={{ display: "block", fontSize: 12.5 }} title={`Theo phòng ban ${phongBan}: ${khoMacDinh}`}>{khoMacDinh}</span>
                         ) : (
-                          <select className="select" value={r.warehouse} onChange={(e) => setItem(i, "warehouse", e.target.value)}>
+                          <select className="select" title={r.warehouse} value={r.warehouse} onChange={(e) => setItem(i, "warehouse", e.target.value)}>
                             <option value="">Chọn kho</option>
                             {(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
                           </select>
                         )}</td>
                         <td><input className="input" placeholder="Nhập đối tác" value={r.supplier} onChange={(e) => setItem(i, "supplier", e.target.value)} /></td>
                         <td><input className="input right" placeholder="Nhập SL" value={r.current_qty} onChange={(e) => setItem(i, "current_qty", e.target.value)} /></td>
-                        <td>{existing ? (r.reason || "—") : (
+                        <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.reason}>{r.reason || "—"}</span> : (
                           <input className="input" placeholder="Nhập lý do..." value={r.reason} onChange={(e) => setItem(i, "reason", e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập ghi chú..." value={r.ghi_chu} onChange={(e) => setItem(i, "ghi_chu", e.target.value)} /></td>
-                        <td><input className="input" style={{ minWidth: 90 }} placeholder="Mã ca" value={r.crm_id} onChange={(e) => setItem(i, "crm_id", e.target.value)} /></td>
-                        <td><input className="input" style={{ minWidth: 100 }} placeholder="TLK-..." value={r.order_id} onChange={(e) => setItem(i, "order_id", e.target.value)} /></td>
+                        <td><input className="input" placeholder="Mã ca" value={r.crm_id} onChange={(e) => setItem(i, "crm_id", e.target.value)} /></td>
+                        <td><input className="input" placeholder="TLK-..." value={r.order_id} onChange={(e) => setItem(i, "order_id", e.target.value)} /></td>
                         <td style={{ textAlign: "center" }}>
                           <button className="btn ghost sm danger" onClick={() => setItems((rs) => rs.filter((_, j) => j !== i))}><I.trash width={15} height={15} /></button>
                         </td>
@@ -369,14 +381,16 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
             )}
           </div>
 
-          <div className="card card-pad" style={{ marginTop: 16 }}>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16 }}>
+          <div className="card card-pad">
             <h3 style={{ marginTop: 0, fontSize: 15 }}>3. Thẩm định & phê duyệt</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
                 <label className="field-label">Người thẩm định <span className="muted">(có thể để trống)</span></label>
                 <select className="select" value="" onChange={(e) => { const v = e.target.value; if (v && !reviewers.includes(v)) setReviewers([...reviewers, v]); }}>
                   <option value="">Chọn người thẩm định</option>
-                  {userOpts.filter((u) => !reviewers.includes(u)).map((u) => <option key={u} value={u}>{u}</option>)}
+                  {userOpts.filter((u) => !reviewers.includes(u)).map((u) => <option key={u} value={u}>{tenNguoi(u)}</option>)}
                 </select>
                 {reviewers.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -393,13 +407,13 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 <label className="field-label">Người duyệt cuối <span className="req">*</span></label>
                 <select className="select" value={finalApprover} onChange={(e) => setFinalApprover(e.target.value)}>
                   <option value="">Chọn người duyệt cuối</option>
-                  {userOpts.map((u) => <option key={u} value={u}>{u}</option>)}
+                  {userOpts.map((u) => <option key={u} value={u}>{tenNguoi(u)}</option>)}
                 </select>
               </div>
             </div>
           </div>
 
-          <div className="card card-pad" style={{ marginTop: 16 }}>
+          <div className="card card-pad">
             <h3 style={{ marginTop: 0, fontSize: 15 }}>4. Tài liệu đính kèm <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>(Excel, ảnh, PDF, Word — tối đa 20MB/tệp)</span></h3>
             {mode === "edit" && (eoQ.data?.files ?? []).length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>

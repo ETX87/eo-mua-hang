@@ -1,3 +1,4 @@
+import { EoLink, PartLink } from "../../components/quickview/QuickView";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -27,19 +28,19 @@ export default function ReportTienDo() {
     { key: "tt", header: "Trạng thái đơn hàng", sticky: true, render: (r) => <span className={`badge ${badgeFor(r.trang_thai_don_hang)}`}>{r.trang_thai_don_hang}</span> },
     { key: "cb", header: "Cảnh báo", render: (r) => r.canh_bao ? <span className={`badge ${badgeFor(r.canh_bao)}`}>{r.canh_bao}</span> : "" },
     { key: "toc", header: "Tốc độ hàng về", width: 130, render: (r) => <span style={{ whiteSpace: "nowrap" }}>{r.toc_do_hang_ve}</span> },
-    { key: "mp", header: "Mã phê duyệt (EO)", width: 120, render: (r) => r.ma_phe_duyet || "" },
+    { key: "mp", header: "Mã phê duyệt (EO)", width: 120, render: (r) => r.eo_id ? <EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink> : (r.ma_phe_duyet || "") },
     { key: "pl", header: "Phân loại thời điểm đặt", width: 150, render: (r) => <span style={{ whiteSpace: "nowrap" }}>{r.phan_loai_thoi_diem_dat}</span> },
     { key: "idlk", header: "ID ĐẶT LK", width: 120, render: (r) => r.id_dat_lk },
     { key: "idtl", header: "ID tài liệu (mã EO)", width: 120, render: (r) => r.id_tai_lieu },
-    { key: "lh", header: "Loại hình", width: 150, render: (r) => <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block", maxWidth: 150 }}>{r.loai_hinh || ""}</span> },
-    { key: "ld", header: "Lý do PS", width: 190, render: (r) => r.ly_do_ps || "" },
+    { key: "lh", header: "Loại hình", width: 150, render: (r) => r.loai_hinh || "" },
+    { key: "ld", header: "Lý do PS", maxW: 160, render: (r) => r.ly_do_ps || "" },
     { key: "crm", header: "ID CRM", render: (r) => r.id_crm || "" },
     { key: "idh", header: "ID đặt hàng", render: (r) => r.id_dat_hang || "" },
-    { key: "gc", header: "Ghi chú", render: (r) => r.ghi_chu || "" },
-    { key: "kho", header: "Kho", render: (r) => r.kho },
-    { key: "dt", header: "Đối tác", render: (r) => r.doi_tac || "" },
-    { key: "pc", header: "Mã linh kiện", render: (r) => r.part_code },
-    { key: "pn", header: "Tên linh kiện", width: 180, render: (r) => r.part_name },
+    { key: "gc", header: "Ghi chú", maxW: 160, render: (r) => r.ghi_chu || "" },
+    { key: "kho", header: "Kho", maxW: 150, render: (r) => r.kho },
+    { key: "dt", header: "Đối tác", maxW: 120, render: (r) => r.doi_tac || "" },
+    { key: "pc", header: "Mã linh kiện", render: (r) => <PartLink ma={r.part_code} /> },
+    { key: "pn", header: "Tên linh kiện", maxW: 200, render: (r) => r.part_name },
     { key: "sl", header: "SL đặt", align: "right", render: (r) => soLuong(r.so_luong_dat) },
     { key: "amis", header: "SL nhập theo AMIS (đúng EO)", align: "right", render: (r) => soLuong(r.sl_nhap_amis_dung_eo) },
     { key: "st", header: "Đối chiếu sai/thừa", align: "right", render: (r) => <span style={{ color: r.doi_chieu_sai_thua < 0 ? "var(--danger)" : undefined }}>{soLuong(r.doi_chieu_sai_thua)}</span> },

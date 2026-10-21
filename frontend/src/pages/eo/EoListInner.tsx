@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { useQuickView } from "../../components/quickview/QuickView";
 import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, type Col } from "../../components/DataTable";
 import { StatusBadge, TypeBadge } from "../../components/ui";
 import { I } from "../../lib/icons";
@@ -60,25 +61,24 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
   const cats = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
   const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
 
+  const qv = useQuickView();
   const rows = list.data?.rows ?? [];
   const creatorOpts = (users.data ?? []).map((u: any) => u.email as string);
 
   const cols: Col<EoRow>[] = [
-    { key: "eo_code", header: "Mã EO", render: (r) => <span className="cell-link">{r.eo_code}</span> },
-    { key: "approval_code", header: "Mã phê duyệt", render: (r) => r.approval_code || "" },
-    { key: "tieu_de", header: "Tiêu đề", width: 240, render: (r) => <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35, minWidth: 180 }}>{r.tieu_de || "—"}</span> },
+    { key: "eo_code", header: "Mã EO · 3TDO", render: (r) => <><span className="cell-link">{r.eo_code}</span><div className="muted" style={{ fontSize: 11 }}>{r.approval_code || "chưa ban hành"}</div></> },
+    { key: "tieu_de", header: "Tiêu đề", maxW: 190, render: (r) => r.tieu_de || "—" },
     { key: "loai_hinh", header: "Loại hình", render: (r) => <TypeBadge loai={r.loai_hinh} /> },
-    { key: "phong_ban", header: "Phòng ban", render: (r) => r.phong_ban || "" },
+    { key: "phong_ban", header: "Phòng ban", maxW: 115, render: (r) => r.phong_ban || "" },
     { key: "trang_thai", header: "Trạng thái", render: (r) => <StatusBadge status={r.trang_thai} /> },
-    { key: "created_by", header: "Người tạo", render: (r) => ten(r.created_by) },
-    { key: "created_at", header: "Ngày tạo", render: (r) => ngay(r.created_at) },
-    { key: "so_dong", header: "Số dòng LK", align: "right", render: (r) => soLuong(r.so_dong) },
-    { key: "tong_sl", header: "Tổng SL đặt", align: "right", render: (r) => soLuong(r.tong_sl) },
-    { key: "final", header: "Người duyệt cuối", render: (r) => ten(r.final_approver_email) },
+    { key: "created_by", header: "Người tạo · ngày", maxW: 110, render: (r) => <>{ten(r.created_by)}<div className="muted" style={{ fontSize: 11 }}>{ngay(r.created_at)}</div></> },
+    { key: "so_dong", header: "Dòng · SL", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div></> },
+    { key: "final", header: "Người duyệt cuối", maxW: 100, render: (r) => ten(r.final_approver_email) },
     {
-      key: "act", header: "Thao tác", align: "center", render: (r) => (
+      key: "act", header: "", align: "center", render: (r) => (
         <div style={{ display: "flex", gap: 4, justifyContent: "center" }} onClick={(e) => e.stopPropagation()}>
-          <button className="btn ghost sm" onClick={() => nav(`/eo/${r.id}`)}><I.eye width={15} height={15} /></button>
+          <button className="btn ghost sm" title="Xem nhanh" onClick={() => qv.openEo(r.id)}><I.eye width={15} height={15} /></button>
+          <button className="btn ghost sm" title="Mở trang chi tiết" onClick={() => nav(`/eo/${r.id}`)}><I.arrowRight width={15} height={15} /></button>
         </div>
       ),
     },
@@ -136,7 +136,7 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
         <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
       </FilterBar>
 
-      <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => nav(`/eo/${r.id}`)} empty="Chưa có EO nào khớp bộ lọc" />
+      <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
 
       {list.data && (
         <Pagination

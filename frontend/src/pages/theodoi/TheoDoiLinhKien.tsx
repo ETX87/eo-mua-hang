@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { EoLink, PartLink } from "../../components/quickview/QuickView";
 import { PageHeader, Card, Spinner, Modal } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
@@ -137,8 +138,8 @@ export default function TheoDoiLinhKien() {
                   return (
                     <tr key={r.item_id} style={{ background: r.ceo_ly_do.length ? "#FEF2F2" : undefined }}>
                       <td style={cell}><input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); n.has(r.item_id) ? n.delete(r.item_id) : n.add(r.item_id); return n; })} /></td>
-                      <td style={cell}><span className="cell-link" onClick={() => nav(`/eo/${r.eo_id}`)}>{r.ma_phe_duyet || r.eo_code}</span><div className="muted" style={{ fontSize: 11 }}>{r.eo_code} · {ten(r.nguoi_dat)}</div></td>
-                      <td style={{ ...cell, maxWidth: 260 }}><b>{r.part_code}</b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div>{r.id_crm && <div className="muted" style={{ fontSize: 11 }}>Ca {r.id_crm}</div>}</td>
+                      <td style={cell}><EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink><div className="muted" style={{ fontSize: 11 }}>{r.eo_code} · {ten(r.nguoi_dat)}</div></td>
+                      <td style={{ ...cell, maxWidth: 260 }}><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div>{r.id_crm && <div className="muted" style={{ fontSize: 11 }}>Ca {r.id_crm}</div>}</td>
                       <td style={cell}>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
                       <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>{soLuong(r.so_luong_dat)} / {soLuong(r.sl_nhap_amis)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
                       <td style={{ ...cell, whiteSpace: "nowrap", fontSize: 12 }}>{ngayGio(r.bat_dau)}<div className="muted">{r.ap_dung ? `hạn ${ngayGio(r.han_ngay_du_kien)}` : "không áp dụng quy tắc"}</div></td>
