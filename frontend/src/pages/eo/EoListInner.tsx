@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -30,7 +30,8 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Người duyệt cuối", get: (r) => ten(r.final_approver_email) },
 ];
 
-export default function EoListInner({ compact }: { compact?: boolean }) {
+/** actions: nut them o cuoi thanh loc (vd "Tao EO" o trang Danh sach EO - trang khong co dong tieu de rieng). */
+export default function EoListInner({ compact, actions }: { compact?: boolean; actions?: ReactNode }) {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
@@ -134,6 +135,7 @@ export default function EoListInner({ compact }: { compact?: boolean }) {
         <RefreshFiltersBtn onClick={reset} />
         <div style={{ flex: 1 }} />
         <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
+        {actions}
       </FilterBar>
 
       <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
