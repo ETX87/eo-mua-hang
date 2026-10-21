@@ -44,7 +44,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
-                             · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail)
+                             · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)

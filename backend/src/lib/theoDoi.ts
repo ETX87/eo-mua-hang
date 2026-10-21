@@ -61,13 +61,21 @@ async function ngayApDung(env: Env): Promise<string> {
   const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_ap_dung_tu'").first<{ value: string }>();
   return (r?.value || "2026-10-21").slice(0, 10);
 }
+/** Dong dat (ban hanh / tao dong) TRUOC ngay nay bi bo khoi Theo doi hoan toan (chot 2026-10-21: bo don tu thang 06/2026
+ *  ve truoc). app_settings 'theo_doi_bo_qua_truoc', Admin sua o Cau hinh he thong. */
+async function ngayBoQuaTruoc(env: Env): Promise<string> {
+  const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'").first<{ value: string }>();
+  return (r?.value || "2026-07-01").slice(0, 10);
+}
 
 /** Toan bo dong EO DA BAN HANH (khong gom EO huy) + chi so theo doi. pham_vi 'dang_mo' = chua ket thuc. */
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
   const db = env.DB;
-  const apDung = await ngayApDung(env);
+  const [apDung, boQuaTruoc] = await Promise.all([ngayApDung(env), ngayBoQuaTruoc(env)]);
   const base = (await cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(env)))
-    .filter((r) => r.trang_thai_eo === "ISSUED" && (phamVi === "tat_ca" || !DONG.includes(r.trang_thai_don_hang)));
+    .filter((r) => r.trang_thai_eo === "ISSUED" && (phamVi === "tat_ca" || !DONG.includes(r.trang_thai_don_hang))
+      // ngay dat = muon hon giua ngay ban hanh EO va ngay tao dong (dong them sau ban hanh)
+      && [r.ngay_ban_hanh, r.ngay_tao].filter(Boolean).sort().pop()!.slice(0, 10) >= boQuaTruoc);
   if (!base.length) return [];
   const ids = JSON.stringify(base.map((r) => r.item_id));
   const [meta, firstPlan, loi, ev, veDau] = await Promise.all([
