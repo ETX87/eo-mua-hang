@@ -9,6 +9,8 @@ import { KHO_THEO_PHONG_BAN } from "../../lib/nav";
 import { FILE_ACCEPT, checkFile, driveThumb, fileSize, isExcel, isImage, uploadEoFiles } from "../../lib/files";
 import { dailyTemplate, parseDailyFile, type Parsed } from "../../lib/planExcel";
 import { PlanImportModal } from "../../components/PlanImportModal";
+import { NGAY, NhanNgay, ChuGiaiNgay } from "../../lib/ngay";
+import { NgayHangVeModal } from "../theodoi/shared";
 
 /**
  * Cac thao tac xu ly EO dung chung cho trang Chi tiet EO va popup xem nhanh (components/quickview):
@@ -42,6 +44,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
   const [imp, setImp] = useState<{ name: string; parsed: Parsed } | null>(null);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const [ngayItem, setNgayItem] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const itemById = Object.fromEntries(items.map((i: any) => [i.id, i]));
   const po = eo.approval_code || eo.eo_code;
@@ -64,10 +67,10 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
     { key: "pc", header: "Mã linh kiện", render: (p) => itemById[p.eo_item_id]?.part_code ?? "" },
     { key: "pn", header: "Tên linh kiện", render: (p) => itemById[p.eo_item_id]?.part_name ?? "" },
     { key: "wh", header: "Kho", render: (p) => itemById[p.eo_item_id]?.warehouse ?? "" },
-    { key: "d", header: "Ngày / tuần về", render: (p) => p.loai === "TUAN" ? <span title={`đến ${ngay(p.planned_date)}`}><span className="badge final">Tuần</span> {p.tuan}</span> : ngay(p.planned_date) },
+    { key: "f", header: <NhanNgay k="NM" />, render: (p) => p.factory_committed_date ? <span style={{ color: NGAY.NM.mau }}>{ngay(p.factory_committed_date)}</span> : "" },
+    { key: "d", header: <NhanNgay k="DK" />, render: (p) => p.loai === "TUAN" ? <span title={`đến ${ngay(p.planned_date)}`}><span className="badge final">Tuần</span> {p.tuan}</span> : <b style={{ color: NGAY.DK.mau }}>{ngay(p.planned_date)}</b> },
     { key: "q", header: "SL kế hoạch", align: "right", render: (p) => soLuong(p.planned_qty) },
-    { key: "f", header: "Ngày NM cam kết", render: (p) => p.factory_committed_date ? ngay(p.factory_committed_date) : "" },
-    { key: "g", header: "Ghi chú", render: (p) => p.ghi_chu || "" },
+    { key: "g", header: "Ghi chú / nguồn", render: (p) => p.ghi_chu || "" },
     {
       key: "act", header: "", align: "center", render: (p) => editable ? (
         <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
@@ -85,12 +88,13 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
           <button className="btn sm primary" onClick={() => setBulk(true)}><I.calendar width={14} height={14} /> Cập nhật hàng loạt</button>
           <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
           <button className="btn sm ghost" onClick={() => dailyTemplate(lines, `Ke_hoach_hang_ve_${eo.eo_code}.xlsx`)}><I.download width={14} height={14} /> Tải mẫu (các dòng của EO)</button>
-          <button className="btn sm ghost" onClick={() => setEdit({})}><I.plus width={14} height={14} /> Thêm 1 mốc</button>
+          <button className="btn sm ghost" onClick={() => setEdit({})}><I.plus width={14} height={14} /> Thêm 1 đợt</button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </div>
       )}
       {msg && <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 10 }}>{msg}</div>}
-      <DataTable cols={cols} rows={plans} keyOf={(p) => p.id} empty="Chưa có kế hoạch hàng về" pageSize={PAGE_SIZE} />
+      <ChuGiaiNgay />
+      <DataTable cols={cols} rows={plans} keyOf={(p) => p.id} empty="Chưa có đợt hàng về (kế hoạch)" pageSize={PAGE_SIZE} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 10, marginTop: 14 }}>
         {activeItems.map((i: any) => {
           const sum = plannedOf(i.id);
@@ -100,11 +104,14 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
               {i.part_name && <div className="muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{i.part_name}</div>}
               {i.ghi_chu && <div style={{ fontSize: 12, color: "var(--text-muted)" }} title={i.ghi_chu}>Ghi chú: {i.ghi_chu}</div>}
               <div className="muted">Đã lên KH {soLuong(sum)} / {soLuong(i.current_qty)}</div>
+              <div style={{ color: NGAY.VE.mau }}>{NGAY.VE.ngan}: {soLuong(i.da_dat)} / {soLuong(i.current_qty)}{i.da_dat >= i.current_qty ? " — đủ" : ""}</div>
+              <button className="btn sm" style={{ marginTop: 6 }} onClick={() => setNgayItem(i)}><I.calendar width={13} height={13} /> 3 loại ngày của dòng</button>
             </div>
           );
         })}
       </div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      {ngayItem && <NgayHangVeModal dong={{ item_id: ngayItem.id, part_code: ngayItem.part_code }} onClose={() => setNgayItem(null)} onSaved={() => { setNgayItem(null); onChanged(); }} />}
       {edit && (
         <PlanModal plan={edit} items={activeItems} po={po} plannedOf={plannedOf}
           onClose={() => setEdit(null)} onSaved={() => { setEdit(null); onChanged(); }} />
@@ -137,7 +144,7 @@ export function PlanModal({ plan, items, po, plannedOf, onClose, onSaved }: any)
   const save = async () => {
     setErr("");
     if (!itemId) return setErr("Chọn dòng linh kiện.");
-    if (!date) return setErr("Chọn ngày về dự kiến.");
+    if (!date) return setErr(`Chọn ${NGAY.DK.l.toLowerCase()}.`);
     if (!(Number(qty) > 0)) return setErr("Nhập số lượng > 0.");
     setBusy(true);
     const body = { planned_date: date, planned_qty: Number(qty), factory_committed_date: factory || null, ghi_chu: note.trim() || null };
@@ -152,22 +159,26 @@ export function PlanModal({ plan, items, po, plannedOf, onClose, onSaved }: any)
     }
   };
   return (
-    <Modal title={isNew ? "Thêm kế hoạch hàng về" : "Sửa kế hoạch hàng về"} onClose={onClose} wide
+    <Modal title={isNew ? "Thêm đợt hàng về (kế hoạch)" : "Sửa đợt hàng về (kế hoạch)"} onClose={onClose} wide
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
+      <ChuGiaiNgay gon />
       <label className="field-label">Dòng linh kiện (Mã PO · Mã LK · Tên LK · Kho) <span className="req">*</span></label>
       <select className="select" value={itemId} disabled={!isNew} onChange={(e) => setItemId(e.target.value)}>
         <option value="">Chọn dòng linh kiện</option>
         {items.map((i: any) => <option key={i.id} value={i.id}>{lineLabel(po, i)} (SL {soLuong(i.current_qty)})</option>)}
       </select>
       {item && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Còn được lên kế hoạch: {soLuong(remain)}</div>}
-      <label className="field-label" style={{ marginTop: 12 }}>Ngày về dự kiến <span className="req">*</span></label>
-      <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+        <div><label className="field-label"><NhanNgay k="NM" /></label>
+          <input className="input" type="date" value={factory} onChange={(e) => { if (!date || date === factory) setDate(e.target.value); setFactory(e.target.value); }} /></div>
+        <div><label className="field-label"><NhanNgay k="DK" req /></label>
+          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+      </div>
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Nhập {NGAY.NM.l.toLowerCase()} → {NGAY.DK.l.toLowerCase()} tự điền theo (thường trùng nhau).</div>
       <label className="field-label" style={{ marginTop: 12 }}>Số lượng <span className="req">*</span></label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Ngày nhà máy cam kết</label>
-      <input className="input" type="date" value={factory} onChange={(e) => setFactory(e.target.value)} />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
-      <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú nhà máy..." />
+      <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nguồn: vd KRF xác nhận qua mail 21/10" />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
@@ -194,13 +205,14 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
   const allChecked = shown.length > 0 && shown.every((i: any) => rows[i.id].chon);
   const toggleAll = () => setRows((rs) => { const n = { ...rs }; for (const i of shown) n[i.id] = { ...n[i.id], chon: !allChecked }; return n; });
   const apply = () => {
-    if (!allDate && !allNm) return setErr("Chọn ngày về chung (và/hoặc ngày NM cam kết) trước khi áp dụng.");
+    if (!allDate && !allNm) return setErr(`Chọn ${NGAY.DK.l.toLowerCase()} và/hoặc ${NGAY.NM.l.toLowerCase()} chung trước khi áp dụng.`);
     setErr("");
     setRows((rs) => {
       const n = { ...rs };
       for (const i of items) if (n[i.id].chon) n[i.id] = {
         ...n[i.id],
-        date: allDate || n[i.id].date,
+        // DK thuong = NM: chi nhap NM chung thi DK lay theo NM (tru khi dong da co DK rieng khac NM cu)
+        date: allDate || (allNm && (!n[i.id].date || n[i.id].date === n[i.id].nm) ? allNm : n[i.id].date),
         nm: allNm || n[i.id].nm,
         qty: allQty === "con_lai" ? String(conLai(i)) : n[i.id].qty,
       };
@@ -214,7 +226,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
     for (const i of chosen) {
       const r = rows[i.id];
       const qn = Number(r.qty);
-      if (!r.date) e[i.id] = "Thiếu ngày về";
+      if (!r.date) e[i.id] = `Thiếu ${NGAY.DK.l.toLowerCase()}`;
       else if (!(qn > 0)) e[i.id] = "SL phải > 0";
       else if (qn > conLai(i)) e[i.id] = `Vượt còn lại ${soLuong(conLai(i))}`;
     }
@@ -243,9 +255,10 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
         <button className="btn" onClick={onClose}>Hủy</button>
         <button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : `Lưu ${chosen.length} dòng`}</button>
       </>}>
+      <ChuGiaiNgay gon />
       <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", padding: 12, background: "var(--surface-2, #F8FAFC)", borderRadius: 10, marginBottom: 12 }}>
-        <div><label className="field-label">Ngày về chung</label><input className="input" type="date" value={allDate} onChange={(e) => setAllDate(e.target.value)} /></div>
-        <div><label className="field-label">Ngày NM cam kết</label><input className="input" type="date" value={allNm} onChange={(e) => setAllNm(e.target.value)} /></div>
+        <div><label className="field-label"><NhanNgay k="NM" /> chung</label><input className="input" type="date" value={allNm} onChange={(e) => setAllNm(e.target.value)} /></div>
+        <div><label className="field-label"><NhanNgay k="DK" /> chung</label><input className="input" type="date" value={allDate} onChange={(e) => setAllDate(e.target.value)} placeholder="để trống = theo NM" /></div>
         <div><label className="field-label">Số lượng</label>
           <select className="select" value={allQty} onChange={(e) => setAllQty(e.target.value as any)}>
             <option value="con_lai">= SL còn lại của dòng</option><option value="giu">Giữ SL đang nhập</option>
@@ -265,7 +278,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
             <th style={{ width: 32 }}><input type="checkbox" checked={allChecked} onChange={toggleAll} /></th>
             <th>Mã PO</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho</th>
             <th style={{ textAlign: "right" }}>SL đặt</th><th style={{ textAlign: "right" }}>Đã lên KH</th><th style={{ textAlign: "right" }}>Còn lại</th>
-            <th>Ngày về</th><th>SL</th><th>Ngày NM</th><th>Ghi chú</th>
+            <th><NhanNgay k="NM" ngan /></th><th><NhanNgay k="DK" ngan /></th><th>SL</th><th>Ghi chú / nguồn</th>
           </tr></thead>
           <tbody>
             {shown.map((i: any) => {
@@ -281,9 +294,9 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(i.current_qty)}</td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(sumOf(i.id))}</td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(conLai(i))}</td>
+                  <td style={cell}><input className="input" type="date" style={{ width: 140 }} value={r.nm} onChange={(ev) => set(i.id, { nm: ev.target.value, chon: true, ...(!r.date || r.date === r.nm ? { date: ev.target.value } : {}) })} /></td>
                   <td style={cell}><input className="input" type="date" style={{ width: 140 }} value={r.date} onChange={(ev) => set(i.id, { date: ev.target.value, chon: true })} /></td>
                   <td style={cell}><input className="input right" style={{ width: 80 }} value={r.qty} onChange={(ev) => set(i.id, { qty: ev.target.value, chon: true })} /></td>
-                  <td style={cell}><input className="input" type="date" style={{ width: 140 }} value={r.nm} onChange={(ev) => set(i.id, { nm: ev.target.value })} /></td>
                   <td style={cell}><input className="input" style={{ width: 140 }} value={r.note} onChange={(ev) => set(i.id, { note: ev.target.value })} />{e && <div style={{ color: "var(--danger)", fontSize: 11 }}>{e}</div>}</td>
                 </tr>
               );

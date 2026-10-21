@@ -119,6 +119,15 @@ idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state
 Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file
 trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate key này).
 
+## 3 loại ngày của 1 dòng linh kiện — tên & định nghĩa CHUNG ở `frontend/src/lib/ngay.tsx`
+
+- **Ngày hàng về**: thực tế nhập kho, từ phiếu AMIS khớp dòng — không nhập tay.
+- **Ngày dự kiến** (`item_plan.planned_date`): ước tính hàng về; quy tắc R1/R4, số lần lùi, cấp CEO dựa vào ngày này.
+- **Ngày nhà máy cam kết** (`item_plan.factory_committed_date`): NM/NCC xác nhận. Thường = ngày dự kiến → form / import
+  Excel tự lấy ngày dự kiến theo ngày NM khi để trống.
+Không dùng chữ "ngày về" trần cho ngày dự kiến. Một màn duy nhất cho cả 3 ngày của 1 dòng: `NgayHangVeModal`
+(`pages/theodoi/shared.tsx`, dữ liệu `GET /api/theo-doi/dong/:id` → `item`, `ke_hoach`, `phieu_nhap`). Ô bảng dùng `<BaNgay>`.
+
 ## Popup xem nhanh (95% màn hình)
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,

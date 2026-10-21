@@ -7,7 +7,8 @@ import { PageHeader, Card, Spinner, Modal } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { exportRowsToXlsx } from "../../lib/exportXlsx";
-import { type Dong, TINH_TRANG, timKhongDau, NgayDuKienModal, GiaiTrinhModal, LichSuModal, useDanhMuc, taoPushDoiTac, PushKetQua } from "./shared";
+import { BaNgay, ChuGiaiNgay, NhanNgay } from "../../lib/ngay";
+import { type Dong, TINH_TRANG, timKhongDau, NgayHangVeModal, GiaiTrinhModal, LichSuModal, useDanhMuc, taoPushDoiTac, PushKetQua } from "./shared";
 
 /**
  * "Theo dõi linh kiện đặt": moi dong = 1 ma linh kien tren 1 EO da ban hanh. Tim kiem (khong dau), loc, cap nhat
@@ -70,8 +71,10 @@ export default function TheoDoiLinhKien() {
     { header: "Mã LK", get: (r) => r.part_code }, { header: "Tên LK", get: (r) => r.part_name }, { header: "Kho", get: (r) => r.kho },
     { header: "Đối tác", get: (r) => r.doi_tac }, { header: "Người đặt", get: (r) => r.nguoi_dat }, { header: "SL đặt", get: (r) => r.so_luong_dat },
     { header: "SL về AMIS", get: (r) => r.sl_nhap_amis }, { header: "SL còn thiếu", get: (r) => r.so_luong_con_thieu },
-    { header: "Ngày ban hành", get: (r) => ngayGio(r.bat_dau) }, { header: "Hạn có ngày DK", get: (r) => ngayGio(r.han_ngay_du_kien) },
-    { header: "Ngày DK gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) }, { header: "Số lần lùi", get: (r) => r.so_lan_lui },
+    { header: "Ngày ban hành", get: (r) => ngayGio(r.bat_dau) }, { header: "Hạn có ngày dự kiến", get: (r) => ngayGio(r.han_ngay_du_kien) },
+    { header: "Ngày nhà máy cam kết", get: (r) => ngay(r.ngay_nm_cam_ket) },
+    { header: "Ngày dự kiến gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) }, { header: "Ngày hàng về (AMIS, gần nhất)", get: (r) => ngay(r.ngay_hang_ve) },
+    { header: "Ngày hàng về đủ", get: (r) => ngay(r.ngay_ve_du) }, { header: "Số lần lùi", get: (r) => r.so_lan_lui },
     { header: "Số lỗi", get: (r) => r.so_loi }, { header: "Lỗi chờ giải trình", get: (r) => r.so_loi_cho_gt },
     { header: "Tình trạng", get: (r) => TINH_TRANG[r.tinh_trang].l }, { header: "Cấp CEO", get: (r) => r.ceo_ly_do.join("; ") },
     { header: "Áp dụng quy tắc", get: (r) => (r.ap_dung ? "Có" : "Không") },
@@ -101,7 +104,8 @@ export default function TheoDoiLinhKien() {
           <select className="select" style={{ width: 150 }} value={phamVi} onChange={(e) => { setPhamVi(e.target.value as any); setPage(0); }}><option value="dang_mo">Đang mở</option><option value="tat_ca">Cả đã đóng</option></select>
           <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chiApDung} onChange={(e) => setChiApDung(e.target.checked)} /> Chỉ EO áp dụng quy tắc</label>
         </div>
-        <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
+        <div style={{ marginTop: 10 }}><ChuGiaiNgay gon /></div>
+        <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
           Quy tắc (EO ban hành từ ngày áp dụng, áp tới khi hàng về ĐỦ theo AMIS — về thiếu vẫn tính; hết cảnh báo khi về đủ hoặc sửa lại SL đặt): có ngày dự kiến trong 24h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK · quá ngày DK phải nhập ngày mới trong 24h —
           vi phạm tự ghi lỗi, phải giải trình (Ai + Lỗi gì + ảnh). Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
           {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
@@ -115,7 +119,7 @@ export default function TheoDoiLinhKien() {
               <thead><tr>
                 <th style={{ width: 32 }}><input type="checkbox" checked={allOnPage} onChange={() => setChon((s) => { const n = new Set(s); trang.forEach((r) => (allOnPage ? n.delete(r.item_id) : n.add(r.item_id))); return n; })} /></th>
                 <th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Về / Thiếu</th>
-                <th>Ban hành · Hạn có NDK</th><th>Ngày DK</th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th><th></th>
+                <th>Ban hành · Hạn có ngày dự kiến</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th><th></th>
               </tr></thead>
               <tbody>
                 {trang.length === 0 && <tr><td colSpan={11} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có dòng phù hợp.</td></tr>}
@@ -129,12 +133,12 @@ export default function TheoDoiLinhKien() {
                       <td style={cell}>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
                       <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>{soLuong(r.so_luong_dat)} / {soLuong(r.sl_nhap_amis)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
                       <td style={{ ...cell, whiteSpace: "nowrap", fontSize: 12 }}>{ngayGio(r.bat_dau)}<div className="muted">{r.ap_dung ? `hạn ${ngayGio(r.han_ngay_du_kien)}` : "không áp dụng quy tắc"}</div></td>
-                      <td style={{ ...cell, whiteSpace: "nowrap" }}>{r.ngay_du_kien_gan_nhat ? ngay(r.ngay_du_kien_gan_nhat) : "—"}{r.han_cap_nhat_lai && <div style={{ fontSize: 11, color: "var(--danger)" }}>cập nhật trước {ngayGio(r.han_cap_nhat_lai)}</div>}</td>
+                      <td style={{ ...cell, whiteSpace: "nowrap" }}><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve} veDu={!!r.ngay_ve_du} />{r.han_cap_nhat_lai && <div style={{ fontSize: 11, color: "var(--danger)" }}>cập nhật trước {ngayGio(r.han_cap_nhat_lai)}</div>}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_lan_lui || ""}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_loi ? <span className={`badge ${r.so_loi_cho_gt ? "reject" : "nhap"}`} title={`${r.so_loi_cho_gt} chờ giải trình`}>{r.so_loi}{r.so_loi_cho_gt ? ` (${r.so_loi_cho_gt} chờ)` : ""}</span> : ""}</td>
                       <td style={cell}><span className={`badge ${tt.c}`}>{tt.l}</span>{r.ceo_ly_do.length > 0 && <div><span className="badge reject" title={r.ceo_ly_do.join("\n")} style={{ marginTop: 4 }}>Cấp CEO</span></div>}</td>
                       <td style={{ ...cell, whiteSpace: "nowrap" }}>
-                        <button className="btn ghost sm" title="Cập nhật ngày dự kiến" onClick={() => setModal({ loai: "ndk", dong: r })}><I.calendar width={14} height={14} /></button>
+                        <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (cập nhật)" onClick={() => setModal({ loai: "ndk", dong: r })}><I.calendar width={14} height={14} /></button>
                         <button className="btn ghost sm" title="Giải trình" onClick={() => setModal({ loai: "gt", dong: r })}><I.edit width={14} height={14} /></button>
                         <button className="btn ghost sm" title="Lịch sử theo dõi" onClick={() => setModal({ loai: "ls", dong: r })}><I.clock width={14} height={14} /></button>
                       </td>
@@ -154,7 +158,7 @@ export default function TheoDoiLinhKien() {
         )}
       </Card>
 
-      {modal?.loai === "ndk" && <NgayDuKienModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}
+      {modal?.loai === "ndk" && <NgayHangVeModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}
       {modal?.loai === "gt" && <GiaiTrinhModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}
       {modal?.loai === "ls" && <LichSuModal dong={modal.dong} onClose={() => setModal(null)} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}

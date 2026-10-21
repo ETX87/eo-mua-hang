@@ -7,12 +7,13 @@ import { Clip } from "../Clip";
 import { soLuong, tien, ngay, ngayGio, ten } from "../../lib/format";
 import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
+import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, PartLink } from "./QuickView";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
   actionsFor, ApprovalActionModal,
 } from "../../pages/eo/eoActions";
-import { type Dong, NgayDuKienModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
+import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
 /**
  * Popup xem nhanh 1 EO (95% man hinh). Du lieu: GET /eo/:id (goc) + GET /xem/eo/:id/bo-sung (theo doi, loi, giai trinh,
@@ -185,13 +186,13 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
                 {P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
-                <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: ngày DK · sửa dòng · thay mã · ! giải trình · lịch sử</span>
+                <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: 3 loại ngày · sửa dòng · thay mã · ! giải trình · lịch sử</span>
               </div>
             )}
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
             {tab === "lk" && (
               <table className="tbl tbl-dense">
-                <thead><tr>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th>Ngày DK</th><th>Theo dõi</th><th>Ca / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
+                <thead><tr>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Ca / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
                 <tbody>
                   {d.items.map((r: any, i: number) => {
                     const t = tdBy.get(r.id) as any;
@@ -208,11 +209,12 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                         <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td>
                         <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</td>
                         <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.chua_dat)}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>{ndk ? ngay(ndk) : "—"}</td>
+                        <td><BaNgay nm={t?.ngay_nm_cam_ket ?? [...kh].filter((p: any) => p.factory_committed_date).sort((a: any, b: any) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date}
+                          dk={ndk} ve={(b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop()} veDu={r.da_dat >= r.current_qty} /></td>
                         <td style={{ whiteSpace: "nowrap" }}>{t ? <><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={t.ceo_ly_do.join("\n")}>CEO</span>}</> : <span className="muted">—</span>}</td>
                         <td><Clip w={120}>{[r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—"}</Clip></td>
                         <td className="qv-act">
-                          {P.issued && P.canEditPlan && active && r.chua_dat > 0 && <button className="btn ghost sm" title="Cập nhật ngày dự kiến hàng về" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+                          {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
                           {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
                           {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
                           {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
@@ -334,7 +336,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       {md?.k === "thay" && <ReplacePartModal item={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "add" && <AddItemModal eoId={String(id)} phongBan={eo.phong_ban} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "bulk" && <BulkPlanModal po={eo.approval_code || eo.eo_code} items={activeItems} plans={d.plans} onClose={() => setMd(null)} onSaved={xong} />}
-      {md?.k === "ndk" && <NgayDuKienModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "ndk" && <NgayHangVeModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}

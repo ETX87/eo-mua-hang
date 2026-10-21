@@ -73,7 +73,7 @@ app.patch("/:id", async (c) => {
   vals.push(c.get("user").email, now, id);
   await c.env.DB.batch([
     c.env.DB.prepare(`UPDATE item_plan SET ${sets.join(", ")} WHERE id = ?`).bind(...vals),
-    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: p.eo_item_id, eo_id: it!.eo_id, event_type: "UPDATE_PLAN", user_email: c.get("user").email, at: now, before: { planned_date: p.planned_date, planned_qty: p.planned_qty }, after: b, metadata: { eo_item_id: p.eo_item_id, plan_id: id } }),
+    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: p.eo_item_id, eo_id: it!.eo_id, event_type: "UPDATE_PLAN", user_email: c.get("user").email, at: now, before: { planned_date: p.planned_date, planned_qty: p.planned_qty, factory_committed_date: p.factory_committed_date }, after: b, metadata: { eo_item_id: p.eo_item_id, plan_id: id } }),
   ]);
   await bumpVersions(c.env.DB, ["eo"]);
   return c.json({ ok: true });

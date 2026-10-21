@@ -7,6 +7,7 @@ import { PageHeader, Card, Spinner } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { exportRowsToXlsx } from "../../lib/exportXlsx";
+import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { type Dong, TINH_TRANG, timKhongDau, LichSuModal, GiaiTrinhModal } from "./shared";
 
 /** "Cảnh báo CEO": dong dang mo thoa 1 trong 3 dieu kien (lui >= 3 lan / ngay DK - ngay dat >= 30 ngay / >= 3 loi). */
@@ -25,7 +26,7 @@ export default function CanhBaoCeo() {
           { header: "Mã phê duyệt", get: (r) => r.ma_phe_duyet }, { header: "Mã EO", get: (r) => r.eo_code }, { header: "Người đặt", get: (r) => r.nguoi_dat },
           { header: "Mã LK", get: (r) => r.part_code }, { header: "Tên LK", get: (r) => r.part_name }, { header: "Kho", get: (r) => r.kho }, { header: "Đối tác", get: (r) => r.doi_tac },
           { header: "SL đặt", get: (r) => r.so_luong_dat }, { header: "SL còn thiếu", get: (r) => r.so_luong_con_thieu },
-          { header: "Ngày ban hành", get: (r) => ngayGio(r.bat_dau) }, { header: "Ngày DK gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) },
+          { header: "Ngày ban hành", get: (r) => ngayGio(r.bat_dau) }, { header: "Ngày dự kiến gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) },
           { header: "Số lần lùi", get: (r) => r.so_lan_lui }, { header: "Số lỗi", get: (r) => r.so_loi }, { header: "Lý do cấp CEO", get: (r) => r.ceo_ly_do.join("; ") },
         ], "Canh_bao_CEO.xlsx", "CEO")}><I.download width={14} height={14} /> Xuất Excel</button>
       } />
@@ -41,7 +42,7 @@ export default function CanhBaoCeo() {
       <Card style={{ padding: 0 }}>
         {q.isLoading ? <Spinner /> : (
           <div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Thiếu</th><th>Ngày DK</th><th>Lý do cấp CEO</th><th>Tình trạng</th><th></th></tr></thead>
+            <thead><tr><th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Lý do cấp CEO</th><th>Tình trạng</th><th></th></tr></thead>
             <tbody>
               {rows.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có đơn hàng ở cấp CEO.</td></tr>}
               {rows.map((r) => (
@@ -50,7 +51,7 @@ export default function CanhBaoCeo() {
                   <td><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></td>
                   <td>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
                   <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
-                  <td>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</td>
+                  <td><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve} veDu={!!r.ngay_ve_du} /></td>
                   <td style={{ color: "var(--danger)", fontSize: 12.5 }}>{r.ceo_ly_do.map((x) => <div key={x}>• {x}</div>)}</td>
                   <td><span className={`badge ${TINH_TRANG[r.tinh_trang].c}`}>{TINH_TRANG[r.tinh_trang].l}</span></td>
                   <td style={{ whiteSpace: "nowrap" }}>

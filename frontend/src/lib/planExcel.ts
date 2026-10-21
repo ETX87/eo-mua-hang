@@ -33,7 +33,7 @@ function ident(r: Record<string, unknown>, errs: string[]): Partial<BulkRow> | n
 
 // ------------------------------------------------------------------ ke hoach THEO NGAY
 const DAILY_HEAD = ["ID dòng", "Mã PO", "Mã EO", "Mã linh kiện", "Tên linh kiện", "Kho", "SL đặt", "Đã lên KH", "Còn lại",
-  "Ngày về dự kiến", "SL kế hoạch", "Ngày NM cam kết", "Ghi chú"];
+  "Ngày nhà máy cam kết", "Ngày dự kiến", "SL kế hoạch", "Ghi chú / nguồn"];
 
 export function dailyTemplate(lines: PlanLine[], filename: string) {
   writeBook(filename, [
@@ -51,7 +51,9 @@ export function dailyTemplate(lines: PlanLine[], filename: string) {
       rows: [
         ["Cách điền"],
         ["- Mỗi dòng = 1 mốc hàng về. 1 linh kiện về nhiều đợt: copy thêm dòng, giữ nguyên ID dòng / Mã PO / Mã LK / Kho."],
-        ["- Bắt buộc: Ngày về dự kiến (dd/mm/yyyy) + SL kế hoạch. Dòng để trống cả 2 cột sẽ được bỏ qua."],
+        ["- 3 loại ngày: Ngày hàng về = ngày thực tế nhập kho (tự lấy từ AMIS, KHÔNG điền ở file này); Ngày dự kiến = ngày ước tính hàng sẽ về;"],
+        ["  Ngày nhà máy cam kết = ngày nhà máy / NCC xác nhận sẽ giao. Thường Ngày dự kiến = Ngày nhà máy cam kết."],
+        ["- Bắt buộc: SL kế hoạch + Ngày dự kiến (dd/mm/yyyy). Để trống Ngày dự kiến thì lấy theo Ngày nhà máy cam kết. Dòng trống cả ngày lẫn SL được bỏ qua."],
         ["- Không có ID dòng thì hệ thống tìm theo Mã PO (mã 3TDO hoặc mã EO) + Mã linh kiện (+ Kho nếu mã có ở nhiều kho)."],
         ["- Chọn 'Ghi đè' khi import: kế hoạch theo ngày CŨ của các linh kiện có trong file bị thay bằng file này (import lại cùng file không bị nhân đôi)."],
         ["- Các cột SL đặt / Đã lên KH / Còn lại chỉ để tham khảo, không đọc khi import."],
@@ -67,16 +69,17 @@ export async function parseDailyFile(file: File): Promise<Parsed> {
   const errs: string[] = [];
   let skipped = 0;
   for (const r of rows) {
-    const d = parseDate(pick(r, "Ngày về dự kiến", "Ngày về", "Ngày đáp ứng", "Ngày"));
+    const nm = parseDate(pick(r, "Ngày nhà máy cam kết", "Ngày NM cam kết"));
+    // Ngay du kien de trong -> lay theo ngay nha may cam ket (thuong 2 ngay trung nhau)
+    const d = parseDate(pick(r, "Ngày dự kiến", "Ngày về dự kiến", "Ngày về", "Ngày đáp ứng", "Ngày")) ?? (nm && nm !== "INVALID" ? nm : null);
     const q = parseNum(pick(r, "SL kế hoạch", "Số lượng", "SL về", "SL"));
     if (d == null && q == null) { skipped++; continue; }
     const id = ident(r, errs);
     if (!id) continue;
-    if (d == null || d === "INVALID") { errs.push(`Dòng ${r._row}: Ngày về dự kiến trống / sai định dạng`); continue; }
+    if (d == null || d === "INVALID") { errs.push(`Dòng ${r._row}: Ngày dự kiến (hoặc Ngày nhà máy cam kết) trống / sai định dạng`); continue; }
     if (q == null || Number.isNaN(q) || q < 0) { errs.push(`Dòng ${r._row}: SL kế hoạch không hợp lệ`); continue; }
-    const nm = parseDate(pick(r, "Ngày NM cam kết", "Ngày nhà máy cam kết"));
-    if (nm === "INVALID") { errs.push(`Dòng ${r._row}: Ngày NM cam kết sai định dạng`); continue; }
-    out.push({ _row: Number(r._row), ...id, planned_date: d, planned_qty: q, factory_committed_date: nm, ghi_chu: str(pick(r, "Ghi chú", "Ghi chú nhà máy")) || null });
+    if (nm === "INVALID") { errs.push(`Dòng ${r._row}: Ngày nhà máy cam kết sai định dạng`); continue; }
+    out.push({ _row: Number(r._row), ...id, planned_date: d, planned_qty: q, factory_committed_date: nm, ghi_chu: str(pick(r, "Ghi chú / nguồn", "Ghi chú", "Ghi chú nhà máy")) || null });
   }
   return { rows: out, errs, skipped };
 }

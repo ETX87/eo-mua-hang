@@ -83,7 +83,7 @@ export function PlanImportModal({ loai, fileName, parsed, onClose, onDone }: Pro
           <table className="tbl">
             <thead><tr>
               <th>Dòng file</th><th>Mã PO</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho</th>
-              <th>{loai === "TUAN" ? "Tuần" : "Ngày về"}</th><th style={{ textAlign: "right" }}>SL</th><th style={{ textAlign: "right" }}>SL đặt</th><th>Kết quả</th>
+              <th>{loai === "TUAN" ? "Tuần" : "Ngày dự kiến"}</th><th style={{ textAlign: "right" }}>SL</th><th style={{ textAlign: "right" }}>SL đặt</th><th>Kết quả</th>
             </tr></thead>
             <tbody>
               {[...bad, ...rows.filter((r) => r.ok)].slice(0, 500).map((r, i) => (

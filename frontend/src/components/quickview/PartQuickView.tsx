@@ -6,9 +6,10 @@ import { Clip } from "../Clip";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
+import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink } from "./QuickView";
 import { quyenEo, QtyModal } from "../../pages/eo/eoActions";
-import { type Dong, NgayDuKienModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
+import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
 /**
  * Popup xem nhanh theo MA LINH KIEN (95% man hinh): moi dong EO dat ma nay (ke ca ma goc truoc khi thay ma), phieu nhap
@@ -96,14 +97,14 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
               <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
               <button className="btn sm" onClick={() => setChon(new Set(dong.filter(chonDuoc).map((r: any) => r.item_id)))}>Chọn mọi dòng còn thiếu</button>
               {chon.size > 0 && <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>}
-              <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: ngày DK · sửa dòng · ! giải trình · lịch sử</span>
+              <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: 3 loại ngày · sửa dòng · ! giải trình · lịch sử</span>
             </div>
           )}
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
           <div className="qv-scroll">
             {tab === "eo" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th>Ngày DK</th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
+                <thead><tr><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
                 <tbody>
                   {dong.length === 0 && <tr><td colSpan={12} className="muted">Không có dòng.</td></tr>}
                   {dong.map((r: any) => {
@@ -120,11 +121,11 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                       <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)}</td>
                       <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo)}</td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.so_luong_con_thieu)}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</td>
+                      <td><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} /></td>
                       <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={120} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
                       <td><Clip w={120}>{[r.ly_do_ps, r.ghi_chu, r.id_crm && `Ca ${r.id_crm}`].filter(Boolean).join(" · ") || "—"}</Clip></td>
                       <td className="qv-act">
-                        {mo && Q.canEditPlan && r.so_luong_con_thieu > 0 && <button className="btn ghost sm" title="Cập nhật ngày dự kiến hàng về" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
                         {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
                         {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
                         {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
@@ -191,7 +192,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
         </div>
       </div>
 
-      {md?.k === "ndk" && <NgayDuKienModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "ndk" && <NgayHangVeModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
       {md?.k === "qty" && <QtyModal item={md.x} issued onClose={() => setMd(null)} onSaved={xong} />}

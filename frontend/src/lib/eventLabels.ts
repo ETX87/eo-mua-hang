@@ -24,8 +24,14 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   if (e.event_type === "BULK_PLAN" && Array.isArray(a)) {
     p.push(`${m?.part_code ?? ""}: ${a.map((x: any) => `${m?.loai === "TUAN" ? x.tuan : d(x.planned_date)}: ${sl(x.planned_qty)}`).slice(0, 4).join(", ")}${a.length > 4 ? "…" : ""}`);
     if (m?.thay_the) p.push(`thay ${m.so_ke_hoach_cu} mốc cũ`);
-  } else if (a?.planned_date) p.push(`Ngày DK ${d(a.planned_date)}${a.planned_qty ? ` · SL ${sl(a.planned_qty)}` : ""}`);
-  if (e.event_type === "DELETE_PLAN" && b?.planned_date) p.push(`Xóa mốc ${d(b.planned_date)} · SL ${sl(b.planned_qty)}`);
+  } else if (a?.planned_date) {
+    // 3 loai ngay - xem lib/ngay.tsx; ghi ro "truoc -> sau" khi sua
+    const doi = (k: string) => b && b[k] !== undefined && b[k] !== a[k] ? `${d(b[k]) || "—"} → ` : "";
+    p.push(`Ngày dự kiến ${doi("planned_date")}${d(a.planned_date)}`);
+    if (a.factory_committed_date || b?.factory_committed_date) p.push(`Ngày NM cam kết ${doi("factory_committed_date")}${d(a.factory_committed_date) || "—"}`);
+    if (a.planned_qty) p.push(`SL ${b?.planned_qty != null && b.planned_qty !== a.planned_qty ? `${sl(b.planned_qty)} → ` : ""}${sl(a.planned_qty)}`);
+  }
+  if (e.event_type === "DELETE_PLAN" && b?.planned_date) p.push(`Xóa đợt — ngày dự kiến ${d(b.planned_date)} · SL ${sl(b.planned_qty)}`);
   if (e.event_type === "UPLOAD_FILE" && a?.file_name) p.push(a.file_name);
   if (e.event_type === "DELETE_FILE" && b?.file_name) p.push(b.file_name);
   if (e.event_type === "ADD_ITEM" && a?.part_code) p.push(`${a.part_code} · ${a.warehouse ?? ""} · SL ${sl(a.current_qty)}`);

@@ -49,7 +49,7 @@ export default function Plans() {
   };
 
   const cols: Col<any>[] = [
-    { key: "d", header: "Ngày về dự kiến", render: (r) => ngay(r.planned_date) },
+    { key: "d", header: "Ngày dự kiến", render: (r) => ngay(r.planned_date) },
     { key: "eo", header: "Mã EO", render: (r) => <span className="cell-link">{r.eo_code}</span> },
     { key: "n", header: "Số dòng", align: "right", render: (r) => soLuong(r.so_dong) },
     { key: "sl", header: "Tổng SL", align: "right", render: (r) => soLuong(r.tong_sl) },
@@ -78,7 +78,7 @@ export default function Plans() {
             empty={`${kyLabel} chưa có kế hoạch hàng về.`} />
         )}
         <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>
-          Cập nhật nhiều EO 1 lần: tải mẫu → điền Ngày về + SL (1 linh kiện về nhiều đợt thì thêm dòng) → Import Excel.
+          Cập nhật nhiều EO 1 lần: tải mẫu → điền Ngày nhà máy cam kết / Ngày dự kiến + SL (1 linh kiện về nhiều đợt thì thêm dòng) → Import Excel.
           Theo từng EO: Chi tiết EO › tab "Kế hoạch hàng về" › "Cập nhật hàng loạt". Kế hoạch tuần tính vào ngày Thứ Bảy của tuần.
         </div>
       </Card>

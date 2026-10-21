@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Modal, Spinner } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { normKey, writeBook } from "../../lib/excel";
+import { NGAY, NhanNgay } from "../../lib/ngay";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -18,6 +19,7 @@ export interface Dong {
   han_cap_nhat_lai: string | null; so_lan_lui: number; so_loi: number; so_loi_cho_gt: number;
   tinh_trang: "CHO_NDK" | "TRE_NDK" | "QUA_HAN_NDK" | "CHO_HANG" | "DONG";
   ngay_ve_du: string | null;
+  ngay_hang_ve: string | null; ngay_nm_cam_ket: string | null;
   ceo_ly_do: string[];
 }
 
@@ -44,44 +46,148 @@ export function useDanhMuc() {
   return useQuery({ queryKey: ["tl-danh-muc"], queryFn: () => api.get<{ loai: string; ma: string; ten: string; thu_tu: number; active: number }[]>("/theo-doi/danh-muc") });
 }
 
-/** Cap nhat nhanh 1 moc ngay du kien (them item_plan) - so luong mac dinh = con thieu. */
-export function NgayDuKienModal({ dong, onClose, onSaved }: { dong: Dong; onClose: () => void; onSaved: () => void }) {
-  const [date, setDate] = useState("");
-  const [qty, setQty] = useState(String(dong.so_luong_con_thieu || ""));
+/**
+ * MOT man cho ca 3 loai ngay cua 1 dong linh kien: ngay hang ve (AMIS, chi xem), ngay du kien + ngay nha may cam ket
+ * (cac dot ke hoach item_plan: them / sua / xoa ngay tai cho). Modal giu mo sau khi luu de thay ket qua; "Xong" moi dong.
+ * Quy uoc: ngay du kien thuong = ngay NM cam ket -> nhap NM thi DK tu dien theo (van sua tay duoc).
+ */
+export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "item_id"> & Partial<Dong>; onClose: () => void; onSaved: () => void }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
+  const [daDoi, setDaDoi] = useState(false);
+  const [sua, setSua] = useState<any | null>(null); // dot dang sua (null = them dot moi)
   const [nm, setNm] = useState("");
+  const [dk, setDk] = useState("");
+  const [qty, setQty] = useState("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const save = async () => {
+  const d = q.data;
+  const it = d?.item;
+  const kh: any[] = d?.ke_hoach ?? [];
+  const nhap: any[] = d?.phieu_nhap ?? [];
+  const daVe = nhap.reduce((s, r) => s + (r.qty_in || 0), 0);
+  const tongKh = kh.reduce((s, p) => s + (p.planned_qty || 0), 0);
+  const slDat = it?.current_qty ?? dong.so_luong_dat ?? 0;
+  const conDuocLen = slDat - tongKh + (sua ? sua.planned_qty : 0);
+  const ngayVe = nhap.length ? nhap[nhap.length - 1].doc_date : null;
+  const dkGanNhat = dong.ngay_du_kien_gan_nhat ?? (kh.filter((p) => p.loai !== "TUAN").map((p) => p.planned_date).sort().pop() ?? null);
+  const nmGanNhat = [...kh].filter((p) => p.factory_committed_date).sort((a, b) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date ?? null;
+  const lech = dkGanNhat && nmGanNhat ? Math.round((Date.parse(dkGanNhat) - Date.parse(nmGanNhat)) / 86400_000) : null;
+
+  const moForm = (p: any | null) => {
+    setErr(""); setSua(p);
+    setNm(p?.factory_committed_date ?? ""); setDk(p?.planned_date ?? "");
+    setQty(p ? String(p.planned_qty) : String(Math.max(0, slDat - Math.max(tongKh, daVe)) || ""));
+    setNote(p?.ghi_chu ?? "");
+  };
+  // lan dau co du lieu -> mo san form "them dot"
+  useEffect(() => { if (d && sua === null && !qty && !dk) moForm(null); }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
+  // nhap NM -> DK theo NM neu DK dang trong hoac dang bang NM cu
+  const doiNm = (v: string) => { if (!dk || dk === nm) setDk(v); setNm(v); };
+
+  const luu = async () => {
     setErr("");
-    if (!date) return setErr("Chọn ngày dự kiến.");
+    if (!dk) return setErr(`Nhập ${NGAY.DK.l.toLowerCase()} (hoặc ${NGAY.NM.l.toLowerCase()} để tự điền).`);
     if (!(Number(qty) > 0)) return setErr("Nhập số lượng > 0.");
     setBusy(true);
+    const body = { planned_date: dk, planned_qty: Number(qty), factory_committed_date: nm || null, ghi_chu: note.trim() || null };
     try {
-      await api.post("/plans", { eo_item_id: dong.item_id, planned_date: date, planned_qty: Number(qty), factory_committed_date: nm || null, ghi_chu: note.trim() || null });
-      onSaved();
+      if (sua) await api.patch(`/plans/${sua.id}`, body);
+      else await api.post("/plans", { eo_item_id: dong.item_id, ...body });
+      setDaDoi(true);
+      await q.refetch();
+      qc.invalidateQueries({ queryKey: ["theo-doi"] });
+      setSua(null); setQty(""); setDk(""); setNm(""); setNote("");
     } catch (e: any) {
-      setErr(e?.body?.error === "PLAN_EXCEEDS_QTY" ? `Vượt SL đặt — đã lên kế hoạch ${soLuong(e.body.planned_sum)} / ${soLuong(e.body.current_qty)}. Sửa / xóa mốc cũ ở Chi tiết EO.` :
-        e?.body?.error === "READ_ONLY" ? "Bạn không có quyền cập nhật kế hoạch dòng này." : "Lỗi lưu ngày dự kiến.");
-      setBusy(false);
-    }
+      setErr(e?.body?.error === "PLAN_EXCEEDS_QTY" ? `Vượt SL đặt — đã lên kế hoạch ${soLuong(e.body.planned_sum ?? tongKh)} / ${soLuong(e.body.current_qty ?? slDat)}. Sửa hoặc xóa đợt cũ.` :
+        e?.body?.error === "READ_ONLY" ? "Bạn không có quyền cập nhật kế hoạch dòng này." : "Lỗi lưu.");
+    } finally { setBusy(false); }
   };
+  const xoa = async (p: any) => {
+    if (!confirm(`Xóa đợt ${NGAY.DK.l.toLowerCase()} ${ngay(p.planned_date)} — SL ${soLuong(p.planned_qty)}?`)) return;
+    try { await api.del(`/plans/${p.id}`); setDaDoi(true); await q.refetch(); if (sua?.id === p.id) moForm(null); }
+    catch (e: any) { setErr(e?.body?.error === "READ_ONLY" ? "Bạn không có quyền xóa đợt này." : "Lỗi xóa."); }
+  };
+  const xong = () => (daDoi ? onSaved() : onClose());
+
+  const The = ({ k, v, sub }: { k: "VE" | "DK" | "NM"; v: string; sub: ReactNode }) => (
+    <div style={{ background: NGAY[k].nen, borderLeft: `4px solid ${NGAY[k].mau}`, borderRadius: 8, padding: "8px 12px" }} title={NGAY[k].mo_ta}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, color: NGAY[k].mau }}>{NGAY[k].l}</div>
+      <div style={{ fontSize: 20, fontWeight: 900, margin: "2px 0" }}>{v}</div>
+      <div className="muted" style={{ fontSize: 11.5 }}>{sub}</div>
+      <div className="muted" style={{ fontSize: 11, marginTop: 4, lineHeight: 1.35 }}>{NGAY[k].mo_ta}</div>
+    </div>
+  );
+  const th = { padding: "6px 8px", fontSize: 12 } as const;
   return (
-    <Modal title={`Cập nhật ngày dự kiến — ${dong.part_code}`} onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
-      <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
-        {dong.ma_phe_duyet || dong.eo_code} · {dong.part_name} · {dong.kho} · còn thiếu <b>{soLuong(dong.so_luong_con_thieu)}</b>
-        {dong.ngay_du_kien_gan_nhat && <> · ngày DK hiện tại <b>{ngay(dong.ngay_du_kien_gan_nhat)}</b></>}
-      </div>
-      <label className="field-label">Ngày dự kiến hàng về <span className="req">*</span></label>
-      <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Số lượng <span className="req">*</span></label>
-      <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Ngày NCC cam kết</label>
-      <input className="input" type="date" value={nm} onChange={(e) => setNm(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
-      <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="vd: KRF báo giao đợt 1" />
-      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    <Modal title={`Ngày hàng về · dự kiến · nhà máy cam kết — ${it?.part_code ?? dong.part_code ?? ""}`} onClose={xong} width={1000}
+      footer={<button className="btn primary" onClick={xong}>Xong</button>}>
+      {q.isLoading || !d ? <Spinner /> : (
+        <div style={{ fontSize: 13 }}>
+          <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+            <b style={{ color: "var(--text)" }}>{it?.approval_code || it?.eo_code}</b> · {it?.part_name} · {it?.warehouse} · {it?.supplier || "—"} · SL đặt <b>{soLuong(slDat)}</b>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, marginBottom: 14 }}>
+            <The k="VE" v={ngayVe ? ngay(ngayVe) : "Chưa về"} sub={<>Đã về <b>{soLuong(daVe)}</b> / {soLuong(slDat)}{daVe >= slDat && slDat > 0 ? " — đủ hàng" : daVe > 0 ? ` — còn thiếu ${soLuong(slDat - daVe)}` : ""}</>} />
+            <The k="DK" v={dkGanNhat ? ngay(dkGanNhat) : "Chưa có"} sub={<>{kh.length} đợt · lên KH {soLuong(tongKh)} / {soLuong(slDat)}{dong.so_lan_lui ? ` · lùi ${dong.so_lan_lui} lần` : ""}</>} />
+            <The k="NM" v={nmGanNhat ? ngay(nmGanNhat) : "Chưa có"} sub={lech == null ? "—" : lech === 0 ? "Trùng ngày dự kiến" : `Ngày dự kiến ${lech > 0 ? "sau" : "trước"} ${Math.abs(lech)} ngày`} />
+          </div>
+
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Các đợt hàng về (kế hoạch)</div>
+          <div className="tbl-wrap">
+            <table className="tbl tbl-dense">
+              <thead><tr><th style={th}>Đợt</th><th style={th}><NhanNgay k="NM" /></th><th style={th}><NhanNgay k="DK" /></th><th style={{ ...th, textAlign: "right" }}>SL</th><th style={th}>Ghi chú / nguồn</th><th style={th}>Cập nhật</th><th style={th}></th></tr></thead>
+              <tbody>
+                {kh.length === 0 && <tr><td colSpan={7} className="muted">Chưa có đợt nào — nhập ở khung bên dưới.</td></tr>}
+                {kh.map((p, i) => (
+                  <tr key={p.id} style={{ background: sua?.id === p.id ? "#FFFBEB" : undefined }}>
+                    <td>{i + 1}{p.loai === "TUAN" && <span className="badge final" style={{ marginLeft: 4 }}>Tuần {p.tuan}</span>}</td>
+                    <td style={{ color: NGAY.NM.mau, fontWeight: 600 }}>{ngay(p.factory_committed_date) || "—"}</td>
+                    <td style={{ color: NGAY.DK.mau, fontWeight: 700 }}>{ngay(p.planned_date)}</td>
+                    <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td>
+                    <td>{p.ghi_chu || ""}</td>
+                    <td className="muted" style={{ fontSize: 11.5 }}>{ten(p.updated_by || p.created_by)} · {ngayGio(p.updated_at || p.created_at)}</td>
+                    <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
+                      {p.loai !== "TUAN" && <button className="btn ghost sm" title="Sửa đợt này" onClick={() => moForm(p)}><I.edit width={14} height={14} /></button>}
+                      <button className="btn ghost sm danger" title="Xóa đợt" onClick={() => xoa(p)}><I.trash width={14} height={14} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ border: "1px dashed var(--border)", borderRadius: 10, padding: 12, marginTop: 10, background: "var(--panel-2)" }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>{sua ? `Sửa đợt ${kh.findIndex((p) => p.id === sua.id) + 1}` : "Thêm đợt hàng về"} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>— còn được lên kế hoạch {soLuong(Math.max(0, conDuocLen))}</span></div>
+            <div style={{ display: "grid", gridTemplateColumns: "160px 160px 110px 1fr auto", gap: 10, alignItems: "end" }}>
+              <div><label className="field-label"><NhanNgay k="NM" /></label><input className="input" type="date" value={nm} onChange={(e) => doiNm(e.target.value)} /></div>
+              <div><label className="field-label"><NhanNgay k="DK" req /></label><input className="input" type="date" value={dk} onChange={(e) => setDk(e.target.value)} /></div>
+              <div><label className="field-label">Số lượng <span className="req">*</span></label><input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
+              <div><label className="field-label">Ghi chú / nguồn</label><input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="vd: KRF xác nhận qua mail 21/10" /></div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {sua && <button className="btn" onClick={() => moForm(null)}>Bỏ sửa</button>}
+                <button className="btn primary" disabled={busy} onClick={luu}>{busy ? "Đang lưu..." : sua ? "Lưu đợt" : "Thêm đợt"}</button>
+              </div>
+            </div>
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+              Nhập {NGAY.NM.l.toLowerCase()} → {NGAY.DK.l.toLowerCase()} tự điền bằng ngày đó (thường 2 ngày trùng nhau). Chỉ sửa {NGAY.DK.l.toLowerCase()} khi có lý do ước tính khác.
+            </div>
+            {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 6 }}>{err}</div>}
+          </div>
+
+          <div style={{ fontWeight: 800, margin: "14px 0 6px" }}><NhanNgay k="VE" /> <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>— phiếu nhập AMIS khớp dòng này (tự động, không nhập tay)</span></div>
+          <div className="tbl-wrap">
+            <table className="tbl tbl-dense">
+              <thead><tr><th style={th}>{NGAY.VE.l}</th><th style={th}>Số chứng từ</th><th style={th}>Kho</th><th style={{ ...th, textAlign: "right" }}>SL nhập</th></tr></thead>
+              <tbody>
+                {nhap.length === 0 && <tr><td colSpan={4} className="muted">Chưa có phiếu nhập.</td></tr>}
+                {nhap.map((r) => <tr key={r.id}><td style={{ color: NGAY.VE.mau, fontWeight: 700 }}>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td>{r.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
@@ -253,7 +359,7 @@ export async function taoPushDoiTac(ids: number[]): Promise<any[]> {
         ["Mã push", d.ma_push, "", "Đối tác", d.doi_tac, "", "Vui lòng điền 3 cột vàng và giữ nguyên tên file + mã push khi trả lời"],
         [],
         ["ID dòng", "Mã phê duyệt", "Mã EO", "Mã linh kiện", "Tên linh kiện", "Kho nhận", "SL đặt", "SL còn thiếu", "Ngày đặt",
-          "Ngày dự kiến giao (NCC điền)", "SL giao (NCC điền)", "Ghi chú NCC"],
+          "Ngày nhà máy cam kết giao (NCC điền)", "SL giao (NCC điền)", "Ghi chú NCC"],
         ...d.rows.map((x: Dong) => [x.id_dat_lk, x.ma_phe_duyet ?? "", x.eo_code, x.part_code, x.part_name, x.kho, x.so_luong_dat, x.so_luong_con_thieu, ngay(x.bat_dau), "", "", ""]),
       ],
       widths: [16, 14, 14, 16, 36, 24, 9, 11, 11, 22, 16, 30],

@@ -30,7 +30,7 @@ app.get("/ceo", async (c) => {
 app.get("/dong/:itemId", async (c) => {
   const id = Number(c.req.param("itemId"));
   const db = c.env.DB;
-  const [loi, gt, push, mail, plans] = await Promise.all([
+  const [loi, gt, push, mail, plans, item, keHoach, nhap] = await Promise.all([
     db.prepare("SELECT * FROM tl_loi WHERE eo_item_id = ? ORDER BY COALESCE(han, created_at) DESC, id DESC").bind(id).all(),
     db.prepare("SELECT * FROM tl_giai_trinh WHERE eo_item_id = ? ORDER BY id DESC").bind(id).all(),
     db.prepare(
@@ -47,8 +47,24 @@ app.get("/dong/:itemId", async (c) => {
        WHERE event_type IN ('ADD_PLAN','UPDATE_PLAN','DELETE_PLAN','BULK_PLAN') AND (entity_id = ? OR json_extract(metadata_json,'$.eo_item_id') = ?)
        ORDER BY created_at DESC, id DESC LIMIT 100`,
     ).bind(id, id).all(),
+    // 3 loai ngay cua 1 dong tren cung 1 man: dong + cac dot ke hoach (ngay du kien / ngay NM cam ket) + phieu nhap AMIS (ngay hang ve thuc te)
+    db.prepare(
+      `SELECT i.id, i.eo_id, i.part_code, i.part_name, i.warehouse, i.supplier, i.current_qty, i.line_status, e.eo_code, e.approval_code, e.created_by
+       FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?`,
+    ).bind(id).first(),
+    db.prepare(
+      `SELECT id, planned_date, planned_qty, factory_committed_date, ghi_chu, loai, tuan, created_by, created_at, updated_by, updated_at
+       FROM item_plan WHERE eo_item_id = ? AND deleted_at IS NULL ORDER BY planned_date, id`,
+    ).bind(id).all(),
+    db.prepare(
+      `SELECT id, doc_no, doc_date, warehouse_name, qty_in FROM amis_receipt
+       WHERE match_status = 'MATCHED_EO' AND matched_eo_item_id = ? AND voided_at IS NULL ORDER BY doc_date, id`,
+    ).bind(id).all(),
   ]);
-  return c.json({ loi: loi.results, giai_trinh: gt.results, push: push.results, mail: mail.results, ngay_du_kien: plans.results });
+  return c.json({
+    loi: loi.results, giai_trinh: gt.results, push: push.results, mail: mail.results, ngay_du_kien: plans.results,
+    item, ke_hoach: keHoach.results, phieu_nhap: nhap.results,
+  });
 });
 
 // ---- danh muc Ai / Loi

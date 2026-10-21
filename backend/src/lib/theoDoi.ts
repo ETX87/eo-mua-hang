@@ -54,6 +54,10 @@ export interface DongTheoDoi {
   tinh_trang: "CHO_NDK" | "TRE_NDK" | "QUA_HAN_NDK" | "CHO_HANG" | "DONG";
   /** ngay chung tu AMIS ma luy ke ve DU so luong dat (null = chua ve du) */
   ngay_ve_du: string | null;
+  /** ngay hang ve thuc te gan nhat (phieu AMIS khop dong, ke ca ve thieu) */
+  ngay_hang_ve: string | null;
+  /** ngay nha may cam ket cua dot ke hoach cap nhat gan nhat co dien */
+  ngay_nm_cam_ket: string | null;
   ceo_ly_do: string[];
 }
 
@@ -83,7 +87,12 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
       `SELECT i.id, i.created_after_issue, i.post_issue_approved_at, i.created_at, e.created_by, e.issued_at
        FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id IN (SELECT value FROM json_each(?))`,
     ).bind(ids).all<any>(),
-    db.prepare("SELECT eo_item_id, MIN(created_at) t FROM item_plan WHERE eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY eo_item_id").bind(ids).all<any>(),
+    db.prepare(
+      `SELECT p.eo_item_id, MIN(p.created_at) t,
+              (SELECT p2.factory_committed_date FROM item_plan p2 WHERE p2.eo_item_id = p.eo_item_id AND p2.deleted_at IS NULL
+                 AND p2.factory_committed_date IS NOT NULL ORDER BY COALESCE(p2.updated_at, p2.created_at) DESC, p2.id DESC LIMIT 1) nm
+       FROM item_plan p WHERE p.eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY p.eo_item_id`,
+    ).bind(ids).all<any>(),
     db.prepare(
       `SELECT eo_item_id, COUNT(*) n, SUM(trang_thai = 'CHO_GIAI_TRINH') cho FROM tl_loi
        WHERE eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY eo_item_id`,
@@ -103,7 +112,9 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
   const slDat = new Map(base.map((r) => [r.item_id, r.so_luong_dat as number]));
   const luyKe = new Map<number, number>();
   const veDuBy = new Map<number, string>();
+  const veCuoiBy = new Map<number, string>();
   for (const x of veDau.results as any[]) {
+    veCuoiBy.set(x.id, x.d);
     if (veDuBy.has(x.id)) continue;
     const t = (luyKe.get(x.id) ?? 0) + (x.q || 0);
     luyKe.set(x.id, t);
@@ -111,6 +122,7 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
   }
   const metaBy = new Map(meta.results.map((r: any) => [r.id, r]));
   const fpBy = new Map(firstPlan.results.map((r: any) => [r.eo_item_id, r.t as string]));
+  const nmBy = new Map(firstPlan.results.map((r: any) => [r.eo_item_id, (r.nm as string | null) ?? null]));
   const loiBy = new Map(loi.results.map((r: any) => [r.eo_item_id, r]));
   // so lan lui: chuoi ngay du kien moi nhat theo thoi gian, dem lan ngay moi > ngay truoc
   const luiBy = new Map<number, number>();
@@ -171,6 +183,7 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
       ap_dung: apDungDong, bat_dau: batDau, han_ngay_du_kien: han, co_ngay_du_kien: coNdk, lan_dau_co_ndk: lanDau,
       han_cap_nhat_lai: hanLai, so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0,
       tinh_trang: tinhTrang, ceo_ly_do: ceo, ngay_ve_du: veDuBy.get(r.item_id) ?? null,
+      ngay_hang_ve: veCuoiBy.get(r.item_id) ?? null, ngay_nm_cam_ket: nmBy.get(r.item_id) ?? null,
     };
   });
 }
