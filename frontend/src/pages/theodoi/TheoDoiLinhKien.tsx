@@ -115,7 +115,7 @@ export default function TheoDoiLinhKien() {
           <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chiApDung} onChange={(e) => setChiApDung(e.target.checked)} /> Chỉ EO áp dụng quy tắc</label>
         </div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
-          Quy tắc (EO ban hành từ ngày áp dụng): có ngày dự kiến trong 24h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK · quá ngày DK phải nhập ngày mới trong 24h —
+          Quy tắc (EO ban hành từ ngày áp dụng, áp tới khi hàng về ĐỦ theo AMIS — về thiếu vẫn tính; hết cảnh báo khi về đủ hoặc sửa lại SL đặt): có ngày dự kiến trong 24h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK · quá ngày DK phải nhập ngày mới trong 24h —
           vi phạm tự ghi lỗi, phải giải trình (Ai + Lỗi gì + ảnh). Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
           {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
         </div>
