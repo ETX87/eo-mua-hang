@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import { Modal, Spinner } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
-import { normKey } from "../../lib/excel";
+import { normKey, writeBook } from "../../lib/excel";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -239,6 +239,46 @@ export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void
           })}
         </div>
       )}
+    </Modal>
+  );
+}
+
+/** Tao dot push doi tac cho cac dong (moi doi tac 1 file Excel chuan tai ve may) -> tra danh sach dot de hien PushKetQua. */
+export async function taoPushDoiTac(ids: number[]): Promise<any[]> {
+  const r = await api.post<any>("/theo-doi/push", { eo_item_ids: ids });
+  for (const d of r.dot) {
+    writeBook(d.ten_file, [{
+      name: "PUSH",
+      rows: [
+        ["Mã push", d.ma_push, "", "Đối tác", d.doi_tac, "", "Vui lòng điền 3 cột vàng và giữ nguyên tên file + mã push khi trả lời"],
+        [],
+        ["ID dòng", "Mã phê duyệt", "Mã EO", "Mã linh kiện", "Tên linh kiện", "Kho nhận", "SL đặt", "SL còn thiếu", "Ngày đặt",
+          "Ngày dự kiến giao (NCC điền)", "SL giao (NCC điền)", "Ghi chú NCC"],
+        ...d.rows.map((x: Dong) => [x.id_dat_lk, x.ma_phe_duyet ?? "", x.eo_code, x.part_code, x.part_name, x.kho, x.so_luong_dat, x.so_luong_con_thieu, ngay(x.bat_dau), "", "", ""]),
+      ],
+      widths: [16, 14, 14, 16, 36, 24, 9, 11, 11, 22, 16, 30],
+    }]);
+  }
+  return r.dot;
+}
+
+export function PushKetQua({ dot, onClose }: { dot: any[]; onClose: () => void }) {
+  const copy = (t: string) => navigator.clipboard?.writeText(t);
+  return (
+    <Modal title="Đã tạo file push đối tác" onClose={onClose} wide footer={<button className="btn primary" onClick={onClose}>Xong</button>}>
+      <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+        File Excel đã tải về máy. Gửi mail cho đối tác từ <b>theodoimuahang@gmail.com</b> (hoặc CC địa chỉ này), giữ <b>nguyên tiêu đề</b> và
+        <b> tên file</b> — hệ thống nhận diện luồng mail theo mã push.
+      </div>
+      {dot.map((d) => (
+        <div key={d.ma_push} className="card card-pad" style={{ marginBottom: 8, fontSize: 13 }}>
+          <b>{d.doi_tac}</b> · {d.rows.length} dòng · file <code>{d.ten_file}</code>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
+            <input className="input" readOnly value={d.tieu_de} onFocus={(e) => e.target.select()} />
+            <button className="btn sm" onClick={() => copy(d.tieu_de)}>Copy tiêu đề</button>
+          </div>
+        </div>
+      ))}
     </Modal>
   );
 }

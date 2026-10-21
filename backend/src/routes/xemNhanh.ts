@@ -116,6 +116,8 @@ app.get("/linh-kien", async (c) => {
     db.prepare("SELECT l.*, e.eo_code FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.eo_item_id IN (SELECT value FROM json_each(?)) ORDER BY l.id DESC").bind(ids).all<any>(),
     db.prepare("SELECT don_gia_du_kien g, created_at FROM eo_item WHERE id IN (SELECT value FROM json_each(?)) AND don_gia_du_kien IS NOT NULL ORDER BY created_at DESC LIMIT 1").bind(ids).first<any>(),
   ]);
+  const idSet = new Set(dong.map((r) => r.item_id));
+  const td = dong.some((r) => r.trang_thai_eo === "ISSUED") ? (await layDongTheoDoi(c.env, "tat_ca")).filter((r) => idSet.has(r.item_id)) : [];
   const mo = dong.filter((r) => !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang) && r.trang_thai_eo === "ISSUED");
   const xong = dong.filter((r) => r.trang_thai_don_hang === "Kết thúc" && r.thoi_gian_xu_ly_ngay != null);
   const tenMoiNhat = dong.find((r) => r.part_name)?.part_name ?? nhap.results.find((r) => r.part_name)?.part_name ?? "";
@@ -133,7 +135,7 @@ app.get("/linh-kien", async (c) => {
       doi_tac: [...new Set(dong.map((r) => r.doi_tac).filter(Boolean))],
       don_gia_gan_nhat: gia?.g ?? null,
     },
-    dong, phieu_nhap: nhap.results, log: log.results, loi: loi.results,
+    dong, theo_doi: td, phieu_nhap: nhap.results, log: log.results, loi: loi.results,
   });
 });
 

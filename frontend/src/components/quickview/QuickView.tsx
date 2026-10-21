@@ -28,7 +28,8 @@ export function QuickViewProvider({ children }: { children: ReactNode }) {
   const pop = () => setStack((s) => s.slice(0, -1));
   useEffect(() => {
     if (!stack.length) return;
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") pop(); };
+    // Esc dang mo modal thao tac (sua dong, giai trinh...) chi dong modal, khong dong popup
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("[data-modal]")) pop(); };
     window.addEventListener("keydown", h);
     document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };

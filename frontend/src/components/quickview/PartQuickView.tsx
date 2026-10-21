@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Spinner, StatusBadge } from "../ui";
 import { Clip } from "../Clip";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
+import { I } from "../../lib/icons";
 import { QvHeader, Kpi, EoLink } from "./QuickView";
+import { quyenEo, QtyModal } from "../../pages/eo/eoActions";
+import { type Dong, NgayDuKienModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
 /**
  * Popup xem nhanh theo MA LINH KIEN (95% man hinh): moi dong EO dat ma nay (ke ca ma goc truoc khi thay ma), phieu nhap
@@ -21,6 +24,13 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
   const [tab, setTab] = useState<Tab>("eo");
   const [chiMo, setChiMo] = useState(false);
   const [loaiLog, setLoaiLog] = useState<"all" | "sl" | "kh" | "khac">("all");
+  const qc = useQueryClient();
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
+  const [md, setMd] = useState<{ k: string; x?: any } | null>(null);
+  const [chon, setChon] = useState<Set<number>>(new Set());
+  const [pushKq, setPushKq] = useState<any[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const d = q.data;
 
   const log = useMemo(() => (d?.log ?? []).filter((e: any) =>
@@ -30,6 +40,21 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
   if (q.isLoading) return <Spinner />;
   if (!d) return <div style={{ padding: 30 }}>Không tải được dữ liệu mã {ma}. <button className="btn sm" onClick={onClose}>Đóng</button></div>;
   const t = d.tong;
+  const tdBy = new Map<number, Dong>((d.theo_doi ?? []).map((x: Dong) => [x.item_id, x]));
+  // dong theo doi (lib/theoDoi) neu co, khong thi dung dong bao cao 0.1 (cung ten truong) cho modal ngay DK / giai trinh / lich su
+  const asDong = (r: any): Dong => tdBy.get(r.item_id) ?? ({ ...r, sl_nhap_amis: r.sl_nhap_amis_dung_eo, nguoi_dat: null } as any);
+  const moDong = (r: any) => r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang);
+  // quyen theo tung dong: nguoi dat = nguoi tao EO (lib/theoDoi nguoi_dat)
+  const quyen = (r: any) => quyenEo({ created_by: tdBy.get(r.item_id)?.nguoi_dat ?? null, trang_thai: r.trang_thai_eo }, me.data);
+  const xong = () => { setMd(null); qc.invalidateQueries(); };
+  const push = async () => {
+    if (!chon.size || !confirm(`Tạo file push đối tác cho ${chon.size} dòng? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
+    setErr(""); setBusy(true);
+    try { setPushKq(await taoPushDoiTac([...chon])); setChon(new Set()); qc.invalidateQueries(); }
+    catch (e: any) { setErr(e?.body?.error === "READ_ONLY" ? "Bạn không có quyền push một số dòng đã chọn." : "Lỗi tạo push."); }
+    finally { setBusy(false); }
+  };
+  const chonDuoc = (r: any) => moDong(r) && r.so_luong_con_thieu > 0 && quyen(r).canEditPlan;
   const dong = d.dong.filter((r: any) => !chiMo || (r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang)));
 
   return (
@@ -66,26 +91,47 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
               .map(([k, l]) => <button key={k} className={`qv-tab ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>)}
             {tab === "eo" && <label style={{ marginLeft: "auto", fontSize: 12, display: "flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}><input type="checkbox" checked={chiMo} onChange={(e) => setChiMo(e.target.checked)} /> Chỉ đơn đang mở</label>}
           </div>
+          {tab === "eo" && d.dong.some(chonDuoc) && (
+            <div className="qv-toolbar">
+              <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
+              <button className="btn sm" onClick={() => setChon(new Set(dong.filter(chonDuoc).map((r: any) => r.item_id)))}>Chọn mọi dòng còn thiếu</button>
+              {chon.size > 0 && <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>}
+              <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: ngày DK · sửa dòng · ! giải trình · lịch sử</span>
+            </div>
+          )}
+          {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
           <div className="qv-scroll">
             {tab === "eo" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th>Ngày DK</th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th></tr></thead>
+                <thead><tr><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th>Ngày DK</th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
                 <tbody>
-                  {dong.length === 0 && <tr><td colSpan={10} className="muted">Không có dòng.</td></tr>}
-                  {dong.map((r: any) => (
+                  {dong.length === 0 && <tr><td colSpan={12} className="muted">Không có dòng.</td></tr>}
+                  {dong.map((r: any) => {
+                    const Q = quyen(r);
+                    const mo = moDong(r);
+                    const t = tdBy.get(r.item_id);
+                    return (
                     <tr key={r.item_id}>
+                      <td>{chonDuoc(r) && <input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_tao)}</td>
                       <td style={{ whiteSpace: "nowrap" }}><EoLink id={r.eo_id}>{r.eo_code}</EoLink><div className="muted" style={{ fontSize: 10.5 }}>{r.ma_phe_duyet || "chưa ban hành"}{r.part_code_goc ? ` · ${r.part_code_goc} → ${r.part_code}` : ""}</div></td>
                       <td><StatusBadge status={r.trang_thai_eo} /></td>
-                      <td><Clip w={170}>{r.kho}</Clip><Clip w={170} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.doi_tac || "—"}</Clip></td>
+                      <td><Clip w={140}>{r.kho}</Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.doi_tac || "—"}</Clip></td>
                       <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)}</td>
                       <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo)}</td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.so_luong_con_thieu)}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</td>
-                      <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={150} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
-                      <td><Clip w={140}>{[r.ly_do_ps, r.ghi_chu, r.id_crm && `Ca ${r.id_crm}`].filter(Boolean).join(" · ") || "—"}</Clip></td>
+                      <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={120} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
+                      <td><Clip w={120}>{[r.ly_do_ps, r.ghi_chu, r.id_crm && `Ca ${r.id_crm}`].filter(Boolean).join(" · ") || "—"}</Clip></td>
+                      <td className="qv-act">
+                        {mo && Q.canEditPlan && r.so_luong_con_thieu > 0 && <button className="btn ghost sm" title="Cập nhật ngày dự kiến hàng về" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+                        {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
+                        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -107,10 +153,15 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
             )}
             {tab === "loi" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th></tr></thead>
+                <thead><tr><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th><th className="qv-act"></th></tr></thead>
                 <tbody>
-                  {d.loi.length === 0 && <tr><td colSpan={6} className="muted">Không có lỗi theo dõi.</td></tr>}
-                  {d.loi.map((l: any) => <tr key={l.id}><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td></tr>)}
+                  {d.loi.length === 0 && <tr><td colSpan={7} className="muted">Không có lỗi theo dõi.</td></tr>}
+                  {d.loi.map((l: any) => <tr key={l.id}><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td>
+                    <td className="qv-act">{(() => {
+                      const r = d.dong.find((x: any) => x.item_id === l.eo_item_id);
+                      return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH"
+                        ? <button className="btn sm primary" onClick={() => setMd({ k: "gt", x: asDong(r) })}>Giải trình</button> : null;
+                    })()}</td></tr>)}
                 </tbody>
               </table>
             )}
@@ -139,6 +190,12 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
           </div>
         </div>
       </div>
+
+      {md?.k === "ndk" && <NgayDuKienModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
+      {md?.k === "qty" && <QtyModal item={md.x} issued onClose={() => setMd(null)} onSaved={xong} />}
+      {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
     </>
   );
 }

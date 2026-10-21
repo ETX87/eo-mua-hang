@@ -100,7 +100,7 @@ export function Modal({ title, onClose, children, footer, wide, width }: {
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.42)", display: "grid", placeItems: "center", zIndex: 60, padding: 20 }}>
+    <div data-modal="1" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.42)", display: "grid", placeItems: "center", zIndex: 200, padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: width ?? (wide ? 720 : 460), maxWidth: "100%", padding: 0, boxShadow: "var(--shadow-pop)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderBottom: "1px solid var(--border)" }}>
           <strong style={{ fontSize: 15 }}>{title}</strong>

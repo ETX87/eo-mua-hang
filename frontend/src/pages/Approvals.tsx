@@ -2,23 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { PageHeader, Card, StatusBadge, Avatar, Modal, Spinner } from "../components/ui";
+import { PageHeader, Card, StatusBadge, Avatar, Spinner } from "../components/ui";
 import { I } from "../lib/icons";
 import { ngayGio, ten, soLuong } from "../lib/format";
-
-const ACTIONS = [
-  { key: "approve", label: "Đồng ý", cls: "primary" },
-  { key: "reject", label: "Từ chối", cls: "danger" },
-  { key: "request_update", label: "Yêu cầu cập nhật", cls: "" },
-];
-// Duyet cuoi chi Dong y / Tu choi (WORKFLOW_SPEC §5) - backend tra BAD_ACTION neu gui request_update.
-const actionsFor = (stepType: string) => ACTIONS.filter((a) => stepType === "REVIEW" || a.key !== "request_update");
-const ACT_ERROR: Record<string, string> = {
-  ALREADY_ACTIONED: "Phiếu này đã được xử lý (có thể do bấm 2 lần hoặc mở ở tab khác). Tải lại trang.",
-  SUBMISSION_CLOSED: "Lần trình này đã đóng (EO bị trả về, hủy hoặc đã trình lại). Tải lại trang.",
-  NOT_YOUR_APPROVAL: "Phiếu này không giao cho bạn.",
-  BAD_ACTION: "Thao tác không hợp lệ với phiếu này.",
-};
+import { actionsFor, ApprovalActionModal as ActionModal } from "./eo/eoActions";
 
 export default function Approvals() {
   const nav = useNavigate();
@@ -103,30 +90,5 @@ export default function Approvals() {
 
       {act && <ActionModal act={act} onClose={() => setAct(null)} onDone={() => { setAct(null); qc.invalidateQueries({ queryKey: ["inbox"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); }} />}
     </div>
-  );
-}
-
-function ActionModal({ act, onClose, onDone }: any) {
-  const [comment, setComment] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const meta = ACTIONS.find((a) => a.key === act.action)!;
-  const needComment = act.action !== "approve";
-  const run = async () => {
-    if (needComment && !comment.trim()) return setErr("Cần nhập ghi chú.");
-    if (busy) return;
-    setBusy(true);
-    try {
-      await api.post(`/approvals/${act.row.id}/act`, { action: act.action, comment: comment.trim() || undefined });
-      onDone();
-    } catch (e: any) { setErr(ACT_ERROR[e?.body?.error] || e?.body?.error || "Lỗi."); setBusy(false); }
-  };
-  return (
-    <Modal title={`${meta.label} — ${act.row.eo_code}`} onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className={`btn ${meta.cls || "primary"}`} disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : meta.label}</button></>}>
-      <label className="field-label">Ghi chú {needComment && <span className="req">*</span>}</label>
-      <textarea className="textarea" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Nhập ghi chú..." />
-      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
-    </Modal>
   );
 }

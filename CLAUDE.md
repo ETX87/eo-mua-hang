@@ -125,7 +125,10 @@ trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate ke
 Esc đóng popup trên cùng. Mở từ bất kỳ đâu bằng `useQuickView().openEo/openPart`, `<EoLink id>`, `<PartLink ma>`.
 Dữ liệu bổ sung: `routes/xemNhanh.ts` mount `/api/xem` — `GET /eo/:id/bo-sung` (theo dõi, lỗi, giải trình, push, mail,
 phiếu AMIS, cảnh báo) và `GET /linh-kien?ma=` (lịch sử EO/đặt hàng, AMIS, log, lỗi theo mã). Nhãn sự kiện dùng chung
-`lib/eventLabels.ts`. Bảng: `DataTable` cột có `maxW` → `<Clip>` cắt "…" + title khi bị cắt; form EO `table.eo-lines`
+`lib/eventLabels.ts`. Thao tác trong popup dùng chung code với trang: `pages/eo/eoActions.tsx` (`quyenEo()` = quyền
+khớp backend, tab Kế hoạch/Tài liệu, modal sửa dòng/thay mã/thêm dòng/hủy/rút về, modal duyệt) và `pages/theodoi/shared.tsx`
+(ngày DK, giải trình, lịch sử, `taoPushDoiTac` + `PushKetQua`) — sửa 1 chỗ, cả trang lẫn popup cùng đổi. `Modal` zIndex 200
+(trên popup 80+) và có `data-modal` để Esc chỉ đóng modal. Bảng: `DataTable` cột có `maxW` → `<Clip>` cắt "…" + title khi bị cắt; form EO `table.eo-lines`
 table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 
 ## Quy ước
