@@ -64,12 +64,13 @@ export default function DanhMuc() {
 
   return (
     <div>
-      <PageHeader title="Danh mục" breadcrumb={["Cài đặt", "Danh mục"]}
-        actions={<button className="btn primary" onClick={() => setEdit({ tab, row: null })}><I.plus width={14} height={14} /> {addLabel}</button>} />
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+      <PageHeader title="Danh mục" />
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
         {[["kho", "Kho"], ["loai", "Loại hình EO"], ["toc", "Ngưỡng tốc độ hàng về"]].map(([k, l]) => (
           <button key={k} className={`btn sm ${tab === k ? "primary" : ""}`} onClick={() => setTab(k as Tab)}>{l}</button>
         ))}
+        <div style={{ flex: 1 }} />
+        <button className="btn sm primary" onClick={() => setEdit({ tab, row: null })}><I.plus width={14} height={14} /> {addLabel}</button>
       </div>
       <Card>
         {tab === "kho" && (kho.isLoading ? <Spinner /> : <DataTable cols={khoCols} rows={kho.data ?? []} keyOf={(r) => r.ten_kho} pageSize={PAGE_SIZE} />)}

@@ -31,10 +31,12 @@ export default function ReportAmisKhongEo() {
   ];
   return (
     <div>
-      <PageHeader title="Báo cáo – AMIS không có EO" actions={<button className="btn sm" onClick={() => exportRowsToXlsx(rows, EXPORT_COLS, "amis-khong-eo.xlsx")}><I.download width={14} height={14} /> Xuất Excel</button>} />
+      <PageHeader title="Báo cáo – AMIS không có EO" />
       <Card>
-        <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
-          Các mã phê duyệt này có trên EO nhưng dòng hàng không khớp EO nào.
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span className="muted" style={{ fontSize: 12.5 }}>Các mã phê duyệt này có trên EO nhưng dòng hàng không khớp EO nào.</span>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm" onClick={() => exportRowsToXlsx(rows, EXPORT_COLS, "amis-khong-eo.xlsx")}><I.download width={14} height={14} /> Xuất Excel</button>
         </div>
         <DataTable
           pageSize={PAGE_SIZE}

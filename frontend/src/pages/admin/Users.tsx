@@ -82,10 +82,12 @@ export default function Users() {
 
   return (
     <div>
-      <PageHeader title="Người dùng" actions={tab === "users" && <button className="btn primary" onClick={() => setShowAdd(true)}><I.plus width={14} height={14} /> Thêm người dùng</button>} />
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+      <PageHeader title="Người dùng" />
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
         <button className={`btn sm ${tab === "users" ? "primary" : ""}`} onClick={() => setTab("users")}>Người dùng ({q.data?.length ?? 0})</button>
         <button className={`btn sm ${tab === "etx" ? "primary" : ""}`} onClick={() => setTab("etx")}>ETX nhân sự</button>
+        <div style={{ flex: 1 }} />
+        {tab === "users" && <button className="btn sm primary" onClick={() => setShowAdd(true)}><I.plus width={14} height={14} /> Thêm người dùng</button>}
       </div>
       {tab === "users" ? (
         <Card>

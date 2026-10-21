@@ -84,11 +84,7 @@ export default function TheoDoiLinhKien() {
   const allOnPage = trang.length > 0 && trang.every((r) => chon.has(r.item_id));
   return (
     <div>
-      <PageHeader title="Theo dõi linh kiện đặt" actions={<>
-        <button className="btn primary" disabled={!chon.size || busy} onClick={taoPush}><I.send width={14} height={14} /> Tạo file push đối tác ({chon.size})</button>
-        <button className="btn" onClick={xuatExcel}><I.download width={14} height={14} /> Xuất Excel</button>
-        {me.data?.vai_tro === "Admin" && <button className="btn ghost" onClick={() => setShowDm(true)}><I.tag width={14} height={14} /> Bảng lỗi</button>}
-      </>} />
+      <PageHeader title="Theo dõi linh kiện đặt" />
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
           {NHOM.map((n) => {
@@ -103,6 +99,10 @@ export default function TheoDoiLinhKien() {
           <select className="select" style={{ width: 200 }} value={nguoiDat} onChange={(e) => { setNguoiDat(e.target.value); setPage(0); }}><option value="">Tất cả người đặt</option>{uniq((r) => r.nguoi_dat).map((x) => <option key={x} value={x}>{ten(x)}</option>)}</select>
           <select className="select" style={{ width: 150 }} value={phamVi} onChange={(e) => { setPhamVi(e.target.value as any); setPage(0); }}><option value="dang_mo">Đang mở</option><option value="tat_ca">Cả đã đóng</option></select>
           <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chiApDung} onChange={(e) => setChiApDung(e.target.checked)} /> Chỉ EO áp dụng quy tắc</label>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm primary" disabled={!chon.size || busy} onClick={taoPush}><I.send width={14} height={14} /> Tạo file push đối tác ({chon.size})</button>
+        <button className="btn sm" onClick={xuatExcel}><I.download width={14} height={14} /> Xuất Excel</button>
+        {me.data?.vai_tro === "Admin" && <button className="btn sm ghost" onClick={() => setShowDm(true)}><I.tag width={14} height={14} /> Bảng lỗi</button>}
         </div>
         <div style={{ marginTop: 10 }}><ChuGiaiNgay gon /></div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>

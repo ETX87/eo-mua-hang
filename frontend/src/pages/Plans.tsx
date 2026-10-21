@@ -57,19 +57,20 @@ export default function Plans() {
 
   return (
     <div>
-      <PageHeader title="Kế hoạch hàng về" actions={<>
-        <button className="btn primary" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
-        <button className="btn" disabled={busyTpl} onClick={downloadTemplate}><I.download width={14} height={14} /> {busyTpl ? "Đang tạo..." : "Tải mẫu (dòng còn thiếu KH)"}</button>
-        <button className="btn ghost" onClick={() => nav("/plans/tuan")}><I.calendar width={14} height={14} /> Kế hoạch tuần (KRF)</button>
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
-      </>} />
+      <PageHeader title="Kế hoạch hàng về" />
       {msg && <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
       <Card>
-        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <select className="select" style={{ width: 160 }} value={tuan} onChange={(e) => setTuan(Number(e.target.value))}>
             {KY.map((k) => <option key={k.v} value={k.v}>{k.l}</option>)}
           </select>
           {q.data && <span className="muted" style={{ fontSize: 13 }}>{ngay(q.data.tu)} – {ngay(q.data.den)}</span>}
+          <div style={{ flex: 1 }} />
+
+        <button className="btn sm primary" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
+        <button className="btn sm" disabled={busyTpl} onClick={downloadTemplate}><I.download width={14} height={14} /> {busyTpl ? "Đang tạo..." : "Tải mẫu (dòng còn thiếu KH)"}</button>
+        <button className="btn sm ghost" onClick={() => nav("/plans/tuan")}><I.calendar width={14} height={14} /> Kế hoạch tuần (KRF)</button>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </div>
         {q.isLoading ? <Spinner /> : (
           <DataTable cols={cols} rows={rows} keyOf={(r, i) => `${r.eo_id}-${r.planned_date}-${i}`} pageSize={PAGE_SIZE}

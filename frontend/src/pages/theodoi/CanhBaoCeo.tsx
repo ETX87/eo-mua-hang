@@ -21,15 +21,7 @@ export default function CanhBaoCeo() {
   const dem = (s: string) => rows.filter((r) => r.ceo_ly_do.some((x) => x.includes(s))).length;
   return (
     <div>
-      <PageHeader title="Cảnh báo CEO" actions={
-        <button className="btn" onClick={() => exportRowsToXlsx(rows, [
-          { header: "Mã phê duyệt", get: (r) => r.ma_phe_duyet }, { header: "Mã EO", get: (r) => r.eo_code }, { header: "Người đặt", get: (r) => r.nguoi_dat },
-          { header: "Mã LK", get: (r) => r.part_code }, { header: "Tên LK", get: (r) => r.part_name }, { header: "Kho", get: (r) => r.kho }, { header: "Đối tác", get: (r) => r.doi_tac },
-          { header: "SL đặt", get: (r) => r.so_luong_dat }, { header: "SL còn thiếu", get: (r) => r.so_luong_con_thieu },
-          { header: "Ngày ban hành", get: (r) => ngayGio(r.bat_dau) }, { header: "Ngày dự kiến gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) },
-          { header: "Số lần lùi", get: (r) => r.so_lan_lui }, { header: "Số lỗi", get: (r) => r.so_loi }, { header: "Lý do cấp CEO", get: (r) => r.ceo_ly_do.join("; ") },
-        ], "Canh_bao_CEO.xlsx", "CEO")}><I.download width={14} height={14} /> Xuất Excel</button>
-      } />
+      <PageHeader title="Cảnh báo CEO" />
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 13 }}>
           <input className="input" style={{ width: 300 }} placeholder="Tìm mã/tên LK, EO, đối tác… (không dấu)" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -37,6 +29,14 @@ export default function CanhBaoCeo() {
           <span className="badge nhap">Lùi ≥ 3 lần: {dem("Lùi")}</span>
           <span className="badge nhap">≥ 30 ngày: {dem("ngày đặt")}</span>
           <span className="badge nhap">≥ 3 lỗi: {dem("lỗi")}</span>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm" onClick={() => exportRowsToXlsx(rows, [
+          { header: "Mã phê duyệt", get: (r) => r.ma_phe_duyet }, { header: "Mã EO", get: (r) => r.eo_code }, { header: "Người đặt", get: (r) => r.nguoi_dat },
+          { header: "Mã LK", get: (r) => r.part_code }, { header: "Tên LK", get: (r) => r.part_name }, { header: "Kho", get: (r) => r.kho }, { header: "Đối tác", get: (r) => r.doi_tac },
+          { header: "SL đặt", get: (r) => r.so_luong_dat }, { header: "SL còn thiếu", get: (r) => r.so_luong_con_thieu },
+          { header: "Ngày ban hành", get: (r) => ngayGio(r.bat_dau) }, { header: "Ngày dự kiến gần nhất", get: (r) => ngay(r.ngay_du_kien_gan_nhat) },
+          { header: "Số lần lùi", get: (r) => r.so_lan_lui }, { header: "Số lỗi", get: (r) => r.so_loi }, { header: "Lý do cấp CEO", get: (r) => r.ceo_ly_do.join("; ") },
+        ], "Canh_bao_CEO.xlsx", "CEO")}><I.download width={14} height={14} /> Xuất Excel</button>
         </div>
       </Card>
       <Card style={{ padding: 0 }}>

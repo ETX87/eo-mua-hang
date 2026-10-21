@@ -90,7 +90,7 @@ export default function ReportTienDo() {
 
   return (
     <div>
-      <PageHeader title="Báo cáo – Tiến độ đơn hàng" actions={<button className="btn sm" onClick={() => exportRowsToXlsx(allRows, exportCols, "tien-do-don-hang.xlsx")}><I.download width={14} height={14} /> Xuất Excel</button>} />
+      <PageHeader title="Báo cáo – Tiến độ đơn hàng" />
 
       {summary.data && (
         <Card style={{ marginBottom: 16 }}>
@@ -123,6 +123,8 @@ export default function ReportTienDo() {
             <option value="ton">Chỉ đơn tồn</option>
             <option value="dong">Chỉ đơn đóng</option>
           </select>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm" onClick={() => exportRowsToXlsx(allRows, exportCols, "tien-do-don-hang.xlsx")}><I.download width={14} height={14} /> Xuất Excel</button>
         </div>
         {rep.isLoading ? <Spinner /> : (
           <DataTable

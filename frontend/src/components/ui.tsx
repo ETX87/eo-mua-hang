@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { I } from "../lib/icons";
 import { STATUS_META } from "../lib/nav";
 
@@ -21,18 +21,25 @@ export function TypeBadge({ loai }: { loai?: string | null }) {
   </span>;
 }
 
+/** Trang dat tieu de len thanh tren cung (AppShell) - khong lap 1 dong tieu de rieng trong trang. */
+export const PageTitleCtx = createContext<(t: string | null) => void>(() => {});
+
+/**
+ * Tieu de trang -> day len thanh tren cung. Trong trang chi con 1 dong gon KHI co nut quay lai / thao tac
+ * (trang chi tiet, form). Trang co thanh loc: dat nut thao tac vao thanh loc, khong truyen actions.
+ */
 export function PageHeader({
   title, back, breadcrumb, actions,
 }: { title: string; back?: () => void; breadcrumb?: string[]; actions?: ReactNode }) {
+  const setTitle = useContext(PageTitleCtx);
+  useEffect(() => { setTitle(title); return () => setTitle(null); }, [title, setTitle]);
+  if (!back && !actions) return null;
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 18 }}>
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {back && <button className="btn ghost sm" onClick={back} aria-label="Quay lại"><I.arrowLeft /></button>}
-          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800 }}>{title}</h1>
-        </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        {back && <button className="btn ghost sm" onClick={back} aria-label="Quay lại" title="Quay lại"><I.arrowLeft /></button>}
         {breadcrumb && (
-          <div className="muted" style={{ fontSize: 12.5, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+          <div className="muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 6 }}>
             {breadcrumb.map((b, i) => (
               <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {i > 0 && <I.chevronRight width={12} height={12} />}<span>{b}</span>
@@ -41,7 +48,7 @@ export function PageHeader({
           </div>
         )}
       </div>
-      {actions && <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>{actions}</div>}
+      {actions && <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>{actions}</div>}
     </div>
   );
 }

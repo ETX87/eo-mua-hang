@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { NAV } from "../lib/nav";
 import { I } from "../lib/icons";
-import { Avatar } from "./ui";
+import { Avatar, PageTitleCtx } from "./ui";
 import { APP_VERSION } from "../version";
 import { ten, tuBayGio } from "../lib/format";
 
@@ -130,6 +130,7 @@ function CartLogo({ size = 34 }: { size?: number }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [open, setOpen] = useState(true);
   const loc = useLocation();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<Me>("/users/me") });
@@ -213,12 +214,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           display: "flex", alignItems: "center", gap: 18, padding: "0 24px", position: "sticky", top: 0, zIndex: 20,
         }}>
           <button className="btn ghost sm" onClick={() => setOpen((o) => !o)} aria-label="Menu"><I.menu /></button>
-          <div style={{ fontSize: 19, fontWeight: 800, flex: 1 }}>{titleFor(loc.pathname)}</div>
+          <div style={{ fontSize: 19, fontWeight: 800, flex: 1 }}>{pageTitle ?? titleFor(loc.pathname)}</div>
           <NotificationBell />
           <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} />
         </header>
 
-        <main style={{ flex: 1, padding: 24, maxWidth: 1520, width: "100%", margin: "0 auto" }}>{children}</main>
+        <main style={{ flex: 1, padding: 24, maxWidth: 1520, width: "100%", margin: "0 auto" }}>
+          <PageTitleCtx.Provider value={setPageTitle}>{children}</PageTitleCtx.Provider>
+        </main>
       </div>
     </div>
   );
