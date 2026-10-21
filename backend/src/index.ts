@@ -14,6 +14,9 @@ import danhMucRoutes from "./routes/danhMuc";
 import notificationsRoutes from "./routes/notifications";
 import etxNhanSuRoutes from "./routes/etxNhanSu";
 import dvbhSyncRoutes from "./routes/dvbhSync";
+import theoDoiRoutes from "./routes/theoDoi";
+import partnerRoutes from "./routes/partner";
+import { danhGiaQuyTac } from "./lib/theoDoi";
 import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
 
 // EO MUA HANG - Worker doc lap (Hono + D1). Phuc vu ca API lan frontend tinh tu 1 Worker.
@@ -29,13 +32,17 @@ app.use("*", async (c, next) => {
 // waitUntil, khong lam cham response; tu bo qua khi version du lieu + ngay chua doi.
 app.use("/api/*", async (c, next) => {
   await next();
-  if (dvbhEnabled(c.env) && !c.req.path.startsWith("/api/dvbh-sync")) {
-    c.executionCtx.waitUntil(maybeSyncDvbh(c.env).catch((e) => console.error("dvbh sync", e)));
-  }
+  // ghi loi Theo doi linh kien dat (R1/R3/R4) - toi da 10 phut/lan, xem lib/theoDoi.ts; xong moi day DVBH (payload co so loi)
+  c.executionCtx.waitUntil((async () => {
+    await danhGiaQuyTac(c.env).catch((e) => console.error("theo doi", e));
+    if (dvbhEnabled(c.env) && !c.req.path.startsWith("/api/dvbh-sync")) await maybeSyncDvbh(c.env).catch((e) => console.error("dvbh sync", e));
+  })());
 });
 
 // --- auth: khong yeu cau session ---
 app.route("/api/auth", authRoutes);
+// API he ngoai (X-API-Key rieng, khong session) - phai mount TRUOC verifySessionMiddleware
+app.route("/api/partner", partnerRoutes);
 
 // --- moi route /api/* con lai: session -> loadUser -> requireApproved (tru /users/me) -> requireWrite ---
 app.use("/api/*", verifySessionMiddleware);
@@ -57,6 +64,7 @@ app.route("/api/danh-muc", danhMucRoutes);
 app.route("/api/notifications", notificationsRoutes);
 app.route("/api/etx-nhan-su", etxNhanSuRoutes);
 app.route("/api/dvbh-sync", dvbhSyncRoutes);
+app.route("/api/theo-doi", theoDoiRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 

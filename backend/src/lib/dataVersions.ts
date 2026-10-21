@@ -3,7 +3,7 @@
  * sau khi ghi. Endpoint bao cao bao compute trong cachedReport(): so sanh tag (cac domain + ngay VN)
  * voi tag da cache, chi tinh lai khi lech.
  */
-export type DataDomain = "eo" | "amis" | "users" | "settings";
+export type DataDomain = "eo" | "amis" | "users" | "settings" | "theo_doi";
 
 export async function bumpVersions(db: D1Database, domains: DataDomain[]): Promise<void> {
   if (domains.length === 0) return;

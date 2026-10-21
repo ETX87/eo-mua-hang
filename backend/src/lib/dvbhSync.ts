@@ -4,6 +4,7 @@ import { cachedReport } from "./reportCache";
 import { versionTag } from "./dataVersions";
 import { nowVN, todayVN } from "./vnTime";
 import { sha256Hex } from "./sha";
+import { layDongTheoDoi } from "./theoDoi";
 
 /**
  * Day thong tin PO (moi dong eo_item) sang app DVBH: POST <DVBH>/api/partner/sync/po-dat-hang
@@ -52,6 +53,8 @@ export async function buildDvbhRows(env: Env) {
     a.push({ so_ct: r.doc_no, ngay: r.doc_date, kho: r.warehouse_name, sl: r.qty_in });
     recBy.set(r.matched_eo_item_id, a);
   }
+  // chi so "Theo doi linh kien dat" (lib/theoDoi.ts): tinh trang, han ngay du kien, so lan lui, so loi, ly do cap CEO
+  const td = new Map((await layDongTheoDoi(env, "tat_ca")).map((t) => [t.item_id, t]));
   return base.map((r) => {
     const capNhat = [r.ngay_cap_nhat_dong, r.ngay_cap_nhat_so_luong].filter(Boolean).sort().pop() ?? r.ngay_tao;
     return {
@@ -71,6 +74,11 @@ export async function buildDvbhRows(env: Env) {
       ngay_tao: r.ngay_tao, ngay_cap_nhat: capNhat,
       ke_hoach: planBy.get(r.item_id) ?? [],
       phieu_nhap: recBy.get(r.item_id) ?? [],
+      theo_doi: td.has(r.item_id) ? (() => {
+        const t = td.get(r.item_id)!;
+        return { ap_dung: t.ap_dung, tinh_trang: t.tinh_trang, han_ngay_du_kien: t.han_ngay_du_kien, han_cap_nhat_lai: t.han_cap_nhat_lai,
+          so_lan_lui: t.so_lan_lui, so_loi: t.so_loi, so_loi_cho_giai_trinh: t.so_loi_cho_gt, cap_ceo: t.ceo_ly_do.length > 0, ceo_ly_do: t.ceo_ly_do };
+      })() : null,
     };
   });
 }
@@ -121,7 +129,7 @@ export async function pushDvbh(env: Env, full = false): Promise<{ pushed: number
 export async function maybeSyncDvbh(env: Env, opts: { force?: boolean; full?: boolean } = {}): Promise<{ ran: boolean; pushed?: number; total?: number; error?: string }> {
   if (!dvbhEnabled(env)) return { ran: false, error: "NOT_CONFIGURED" };
   const db = env.DB;
-  const tag = await versionTag(db, ["eo", "amis", "settings"]);
+  const tag = await versionTag(db, ["eo", "amis", "settings", "theo_doi"]);
   const today = todayVN();
   const st = await db.prepare("SELECT version_tag, ngay FROM dvbh_sync_state WHERE id = 1").first<{ version_tag: string | null; ngay: string | null }>();
   if (!opts.force && st && st.version_tag === tag && st.ngay === today) return { ran: false };

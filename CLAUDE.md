@@ -32,7 +32,8 @@ npm run deploy            # build + wrangler deploy
 
 - `assets.run_worker_first: ["/api/*"]` **load-bearing** — không xóa.
 - Worker `muahang` (https://muahang.dichvu3t.workers.dev), D1 `eo-mua-hang-db` — `database_id` đã điền (production thật).
-- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`, `DVBH_API_KEY`.
+- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`, `DVBH_API_KEY`,
+  `THEODOI_MUAHANG_API_KEY` (chưa đặt — khi app theo-doi-mua-hang sẵn sàng).
 - Service Binding `DVBH` → Worker `dvbh` (app DVBH, repo `../../cloudflare smarttrade base`).
 - Bump `frontend/src/version.ts` (`+0.001`, sửa tay chuỗi) trước mỗi deploy.
 
@@ -43,6 +44,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0005 notifications · 0006 etx_nhan_su · 0007 thay mã + kế hoạch tuần
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
+                             · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail)
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -107,6 +109,13 @@ cách lần trước ≥ 20s, có khóa `running_until`; chỉ gửi dòng có h
 Khóa dòng `id_dat_lk` = `legacy_id` (LK-…) hoặc `EOI-<eo_item.id>`. Admin: Cấu hình hệ thống › "Đồng bộ PO sang
 app DVBH" (gửi ngay / đồng bộ toàn bộ). DVBH dùng song song với Google Sheet cũ (~1 tháng). Thêm field vào
 payload = DVBH nhận nguyên JSON (`po_dat_hang_eo.payload`), map ở `frontend/src/lib/poDatHangEo.ts` bên đó.
+
+## Theo dõi linh kiện đặt (kiểm soát ngày dự kiến)
+
+Quy tắc R1/R3/R4, giải trình (Ai + Lỗi gì + ảnh), cấp CEO, form push chuẩn, API mail: **`../THEO_DOI_LINH_KIEN_DAT.md`**.
+`lib/theoDoi.ts`: `layDongTheoDoi` (dựa trên báo cáo 0.1 + item_plan + event_log + tl_loi), `danhGiaQuyTac` (ghi lỗi
+idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state` trước, không ghi khóa mỗi request).
+`/api/partner/*` (`routes/partner.ts`) mount TRƯỚC session middleware. Domain version `theo_doi` (DVBH tag có).
 
 ## Quy ước
 
