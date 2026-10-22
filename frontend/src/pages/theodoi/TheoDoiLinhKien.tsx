@@ -117,16 +117,21 @@ export default function TheoDoiLinhKien() {
           <div className="tbl-wrap" style={{ overflow: "auto" }}>
             <table className="tbl">
               <thead><tr>
+                <th className="qv-act">Thao tác</th>
                 <th style={{ width: 32 }}><input type="checkbox" checked={allOnPage} onChange={() => setChon((s) => { const n = new Set(s); trang.forEach((r) => (allOnPage ? n.delete(r.item_id) : n.add(r.item_id))); return n; })} /></th>
                 <th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Về / Thiếu</th>
-                <th>Ban hành · Hạn có ngày dự kiến</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th><th></th>
+                <th>Ban hành · Hạn có ngày dự kiến</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th>
               </tr></thead>
               <tbody>
                 {trang.length === 0 && <tr><td colSpan={11} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có dòng phù hợp.</td></tr>}
                 {trang.map((r) => {
                   const tt = TINH_TRANG[r.tinh_trang];
                   return (
-                    <tr key={r.item_id} style={{ background: r.ceo_ly_do.length ? "#FEF2F2" : undefined }}>
+                    <tr key={r.item_id} style={{ background: r.ceo_ly_do.length ? "#FEF2F2" : undefined }}><td className="qv-act" style={cell}>
+                        <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (cập nhật)" onClick={() => setModal({ loai: "ndk", dong: r })}><I.calendar width={14} height={14} /></button>
+                        <button className="btn ghost sm" title="Giải trình" onClick={() => setModal({ loai: "gt", dong: r })}><I.edit width={14} height={14} /></button>
+                        <button className="btn ghost sm" title="Lịch sử theo dõi" onClick={() => setModal({ loai: "ls", dong: r })}><I.clock width={14} height={14} /></button>
+                      </td>
                       <td style={cell}><input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); n.has(r.item_id) ? n.delete(r.item_id) : n.add(r.item_id); return n; })} /></td>
                       <td style={cell}><EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink><div className="muted" style={{ fontSize: 11 }}>{r.eo_code} · {ten(r.nguoi_dat)}</div></td>
                       <td style={{ ...cell, maxWidth: 260 }}><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div>{r.id_crm && <div className="muted" style={{ fontSize: 11 }}>Ca {r.id_crm}</div>}</td>
@@ -137,11 +142,6 @@ export default function TheoDoiLinhKien() {
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_lan_lui || ""}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_loi ? <span className={`badge ${r.so_loi_cho_gt ? "reject" : "nhap"}`} title={`${r.so_loi_cho_gt} chờ giải trình`}>{r.so_loi}{r.so_loi_cho_gt ? ` (${r.so_loi_cho_gt} chờ)` : ""}</span> : ""}</td>
                       <td style={cell}><span className={`badge ${tt.c}`}>{tt.l}</span>{r.ceo_ly_do.length > 0 && <div><span className="badge reject" title={r.ceo_ly_do.join("\n")} style={{ marginTop: 4 }}>Cấp CEO</span></div>}</td>
-                      <td style={{ ...cell, whiteSpace: "nowrap" }}>
-                        <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (cập nhật)" onClick={() => setModal({ loai: "ndk", dong: r })}><I.calendar width={14} height={14} /></button>
-                        <button className="btn ghost sm" title="Giải trình" onClick={() => setModal({ loai: "gt", dong: r })}><I.edit width={14} height={14} /></button>
-                        <button className="btn ghost sm" title="Lịch sử theo dõi" onClick={() => setModal({ loai: "ls", dong: r })}><I.clock width={14} height={14} /></button>
-                      </td>
                     </tr>
                   );
                 })}

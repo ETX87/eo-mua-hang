@@ -137,21 +137,20 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Các đợt hàng về (kế hoạch)</div>
           <div className="tbl-wrap">
             <table className="tbl tbl-dense">
-              <thead><tr><th style={th}>Đợt</th><th style={th}><NhanNgay k="NM" /></th><th style={th}><NhanNgay k="DK" /></th><th style={{ ...th, textAlign: "right" }}>SL</th><th style={th}>Ghi chú / nguồn</th><th style={th}>Cập nhật</th><th style={th}></th></tr></thead>
+              <thead><tr><th className="qv-act" style={th}>Thao tác</th><th style={th}>Đợt</th><th style={th}><NhanNgay k="NM" /></th><th style={th}><NhanNgay k="DK" /></th><th style={{ ...th, textAlign: "right" }}>SL</th><th style={th}>Ghi chú / nguồn</th><th style={th}>Cập nhật</th></tr></thead>
               <tbody>
                 {kh.length === 0 && <tr><td colSpan={7} className="muted">Chưa có đợt nào — nhập ở khung bên dưới.</td></tr>}
                 {kh.map((p, i) => (
-                  <tr key={p.id} style={{ background: sua?.id === p.id ? "#FFFBEB" : undefined }}>
+                  <tr key={p.id} style={{ background: sua?.id === p.id ? "#FFFBEB" : undefined }}><td className="qv-act">
+                      {p.loai !== "TUAN" && <button className="btn ghost sm" title="Sửa đợt này" onClick={() => moForm(p)}><I.edit width={14} height={14} /></button>}
+                      <button className="btn ghost sm danger" title="Xóa đợt" onClick={() => xoa(p)}><I.trash width={14} height={14} /></button>
+                    </td>
                     <td>{i + 1}{p.loai === "TUAN" && <span className="badge final" style={{ marginLeft: 4 }}>Tuần {p.tuan}</span>}</td>
                     <td style={{ color: NGAY.NM.mau, fontWeight: 600 }}>{ngay(p.factory_committed_date) || "—"}</td>
                     <td style={{ color: NGAY.DK.mau, fontWeight: 700 }}>{ngay(p.planned_date)}</td>
                     <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td>
                     <td>{p.ghi_chu || ""}</td>
                     <td className="muted" style={{ fontSize: 11.5 }}>{ten(p.updated_by || p.created_by)} · {ngayGio(p.updated_at || p.created_at)}</td>
-                    <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
-                      {p.loai !== "TUAN" && <button className="btn ghost sm" title="Sửa đợt này" onClick={() => moForm(p)}><I.edit width={14} height={14} /></button>}
-                      <button className="btn ghost sm danger" title="Xóa đợt" onClick={() => xoa(p)}><I.trash width={14} height={14} /></button>
-                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -104,7 +104,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
           <div className="qv-scroll">
             {tab === "eo" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th></tr></thead>
                 <tbody>
                   {dong.length === 0 && <tr><td colSpan={12} className="muted">Không có dòng.</td></tr>}
                   {dong.map((r: any) => {
@@ -112,7 +112,12 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                     const mo = moDong(r);
                     const t = tdBy.get(r.item_id);
                     return (
-                    <tr key={r.item_id}>
+                    <tr key={r.item_id}><td className="qv-act">
+                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+                        {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
+                        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
+                      </td>
                       <td>{chonDuoc(r) && <input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_tao)}</td>
                       <td style={{ whiteSpace: "nowrap" }}><EoLink id={r.eo_id}>{r.eo_code}</EoLink><div className="muted" style={{ fontSize: 10.5 }}>{r.ma_phe_duyet || "chưa ban hành"}{r.part_code_goc ? ` · ${r.part_code_goc} → ${r.part_code}` : ""}</div></td>
@@ -124,12 +129,6 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                       <td><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} /></td>
                       <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={120} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
                       <td><Clip w={120}>{[r.ly_do_ps, r.ghi_chu, r.id_crm && `Ca ${r.id_crm}`].filter(Boolean).join(" · ") || "—"}</Clip></td>
-                      <td className="qv-act">
-                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
-                        {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
-                        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
-                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
-                      </td>
                     </tr>
                     );
                   })}
@@ -154,15 +153,15 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
             )}
             {tab === "loi" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th><th className="qv-act"></th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th></tr></thead>
                 <tbody>
                   {d.loi.length === 0 && <tr><td colSpan={7} className="muted">Không có lỗi theo dõi.</td></tr>}
-                  {d.loi.map((l: any) => <tr key={l.id}><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td>
-                    <td className="qv-act">{(() => {
+                  {d.loi.map((l: any) => <tr key={l.id}><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td><td className="qv-act">{(() => {
                       const r = d.dong.find((x: any) => x.item_id === l.eo_item_id);
                       return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH"
                         ? <button className="btn sm primary" onClick={() => setMd({ k: "gt", x: asDong(r) })}>Giải trình</button> : null;
-                    })()}</td></tr>)}
+                    })()}</td>
+                    </tr>)}
                 </tbody>
               </table>
             )}

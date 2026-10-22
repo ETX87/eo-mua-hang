@@ -193,7 +193,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
             {tab === "lk" && (
               <table className="tbl tbl-dense">
-                <thead><tr>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Ca / ghi chú</th><th className="qv-act">Thao tác</th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Ca / ghi chú</th></tr></thead>
                 <tbody>
                   {d.items.map((r: any, i: number) => {
                     const t = tdBy.get(r.id) as any;
@@ -201,7 +201,14 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                     const ndk = t?.ngay_du_kien_gan_nhat ?? kh.map((p: any) => p.planned_date).sort().pop();
                     const active = r.line_status !== "CANCELLED_LINE";
                     return (
-                      <tr key={r.id} style={{ opacity: active ? 1 : 0.5 }}>
+                      <tr key={r.id} style={{ opacity: active ? 1 : 0.5 }}><td className="qv-act">
+                          {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+                          {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
+                          {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
+                          {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+                          {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
+                          {P.canApprovePostIssue && r.post_issue_status === "PENDING" && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button> <button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
+                        </td>
                         {coChon && <td>{active && r.chua_dat > 0 && <input type="checkbox" checked={chon.has(r.id)} onChange={() => doiChon(r.id)} />}</td>}
                         <td className="muted">{i + 1}</td>
                         <td style={{ whiteSpace: "nowrap" }}><PartLink ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}<div style={{ marginLeft: -6 }}><NhanSauBH r={r} nguoiDuyet={eo.final_approver_email} /></div></td>
@@ -214,14 +221,6 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                           dk={ndk} ve={(b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop()} veDu={r.da_dat >= r.current_qty} /></td>
                         <td style={{ whiteSpace: "nowrap" }}>{t ? <><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={t.ceo_ly_do.join("\n")}>CEO</span>}</> : <span className="muted">—</span>}</td>
                         <td><Clip w={120}>{[r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—"}</Clip></td>
-                        <td className="qv-act">
-                          {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
-                          {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
-                          {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
-                          {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
-                          {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
-                          {P.canApprovePostIssue && r.post_issue_status === "PENDING" && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button> <button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
-                        </td>
                       </tr>
                     );
                   })}

@@ -42,11 +42,14 @@ export default function CanhBaoCeo() {
       <Card style={{ padding: 0 }}>
         {q.isLoading ? <Spinner /> : (
           <div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Lý do cấp CEO</th><th>Tình trạng</th><th></th></tr></thead>
+            <thead><tr><th className="qv-act">Thao tác</th><th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Lý do cấp CEO</th><th>Tình trạng</th></tr></thead>
             <tbody>
               {rows.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có đơn hàng ở cấp CEO.</td></tr>}
               {rows.map((r) => (
-                <tr key={r.item_id}>
+                <tr key={r.item_id}><td className="qv-act">
+                    <button className="btn ghost sm" title="Giải trình" onClick={() => setModal({ loai: "gt", dong: r })}><I.edit width={14} height={14} /></button>
+                    <button className="btn ghost sm" title="Lịch sử" onClick={() => setModal({ loai: "ls", dong: r })}><I.clock width={14} height={14} /></button>
+                  </td>
                   <td><EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink><div className="muted" style={{ fontSize: 11 }}>{ten(r.nguoi_dat)}</div></td>
                   <td><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></td>
                   <td>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
@@ -54,10 +57,6 @@ export default function CanhBaoCeo() {
                   <td><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve} veDu={!!r.ngay_ve_du} /></td>
                   <td style={{ color: "var(--danger)", fontSize: 12.5 }}>{r.ceo_ly_do.map((x) => <div key={x}>• {x}</div>)}</td>
                   <td><span className={`badge ${TINH_TRANG[r.tinh_trang].c}`}>{TINH_TRANG[r.tinh_trang].l}</span></td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="btn ghost sm" title="Giải trình" onClick={() => setModal({ loai: "gt", dong: r })}><I.edit width={14} height={14} /></button>
-                    <button className="btn ghost sm" title="Lịch sử" onClick={() => setModal({ loai: "ls", dong: r })}><I.clock width={14} height={14} /></button>
-                  </td>
                 </tr>
               ))}
             </tbody>

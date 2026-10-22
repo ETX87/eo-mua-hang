@@ -171,7 +171,8 @@ table.eo-lines .select { text-overflow: ellipsis; }
 /* ---- thao tac trong popup xem nhanh ---- */
 .qv-toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2, #F8FAFC); flex-shrink: 0; }
 .qv-toolbar .sp { margin-left: auto; }
-.tbl .qv-act { position: sticky; right: 0; background: #fff; box-shadow: -6px 0 6px -6px rgba(15,23,42,.18); white-space: nowrap; text-align: right; }
+/* cot thao tac DAU bang, ghim trai - bang nhieu cot khong day nut ra ngoai */
+.tbl .qv-act { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 6px 0 6px -6px rgba(15,23,42,.18); white-space: nowrap; text-align: left; }
 table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .qv-act .btn.sm { padding: 3px 5px; min-height: 0; }
 .qv-pad { padding: 12px; }

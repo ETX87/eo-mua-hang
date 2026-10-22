@@ -17,8 +17,12 @@ export interface Col<T> {
 
 export const PAGE_SIZE = 10; // quy uoc: moi bang 10 dong / trang
 
+/**
+ * Cot thao tac (key "act") luon dung DAU bang va ghim trai - bang nhieu cot khong bi day nut ra khoi man hinh.
+ * totalRow (theo vi tri cot khai bao) duoc doi cho theo.
+ */
 export function DataTable<T>({
-  cols, rows, keyOf, totalRow, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize,
+  cols: colsIn, rows, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -30,6 +34,10 @@ export function DataTable<T>({
   /** Bat phan trang client-side (mac dinh 10). Truyen 0/undefined de tat. */
   pageSize?: number;
 }) {
+  const ai = colsIn.findIndex((c) => c.key === "act");
+  const order = ai > 0 ? [ai, ...colsIn.map((_, i) => i).filter((i) => i !== ai)] : colsIn.map((_, i) => i);
+  const cols = order.map((i) => (i === ai ? { ...colsIn[i], sticky: true, align: "left" as const, header: colsIn[i].header || "Thao tác", wrap: true } : colsIn[i]));
+  const totalRow = totalRowIn && totalRowIn.length === colsIn.length ? order.map((i) => totalRowIn[i]) : totalRowIn;
   const size = pageSize ?? 0;
   const [page, setPage] = useState(0);
   const total = rows.length;
@@ -66,7 +74,8 @@ export function DataTable<T>({
               <tr key={keyOf(row, start + i)} onClick={onRowClick ? () => onRowClick(row) : undefined} style={{ cursor: onRowClick ? "pointer" : undefined }}>
                 {cols.map((c) => (
                   <td key={c.key} style={{ textAlign: c.align ?? "left",
-                    position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined }}>
+                    position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined, zIndex: c.sticky ? 1 : undefined,
+                    whiteSpace: c.key === "act" ? "nowrap" : undefined, boxShadow: c.key === "act" ? "6px 0 6px -6px rgba(15,23,42,.18)" : undefined }}>
                     {c.wrap || c.align === "right" || c.align === "center" ? c.render(row) : <Clip w={c.maxW ?? c.width ?? 240}>{c.render(row)}</Clip>}
                   </td>
                 ))}
