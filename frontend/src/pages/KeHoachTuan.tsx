@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner } from "../components/ui";
 import { PlanImportModal } from "../components/PlanImportModal";
 import { I } from "../lib/icons";
+import { Hoi } from "../lib/thuatNgu";
 import { soLuong, ngay } from "../lib/format";
 import { nextWeeks, todayISO, weekSat, weekStartOf } from "../lib/excel";
 import { maPO, parseWeeklyFile, weeklyTemplate, type Parsed, type PlanLine } from "../lib/planExcel";
@@ -18,7 +19,10 @@ export default function KeHoachTuan() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [eoId, setEoId] = useState<number | null>(null);
+  const [sp] = useSearchParams();
+  // mo tu tab Ke hoach cua EO: /plans/tuan?eo=ID -> chon san EO do
+  const [eoId, setEoId] = useState<number | null>(sp.get("eo") ? Number(sp.get("eo")) : null);
+  const [hd, setHd] = useState(!sp.get("eo"));
   const [imp, setImp] = useState<{ name: string; parsed: Parsed } | null>(null);
   const [msg, setMsg] = useState("");
   const [busyTpl, setBusyTpl] = useState(false);
@@ -63,9 +67,31 @@ export default function KeHoachTuan() {
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </>} />
       {msg && <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
+      <Card style={{ marginBottom: 14, padding: "10px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <b style={{ fontSize: 13.5 }}>Kế hoạch theo tuần dùng khi nào, vì sao, nhập thế nào?</b>
+          <button className="btn ghost sm" onClick={() => setHd((x) => !x)}>{hd ? "Thu gọn" : "Xem hướng dẫn"}</button>
+        </div>
+        {hd && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, fontSize: 12.5, lineHeight: 1.55, marginTop: 8 }}>
+            <div><b>Khi nào dùng</b><br />Đơn <b>kế hoạch tháng</b> (vd KRF): nhà máy không báo ngày giao cụ thể, chỉ báo <b>mỗi tuần giao bao nhiêu</b>.
+              Đơn thường (nhà máy báo ngày từng đợt) thì nhập <b>theo ngày</b> ở nút 📅 của từng dòng — không cần màn này.</div>
+            <div><b>Vì sao phải nhập</b><br />Sau ban hành mỗi dòng phải có ngày dự kiến trong 24 giờ làm việc; ô tuần được tính là ngày dự kiến = <b>Thứ Bảy</b> cuối tuần đó.
+              Không nhập → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem để biết tuần nào có hàng.</div>
+            <div><b>Nhập thế nào</b>
+              <ol style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                <li>Chọn EO ở cột trái.</li>
+                <li>Mỗi ô = SL dự kiến về trong tuần đó (cột "Tuần 42 · 12/10–18/10"). Thiếu tuần → "Thêm tuần".</li>
+                <li>Bấm <b>Lưu</b>. Lưu lại sẽ thay kế hoạch tuần cũ của dòng đó.</li>
+              </ol>
+              Nhiều EO cùng lúc: <b>Tải mẫu</b> → điền Excel → <b>Import Excel</b>.</div>
+          </div>
+        )}
+      </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, alignItems: "start" }}>
         <Card>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Bước 1 · Chọn EO đã ban hành</div>
           <input className="input" placeholder="Tìm mã EO / 3TDO / tiêu đề..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <div style={{ marginTop: 10, maxHeight: "65vh", overflow: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
             {eos.isLoading && <Spinner />}
@@ -83,17 +109,7 @@ export default function KeHoachTuan() {
         </Card>
         <div>
           {!eoId && (
-            <Card>
-              <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
-                <b>Cách dùng</b>
-                <ol style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-                  <li>Chọn EO (đơn kế hoạch tháng) ở cột trái → nhập SL dự kiến về theo từng tuần → Lưu.</li>
-                  <li>Hoặc cập nhật nhiều EO 1 lần: "Tải mẫu" → điền SL vào các cột tuần (Y26-W42…) → "Import Excel".</li>
-                  <li>Mỗi lần lưu / import sẽ <b>thay</b> kế hoạch tuần cũ của các linh kiện được cập nhật; lịch sử thay đổi vẫn giữ trong EO.</li>
-                </ol>
-                <div className="muted" style={{ marginTop: 8 }}>Kế hoạch tuần tách riêng với kế hoạch theo ngày (Chi tiết EO › Kế hoạch hàng về), nhưng cả hai cùng tính vào tổng không vượt SL đặt và vào báo cáo tiến độ.</div>
-              </div>
-            </Card>
+            <Card><div className="muted" style={{ fontSize: 13.5, padding: 20, textAlign: "center" }}>← Chọn 1 EO ở cột trái để nhập SL về theo từng tuần.</div></Card>
           )}
           {eoId && data.isLoading && <Spinner />}
           {eoId && data.data && (
@@ -178,7 +194,7 @@ function WeekGrid({ eoId, lines, plans, onSaved }: { eoId: number; lines: PlanLi
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-        <b style={{ fontSize: 15 }}>{po}</b>
+        <b style={{ fontSize: 15 }}>Bước 2 · Nhập SL về theo tuần — {po}</b>
         <button className="btn ghost sm" onClick={() => nav(`/eo/${eoId}`)}><I.eye width={14} height={14} /> Mở EO</button>
         <span className="muted" style={{ fontSize: 12.5 }}>{lines.length} dòng · {dirty.length} dòng đã sửa</span>
         <button className="btn sm" style={{ marginLeft: "auto" }} onClick={addWeek}><I.plus width={14} height={14} /> Thêm tuần</button>
@@ -190,13 +206,13 @@ function WeekGrid({ eoId, lines, plans, onSaved }: { eoId: number; lines: PlanLi
         <table className="tbl">
           <thead><tr>
             <th style={th}>Mã LK</th><th style={th}>Tên linh kiện</th><th style={th}>Kho</th>
-            <th style={{ ...th, textAlign: "right" }}>SL đặt</th><th style={{ ...th, textAlign: "right" }}>Đã về</th><th style={{ ...th, textAlign: "right" }} title="Kế hoạch theo ngày (nhập ở Chi tiết EO)">KH ngày</th>
+            <th style={{ ...th, textAlign: "right" }}><Hoi k="SL_DAT" /></th><th style={{ ...th, textAlign: "right" }}><Hoi k="SL_VE" nhan="Đã về" /></th><th style={{ ...th, textAlign: "right" }} title="SL đã lên kế hoạch THEO NGÀY (nhập ở nút 📅 của dòng) — cũng tính vào tổng ≤ SL đặt">Đã có KH theo ngày</th>
             {weeks.map((w) => (
               <th key={w} style={{ ...th, textAlign: "center", minWidth: 78 }}>
-                {w}<div className="muted" style={{ fontWeight: 400, fontSize: 10.5 }}>{ngay(weekStartOf(weekSat(w))).slice(0, 5)}–{ngay(weekSat(w)).slice(0, 5)}</div>
+                <span title={`Mã tuần ${w} — ngày dự kiến tính là Thứ Bảy ${ngay(weekSat(w))}`}>Tuần {Number(w.split("W")[1])}</span><div className="muted" style={{ fontWeight: 400, fontSize: 10.5 }}>{ngay(weekStartOf(weekSat(w))).slice(0, 5)}–{ngay(weekSat(w)).slice(0, 5)}</div>
               </th>
             ))}
-            <th style={{ ...th, textAlign: "right" }}>Tổng tuần</th><th style={{ ...th, textAlign: "right" }}>Chưa lên KH</th>
+            <th style={{ ...th, textAlign: "right" }}>Tổng theo tuần</th><th style={{ ...th, textAlign: "right" }}><Hoi k="SL_CHUA_KH" /></th>
           </tr></thead>
           <tbody>
             {lines.map((l) => {
@@ -230,7 +246,8 @@ function WeekGrid({ eoId, lines, plans, onSaved }: { eoId: number; lines: PlanLi
         </table>
       </div>
       <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-        Ô trống = không có kế hoạch tuần đó. Lưu sẽ thay toàn bộ kế hoạch tuần của các dòng đã sửa. Ô vàng = đã sửa, chưa lưu.
+        Mỗi ô = SL dự kiến về trong tuần (ngày dự kiến tính là Thứ Bảy). Ô trống = tuần đó không về. Ô vàng = đã sửa, chưa lưu.
+        "Chưa lên KH" = SL đặt − KH theo ngày − tổng theo tuần; số âm (đỏ) = vượt SL đặt, không lưu được. Lưu sẽ thay toàn bộ kế hoạch tuần của các dòng đã sửa.
       </div>
     </Card>
   );

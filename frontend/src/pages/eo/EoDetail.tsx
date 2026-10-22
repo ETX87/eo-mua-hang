@@ -10,7 +10,8 @@ import { soLuong, tien, ngay, ngayGio, ten } from "../../lib/format";
 import { STATUS_META } from "../../lib/nav";
 import { EVENT_LABEL } from "../../lib/eventLabels";
 import { fileSize } from "../../lib/files";
-import { quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal } from "./eoActions";
+import { Hoi } from "../../lib/thuatNgu";
+import { NhanSauBH, TuChoiDongModal, quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal } from "./eoActions";
 
 const TABS = ["Linh kiện", "Kế hoạch hàng về", "Quy trình duyệt", "Lịch sử thay đổi", "Bình luận", "Tài liệu đính kèm"] as const;
 type Tab = typeof TABS[number];
@@ -98,7 +99,8 @@ export default function EoDetail() {
 
       {tab === "Linh kiện" && (
         <TabLinhKien
-          items={items} tong={tong} issued={issued} canManage={canManage} onReplacePart={setReplaceItem}
+          nguoiDuyet={eo.final_approver_email}
+          items={items.map((i: any) => ({ ...i, da_kh: plans.filter((p: any) => p.eo_item_id === i.id).reduce((s: number, p: any) => s + (p.planned_qty || 0), 0) }))} tong={tong} issued={issued} canManage={canManage} onReplacePart={setReplaceItem}
           canEditQty={canEditQty} canApprovePostIssue={canApprovePostIssue}
           onEditQty={setQtyItem} onAddItem={() => setShowAddItem(true)}
           onApproved={() => { refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["post-issue"] }); }}
@@ -121,7 +123,8 @@ export default function EoDetail() {
   );
 }
 
-function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePostIssue, onEditQty, onAddItem, onApproved, onReplacePart }: any) {
+function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePostIssue, onEditQty, onAddItem, onApproved, onReplacePart, nguoiDuyet }: any) {
+  const [tuChoi, setTuChoi] = useState<any>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState("");
   const approve = async (r: any) => {
@@ -142,8 +145,7 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
       key: "part_code", header: "Mã linh kiện", render: (r) => (
         <>
           <PartLink ma={r.part_code} />{r.legacy_id && <span className="muted" style={{ fontSize: 10.5, marginLeft: 4 }}>{r.legacy_id}</span>}
-          {r.post_issue_status === "PENDING" && <span className="badge final" style={{ marginLeft: 6 }}>Chờ duyệt sau BH</span>}
-          {r.post_issue_status === "APPROVED" && <span className="badge issued" style={{ marginLeft: 6 }}>Thêm sau BH</span>}
+          <NhanSauBH r={r} nguoiDuyet={nguoiDuyet} />
           {r.part_code_goc && <span className="badge final" style={{ marginLeft: 6 }} title={`Mã đã duyệt: ${r.part_code_goc}${r.part_name_goc ? ` — ${r.part_name_goc}` : ""}`}>Thay từ {r.part_code_goc}</span>}
           {(r.crm_id || r.order_id) && (
             <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
@@ -156,14 +158,15 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
       ),
     },
     { key: "part_name", header: "Tên linh kiện", render: (r) => r.part_name },
-    { key: "warehouse", header: "Kho cần đặt", render: (r) => r.warehouse },
-    { key: "supplier", header: "Đối tác", render: (r) => r.supplier || "" },
-    { key: "current_qty", header: "Số lượng", align: "right", render: (r) => soLuong(r.current_qty) },
-    { key: "da_dat", header: "Đã đặt", align: "right", render: (r) => soLuong(r.da_dat) },
-    { key: "chua_dat", header: "Chưa đặt", align: "right", render: (r) => soLuong(r.chua_dat) },
-    { key: "don_gia", header: "Đơn giá dự kiến", align: "right", render: (r) => r.don_gia_du_kien != null ? soLuong(r.don_gia_du_kien) : "" },
+    { key: "warehouse", header: <Hoi k="KHO" />, render: (r) => r.warehouse },
+    { key: "supplier", header: <Hoi k="DOI_TAC" />, render: (r) => r.supplier || "" },
+    { key: "current_qty", header: <Hoi k="SL_DAT" />, align: "right", render: (r) => soLuong(r.current_qty) },
+    { key: "da_kh", header: <Hoi k="SL_KH" nhan="Đã lên KH" />, align: "right", render: (r) => <span style={{ color: (r.da_kh ?? 0) < r.current_qty ? "var(--warn-ink)" : undefined }}>{soLuong(r.da_kh ?? 0)}</span> },
+    { key: "da_dat", header: <Hoi k="SL_VE" />, align: "right", render: (r) => soLuong(r.da_dat) },
+    { key: "chua_dat", header: <Hoi k="SL_THIEU" />, align: "right", render: (r) => soLuong(r.chua_dat) },
+    { key: "don_gia", header: <Hoi k="DON_GIA" />, align: "right", render: (r) => r.don_gia_du_kien != null ? soLuong(r.don_gia_du_kien) : "" },
     { key: "thanh_tien", header: "Thành tiền dự kiến", align: "right", render: (r) => r.thanh_tien_du_kien ? soLuong(r.thanh_tien_du_kien) : "" },
-    { key: "reason", header: "Lý do PS", render: (r) => r.reason || "" },
+    { key: "reason", header: <Hoi k="LY_DO_PS" />, render: (r) => r.reason || "" },
     { key: "ghi_chu", header: "Ghi chú", render: (r) => r.ghi_chu ? <span style={{ display: "block", minWidth: 180 }}>{r.ghi_chu}</span> : "" },
     {
       key: "act", header: "", align: "center", render: (r) => (
@@ -174,6 +177,9 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
           )}
           {canApprovePostIssue && r.post_issue_status === "PENDING" && (
             <button className="btn sm primary" disabled={busyId === r.id} onClick={() => approve(r)}>Duyệt dòng này</button>
+          )}
+          {canApprovePostIssue && r.post_issue_status === "PENDING" && (
+            <button className="btn sm danger" onClick={() => setTuChoi(r)}>Từ chối</button>
           )}
         </div>
       ),
@@ -187,16 +193,17 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
     <>
       <DataTable
         cols={cols} rows={withStt} keyOf={(r) => r.id} pageSize={PAGE_SIZE}
-        totalRow={["", <b key="t">TỔNG</b>, "", "", "", <b key="q">{soLuong(tong.tong_sl_dat)}</b>, <b key="d">{soLuong(tong.sl_da_dat)}</b>, <b key="c">{soLuong(tong.sl_chua_dat)}</b>, "", <b key="tt">{soLuong(tong.tong_tien_du_kien)}</b>, "", "", ""]}
+        totalRow={["", <b key="t">TỔNG</b>, "", "", "", <b key="q">{soLuong(tong.tong_sl_dat)}</b>, <b key="k">{soLuong(withStt.reduce((s: number, r: any) => s + (r.da_kh ?? 0), 0))}</b>, <b key="d">{soLuong(tong.sl_da_dat)}</b>, <b key="c">{soLuong(tong.sl_chua_dat)}</b>, "", <b key="tt">{soLuong(tong.tong_tien_du_kien)}</b>, "", "", ""]}
       />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginTop: 16 }}>
         <StatTile label="Tổng số dòng" value={soLuong(tong.so_dong)} />
         <StatTile label="Tổng SL đặt" value={soLuong(tong.tong_sl_dat)} />
-        <StatTile label="SL đã đặt" value={soLuong(tong.sl_da_dat)} />
-        <StatTile label="SL chưa đặt" value={soLuong(tong.sl_chua_dat)} />
+        <StatTile label="Đã về (AMIS)" value={soLuong(tong.sl_da_dat)} />
+        <StatTile label="Còn thiếu" value={soLuong(tong.sl_chua_dat)} />
         <StatTile label="Tổng tiền dự kiến" value={tien(tong.tong_tien_du_kien)} />
       </div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      {tuChoi && <TuChoiDongModal item={tuChoi} onClose={() => setTuChoi(null)} onDone={() => { setTuChoi(null); onApproved(); }} />}
       {issued && canManage && (
         <button className="btn sm" style={{ marginTop: 14 }} onClick={onAddItem}><I.plus width={14} height={14} /> Thêm dòng (duyệt sau ban hành)</button>
       )}

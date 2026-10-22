@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Hoi } from "../../lib/thuatNgu";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -248,13 +249,13 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     { key: "stt", header: "#", align: "center", width: 36, render: () => "" },
     { key: "pc", header: <>Mã linh kiện <span className="req">*</span></>, width: 150, render: (_r) => null },
     { key: "pn", header: "Tên linh kiện", width: 260, render: () => null },
-    { key: "wh", header: <>Kho cần đặt <span className="req">*</span></>, width: 230, render: () => null },
-    { key: "sp", header: "Đối tác", width: 140, render: () => null },
-    { key: "qty", header: <>SL <span className="req">*</span></>, align: "right", width: 84, render: () => null },
-    { key: "rs", header: "Lý do PS", width: 170, render: () => null },
-    { key: "gc", header: "Ghi chú", width: 190, render: () => null },
-    { key: "crm", header: <span title="Mã ca bảo hành (tuỳ chọn) - app DVBH dùng để gắn PO vào đúng ca">ID CRM</span>, width: 110, render: () => null },
-    { key: "od", header: <span title="Mã đơn đặt linh kiện (TLK-...) - tuỳ chọn">ID đặt hàng</span>, width: 120, render: () => null },
+    { key: "wh", header: <Hoi k="KHO" req />, width: 230, render: () => null },
+    { key: "sp", header: <Hoi k="DOI_TAC" />, width: 140, render: () => null },
+    { key: "qty", header: <Hoi k="SL_DAT" req />, align: "right", width: 84, render: () => null },
+    { key: "rs", header: <Hoi k="LY_DO_PS" />, width: 170, render: () => null },
+    { key: "gc", header: <Hoi k="GHI_CHU" />, width: 190, render: () => null },
+    { key: "crm", header: <Hoi k="ID_CRM" />, width: 110, render: () => null },
+    { key: "od", header: <Hoi k="ID_DAT_HANG" />, width: 120, render: () => null },
     { key: "act", header: "", align: "center", width: 40, render: () => null },
   ];
 
@@ -289,7 +290,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           <input className="input" placeholder="Nhập tiêu đề..." value={tieuDe} onChange={(e) => setTieuDe(e.target.value)} />
           </div>
           <div>
-          <label className="field-label">Loại hình <span className="req">*</span></label>
+          <label className="field-label"><Hoi k="LOAI_HINH" req /></label>
           <select className="select" value={loaiHinh} onChange={(e) => setLoaiHinh(e.target.value)}>
             <option value="">Chọn loại hình</option>
             {loaiHinh && !(cats.data ?? []).some((c) => c.code === loaiHinh) && <option value={loaiHinh}>{loaiHinh}</option>}
@@ -300,7 +301,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           )}
           </div>
           <div>
-          <label className="field-label">Phòng ban <span className="req">*</span></label>
+          <label className="field-label"><Hoi k="PHONG_BAN" req /></label>
           <select className="select" value={phongBan} onChange={(e) => setPhongBan(e.target.value)}>
             <option value="">Chọn phòng ban</option>
             {[...new Set([...PHONG_BAN, ...(phongBan ? [phongBan] : [])])].map((p) => <option key={p} value={p}>{p}</option>)}
@@ -308,7 +309,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           {khoMacDinh && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng linh kiện mới tự đặt kho <b>{khoMacDinh}</b> — không cần chọn kho.</div>}
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-          <label className="field-label">Nội dung / lý do trình <span className="req">*</span></label>
+          <label className="field-label"><Hoi k="NOI_DUNG" req /></label>
           <textarea className="textarea" style={{ minHeight: 64 }} placeholder="Nhập nội dung / lý do trình..." value={noiDung} onChange={(e) => setNoiDung(e.target.value)} />
           </div>
           </div>

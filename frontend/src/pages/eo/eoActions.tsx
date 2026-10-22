@@ -10,6 +10,7 @@ import { FILE_ACCEPT, checkFile, driveThumb, fileSize, isExcel, isImage, uploadE
 import { dailyTemplate, parseDailyFile, type Parsed } from "../../lib/planExcel";
 import { PlanImportModal } from "../../components/PlanImportModal";
 import { NGAY, NhanNgay, ChuGiaiNgay } from "../../lib/ngay";
+import { TN, Hoi, type KhoaTN } from "../../lib/thuatNgu";
 import { NgayHangVeModal } from "../theodoi/shared";
 
 /**
@@ -83,6 +84,17 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
   return (
     <>
       {!issued && <div className="muted" style={{ marginBottom: 10, fontSize: 13 }}>Lập kế hoạch hàng về sau khi EO được ban hành.</div>}
+      {issued && (
+        <div style={{ background: "var(--panel-2)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12.5, lineHeight: 1.55 }}>
+          <b>Kế hoạch hàng về là gì, vì sao phải nhập?</b> Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ làm việc sau khi EO ban hành và cập nhật lại khi quá hạn —
+          không nhập hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng. Tổng SL các đợt ≤ SL đặt.
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+            <span><b>Theo ngày</b> (nhà máy báo ngày giao từng đợt): nút <b>3 loại ngày</b> ở từng dòng bên dưới, hoặc "Cập nhật hàng loạt".</span>
+            <span>· <b>Theo tuần</b> (đơn kế hoạch tháng, nhà máy chỉ báo SL mỗi tuần):</span>
+            <a className="btn sm" href={`/plans/tuan?eo=${eo.id}`}><I.calendar width={13} height={13} /> Nhập theo tuần cho EO này</a>
+          </div>
+        </div>
+      )}
       {editable && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           <button className="btn sm primary" onClick={() => setBulk(true)}><I.calendar width={14} height={14} /> Cập nhật hàng loạt</button>
@@ -103,8 +115,12 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
               <b>{i.part_code}</b> · {i.warehouse}
               {i.part_name && <div className="muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{i.part_name}</div>}
               {i.ghi_chu && <div style={{ fontSize: 12, color: "var(--text-muted)" }} title={i.ghi_chu}>Ghi chú: {i.ghi_chu}</div>}
-              <div className="muted">Đã lên KH {soLuong(sum)} / {soLuong(i.current_qty)}</div>
-              <div style={{ color: NGAY.VE.mau }}>{NGAY.VE.ngan}: {soLuong(i.da_dat)} / {soLuong(i.current_qty)}{i.da_dat >= i.current_qty ? " — đủ" : ""}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, marginTop: 4, fontSize: 11.5 }}>
+                <div><div className="muted"><Hoi k="SL_DAT" /></div><b>{soLuong(i.current_qty)}</b></div>
+                <div><div className="muted"><Hoi k="SL_KH" nhan="Đã lên KH" /></div><b style={{ color: sum < i.current_qty ? "var(--warn-ink)" : NGAY.DK.mau }}>{soLuong(sum)}</b></div>
+                <div><div className="muted"><Hoi k="SL_VE" nhan="Đã về" /></div><b style={{ color: NGAY.VE.mau }}>{soLuong(i.da_dat)}</b></div>
+              </div>
+              {sum < i.current_qty && i.da_dat < i.current_qty && <div style={{ fontSize: 11.5, color: "var(--warn-ink)", marginTop: 2 }}>Còn {soLuong(i.current_qty - sum)} chưa biết khi nào về → hỏi nhà máy, thêm đợt</div>}
               <button className="btn sm" style={{ marginTop: 6 }} onClick={() => setNgayItem(i)}><I.calendar width={13} height={13} /> 3 loại ngày của dòng</button>
             </div>
           );
@@ -167,7 +183,7 @@ export function PlanModal({ plan, items, po, plannedOf, onClose, onSaved }: any)
         <option value="">Chọn dòng linh kiện</option>
         {items.map((i: any) => <option key={i.id} value={i.id}>{lineLabel(po, i)} (SL {soLuong(i.current_qty)})</option>)}
       </select>
-      {item && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Còn được lên kế hoạch: {soLuong(remain)}</div>}
+      {item && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}><Hoi k="SL_CHUA_KH" />: <b>{soLuong(remain)}</b> (SL đặt {soLuong(item.current_qty)} − đã lên kế hoạch {soLuong(item.current_qty - remain)})</div>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
         <div><label className="field-label"><NhanNgay k="NM" /></label>
           <input className="input" type="date" value={factory} onChange={(e) => { if (!date || date === factory) setDate(e.target.value); setFactory(e.target.value); }} /></div>
@@ -175,9 +191,10 @@ export function PlanModal({ plan, items, po, plannedOf, onClose, onSaved }: any)
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
       </div>
       <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Nhập {NGAY.NM.l.toLowerCase()} → {NGAY.DK.l.toLowerCase()} tự điền theo (thường trùng nhau).</div>
-      <label className="field-label" style={{ marginTop: 12 }}>Số lượng <span className="req">*</span></label>
+      <label className="field-label" style={{ marginTop: 12 }}>SL về trong đợt này <span className="req">*</span></label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Tổng SL các đợt của 1 dòng không được lớn hơn SL đặt.</div>
+      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú / nguồn</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nguồn: vd KRF xác nhận qua mail 21/10" />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
@@ -259,9 +276,9 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
       <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", padding: 12, background: "var(--surface-2, #F8FAFC)", borderRadius: 10, marginBottom: 12 }}>
         <div><label className="field-label"><NhanNgay k="NM" /> chung</label><input className="input" type="date" value={allNm} onChange={(e) => setAllNm(e.target.value)} /></div>
         <div><label className="field-label"><NhanNgay k="DK" /> chung</label><input className="input" type="date" value={allDate} onChange={(e) => setAllDate(e.target.value)} placeholder="để trống = theo NM" /></div>
-        <div><label className="field-label">Số lượng</label>
+        <div><label className="field-label">SL về trong đợt</label>
           <select className="select" value={allQty} onChange={(e) => setAllQty(e.target.value as any)}>
-            <option value="con_lai">= SL còn lại của dòng</option><option value="giu">Giữ SL đang nhập</option>
+            <option value="con_lai">= SL chưa lên kế hoạch của dòng</option><option value="giu">Giữ SL đang nhập</option>
           </select>
         </div>
         <button className="btn primary" onClick={apply}>Áp dụng cho dòng đã chọn</button>
@@ -269,7 +286,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
       </div>
       <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, marginBottom: 8 }}>
         <input type="checkbox" checked={thayThe} onChange={(e) => setThayThe(e.target.checked)} />
-        Thay thế kế hoạch theo ngày đang có của các dòng được chọn (không chọn = thêm mốc mới)
+        Thay toàn bộ đợt (theo ngày) đang có của các dòng được chọn bằng đợt mới này — không tick = thêm 1 đợt mới bên cạnh đợt cũ
       </label>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
       <div className="tbl-wrap" style={{ maxHeight: "50vh", overflow: "auto" }}>
@@ -277,7 +294,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
           <thead><tr>
             <th style={{ width: 32 }}><input type="checkbox" checked={allChecked} onChange={toggleAll} /></th>
             <th>Mã PO</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho</th>
-            <th style={{ textAlign: "right" }}>SL đặt</th><th style={{ textAlign: "right" }}>Đã lên KH</th><th style={{ textAlign: "right" }}>Còn lại</th>
+            <th style={{ textAlign: "right" }}><Hoi k="SL_DAT" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_KH" nhan="Đã lên KH" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_CHUA_KH" /></th>
             <th><NhanNgay k="NM" ngan /></th><th><NhanNgay k="DK" ngan /></th><th>SL</th><th>Ghi chú / nguồn</th>
           </tr></thead>
           <tbody>
@@ -421,50 +438,112 @@ export function TabTaiLieu({ eoId, files, onUploaded, canDelete, myEmail, preIss
   );
 }
 
+/**
+ * Sua SL dat + thong tin dong. Hien ro boi canh (SL dat / da ve / da len ke hoach / con thieu) va giai thich ngay khi
+ * SL moi < tong ke hoach: cho chon "tu giam ke hoach tu dot xa nhat" (backend cat_ke_hoach) thay vi bao loi kho hieu.
+ */
 export function QtyModal({ item, issued, onClose, onSaved }: any) {
+  const ctx = useQuery({ queryKey: ["tl-dong", item.id], queryFn: () => api.get<any>(`/theo-doi/dong/${item.id}`) });
   const [qty, setQty] = useState(String(item.current_qty));
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(item.ghi_chu ?? "");
   const [crm, setCrm] = useState(item.crm_id ?? "");
   const [order, setOrder] = useState(item.order_id ?? "");
+  const [catKh, setCatKh] = useState(true);
   const [err, setErr] = useState("");
-  const qtyChanged = Number(qty) !== Number(item.current_qty);
+  const [busy, setBusy] = useState(false);
+  const kh: any[] = ctx.data?.ke_hoach ?? [];
+  const daVe = (ctx.data?.phieu_nhap ?? []).reduce((s: number, r: any) => s + (r.qty_in || 0), 0);
+  const tongKh = kh.reduce((s, p) => s + (p.planned_qty || 0), 0);
+  const moi = Number(qty);
+  const qtyChanged = qty.trim() !== "" && moi !== Number(item.current_qty);
+  const vuotKh = qtyChanged && moi < tongKh;
+  // cac dot se bi giam / xoa (tu dot xa nhat) - xem truoc dung nhu backend lam
+  const seCat: { p: any; moi: number }[] = [];
+  if (vuotKh) {
+    let du = tongKh - moi;
+    for (const p of [...kh].sort((a, b) => String(b.planned_date).localeCompare(String(a.planned_date)) || b.id - a.id)) {
+      if (du <= 0) break;
+      const con = Math.max(0, p.planned_qty - du);
+      du -= p.planned_qty - con;
+      seCat.push({ p, moi: con });
+    }
+  }
   const save = async () => {
     setErr("");
     const body: Record<string, unknown> = {};
-    if (qtyChanged) { body.current_qty = Number(qty); body.reason = reason || undefined; }
+    if (qtyChanged) {
+      if (!(moi >= 0)) return setErr("SL đặt phải là số ≥ 0.");
+      if (issued && !reason.trim()) return setErr("EO đã ban hành — cần ghi lý do đổi SL đặt (lưu vào lịch sử để người duyệt xem).");
+      if (vuotKh && !catKh) return setErr(`SL đặt mới (${soLuong(moi)}) nhỏ hơn tổng kế hoạch (${soLuong(tongKh)}). Tick "Tự giảm kế hoạch" hoặc sửa các đợt trước.`);
+      body.current_qty = moi; body.reason = reason.trim() || undefined; if (vuotKh) body.cat_ke_hoach = true;
+    }
     if (note.trim() !== (item.ghi_chu ?? "")) body.ghi_chu = note.trim() || null;
     if (crm.trim() !== (item.crm_id ?? "")) body.crm_id = crm.trim() || null;
     if (order.trim() !== (item.order_id ?? "")) body.order_id = order.trim() || null;
     if (!Object.keys(body).length) return onClose();
+    setBusy(true);
     try {
       await api.patch(`/eo/items/${item.id}`, body);
       onSaved();
     } catch (e: any) {
       setErr(e?.body?.error === "REASON_REQUIRED" ? "Cần nhập lý do." :
         e?.body?.error === "QTY_BELOW_PLANNED_SUM" ? `SL mới nhỏ hơn tổng kế hoạch (${soLuong(e.body.planned_sum)}).` : e?.body?.error === "FORBIDDEN" ? "Bạn không có quyền sửa dòng này." : "Lỗi lưu.");
+      setBusy(false);
     }
   };
+  const O = ({ k, v, tone }: { k: KhoaTN; v: number; tone?: string }) => (
+    <div style={{ background: "var(--panel-2)", borderRadius: 8, padding: "6px 10px" }}>
+      <div className="muted" style={{ fontSize: 11.5 }}><Hoi k={k} /></div>
+      <div style={{ fontSize: 17, fontWeight: 800, color: tone }}>{soLuong(v)}</div>
+    </div>
+  );
   return (
-    <Modal title={`Sửa dòng — ${item.part_code}`} onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" onClick={save}>Lưu</button></>}>
-      <label className="field-label">Số lượng mới</label>
+    <Modal title={`Sửa SL đặt / thông tin dòng — ${item.part_code}`} onClose={onClose} width={620}
+      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : "Lưu"}</button></>}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
+        <O k="SL_DAT" v={Number(item.current_qty)} />
+        <O k="SL_VE" v={daVe} tone={NGAY.VE.mau} />
+        <O k="SL_KH" v={tongKh} tone={NGAY.DK.mau} />
+        <O k="SL_THIEU" v={Math.max(0, Number(item.current_qty) - daVe)} />
+      </div>
+      <label className="field-label"><Hoi k="SL_DAT" nhan="SL đặt mới" /></label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Lý do {issued && qtyChanged && <span className="req">*</span>}</label>
-      <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do thay đổi số lượng" />
-      <label className="field-label" style={{ marginTop: 12 }}>Ghi chú dòng</label>
+      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{TN.SL_DAT.la} Đặt = 0 là hủy dòng.</div>
+      {qtyChanged && moi < daVe && (
+        <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, marginTop: 8 }}>
+          SL đặt mới nhỏ hơn số đã về theo AMIS ({soLuong(daVe)}) — dòng sẽ ghi nhận <b>về thừa {soLuong(daVe - moi)}</b>. Kiểm tra lại trước khi lưu.
+        </div>
+      )}
+      {vuotKh && (
+        <div style={{ background: "#FFFBEB", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 8 }}>
+          Kế hoạch hàng về đang là <b>{soLuong(tongKh)}</b> ({kh.length} đợt) — lớn hơn SL đặt mới <b>{soLuong(moi)}</b>. Kế hoạch không được nhiều hơn số đặt.
+          <label style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, fontWeight: 600 }}>
+            <input type="checkbox" checked={catKh} onChange={(e) => setCatKh(e.target.checked)} /> Tự giảm kế hoạch từ đợt xa nhất (ghi vào lịch sử)
+          </label>
+          {catKh && (
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+              {seCat.map(({ p, moi: m }) => (
+                <li key={p.id}>Đợt {p.loai === "TUAN" ? `tuần ${p.tuan}` : ngay(p.planned_date)}: {soLuong(p.planned_qty)} → {m > 0 ? <b>{soLuong(m)}</b> : <b style={{ color: "var(--danger)" }}>xóa</b>}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {qtyChanged && (
+        <>
+          <label className="field-label" style={{ marginTop: 12 }}>Lý do đổi SL đặt {issued && <span className="req">*</span>}</label>
+          <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: nhà máy chỉ giao được 80, khách hủy 20…" />
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Ghi vào lịch sử EO{issued ? " — bắt buộc vì EO đã ban hành (số đã được duyệt)" : ""}.</div>
+        </>
+      )}
+      <label className="field-label" style={{ marginTop: 12 }}><Hoi k="GHI_CHU" nhan="Ghi chú dòng" /></label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-        <div>
-          <label className="field-label">ID CRM (mã ca)</label>
-          <input className="input" value={crm} onChange={(e) => setCrm(e.target.value)} placeholder="Tuỳ chọn" />
-        </div>
-        <div>
-          <label className="field-label">ID đặt hàng</label>
-          <input className="input" value={order} onChange={(e) => setOrder(e.target.value)} placeholder="TLK-..." />
-        </div>
+        <div><label className="field-label"><Hoi k="ID_CRM" /></label><input className="input" value={crm} onChange={(e) => setCrm(e.target.value)} placeholder="Tuỳ chọn" /></div>
+        <div><label className="field-label"><Hoi k="ID_DAT_HANG" /></label><input className="input" value={order} onChange={(e) => setOrder(e.target.value)} placeholder="TLK-..." /></div>
       </div>
-      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ sửa ghi chú / ID CRM / ID đặt hàng thì không cần lý do.</div>
+      <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Chỉ sửa ghi chú / ID CRM / ID đặt hàng thì không cần lý do.</div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
@@ -536,22 +615,22 @@ export function AddItemModal({ eoId, phongBan, onClose, onSaved }: any) {
       <input className="input" value={partCode} onChange={(e) => setPartCode(e.target.value)} placeholder="Nhập mã LK" />
       <label className="field-label" style={{ marginTop: 12 }}>Tên linh kiện</label>
       <input className="input" value={partName} onChange={(e) => setPartName(e.target.value)} placeholder="Nhập tên linh kiện" />
-      <label className="field-label" style={{ marginTop: 12 }}>Kho cần đặt <span className="req">*</span></label>
+      <label className="field-label" style={{ marginTop: 12 }}><Hoi k="KHO" req /></label>
       <select className="select" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
         <option value="">Chọn kho</option>
         {(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
       </select>
-      <label className="field-label" style={{ marginTop: 12 }}>Đối tác</label>
+      <label className="field-label" style={{ marginTop: 12 }}><Hoi k="DOI_TAC" /></label>
       <input className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nhập đối tác" />
-      <label className="field-label" style={{ marginTop: 12 }}>Số lượng <span className="req">*</span></label>
+      <label className="field-label" style={{ marginTop: 12 }}><Hoi k="SL_DAT" req /></label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
-      <label className="field-label" style={{ marginTop: 12 }}>Lý do PS</label>
+      <label className="field-label" style={{ marginTop: 12 }}><Hoi k="LY_DO_PS" /></label>
       <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do..." />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-        <div><label className="field-label">ID CRM (mã ca)</label><input className="input" value={crm} onChange={(e) => setCrm(e.target.value)} placeholder="Tuỳ chọn" /></div>
-        <div><label className="field-label">ID đặt hàng</label><input className="input" value={order} onChange={(e) => setOrder(e.target.value)} placeholder="TLK-..." /></div>
+        <div><label className="field-label"><Hoi k="ID_CRM" /></label><input className="input" value={crm} onChange={(e) => setCrm(e.target.value)} placeholder="Tuỳ chọn" /></div>
+        <div><label className="field-label"><Hoi k="ID_DAT_HANG" /></label><input className="input" value={order} onChange={(e) => setOrder(e.target.value)} placeholder="TLK-..." /></div>
       </div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
@@ -627,6 +706,46 @@ export function ApprovalActionModal({ act, onClose, onDone }: any) {
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className={`btn ${meta.cls || "primary"}`} disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : meta.label}</button></>}>
       <label className="field-label">Ghi chú {needComment && <span className="req">*</span>}</label>
       <textarea className="textarea" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Nhập ghi chú..." />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------- dong them sau ban hanh: ai duyet, duyet / tu choi
+/** Nhan trang thai dong them sau ban hanh: cho duyet (ghi ro AI duyet) / da duyet / bi tu choi (ly do). */
+export function NhanSauBH({ r, nguoiDuyet }: { r: any; nguoiDuyet?: string | null }) {
+  if (r.post_issue_status === "PENDING")
+    return <span className="badge final" style={{ marginLeft: 6 }} title={`Dòng thêm sau khi EO đã ban hành — chờ người duyệt cuối của EO (${ten(nguoiDuyet)}) hoặc Admin duyệt / từ chối. Chưa duyệt thì chưa đặt hàng.`}>Chờ {ten(nguoiDuyet)} duyệt</span>;
+  if (r.post_issue_status === "APPROVED")
+    return <span className="badge issued" style={{ marginLeft: 6 }} title={`Thêm sau ban hành — ${ten(r.post_issue_approved_by)} duyệt ${ngayGio(r.post_issue_approved_at)}`}>Thêm sau BH · đã duyệt</span>;
+  if (r.post_issue_rejected_at)
+    return <span className="badge reject" style={{ marginLeft: 6 }} title={`${ten(r.post_issue_rejected_by)} từ chối ${ngayGio(r.post_issue_rejected_at)}: ${r.post_issue_reject_reason ?? ""}`}>Bị từ chối: {r.post_issue_reject_reason}</span>;
+  return null;
+}
+
+/** Tu choi dong them sau ban hanh - bat buoc ly do; dong bi huy (SL 0), ke hoach cua dong bi xoa. */
+export function TuChoiDongModal({ item, onClose, onDone }: { item: any; onClose: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!reason.trim()) return setErr("Cần nhập lý do từ chối (người thêm dòng sẽ thấy).");
+    setErr(""); setBusy(true);
+    try { await api.post(`/eo/items/${item.id}/reject-post-issue`, { reason: reason.trim() }); onDone(); }
+    catch (e: any) {
+      setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt cuối của EO hoặc Admin được từ chối." : e?.body?.error === "NOT_PENDING" ? "Dòng này đã được xử lý." : "Lỗi từ chối.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Từ chối dòng thêm sau ban hành — ${item.part_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Từ chối dòng"}</button></>}>
+      <div style={{ fontSize: 13, marginBottom: 10 }}>
+        {item.part_name} · {item.warehouse} · SL {soLuong(item.current_qty)}
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Từ chối = dòng bị <b>hủy</b> (SL về 0, không đặt hàng), kế hoạch hàng về của dòng bị xóa. Ghi vào lịch sử EO.</div>
+      </div>
+      <label className="field-label">Lý do từ chối <span className="req">*</span></label>
+      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: trùng dòng đã có, không cần mua thêm…" />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );

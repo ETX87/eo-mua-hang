@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { NAV } from "../lib/nav";
 import { I } from "../lib/icons";
 import { Avatar, PageTitleCtx } from "./ui";
+import { NutGiaiThich } from "../lib/thuatNgu";
 import { APP_VERSION } from "../version";
 import { ten, tuBayGio } from "../lib/format";
 
@@ -215,6 +216,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}>
           <button className="btn ghost sm" onClick={() => setOpen((o) => !o)} aria-label="Menu"><I.menu /></button>
           <div style={{ fontSize: 19, fontWeight: 800, flex: 1 }}>{pageTitle ?? titleFor(loc.pathname)}</div>
+          <NutGiaiThich />
           <NotificationBell />
           <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} />
         </header>

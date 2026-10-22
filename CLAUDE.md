@@ -130,6 +130,14 @@ nếu có cột mang nghĩa thực tế (`COT_THUC_TE`: "Ngày hàng về", "Ng�
 alias "Ngày về" / "SL về" cho ngày dự kiến / SL kế hoạch. Không dùng chữ "ngày về" trần cho ngày dự kiến. Một màn duy nhất cho cả 3 ngày của 1 dòng: `NgayHangVeModal`
 (`pages/theodoi/shared.tsx`, dữ liệu `GET /api/theo-doi/dong/:id` → `item`, `ke_hoach`, `phieu_nhap`). Ô bảng dùng `<BaNgay>`.
 
+## Thuật ngữ số liệu — `frontend/src/lib/thuatNgu.tsx`
+
+Mọi nhãn số lượng / ô nhập của EO & dòng linh kiện lấy từ `TN` + `<Hoi k>` (tooltip "là gì / để làm gì"); nút "?" ở thanh trên
+mở bảng giải thích. Lưu ý API `/eo/:id` trả `da_dat` = **đã về theo AMIS** (không phải "đã đặt"), `chua_dat` = còn thiếu.
+Giảm SL đặt < tổng kế hoạch: `PATCH /eo/items/:id` với `cat_ke_hoach: true` tự giảm/xóa đợt từ đợt xa nhất (có log).
+Dòng thêm sau ban hành: người duyệt cuối của EO / Admin duyệt (`approve-post-issue`) hoặc từ chối (`reject-post-issue`,
+bắt buộc lý do → dòng hủy SL 0, xóa kế hoạch; ghi ở cột `post_issue_rejected_*` vì CHECK của `post_issue_status`).
+
 ## Popup xem nhanh (95% màn hình)
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,

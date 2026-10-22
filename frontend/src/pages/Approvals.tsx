@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import { PageHeader, Card, StatusBadge, Avatar, Spinner } from "../components/ui";
 import { I } from "../lib/icons";
 import { ngayGio, ten, soLuong } from "../lib/format";
-import { actionsFor, ApprovalActionModal as ActionModal } from "./eo/eoActions";
+import { actionsFor, ApprovalActionModal as ActionModal, TuChoiDongModal } from "./eo/eoActions";
 
 export default function Approvals() {
   const nav = useNavigate();
@@ -13,6 +13,7 @@ export default function Approvals() {
   const [filter, setFilter] = useState<"all" | "REVIEW" | "FINAL" | "POST">("all");
   const [act, setAct] = useState<{ row: any; action: string } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [tuChoi, setTuChoi] = useState<any>(null);
 
   const q = useQuery({ queryKey: ["inbox"], queryFn: () => api.get<any[]>("/approvals/inbox") });
   const post = useQuery({ queryKey: ["post-issue"], queryFn: () => api.get<any[]>("/approvals/post-issue") });
@@ -59,10 +60,11 @@ export default function Approvals() {
                 <span>Thêm bởi {ten(r.created_by)} lúc {ngayGio(r.created_at)}</span>
                 {r.reason && <span>Lý do: {r.reason}</span>}
                 {r.ghi_chu && <span>Ghi chú: {r.ghi_chu}</span>}
-                <span className="badge final">Dòng thêm sau ban hành</span>
+                <span className="badge final" title="Dòng thêm sau khi EO đã ban hành phải được người duyệt cuối của EO (bạn) hoặc Admin duyệt mới được đặt hàng">Dòng thêm sau ban hành · bạn là người duyệt cuối</span>
               </div>
             </div>
             <button className="btn sm" onClick={() => nav(`/eo/${r.eo_id}`)}><I.eye width={14} height={14} /> Mở</button>
+            <button className="btn sm danger" disabled={busyId === r.id} onClick={() => setTuChoi(r)}>Từ chối</button>
             <button className="btn sm primary" disabled={busyId === r.id} onClick={() => approvePost(r)}>Duyệt dòng</button>
           </Card>
         ))}
@@ -88,6 +90,7 @@ export default function Approvals() {
         ))}
       </div>
 
+      {tuChoi && <TuChoiDongModal item={tuChoi} onClose={() => setTuChoi(null)} onDone={() => { setTuChoi(null); qc.invalidateQueries({ queryKey: ["post-issue"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); }} />}
       {act && <ActionModal act={act} onClose={() => setAct(null)} onDone={() => { setAct(null); qc.invalidateQueries({ queryKey: ["inbox"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); }} />}
     </div>
   );

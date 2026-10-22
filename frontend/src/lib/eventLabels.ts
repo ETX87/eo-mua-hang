@@ -4,7 +4,7 @@ export const EVENT_LABEL: Record<string, string> = {
   APPROVE_REVIEW: "Duyệt thẩm định", REJECT_REVIEW: "Từ chối thẩm định", REQUEST_UPDATE: "Yêu cầu cập nhật",
   WITHDRAW_REVIEW: "Rút phiếu thẩm định", APPROVE_FINAL: "Duyệt cuối", REJECT_FINAL: "Từ chối duyệt cuối",
   ISSUE_EO: "Ban hành EO", CANCEL_EO: "Hủy EO", ADD_ITEM: "Thêm dòng linh kiện", UPDATE_ITEM: "Sửa dòng linh kiện",
-  UPDATE_QUANTITY: "Sửa số lượng", CANCEL_LINE: "Hủy dòng", APPROVE_POST_ISSUE_ITEM: "Duyệt dòng thêm sau ban hành",
+  UPDATE_QUANTITY: "Sửa số lượng", CANCEL_LINE: "Hủy dòng", APPROVE_POST_ISSUE_ITEM: "Duyệt dòng thêm sau ban hành", REJECT_POST_ISSUE_ITEM: "Từ chối dòng thêm sau ban hành",
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
   IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
@@ -40,5 +40,6 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   if (e.event_type === "UPDATE_EO" && a) p.push(Object.keys(a).join(", "));
   if (m?.comment) p.push(m.comment);
   if (m?.reason) p.push(`Lý do: ${m.reason}`);
+  if (m?.ly_do) p.push(m.ly_do);
   return p.filter(Boolean).join(" · ");
 }
