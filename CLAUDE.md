@@ -137,6 +137,8 @@ mở bảng giải thích. Lưu ý API `/eo/:id` trả `da_dat` = **đã về th
 Giảm SL đặt < tổng kế hoạch: `PATCH /eo/items/:id` với `cat_ke_hoach: true` tự giảm/xóa đợt từ đợt xa nhất (có log).
 Dòng thêm sau ban hành: người duyệt cuối của EO / Admin duyệt (`approve-post-issue`) hoặc từ chối (`reject-post-issue`,
 bắt buộc lý do → dòng hủy SL 0, xóa kế hoạch; ghi ở cột `post_issue_rejected_*` vì CHECK của `post_issue_status`).
+Người thêm chính là người duyệt cuối → tự duyệt (log APPROVE_POST_ISSUE_ITEM). Hủy 1 dòng sau ban hành (kể cả đã duyệt):
+`POST /eo/items/:id/cancel-line` (người quản lý EO / người duyệt cuối, bắt buộc lý do).
 
 ## Popup xem nhanh (95% màn hình)
 

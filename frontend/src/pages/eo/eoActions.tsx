@@ -34,6 +34,8 @@ export function quyenEo(eo: any, me: any) {
     canApprovePostIssue: issued && (m.email === eo.final_approver_email || role === "Admin"),
     canEditPlan: role !== "View" && (eo.created_by === m.email || ["Admin", "KH cung ung", "Kho", "Theo doi tien do"].includes(role) ||
       m.la_nv_dat_hang === 1 || m.la_nv_kho === 1 || m.la_theo_doi_td === 1),
+    // huy 1 dong cua EO da ban hanh (ke ca dong them sau BH da duyet) - khop backend /items/:id/cancel-line
+    canCancelLine: issued && (canManage || m.email === eo.final_approver_email),
     canDeleteFile: role === "Admin" || (canManage && !["ISSUED", "CANCELLED"].includes(eo.trang_thai)),
     readOnly: role === "View",
   };
@@ -576,7 +578,8 @@ export function CancelModal({ eo, onClose, onDone }: any) {
   );
 }
 
-export function AddItemModal({ eoId, phongBan, onClose, onSaved }: any) {
+export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onSaved }: any) {
+  const tuDuyet = !!nguoiDuyet && nguoiDuyet === meEmail;
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const [partCode, setPartCode] = useState("");
   const [partName, setPartName] = useState("");
@@ -610,7 +613,10 @@ export function AddItemModal({ eoId, phongBan, onClose, onSaved }: any) {
   return (
     <Modal title="Thêm dòng linh kiện (duyệt sau ban hành)" onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
-      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Dòng mới sẽ ở trạng thái chờ duyệt cho tới khi người duyệt cuối của EO xác nhận.</div>
+      <div style={{ fontSize: 13, marginBottom: 10, background: tuDuyet ? "#F0FDF4" : "#FFFBEB", borderRadius: 8, padding: "8px 10px" }}>
+        {tuDuyet ? <>Bạn là <b>người duyệt cuối</b> của EO này — dòng mới được <b>duyệt luôn</b> khi lưu.</>
+          : <>Dòng mới sẽ <b>chờ {ten(nguoiDuyet)} duyệt</b> (người duyệt cuối của EO) hoặc Admin. Chưa duyệt thì chưa đặt hàng; người duyệt có thể từ chối.</>}
+      </div>
       <label className="field-label">Mã linh kiện <span className="req">*</span></label>
       <input className="input" value={partCode} onChange={(e) => setPartCode(e.target.value)} placeholder="Nhập mã LK" />
       <label className="field-label" style={{ marginTop: 12 }}>Tên linh kiện</label>
@@ -714,6 +720,9 @@ export function ApprovalActionModal({ act, onClose, onDone }: any) {
 // ---------------------------------------------------------------- dong them sau ban hanh: ai duyet, duyet / tu choi
 /** Nhan trang thai dong them sau ban hanh: cho duyet (ghi ro AI duyet) / da duyet / bi tu choi (ly do). */
 export function NhanSauBH({ r, nguoiDuyet }: { r: any; nguoiDuyet?: string | null }) {
+  const huy = r.line_status === "CANCELLED_LINE" && !r.post_issue_rejected_at
+    ? <span className="badge reject" style={{ marginLeft: 6 }} title="Dòng đã hủy — không đặt hàng (xem lý do ở Lịch sử)">Đã hủy</span> : null;
+  if (huy) return huy;
   if (r.post_issue_status === "PENDING")
     return <span className="badge final" style={{ marginLeft: 6 }} title={`Dòng thêm sau khi EO đã ban hành — chờ người duyệt cuối của EO (${ten(nguoiDuyet)}) hoặc Admin duyệt / từ chối. Chưa duyệt thì chưa đặt hàng.`}>Chờ {ten(nguoiDuyet)} duyệt</span>;
   if (r.post_issue_status === "APPROVED")
@@ -746,6 +755,37 @@ export function TuChoiDongModal({ item, onClose, onDone }: { item: any; onClose:
       </div>
       <label className="field-label">Lý do từ chối <span className="req">*</span></label>
       <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: trùng dòng đã có, không cần mua thêm…" />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+/** Huy 1 dong cua EO da ban hanh (vd dong them sau BH da duyet nhung khong can nua). Bat buoc ly do; SL ve 0, xoa ke hoach. */
+export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!reason.trim()) return setErr("Cần nhập lý do hủy dòng (ghi vào lịch sử EO).");
+    setErr(""); setBusy(true);
+    try { await api.post(`/eo/items/${item.id}/cancel-line`, { reason: reason.trim() }); onDone(); }
+    catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "FORBIDDEN" ? "Bạn không có quyền hủy dòng này (người tạo EO / KH cung ứng / người duyệt cuối / Admin)." :
+        c === "USE_REJECT" ? "Dòng đang chờ duyệt — dùng nút Từ chối." : c === "ALREADY_CANCELLED" ? "Dòng đã bị hủy." : "Lỗi hủy dòng.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Hủy dòng linh kiện — ${item.part_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Hủy dòng"}</button></>}>
+      <div style={{ fontSize: 13, marginBottom: 10 }}>
+        {item.part_name} · {item.warehouse} · SL đặt {soLuong(item.current_qty)}
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Hủy = dòng không đặt hàng nữa: SL đặt về 0, các đợt kế hoạch hàng về của dòng bị xóa, hết cảnh báo theo dõi. Ghi vào lịch sử EO.</div>
+        {(item.da_dat ?? 0) > 0 && <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>Dòng đã có <b>{soLuong(item.da_dat)}</b> về theo AMIS — hủy dòng thì số này thành hàng về thừa. Cân nhắc giảm SL đặt thay vì hủy.</div>}
+      </div>
+      <label className="field-label">Lý do hủy <span className="req">*</span></label>
+      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: khách hủy ca, nhà máy không sản xuất mã này…" />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );

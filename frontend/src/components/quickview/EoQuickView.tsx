@@ -12,7 +12,7 @@ import { Hoi } from "../../lib/thuatNgu";
 import { QvHeader, Kpi, PartLink } from "./QuickView";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
-  actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal,
+  actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal,
 } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
@@ -208,6 +208,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                           {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
                           {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
                           {P.canApprovePostIssue && r.post_issue_status === "PENDING" && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button> <button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
+                          {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && <button className="btn ghost sm danger" title="Hủy dòng (không đặt nữa) — bắt buộc lý do" onClick={() => setMd({ k: "huy", x: r })}><I.trash width={14} height={14} /></button>}
                         </td>
                         {coChon && <td>{active && r.chua_dat > 0 && <input type="checkbox" checked={chon.has(r.id)} onChange={() => doiChon(r.id)} />}</td>}
                         <td className="muted">{i + 1}</td>
@@ -334,10 +335,11 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       {md?.k === "cancel" && <CancelModal eo={eo} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "qty" && <QtyModal item={md.x} issued={P.issued} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "thay" && <ReplacePartModal item={md.x} onClose={() => setMd(null)} onSaved={xong} />}
-      {md?.k === "add" && <AddItemModal eoId={String(id)} phongBan={eo.phong_ban} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "add" && <AddItemModal eoId={String(id)} phongBan={eo.phong_ban} nguoiDuyet={eo.final_approver_email} meEmail={me.data?.email} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "bulk" && <BulkPlanModal po={eo.approval_code || eo.eo_code} items={activeItems} plans={d.plans} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "ndk" && <NgayHangVeModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "huy" && <HuyDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "tuchoi" && <TuChoiDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}

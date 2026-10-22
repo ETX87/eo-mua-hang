@@ -222,18 +222,25 @@ app.post("/:id/items", async (c) => {
   if (!validQty(it.current_qty)) return c.json({ error: "BAD_QTY" }, 400);
   const now = nowVN();
   const afterIssue = eo.trang_thai === "ISSUED";
+  // nguoi them chinh la nguoi duyet cuoi cua EO -> tu duyet luon (khong can cho chinh minh duyet)
+  const tuDuyet = afterIssue && !!eo.final_approver_email && eo.final_approver_email === c.get("user").email;
   const ins = await c.env.DB.prepare(
     `INSERT INTO eo_item (eo_id, part_code, part_name, warehouse, supplier, original_qty, current_qty,
-      reason, crm_id, order_id, ghi_chu, line_status, post_issue_status, created_by, created_at, created_after_issue)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      reason, crm_id, order_id, ghi_chu, line_status, post_issue_status, post_issue_approved_by, post_issue_approved_at,
+      created_by, created_at, created_after_issue)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
   ).bind(id, it.part_code.trim(), it.part_name ?? "", it.warehouse, it.supplier ?? null, it.current_qty, it.current_qty,
     it.reason ?? null, it.crm_id ?? null, it.order_id ?? null, it.ghi_chu ?? null,
-    it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE", afterIssue ? "PENDING" : null,
+    it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE", afterIssue ? (tuDuyet ? "APPROVED" : "PENDING") : null,
+    tuDuyet ? c.get("user").email : null, tuDuyet ? now : null,
     c.get("user").email, now, afterIssue ? 1 : 0).first<{ id: number }>();
 
   const stmts = [
     eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "ADD_ITEM", user_email: c.get("user").email, at: now, after: it, metadata: { after_issue: afterIssue } }),
   ];
+  if (tuDuyet) {
+    stmts.push(eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "APPROVE_POST_ISSUE_ITEM", user_email: c.get("user").email, at: now, metadata: { ly_do: "Tự duyệt — người thêm là người duyệt cuối của EO" } }));
+  }
   if (afterIssue && eo.final_approver_email && eo.final_approver_email !== c.get("user").email) {
     stmts.push(notifyStmt(c.env.DB, { email: eo.final_approver_email, loai: "post_issue_pending", noi_dung: `EO ${eo.eo_code}: dòng ${it.part_code} thêm sau ban hành đang chờ bạn duyệt`, eo_id: id, at: now }));
   }
@@ -241,7 +248,7 @@ app.post("/:id/items", async (c) => {
   // dong moi sau ban hanh: AMIS da ve cho (kho; ma hang; 3TDO) nay dang CODE_ONLY_NO_LINE -> khop lai
   if (afterIssue && eo.approval_code) await recomputeMatch(c.env.DB, [eo.approval_code]);
   await bumpVersions(c.env.DB, afterIssue ? ["eo", "amis"] : ["eo"]);
-  return c.json({ id: ins!.id, post_issue_status: afterIssue ? "PENDING" : null });
+  return c.json({ id: ins!.id, post_issue_status: afterIssue ? (tuDuyet ? "APPROVED" : "PENDING") : null });
 });
 
 // ------------------------------------------------------------------ PATCH /items/:itemId (qty / fields)
@@ -610,6 +617,34 @@ app.post("/items/:itemId/approve-post-issue", async (c) => {
     eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "APPROVE_POST_ISSUE_ITEM", user_email: u.email, at: now }),
   ]);
   await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /items/:itemId/cancel-line
+// Huy 1 dong dang hieu luc cua EO DA BAN HANH (ke ca dong them sau BH da duyet): nguoi quan ly EO (tao / KH cung ung / Admin)
+// hoac nguoi duyet cuoi. Bat buoc ly do. Dong -> CANCELLED_LINE, SL 0, xoa mem ke hoach. Dong dang cho duyet -> dung Tu choi.
+app.post("/items/:itemId/cancel-line", async (c) => {
+  const itemId = Number(c.req.param("itemId"));
+  const b = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const reason = String(b.reason ?? "").trim();
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+  const row = await c.env.DB.prepare(
+    "SELECT i.*, e.final_approver_email, e.approval_code, e.created_by eo_created_by, e.trang_thai eo_status FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?",
+  ).bind(itemId).first<any>();
+  if (!row) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (!canManageEo(u, { created_by: row.eo_created_by }) && u.email !== row.final_approver_email) return c.json({ error: "FORBIDDEN" }, 403);
+  if (row.eo_status !== "ISSUED") return c.json({ error: "ONLY_ISSUED" }, 409);
+  if (row.line_status !== "ACTIVE") return c.json({ error: "ALREADY_CANCELLED" }, 409);
+  if (row.post_issue_status === "PENDING") return c.json({ error: "USE_REJECT" }, 409);
+  const now = nowVN();
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE eo_item SET line_status = 'CANCELLED_LINE', current_qty = 0, updated_by = ?, updated_at = ? WHERE id = ?").bind(u.email, now, itemId),
+    c.env.DB.prepare("UPDATE item_plan SET deleted_at = ?, deleted_by = ? WHERE eo_item_id = ? AND deleted_at IS NULL").bind(now, u.email, itemId),
+    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "CANCEL_LINE", user_email: u.email, at: now, before: { qty: row.current_qty }, after: { qty: 0 }, metadata: { reason } }),
+  ]);
+  if (row.approval_code) await recomputeMatch(c.env.DB, [row.approval_code]);
+  await bumpVersions(c.env.DB, ["eo", "amis"]);
   return c.json({ ok: true });
 });
 

@@ -11,7 +11,7 @@ import { STATUS_META } from "../../lib/nav";
 import { EVENT_LABEL } from "../../lib/eventLabels";
 import { fileSize } from "../../lib/files";
 import { Hoi } from "../../lib/thuatNgu";
-import { NhanSauBH, TuChoiDongModal, quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal } from "./eoActions";
+import { NhanSauBH, TuChoiDongModal, HuyDongModal, quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal } from "./eoActions";
 
 const TABS = ["Linh kiện", "Kế hoạch hàng về", "Quy trình duyệt", "Lịch sử thay đổi", "Bình luận", "Tài liệu đính kèm"] as const;
 type Tab = typeof TABS[number];
@@ -43,7 +43,7 @@ export default function EoDetail() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["eo", id] });
 
   const myEmail = me.data?.email;
-  const { canManage, canCancel, canEditPlan, canEditQty, canApprovePostIssue, canDeleteFile } = quyenEo(eo, me.data);
+  const { canManage, canCancel, canEditPlan, canEditQty, canApprovePostIssue, canDeleteFile, canCancelLine } = quyenEo(eo, me.data);
 
   return (
     <div>
@@ -101,7 +101,7 @@ export default function EoDetail() {
         <TabLinhKien
           nguoiDuyet={eo.final_approver_email}
           items={items.map((i: any) => ({ ...i, da_kh: plans.filter((p: any) => p.eo_item_id === i.id).reduce((s: number, p: any) => s + (p.planned_qty || 0), 0) }))} tong={tong} issued={issued} canManage={canManage} onReplacePart={setReplaceItem}
-          canEditQty={canEditQty} canApprovePostIssue={canApprovePostIssue}
+          canEditQty={canEditQty} canApprovePostIssue={canApprovePostIssue} canCancelLine={canCancelLine}
           onEditQty={setQtyItem} onAddItem={() => setShowAddItem(true)}
           onApproved={() => { refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["post-issue"] }); }}
         />
@@ -118,13 +118,14 @@ export default function EoDetail() {
       {showCancel && <CancelModal eo={eo} onClose={() => setShowCancel(false)} onDone={() => { setShowCancel(false); refresh(); }} />}
       {showRecall && <RecallModal eo={eo} onClose={() => setShowRecall(false)} onDone={() => { setShowRecall(false); refresh(); qc.invalidateQueries({ queryKey: ["inbox-count"] }); nav(`/eo/${id}/edit`); }} />}
       {replaceItem && <ReplacePartModal item={replaceItem} onClose={() => setReplaceItem(null)} onSaved={() => { setReplaceItem(null); refresh(); }} />}
-      {showAddItem && <AddItemModal eoId={id!} phongBan={eo.phong_ban} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); refresh(); }} />}
+      {showAddItem && <AddItemModal eoId={id!} phongBan={eo.phong_ban} nguoiDuyet={eo.final_approver_email} meEmail={myEmail} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); refresh(); }} />}
     </div>
   );
 }
 
-function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePostIssue, onEditQty, onAddItem, onApproved, onReplacePart, nguoiDuyet }: any) {
+function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePostIssue, onEditQty, onAddItem, onApproved, onReplacePart, nguoiDuyet, canCancelLine }: any) {
   const [tuChoi, setTuChoi] = useState<any>(null);
+  const [huy, setHuy] = useState<any>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState("");
   const approve = async (r: any) => {
@@ -181,6 +182,9 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
           {canApprovePostIssue && r.post_issue_status === "PENDING" && (
             <button className="btn sm danger" onClick={() => setTuChoi(r)}>Từ chối</button>
           )}
+          {canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && (
+            <button className="btn ghost sm danger" onClick={() => setHuy(r)} title="Hủy dòng (không đặt nữa) — bắt buộc lý do"><I.trash width={14} height={14} /></button>
+          )}
         </div>
       ),
     },
@@ -203,6 +207,7 @@ function TabLinhKien({ items, tong, issued, canManage, canEditQty, canApprovePos
         <StatTile label="Tổng tiền dự kiến" value={tien(tong.tong_tien_du_kien)} />
       </div>
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      {huy && <HuyDongModal item={huy} onClose={() => setHuy(null)} onDone={() => { setHuy(null); onApproved(); }} />}
       {tuChoi && <TuChoiDongModal item={tuChoi} onClose={() => setTuChoi(null)} onDone={() => { setTuChoi(null); onApproved(); }} />}
       {issued && canManage && (
         <button className="btn sm" style={{ marginTop: 14 }} onClick={onAddItem}><I.plus width={14} height={14} /> Thêm dòng (duyệt sau ban hành)</button>
