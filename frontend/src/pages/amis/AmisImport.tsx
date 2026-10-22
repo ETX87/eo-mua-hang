@@ -6,8 +6,29 @@ import { PageHeader, Card, StatTile, Modal } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
+import { writeBook } from "../../lib/excel";
 
 const COLS = ["Mã kho", "Tên kho", "Mã hàng", "Tên hàng", "Ngày hạch toán", "Ngày chứng từ", "Số chứng từ", "ĐVT", "Diễn giải", "Số lượng Nhập", "Số lượng Xuất", "Số lượng Tồn", "TK Kho", "TK đối ứng", "Mã phê duyệt"];
+
+// File mau: sheet dau = dong tieu de dung 15 cot COLS (backend routes/amis.ts doc theo ten cot), khong co dong du lieu
+// de tai nham file mau len khong nhap rac; vi du + giai thich o sheet "Huong dan".
+const COT_MO_TA: [string, string, string, string][] = [
+  ["Mã kho", "", "Mã kho trên MISA", "KHN01"],
+  ["Tên kho", "Bắt buộc", "Đúng tên kho trong danh mục (sheet \"Danh sach kho\") — phải trùng kho cần đặt trên EO", "Kho Hà Nội"],
+  ["Mã hàng", "Bắt buộc", "Mã hàng MISA — phải trùng mã linh kiện trên EO", "LCD-A52-ORG"],
+  ["Tên hàng", "", "Tên hàng", "Màn hình Samsung A52 zin"],
+  ["Ngày hạch toán", "", "dd/mm/yyyy hoặc ô ngày Excel", "15/10/2026"],
+  ["Ngày chứng từ", "Bắt buộc", "dd/mm/yyyy hoặc ô ngày Excel — chính là NGÀY HÀNG VỀ của dòng EO", "15/10/2026"],
+  ["Số chứng từ", "Bắt buộc", "Số phiếu nhập kho", "NK01234"],
+  ["ĐVT", "", "Đơn vị tính", "Cái"],
+  ["Diễn giải", "", "Diễn giải phiếu", "Nhập hàng NCC Minh Phát"],
+  ["Số lượng Nhập", "Bắt buộc", "Số lượng nhập > 0 (dòng xuất / SL nhập trống bị bỏ qua)", "20"],
+  ["Số lượng Xuất", "", "Không dùng — để trống", ""],
+  ["Số lượng Tồn", "", "Không dùng — để trống", ""],
+  ["TK Kho", "", "Tài khoản kho", "1561"],
+  ["TK đối ứng", "", "Tài khoản đối ứng", "331"],
+  ["Mã phê duyệt", "Bắt buộc", "Mã phê duyệt của EO (3TDO-xxxxxx) — dòng không có mã bị bỏ qua", "3TDO-000123"],
+];
 
 export default function AmisImport() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -37,6 +58,28 @@ export default function AmisImport() {
     queryFn: () => api.get<any[]>(`/amis/receipts?q=${encodeURIComponent(q.trim())}${showVoided ? `&include_voided=${showVoided}` : ""}`),
   });
   const validKho = new Set((kho.data ?? []).filter((k) => k.active).map((k) => k.ten_kho));
+  const taiFileMau = () => writeBook("Mau_import_AMIS_MISA.xlsx", [
+    { name: "Nhap kho MISA", rows: [COLS], widths: [10, 26, 18, 30, 14, 14, 13, 7, 30, 13, 13, 12, 8, 10, 15] },
+    {
+      name: "Huong dan",
+      rows: [
+        ["Cách dùng file mẫu nhập AMIS"],
+        ["- Dán dữ liệu phiếu nhập kho xuất từ MISA vào sheet ĐẦU TIÊN \"Nhap kho MISA\", từ dòng 2. Giữ nguyên dòng tiêu đề (tên 15 cột phải đúng như mẫu)."],
+        ["- Chỉ nhập các dòng có Mã phê duyệt, Số lượng Nhập > 0 và Tên kho đúng danh mục; dòng khác tự bỏ qua (xem ở bước Xem trước)."],
+        ["- Dòng được tính vào EO khi khớp đủ 3 thông tin: Mã phê duyệt + Mã hàng + Tên kho. Ngày chứng từ = ngày hàng về của dòng EO."],
+        ["- Tải lại file chồng kỳ cũ không bị nhân đôi: hệ thống tự nhận diện dòng đã nhập (Số CT + Kho + Mã hàng + SL + Ngày CT + Mã phê duyệt)."],
+        [],
+        ["Cột", "Bắt buộc", "Ý nghĩa", "Ví dụ"],
+        ...COT_MO_TA,
+        [],
+        ["Dòng ví dụ (KHÔNG dán vào sheet Nhap kho MISA)"],
+        COLS,
+        COT_MO_TA.map((c) => c[3]),
+      ],
+      widths: [16, 10, 70, 26, 14, 14, 13, 7, 30, 13, 13, 12, 8, 10, 15],
+    },
+    { name: "Danh sach kho", rows: [["Tên kho (ghi đúng vào cột Tên kho)"], ...(kho.data ?? []).filter((k) => k.active).map((k) => [k.ten_kho])], widths: [50] },
+  ]);
   const refreshAll = () => { batches.refetch(); unmatched.refetch(); receipts.refetch(); tomtat.refetch(); };
 
   const onFile = (f: File) => {
@@ -165,7 +208,10 @@ export default function AmisImport() {
       {/* B1 upload */}
       <Card style={{ marginBottom: 16 }} >
         <div id="amis-upload" />
-        <strong style={{ fontSize: 14 }}>1. Tải file</strong>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <strong style={{ fontSize: 14 }}>1. Tải file</strong>
+          <button className="btn sm" onClick={taiFileMau}><I.download width={14} height={14} /> Tải file mẫu</button>
+        </div>
         <div
           onClick={() => fileRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
@@ -175,6 +221,10 @@ export default function AmisImport() {
           <I.upload width={26} height={26} style={{ color: "var(--text-muted)" }} />
           <div style={{ marginTop: 8, fontWeight: 600 }}>Kéo file Excel MISA vào đây (.xlsx)</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ nhận dòng có "Mã phê duyệt", "SL Nhập" &gt; 0, kho hợp lệ.</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            File phiếu nhập kho xuất từ MISA, sheet đầu tiên, dòng 1 là tiêu đề đủ 15 cột như <b>file mẫu</b>.
+            Bắt buộc: Tên kho · Mã hàng · Ngày chứng từ · Số chứng từ · Số lượng Nhập · Mã phê duyệt.
+          </div>
           {filename && <div style={{ marginTop: 8, fontSize: 12.5 }}>Đã chọn: <b>{filename}</b></div>}
         </div>
         <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
