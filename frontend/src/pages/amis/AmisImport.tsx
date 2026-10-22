@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { docSheetAmis } from "../../lib/amisSheet";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { PageHeader, Card, StatTile, Modal } from "../../components/ui";
@@ -33,6 +34,7 @@ const COT_MO_TA: [string, string, string, string][] = [
 export default function AmisImport() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<any[] | null>(null);
+  const [docInfo, setDocInfo] = useState<{ dongTieuDe: number; nhanDang: "mau" | "so_chi_tiet"; thieuCot: string[] } | null>(null);
   const [filename, setFilename] = useState("");
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -89,7 +91,10 @@ export default function AmisImport() {
       // dateNF: o ngay Excel -> 'YYYY-MM-DD' (mac dinh SheetJS ra 'm/d/yy' -> lech khoa chong trung / ky)
       const wb = XLSX.read(e.target!.result, { type: "binary", cellDates: true, dateNF: "yyyy-mm-dd" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      setRows(XLSX.utils.sheet_to_json(ws, { defval: null, raw: false, dateNF: "yyyy-mm-dd" }));
+      // nhan ca file mau lan bao cao goc MISA "So chi tiet vat tu hang hoa" (tieu de bao cao, tieu de 2 tang, cot "Ma PD EO")
+      const kq = docSheetAmis(XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false, dateNF: "yyyy-mm-dd" }) as unknown[][]);
+      setDocInfo({ dongTieuDe: kq.dongTieuDe, nhanDang: kq.nhanDang, thieuCot: kq.thieuCot });
+      setRows(kq.rows);
     };
     reader.readAsBinaryString(f);
   };
@@ -220,12 +225,18 @@ export default function AmisImport() {
         >
           <I.upload width={26} height={26} style={{ color: "var(--text-muted)" }} />
           <div style={{ marginTop: 8, fontWeight: 600 }}>Kéo file Excel MISA vào đây (.xlsx)</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chỉ nhận dòng có "Mã phê duyệt", "SL Nhập" &gt; 0, kho hợp lệ.</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Nhận file mẫu hoặc xuất thẳng báo cáo MISA "Sổ chi tiết vật tư hàng hóa". Chỉ nhập dòng có Mã phê duyệt (cột "Mã PD EO"), SL Nhập &gt; 0, kho hợp lệ.</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            File phiếu nhập kho xuất từ MISA, sheet đầu tiên, dòng 1 là tiêu đề đủ 15 cột như <b>file mẫu</b>.
+            Sheet đầu tiên: <b>file mẫu</b> (dòng 1 là tiêu đề) hoặc báo cáo MISA <b>Sổ chi tiết vật tư hàng hóa</b> xuất thẳng — hệ thống tự tìm dòng tiêu đề, bỏ dòng "Tổng cộng".
             Bắt buộc: Tên kho · Mã hàng · Ngày chứng từ · Số chứng từ · Số lượng Nhập · Mã phê duyệt.
           </div>
-          {filename && <div style={{ marginTop: 8, fontSize: 12.5 }}>Đã chọn: <b>{filename}</b></div>}
+          {filename && <div style={{ marginTop: 8, fontSize: 12.5 }}>Đã chọn: <b>{filename}</b>
+            {docInfo && <span className="muted"> · {docInfo.nhanDang === "so_chi_tiet" ? `nhận dạng: báo cáo MISA "Sổ chi tiết" (tiêu đề cột ở dòng ${docInfo.dongTieuDe})` : "nhận dạng: file mẫu"} · {soLuong(rows?.length ?? 0)} dòng dữ liệu</span>}</div>}
+          {docInfo && docInfo.thieuCot.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--danger-ink)", background: "#FEF2F2", borderRadius: 8, padding: "6px 10px" }}>
+              Không tìm thấy cột: <b>{docInfo.thieuCot.join(", ")}</b> — kiểm tra tên cột trong file (mã phê duyệt có thể đặt tên "Mã phê duyệt" hoặc "Mã PD EO").
+            </div>
+          )}
         </div>
         <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
       </Card>
