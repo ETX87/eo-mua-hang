@@ -9,6 +9,7 @@ import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
+import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, PartLink } from "./QuickView";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
@@ -56,6 +57,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const [chon, setChon] = useState<Set<number>>(new Set());
   const [pushKq, setPushKq] = useState<any[] | null>(null);
   const [err, setErr] = useState("");
+  const [tim, setTim] = useState(""); // tim nhanh trong tab dang mo
+  const [timTl, setTimTl] = useState(""); // tim trong nhat ky
 
   const d = goc.data;
   const b = bs.data;
@@ -113,7 +116,9 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     catch (e: any) { setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt cuối của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
   };
   const loiCho = (b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").length;
-  const tlLoc = tl.filter((x) => nhom === "all" || x.nhom === nhom);
+  const k = khopTim(tim);
+  const kTl = khopTim(timTl);
+  const tlLoc = tl.filter((x) => (nhom === "all" || x.nhom === nhom) && kTl(x));
 
   const guiBinhLuan = async () => {
     if (!cmt.trim()) return;
@@ -178,7 +183,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       <div className="qv-body">
         {/* ------- trai: noi dung ------- */}
         <div className="qv-col">
-          <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => setTab(t.k)}>{t.l}</button>)}</div>
+          <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => { setTab(t.k); setTim(""); }}>{t.l}</button>)}{["lk", "kh", "mail"].includes(tab) && <input className="input qv-tim" placeholder="🔍 Tìm nhanh trong tab (không dấu)…" value={tim} onChange={(e) => setTim(e.target.value)} />}</div>
           <div className="qv-scroll">
             {tab === "lk" && P.issued && (P.canEditPlan || P.canManage) && (
               <div className="qv-toolbar">
@@ -195,7 +200,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
               <table className="tbl tbl-dense">
                 <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Ca / ghi chú</th></tr></thead>
                 <tbody>
-                  {d.items.map((r: any, i: number) => {
+                  {d.items.map((r: any, i: number) => ({ r, i })).filter(({ r }: any) => k({ ...r, ...(tdBy.get(r.id) as any ?? {}) })).map(({ r, i }: any) => {
                     const t = tdBy.get(r.id) as any;
                     const kh = d.plans.filter((p: any) => p.eo_item_id === r.id);
                     const ndk = t?.ngay_du_kien_gan_nhat ?? kh.map((p: any) => p.planned_date).sort().pop();
@@ -238,7 +243,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <thead><tr><th>Ngày CT</th><th>Số CT</th><th>Kho</th><th>Mã LK</th><th style={{ textAlign: "right" }}>SL nhập</th></tr></thead>
                   <tbody>
                     {(b?.phieu_nhap ?? []).length === 0 && <tr><td colSpan={5} className="muted">Chưa có phiếu nhập.</td></tr>}
-                    {(b?.phieu_nhap ?? []).map((r: any) => <tr key={r.id}><td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={180}>{r.warehouse_name}</Clip></td><td><PartLink ma={r.part_code} /></td><td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td></tr>)}
+                    {(b?.phieu_nhap ?? []).filter(k).map((r: any) => <tr key={r.id}><td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={180}>{r.warehouse_name}</Clip></td><td><PartLink ma={r.part_code} /></td><td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td></tr>)}
                   </tbody>
                 </table>
                 {(b?.phieu_khong_khop ?? []).length > 0 && (
@@ -246,7 +251,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                     <div className="qv-sec" style={{ color: "var(--warn-ink)" }}>Phiếu AMIS có mã {eo.approval_code} nhưng KHÔNG khớp dòng</div>
                     <table className="tbl tbl-dense">
                       <thead><tr><th>Ngày CT</th><th>Số CT</th><th>Kho</th><th>Mã hàng</th><th>Tên hàng</th><th style={{ textAlign: "right" }}>SL</th></tr></thead>
-                      <tbody>{b.phieu_khong_khop.map((r: any) => <tr key={r.id}><td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={180}>{r.warehouse_name}</Clip></td><td><PartLink ma={r.part_code} /></td><td><Clip w={190}>{r.part_name}</Clip></td><td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td></tr>)}</tbody>
+                      <tbody>{b.phieu_khong_khop.filter(k).map((r: any) => <tr key={r.id}><td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={180}>{r.warehouse_name}</Clip></td><td><PartLink ma={r.part_code} /></td><td><Clip w={190}>{r.part_name}</Clip></td><td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td></tr>)}</tbody>
                     </table>
                   </>
                 )}
@@ -287,7 +292,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <thead><tr><th>Mã push</th><th>Đối tác</th><th style={{ textAlign: "right" }}>Dòng</th><th>Trạng thái</th><th>Người tạo</th><th>Lúc</th></tr></thead>
                   <tbody>
                     {(b?.push ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa push đối tác.</td></tr>}
-                    {(b?.push ?? []).map((p: any) => <tr key={p.id}><td style={{ fontFamily: "monospace" }}>{p.ma_push}</td><td><Clip w={160}>{p.doi_tac}</Clip></td><td style={{ textAlign: "right" }}>{p.so_dong}</td><td><span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Đã tạo file" : p.trang_thai === "DA_GUI" ? "Đã gửi" : "Đã phản hồi"}</span></td><td>{ten(p.created_by)}</td><td>{ngayGio(p.created_at)}</td></tr>)}
+                    {(b?.push ?? []).filter(k).map((p: any) => <tr key={p.id}><td style={{ fontFamily: "monospace" }}>{p.ma_push}</td><td><Clip w={160}>{p.doi_tac}</Clip></td><td style={{ textAlign: "right" }}>{p.so_dong}</td><td><span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Đã tạo file" : p.trang_thai === "DA_GUI" ? "Đã gửi" : "Đã phản hồi"}</span></td><td>{ten(p.created_by)}</td><td>{ngayGio(p.created_at)}</td></tr>)}
                   </tbody>
                 </table>
                 <div className="qv-sec">Luồng mail theodoimuahang@gmail.com</div>
@@ -295,7 +300,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <thead><tr><th></th><th>Lúc</th><th>Từ → Đến</th><th>Tiêu đề / tóm tắt</th></tr></thead>
                   <tbody>
                     {(b?.mail ?? []).length === 0 && <tr><td colSpan={4} className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</td></tr>}
-                    {(b?.mail ?? []).map((m: any) => <tr key={m.id}><td>{m.huong === "GUI" ? "→" : "←"}</td><td style={{ whiteSpace: "nowrap" }}>{ngayGio(m.thoi_gian)}</td><td><Clip w={220}>{m.tu} → {m.den}</Clip></td><td><Clip w={420}><b>{m.tieu_de}</b>{m.tom_tat ? ` — ${m.tom_tat}` : ""}</Clip></td></tr>)}
+                    {(b?.mail ?? []).filter(k).map((m: any) => <tr key={m.id}><td>{m.huong === "GUI" ? "→" : "←"}</td><td style={{ whiteSpace: "nowrap" }}>{ngayGio(m.thoi_gian)}</td><td><Clip w={220}>{m.tu} → {m.den}</Clip></td><td><Clip w={420}><b>{m.tieu_de}</b>{m.tom_tat ? ` — ${m.tom_tat}` : ""}</Clip></td></tr>)}
                   </tbody>
                 </table>
               </>
@@ -309,6 +314,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 8 }}>Nhật ký xử lý ({tlLoc.length})</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {NHOM_TL.map((n) => <button key={n.k} className={`qv-chip ${nhom === n.k ? "on" : ""}`} onClick={() => setNhom(n.k)}>{n.l}</button>)}
+              <input className="input" style={{ height: 28, fontSize: 12, marginTop: 6, width: "100%" }} placeholder="🔍 Tìm trong nhật ký (người, mã LK, nội dung…)" value={timTl} onChange={(e) => setTimTl(e.target.value)} />
             </div>
           </div>
           <div className="qv-scroll">

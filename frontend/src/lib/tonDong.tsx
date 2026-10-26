@@ -38,3 +38,15 @@ export function MocTon({ tu, nho }: { tu?: string | null; nho?: boolean }) {
 
 /** Bo dau tieng Viet + thuong - tim kiem khong dau dung chung. */
 export const boDau = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\u0111\u0110]/g, "d").toLowerCase();
+
+/** Ham loc "tim nhanh" khong dau tren moi gia tri (1 cap long nhau) cua 1 doi tuong - dung cho bang tu dung / popup. */
+export function khopTim(q: string): (o: unknown) => boolean {
+  const tu = boDau(q).split(/\s+/).filter(Boolean);
+  if (!tu.length) return () => true;
+  return (o) => {
+    const h = boDau(o != null && typeof o === "object"
+      ? Object.values(o as Record<string, unknown>).map((v) => (v != null && typeof v === "object" ? Object.values(v as object).join(" ") : String(v ?? ""))).join(" ")
+      : String(o ?? ""));
+    return tu.every((x) => h.includes(x));
+  };
+}
