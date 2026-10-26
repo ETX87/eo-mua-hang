@@ -7,6 +7,7 @@ import { Card, KpiCard, StatusBadge, Avatar, Spinner } from "../components/ui";
 import { I } from "../lib/icons";
 import { soLuong, tuBayGio, ten } from "../lib/format";
 import EoListInner from "./eo/EoListInner";
+import QuanLyPanel from "./QuanLyPanel";
 
 const DONUT_COLOR: Record<string, string> = {
   "Nháp": "#B6BAC2", "Đang thẩm định": "#F5CC18", "Chờ duyệt cuối": "#FC7000",
@@ -26,6 +27,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <QuanLyPanel />
       <ViecCanXuLy />
       {/* KPI */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>

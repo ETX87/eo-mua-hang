@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { PageHeader, Card, StatusBadge, Avatar, Spinner } from "../components/ui";
 import { I } from "../lib/icons";
 import { ngayGio, ten, soLuong } from "../lib/format";
+import { boDau } from "../lib/tonDong";
 import { actionsFor, ApprovalActionModal as ActionModal, TuChoiDongModal } from "./eo/eoActions";
 
 export default function Approvals() {
@@ -14,12 +15,16 @@ export default function Approvals() {
   const [act, setAct] = useState<{ row: any; action: string } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [tuChoi, setTuChoi] = useState<any>(null);
+  const [tim, setTim] = useState("");
 
   const q = useQuery({ queryKey: ["inbox"], queryFn: () => api.get<any[]>("/approvals/inbox") });
   const post = useQuery({ queryKey: ["post-issue"], queryFn: () => api.get<any[]>("/approvals/post-issue") });
   if (q.isLoading || post.isLoading) return <Spinner />;
-  const rows = filter === "POST" ? [] : (q.data ?? []).filter((r) => filter === "all" || r.step_type === filter);
-  const postRows = filter === "all" || filter === "POST" ? (post.data ?? []) : [];
+  // tim nhanh khong dau tren moi thong tin cua phieu (ma EO, tieu de, ma LK, nguoi tao...)
+  const tu = boDau(tim).split(/\s+/).filter(Boolean);
+  const khop = (r: any) => !tu.length || tu.every((x) => boDau(Object.values(r).join(" ")).includes(x));
+  const rows = filter === "POST" ? [] : (q.data ?? []).filter((r) => (filter === "all" || r.step_type === filter) && khop(r));
+  const postRows = filter === "all" || filter === "POST" ? (post.data ?? []).filter(khop) : [];
   const nReview = (q.data ?? []).filter((r) => r.step_type === "REVIEW").length;
   const nFinal = (q.data ?? []).filter((r) => r.step_type === "FINAL").length;
   const nPost = post.data?.length ?? 0;
@@ -46,6 +51,7 @@ export default function Approvals() {
         {[["all", `Tất cả (${(q.data?.length ?? 0) + nPost})`], ["REVIEW", `Thẩm định (${nReview})`], ["FINAL", `Duyệt cuối (${nFinal})`], ["POST", `Dòng thêm sau ban hành (${nPost})`]].map(([k, l]) => (
           <button key={k} className={`btn sm ${filter === k ? "primary" : ""}`} onClick={() => setFilter(k as any)}>{l}</button>
         ))}
+        <input className="input" style={{ marginLeft: "auto", width: 280, height: 32 }} placeholder="🔍 Tìm mã EO, tiêu đề, mã linh kiện… (không dấu)" value={tim} onChange={(e) => setTim(e.target.value)} />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

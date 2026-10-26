@@ -8,6 +8,7 @@ import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { exportRowsToXlsx } from "../../lib/exportXlsx";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
+import { MocTon } from "../../lib/tonDong";
 import { type Dong, TINH_TRANG, timKhongDau, LichSuModal, GiaiTrinhModal } from "./shared";
 
 /** "Cảnh báo CEO": dong dang mo thoa 1 trong 3 dieu kien (lui >= 3 lan / ngay DK - ngay dat >= 30 ngay / >= 3 loi). */
@@ -42,7 +43,7 @@ export default function CanhBaoCeo() {
       <Card style={{ padding: 0 }}>
         {q.isLoading ? <Spinner /> : (
           <div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th className="qv-act">Thao tác</th><th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Lý do cấp CEO</th><th>Tình trạng</th></tr></thead>
+            <thead><tr><th className="qv-act">Thao tác</th><th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tồn</th><th>Lý do cấp CEO</th><th>Tình trạng</th></tr></thead>
             <tbody>
               {rows.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có đơn hàng ở cấp CEO.</td></tr>}
               {rows.map((r) => (
@@ -55,6 +56,7 @@ export default function CanhBaoCeo() {
                   <td>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
                   <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
                   <td><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve} veDu={!!r.ngay_ve_du} /></td>
+                  <td><MocTon tu={r.bat_dau} nho /></td>
                   <td style={{ color: "var(--danger)", fontSize: 12.5 }}>{r.ceo_ly_do.map((x) => <div key={x}>• {x}</div>)}</td>
                   <td><span className={`badge ${TINH_TRANG[r.tinh_trang].c}`}>{TINH_TRANG[r.tinh_trang].l}</span></td>
                 </tr>

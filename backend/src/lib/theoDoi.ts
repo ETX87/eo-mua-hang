@@ -58,6 +58,8 @@ export interface DongTheoDoi {
   ngay_hang_ve: string | null;
   /** ngay nha may cam ket cua dot ke hoach cap nhat gan nhat co dien */
   ngay_nm_cam_ket: string | null;
+  /** dong them SAU khi EO ban hanh (1) hay co tu luc trinh duyet (0) */
+  sau_ban_hanh: boolean;
   ceo_ly_do: string[];
 }
 
@@ -184,6 +186,7 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
       han_cap_nhat_lai: hanLai, so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0,
       tinh_trang: tinhTrang, ceo_ly_do: ceo, ngay_ve_du: veDuBy.get(r.item_id) ?? null,
       ngay_hang_ve: veCuoiBy.get(r.item_id) ?? null, ngay_nm_cam_ket: nmBy.get(r.item_id) ?? null,
+      sau_ban_hanh: m?.created_after_issue === 1,
     };
   });
 }

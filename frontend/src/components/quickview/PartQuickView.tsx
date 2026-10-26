@@ -18,11 +18,11 @@ import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac,
 const TRANG_THAI_MAU: Record<string, string> = {
   "Kết thúc": "issued", "Đơn trên EO bị hủy": "nhap", "Chưa đủ hàng": "final", "Hàng chưa về": "reject", "Chưa ban hành": "nhap",
 };
-type Tab = "eo" | "amis" | "loi";
+type Tab = "kho" | "eo" | "amis" | "loi";
 
 export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma: string; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
   const q = useQuery({ queryKey: ["xem-lk", ma], queryFn: () => api.get<any>(`/xem/linh-kien?ma=${encodeURIComponent(ma)}`) });
-  const [tab, setTab] = useState<Tab>("eo");
+  const [tab, setTab] = useState<Tab>("kho");
   const [chiMo, setChiMo] = useState(false);
   const [loaiLog, setLoaiLog] = useState<"all" | "sl" | "kh" | "khac">("all");
   const qc = useQueryClient();
@@ -33,6 +33,32 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const d = q.data;
+
+  // ---- chi so cho quan ly: ty le dap ung, du kien ve tiep, theo tung kho
+  const tk = useMemo(() => {
+    if (!d) return null;
+    const MO = ["Hàng chưa về", "Chưa đủ hàng"];
+    const daBh = d.dong.filter((r: any) => r.trang_thai_eo === "ISSUED" && r.trang_thai_don_hang !== "Đơn trên EO bị hủy");
+    const sum = (a: any[], f: (r: any) => number) => a.reduce((s, r) => s + (f(r) || 0), 0);
+    const tyLe = (a: any[]) => { const dat = sum(a, (r) => r.so_luong_dat); return dat ? Math.round((sum(a, (r) => Math.min(r.sl_nhap_amis_dung_eo || 0, r.so_luong_dat || 0)) / dat) * 1000) / 10 : null; };
+    const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+    const dkTiep = (a: any[]) => a.filter((r) => MO.includes(r.trang_thai_don_hang) && r.ngay_du_kien_gan_nhat).map((r) => r.ngay_du_kien_gan_nhat as string).sort()
+      .find((x) => x >= homNay) ?? null;
+    const tocDo = (a: any[]) => { const x = a.filter((r) => r.trang_thai_don_hang === "Kết thúc" && r.thoi_gian_xu_ly_ngay != null); return x.length ? Math.round((sum(x, (r) => r.thoi_gian_xu_ly_ngay) / x.length) * 10) / 10 : null; };
+    const nhap = d.phieu_nhap.filter((r: any) => !r.voided_at);
+    const khos = [...new Set([...daBh.map((r: any) => r.kho), ...nhap.map((r: any) => r.warehouse_name)].filter(Boolean))] as string[];
+    const theoKho = khos.map((k) => {
+      const a: any[] = daBh.filter((r: any) => r.kho === k);
+      const pn = nhap.filter((r: any) => r.warehouse_name === k).sort((x: any, y: any) => String(y.doc_date).localeCompare(String(x.doc_date)));
+      return {
+        kho: k, so_dong: a.length, sl_dat: sum(a, (r) => r.so_luong_dat), sl_ve: sum(a, (r) => r.sl_nhap_amis_dung_eo), ty_le: tyLe(a),
+        thieu: sum(a.filter((r: any) => MO.includes(r.trang_thai_don_hang)), (r) => r.so_luong_con_thieu), dk: dkTiep(a), toc: tocDo(a),
+        ve: pn[0] ?? null, tong_nhap_kho: sum(pn, (r) => r.qty_in),
+      };
+    }).sort((x, y) => y.sl_dat - x.sl_dat);
+    const moDong = daBh.filter((r: any) => MO.includes(r.trang_thai_don_hang));
+    return { ty_le: tyLe(daBh), dk: dkTiep(daBh), qua: moDong.filter((r: any) => r.canh_bao === "Quá dự kiến").length, theoKho };
+  }, [d]);
 
   const log = useMemo(() => (d?.log ?? []).filter((e: any) =>
     loaiLog === "all" ? true : loaiLog === "kh" ? /PLAN/.test(e.event_type)
@@ -74,21 +100,21 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
           </div>
         </QvHeader>
         <div className="qv-kpis">
-          <Kpi l="Số EO đã đặt" v={soLuong(t.so_eo)} />
-          <Kpi l="Số dòng" v={soLuong(t.so_dong)} />
-          <Kpi l="Tổng SL đặt (đã BH)" v={soLuong(t.sl_dat)} />
+          <Kpi l="SL đặt từ trước đến nay" v={<span title={`${soLuong(t.so_dong)} dòng trên ${soLuong(t.so_eo)} EO`}>{soLuong(t.sl_dat)}</span>} />
           <Kpi l="Đã về (AMIS)" v={soLuong(t.sl_ve)} tone="ok" />
-          <Kpi l="Còn thiếu (đơn mở)" v={soLuong(t.sl_thieu)} tone={t.sl_thieu > 0 ? "warn" : undefined} />
-          <Kpi l="Dòng đang mở" v={soLuong(t.dong_mo)} />
-          <Kpi l="Thời gian về TB" v={t.lead_time_tb != null ? `${t.lead_time_tb} ngày` : "—"} />
+          <Kpi l="Tỷ lệ đáp ứng (về / đặt)" v={tk?.ty_le != null ? `${tk.ty_le}%` : "—"} tone={tk?.ty_le == null ? undefined : tk.ty_le >= 90 ? "ok" : tk.ty_le >= 70 ? "warn" : "danger"} />
+          <Kpi l="Còn thiếu (đơn mở)" v={<span title={`${soLuong(t.dong_mo)} dòng đang mở${tk?.qua ? ` · ${tk.qua} dòng quá ngày dự kiến` : ""}`}>{soLuong(t.sl_thieu)}</span>} tone={t.sl_thieu > 0 ? "warn" : undefined} />
+          <Kpi l="Dự kiến về tiếp" v={tk?.dk ? ngay(tk.dk) : t.dong_mo ? "Chưa có ngày" : "—"} tone={t.dong_mo && !tk?.dk ? "danger" : undefined} />
+          <Kpi l="Tốc độ về TB (đặt → về đủ)" v={t.lead_time_tb != null ? `${t.lead_time_tb} ngày` : "—"} />
           <Kpi l="Lần về gần nhất" v={t.ve_gan_nhat ? ngay(t.ve_gan_nhat) : "—"} />
+          <Kpi l="Số EO đã đặt" v={soLuong(t.so_eo)} />
         </div>
       </div>
 
       <div className="qv-body">
         <div className="qv-col">
           <div className="qv-tabs">
-            {([["eo", `Lịch sử EO / đặt hàng (${d.dong.length})`], ["amis", `Phiếu nhập AMIS (${d.phieu_nhap.length})`], ["loi", `Lỗi theo dõi (${d.loi.length})`]] as [Tab, string][])
+            {([["kho", `Theo kho (${tk?.theoKho.length ?? 0})`], ["eo", `Lịch sử EO / đặt hàng (${d.dong.length})`], ["amis", `Phiếu nhập AMIS (${d.phieu_nhap.length})`], ["loi", `Lỗi theo dõi (${d.loi.length})`]] as [Tab, string][])
               .map(([k, l]) => <button key={k} className={`qv-tab ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>)}
             {tab === "eo" && <label style={{ marginLeft: "auto", fontSize: 12, display: "flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}><input type="checkbox" checked={chiMo} onChange={(e) => setChiMo(e.target.checked)} /> Chỉ đơn đang mở</label>}
           </div>
@@ -102,6 +128,28 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
           )}
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
           <div className="qv-scroll">
+            {tab === "kho" && tk && (
+              <table className="tbl tbl-dense">
+                <thead><tr><th>Kho</th><th style={{ textAlign: "right" }}>Dòng</th><th style={{ textAlign: "right" }}>SL đặt</th><th style={{ textAlign: "right" }}>Đã về (đúng EO)</th>
+                  <th style={{ textAlign: "right" }}>Tỷ lệ đáp ứng</th><th style={{ textAlign: "right" }}>Còn thiếu</th><th>Dự kiến về tiếp</th><th>Lần về gần nhất (mọi phiếu AMIS)</th><th style={{ textAlign: "right" }}>Tốc độ TB</th></tr></thead>
+                <tbody>
+                  {tk.theoKho.length === 0 && <tr><td colSpan={9} className="muted">Chưa có đơn đặt / phiếu nhập cho mã này.</td></tr>}
+                  {tk.theoKho.map((k) => (
+                    <tr key={k.kho}>
+                      <td><Clip w={200}>{k.kho}</Clip></td>
+                      <td style={{ textAlign: "right" }}>{soLuong(k.so_dong)}</td>
+                      <td style={{ textAlign: "right" }}>{soLuong(k.sl_dat)}</td>
+                      <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(k.sl_ve)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: k.ty_le == null ? undefined : k.ty_le >= 90 ? "var(--ok-ink)" : k.ty_le >= 70 ? "var(--warn-ink)" : "var(--danger-ink)" }}>{k.ty_le != null ? `${k.ty_le}%` : "—"}</td>
+                      <td style={{ textAlign: "right", fontWeight: k.thieu ? 700 : 400 }}>{soLuong(k.thieu)}</td>
+                      <td>{k.dk ? ngay(k.dk) : k.thieu ? <span style={{ color: "var(--danger-ink)" }}>Chưa có ngày</span> : "—"}</td>
+                      <td>{k.ve ? <>{ngay(k.ve.doc_date)} · <b>{soLuong(k.ve.qty_in)}</b><span className="muted" style={{ fontSize: 11 }}> · {k.ve.doc_no}</span></> : <span className="muted">Chưa về</span>}</td>
+                      <td style={{ textAlign: "right" }}>{k.toc != null ? `${k.toc} ngày` : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
             {tab === "eo" && (
               <table className="tbl tbl-dense">
                 <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th></tr></thead>

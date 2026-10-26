@@ -140,6 +140,14 @@ bắt buộc lý do → dòng hủy SL 0, xóa kế hoạch; ghi ở cột `post
 Người thêm chính là người duyệt cuối → tự duyệt (log APPROVE_POST_ISSUE_ITEM). Hủy 1 dòng sau ban hành (kể cả đã duyệt):
 `POST /eo/items/:id/cancel-line` (người quản lý EO / người duyệt cuối, bắt buộc lý do).
 
+## Bảng điều khiển quản lý (đầu trang Tổng quan) — `frontend/src/pages/QuanLyPanel.tsx`
+
+`GET /api/dashboard/quan-ly` gom từ báo cáo 0.1 đã cache (không cache kết quả — mốc tồn "< 1 ngày" tính theo giờ):
+tỷ lệ đáp ứng tháng/tuần = Σmin(về, đặt)/Σđặt của dòng ĐẶT trong kỳ; tồn đọng + 8 mốc tồn (`MOC_TON`, khớp
+`frontend/src/lib/tonDong.tsx`) dùng CÙNG mốc bỏ qua & ngày đặt với `lib/theoDoi` (dòng trước BH = ngày ban hành, thêm sau BH
+= ngày tạo) để số trên Tổng quan = số ở Theo dõi (`/theo-doi?ton=<mốc>`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
+`DataTable` có ô tìm nhanh mặc định (`timKiem={false}` khi trang tự tìm phía server).
+
 ## Popup xem nhanh (95% màn hình)
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,

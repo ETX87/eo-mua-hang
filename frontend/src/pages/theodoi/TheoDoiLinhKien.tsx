@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { MocTon, MOC_TON, mocCua, soNgayTon } from "../../lib/tonDong";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { EoLink, PartLink } from "../../components/quickview/QuickView";
@@ -32,8 +33,11 @@ export default function TheoDoiLinhKien() {
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const [phamVi, setPhamVi] = useState<"dang_mo" | "tat_ca">("dang_mo");
   const q = useQuery({ queryKey: ["theo-doi", phamVi], queryFn: () => api.get<{ rows: Dong[]; danh_gia_luc: string | null }>(`/theo-doi/danh-sach?pham_vi=${phamVi}`) });
-  const [nhom, setNhom] = useState<Nhom>("tat_ca");
-  const [search, setSearch] = useState("");
+  // mo tu Tong quan: ?ton=<moc ton>, ?nhom=<nhom>, ?q=<tim>
+  const [sp] = useSearchParams();
+  const [nhom, setNhom] = useState<Nhom>((sp.get("nhom") as Nhom) || "tat_ca");
+  const [search, setSearch] = useState(sp.get("q") ?? "");
+  const [ton, setTon] = useState(sp.get("ton") ?? "");
   const [kho, setKho] = useState("");
   const [doiTac, setDoiTac] = useState("");
   const [nguoiDat, setNguoiDat] = useState("");
@@ -46,8 +50,8 @@ export default function TheoDoiLinhKien() {
   const [busy, setBusy] = useState(false);
 
   const all = q.data?.rows ?? [];
-  const base = useMemo(() => all.filter((r) => (!chiApDung || r.ap_dung) && (!kho || r.kho === kho) && (!doiTac || (r.doi_tac ?? "") === doiTac)
-    && (!nguoiDat || r.nguoi_dat === nguoiDat) && timKhongDau(r, search)), [all, chiApDung, kho, doiTac, nguoiDat, search]);
+  const base = useMemo(() => all.filter((r) => (!ton || (r.tinh_trang !== "DONG" && mocCua(soNgayTon(r.bat_dau))?.k === ton)) && (!chiApDung || r.ap_dung) && (!kho || r.kho === kho) && (!doiTac || (r.doi_tac ?? "") === doiTac)
+    && (!nguoiDat || r.nguoi_dat === nguoiDat) && timKhongDau(r, search)), [all, chiApDung, kho, doiTac, nguoiDat, search, ton]);
   const rows = base.filter(NHOM.find((n) => n.k === nhom)!.f);
   const trang = rows.slice(page * PAGE, page * PAGE + PAGE);
   const uniq = (f: (r: Dong) => string | null) => [...new Set(all.map(f).filter(Boolean) as string[])].sort();
@@ -97,6 +101,7 @@ export default function TheoDoiLinhKien() {
           <select className="select" style={{ width: 200 }} value={kho} onChange={(e) => { setKho(e.target.value); setPage(0); }}><option value="">Tất cả kho</option>{uniq((r) => r.kho).map((x) => <option key={x}>{x}</option>)}</select>
           <select className="select" style={{ width: 170 }} value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setPage(0); }}><option value="">Tất cả đối tác</option>{uniq((r) => r.doi_tac).map((x) => <option key={x}>{x}</option>)}</select>
           <select className="select" style={{ width: 200 }} value={nguoiDat} onChange={(e) => { setNguoiDat(e.target.value); setPage(0); }}><option value="">Tất cả người đặt</option>{uniq((r) => r.nguoi_dat).map((x) => <option key={x} value={x}>{ten(x)}</option>)}</select>
+          <select className="select" style={{ width: 150 }} value={ton} title="Thời gian tồn tính từ ngày đặt" onChange={(e) => { setTon(e.target.value); setPage(0); }}><option value="">Mọi mốc tồn</option>{MOC_TON.map((m) => <option key={m.k} value={m.k}>Tồn {m.l}</option>)}</select>
           <select className="select" style={{ width: 150 }} value={phamVi} onChange={(e) => { setPhamVi(e.target.value as any); setPage(0); }}><option value="dang_mo">Đang mở</option><option value="tat_ca">Cả đã đóng</option></select>
           <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chiApDung} onChange={(e) => setChiApDung(e.target.checked)} /> Chỉ EO áp dụng quy tắc</label>
           <div style={{ flex: 1 }} />
@@ -120,7 +125,7 @@ export default function TheoDoiLinhKien() {
                 <th className="qv-act">Thao tác</th>
                 <th style={{ width: 32 }}><input type="checkbox" checked={allOnPage} onChange={() => setChon((s) => { const n = new Set(s); trang.forEach((r) => (allOnPage ? n.delete(r.item_id) : n.add(r.item_id))); return n; })} /></th>
                 <th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Về / Thiếu</th>
-                <th>Ban hành · Hạn có ngày dự kiến</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th>
+                <th>Đặt lúc · Tồn · Hạn có ngày DK</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th>
               </tr></thead>
               <tbody>
                 {trang.length === 0 && <tr><td colSpan={11} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có dòng phù hợp.</td></tr>}
@@ -137,7 +142,8 @@ export default function TheoDoiLinhKien() {
                       <td style={{ ...cell, maxWidth: 260 }}><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div>{r.id_crm && <div className="muted" style={{ fontSize: 11 }}>Ca {r.id_crm}</div>}</td>
                       <td style={cell}>{r.kho}<div className="muted" style={{ fontSize: 11.5 }}>{r.doi_tac ?? "—"}</div></td>
                       <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>{soLuong(r.so_luong_dat)} / {soLuong(r.sl_nhap_amis)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
-                      <td style={{ ...cell, whiteSpace: "nowrap", fontSize: 12 }}>{ngayGio(r.bat_dau)}<div className="muted">{r.ap_dung ? `hạn ${ngayGio(r.han_ngay_du_kien)}` : "không áp dụng quy tắc"}</div></td>
+                      <td style={{ ...cell, whiteSpace: "nowrap", fontSize: 12 }}>{ngayGio(r.bat_dau)}
+                        <div style={{ display: "flex", gap: 4, margin: "2px 0" }}>{r.tinh_trang !== "DONG" && <MocTon tu={r.bat_dau} nho />}<span className={`badge ${r.sau_ban_hanh ? "final" : "nhap"}`} style={{ fontSize: 10.5 }} title={r.sau_ban_hanh ? "Dòng thêm sau khi EO đã ban hành" : "Dòng có từ lúc trình duyệt EO"}>{r.sau_ban_hanh ? "Sau BH" : "Trước BH"}</span></div><div className="muted">{r.ap_dung ? `hạn ${ngayGio(r.han_ngay_du_kien)}` : "không áp dụng quy tắc"}</div></td>
                       <td style={{ ...cell, whiteSpace: "nowrap" }}><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve} veDu={!!r.ngay_ve_du} />{r.han_cap_nhat_lai && <div style={{ fontSize: 11, color: "var(--danger)" }}>cập nhật trước {ngayGio(r.han_cap_nhat_lai)}</div>}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_lan_lui || ""}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_loi ? <span className={`badge ${r.so_loi_cho_gt ? "reject" : "nhap"}`} title={`${r.so_loi_cho_gt} chờ giải trình`}>{r.so_loi}{r.so_loi_cho_gt ? ` (${r.so_loi_cho_gt} chờ)` : ""}</span> : ""}</td>

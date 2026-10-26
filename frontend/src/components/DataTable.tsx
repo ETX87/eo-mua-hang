@@ -1,6 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { I } from "../lib/icons";
 import { Clip } from "./Clip";
+import { boDau } from "../lib/tonDong";
+
+/** Chuoi tim kiem cua 1 dong: moi gia tri nguyen thuy (1 cap long nhau), bo dau. */
+const chuoiTim = (row: unknown): string => {
+  if (row == null || typeof row !== "object") return boDau(String(row ?? ""));
+  return boDau(Object.values(row as Record<string, unknown>).map((v) => (v != null && typeof v === "object" ? Object.values(v as object).join(" ") : String(v ?? ""))).join(" "));
+};
 
 export interface Col<T> {
   key: string;
@@ -22,7 +29,7 @@ export const PAGE_SIZE = 10; // quy uoc: moi bang 10 dong / trang
  * totalRow (theo vi tri cot khai bao) duoc doi cho theo.
  */
 export function DataTable<T>({
-  cols: colsIn, rows, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize,
+  cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -33,7 +40,13 @@ export function DataTable<T>({
   minWidth?: number;
   /** Bat phan trang client-side (mac dinh 10). Truyen 0/undefined de tat. */
   pageSize?: number;
+  /** O tim nhanh trong bang (khong dau, moi cot). Mac dinh bat; tat (false) khi trang da co o tim rieng / tim phia server. */
+  timKiem?: boolean;
 }) {
+  const [q, setQ] = useState("");
+  const tu = boDau(q).split(/\s+/).filter(Boolean);
+  const rows = tu.length ? rowsIn.filter((r) => { const h = chuoiTim(r); return tu.every((x) => h.includes(x)); }) : rowsIn;
+  const coTim = timKiem && (rowsIn.length >= 6 || q !== "");
   const ai = colsIn.findIndex((c) => c.key === "act");
   const order = ai > 0 ? [ai, ...colsIn.map((_, i) => i).filter((i) => i !== ai)] : colsIn.map((_, i) => i);
   const cols = order.map((i) => (i === ai ? { ...colsIn[i], sticky: true, align: "left" as const, header: colsIn[i].header || "Thao tác", wrap: true } : colsIn[i]));
@@ -48,6 +61,12 @@ export function DataTable<T>({
 
   return (
     <>
+      {coTim && (
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          {q && <span className="muted" style={{ fontSize: 12 }}>{rows.length} / {rowsIn.length} dòng</span>}
+          <input className="input" style={{ width: 260, height: 32 }} placeholder="🔍 Tìm nhanh trong bảng (không dấu)…" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
+        </div>
+      )}
       <div className="tbl-wrap">
         <table className="tbl" style={minWidth ? { minWidth } : undefined}>
           <thead>

@@ -32,14 +32,22 @@ app.get("/", async (c) => {
   if (createdBy) { where.push("e.created_by = ?"); bind.push(createdBy); }
   if (loaiHinh) { where.push("e.loai_hinh = ?"); bind.push(loaiHinh); }
   if (phongBan) { where.push("e.phong_ban = ?"); bind.push(phongBan); }
-  if (q) { where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ?)"); bind.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  // tim ca theo ma / ten linh kien trong EO
+  if (q) {
+    where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ? OR EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND (i.part_code LIKE ? OR i.part_name LIKE ?)))");
+    bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+  }
   const wsql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
   const rows = await c.env.DB.prepare(
     `SELECT e.id, e.eo_code, e.approval_code, e.tieu_de, e.loai_hinh, e.phong_ban, e.trang_thai,
             e.final_approver_email, e.created_by, e.created_at, e.issued_at,
             (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id) so_dong,
-            (SELECT COALESCE(SUM(i.current_qty),0) FROM eo_item i WHERE i.eo_id = e.id) tong_sl
+            (SELECT COALESCE(SUM(i.current_qty),0) FROM eo_item i WHERE i.eo_id = e.id) tong_sl,
+            (SELECT GROUP_CONCAT(part_code, ', ') FROM (SELECT DISTINCT i.part_code FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' LIMIT 4)) ma_lk,
+            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.created_after_issue = 1) so_dong_sau_bh,
+            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' AND i.current_qty >
+               COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0)) so_dong_chua_du
      FROM eo e ${wsql}
      ORDER BY e.created_at DESC LIMIT ? OFFSET ?`,
   ).bind(...bind, limit, offset).all();

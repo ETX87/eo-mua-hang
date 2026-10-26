@@ -7,6 +7,7 @@ import { PageHeader, Card, StatTile, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, pct } from "../../lib/format";
+import { MocTon, mocCua, ngayDat, soNgayTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 
 const badgeFor = (v: string) => {
@@ -27,6 +28,9 @@ export default function ReportTienDo() {
   const cols: Col<any>[] = [
     { key: "tt", header: "Trạng thái đơn hàng", sticky: true, render: (r) => <span className={`badge ${badgeFor(r.trang_thai_don_hang)}`}>{r.trang_thai_don_hang}</span> },
     { key: "cb", header: "Cảnh báo", render: (r) => r.canh_bao ? <span className={`badge ${badgeFor(r.canh_bao)}`}>{r.canh_bao}</span> : "" },
+    // ton: chi dong con mo (chua ve du), tinh tu ngay dat = muon hon (ban hanh, tao dong)
+    { key: "ton", header: "Mốc tồn", render: (r) => ["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? <MocTon tu={ngayDat(r.ngay_ban_hanh, r.ngay_tao, String(r.phan_loai_thoi_diem_dat).startsWith("Tạo sau"))} nho /> : <span className="muted">—</span> },
+    { key: "pc", header: "Mã linh kiện", render: (r) => <PartLink ma={r.part_code} /> },
     { key: "toc", header: "Tốc độ hàng về", width: 130, render: (r) => <span style={{ whiteSpace: "nowrap" }}>{r.toc_do_hang_ve}</span> },
     { key: "mp", header: "Mã phê duyệt (EO)", width: 120, render: (r) => r.eo_id ? <EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink> : (r.ma_phe_duyet || "") },
     { key: "pl", header: "Phân loại thời điểm đặt", width: 150, render: (r) => <span style={{ whiteSpace: "nowrap" }}>{r.phan_loai_thoi_diem_dat}</span> },
@@ -39,7 +43,6 @@ export default function ReportTienDo() {
     { key: "gc", header: "Ghi chú", maxW: 160, render: (r) => r.ghi_chu || "" },
     { key: "kho", header: "Kho", maxW: 150, render: (r) => r.kho },
     { key: "dt", header: "Đối tác", maxW: 120, render: (r) => r.doi_tac || "" },
-    { key: "pc", header: "Mã linh kiện", render: (r) => <PartLink ma={r.part_code} /> },
     { key: "pn", header: "Tên linh kiện", maxW: 200, render: (r) => r.part_name },
     { key: "sl", header: "SL đặt", align: "right", render: (r) => soLuong(r.so_luong_dat) },
     { key: "amis", header: "SL nhập theo AMIS (đúng EO)", align: "right", render: (r) => soLuong(r.sl_nhap_amis_dung_eo) },
@@ -57,6 +60,8 @@ export default function ReportTienDo() {
   ];
 
   const exportCols: ExportCol<any>[] = [
+    { header: "Tồn (ngày)", get: (r) => ["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? Math.floor(soNgayTon(ngayDat(r.ngay_ban_hanh, r.ngay_tao, String(r.phan_loai_thoi_diem_dat).startsWith("Tạo sau"))) ?? 0) : "" },
+    { header: "Mốc tồn", get: (r) => ["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? mocCua(soNgayTon(ngayDat(r.ngay_ban_hanh, r.ngay_tao, String(r.phan_loai_thoi_diem_dat).startsWith("Tạo sau"))))?.l ?? "" : "" },
     { header: "Trạng thái đơn hàng", get: (r) => r.trang_thai_don_hang },
     { header: "Cảnh báo", get: (r) => r.canh_bao },
     { header: "Tốc độ hàng về", get: (r) => r.toc_do_hang_ve },
@@ -130,7 +135,7 @@ export default function ReportTienDo() {
           <DataTable
             minWidth={3600} pageSize={PAGE_SIZE}
             cols={cols} rows={allRows} keyOf={(_r, i) => i}
-            totalRow={["TỔNG", "", "", "", "", "", "", "", "", "", "", "", "", "", "", `${soLuong(rep.data?.tong?.so_dong ?? 0)} dòng`,
+            totalRow={["TỔNG", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", `${soLuong(rep.data?.tong?.so_dong ?? 0)} dòng`,
               soLuong(rep.data?.tong?.so_luong_dat), soLuong(rep.data?.tong?.sl_nhap_amis_dung_eo),
               soLuong(rep.data?.tong?.doi_chieu_sai_thua), soLuong(rep.data?.tong?.so_luong_con_thieu),
               "", "", "", "", "", "", "", "", ""]}

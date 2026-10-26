@@ -20,6 +20,7 @@ export interface Dong {
   tinh_trang: "CHO_NDK" | "TRE_NDK" | "QUA_HAN_NDK" | "CHO_HANG" | "DONG";
   ngay_ve_du: string | null;
   ngay_hang_ve: string | null; ngay_nm_cam_ket: string | null;
+  sau_ban_hanh: boolean;
   ceo_ly_do: string[];
 }
 

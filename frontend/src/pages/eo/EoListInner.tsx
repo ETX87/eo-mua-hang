@@ -8,12 +8,14 @@ import { StatusBadge, TypeBadge } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ten } from "../../lib/format";
 import { STATUS_META, PHONG_BAN } from "../../lib/nav";
+import { MocTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 
 interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
   loai_hinh: string | null; phong_ban: string | null; trang_thai: string;
   created_by: string; created_at: string; so_dong: number; tong_sl: number; final_approver_email: string | null;
+  issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number;
 }
 
 const EXPORT_COLS: ExportCol<EoRow>[] = [
@@ -71,9 +73,16 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     { key: "tieu_de", header: "Tiêu đề", maxW: 190, render: (r) => r.tieu_de || "—" },
     { key: "loai_hinh", header: "Loại hình", render: (r) => <TypeBadge loai={r.loai_hinh} /> },
     { key: "phong_ban", header: "Phòng ban", maxW: 115, render: (r) => r.phong_ban || "" },
+    { key: "ma_lk", header: "Mã linh kiện", maxW: 150, render: (r) => r.ma_lk ? <span title={r.ma_lk}>{r.ma_lk}{r.so_dong > 4 ? ", …" : ""}</span> : <span className="muted">—</span> },
     { key: "trang_thai", header: "Trạng thái", render: (r) => <StatusBadge status={r.trang_thai} /> },
+    {
+      // ton: EO da ban hanh con dong chua ve du -> tinh tu ngay ban hanh; EO dang cho duyet -> tinh tu ngay tao
+      key: "ton", header: "Tồn", render: (r) => r.trang_thai === "ISSUED"
+        ? (r.so_dong_chua_du > 0 ? <><MocTon tu={r.issued_at} nho /><div className="muted" style={{ fontSize: 11 }}>{r.so_dong_chua_du} dòng chưa đủ</div></> : <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ về đủ</span>)
+        : ["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(r.trang_thai) ? <><MocTon tu={r.created_at} nho /><div className="muted" style={{ fontSize: 11 }}>chờ duyệt</div></> : <span className="muted">—</span>,
+    },
     { key: "created_by", header: "Người tạo · ngày", maxW: 110, render: (r) => <>{ten(r.created_by)}<div className="muted" style={{ fontSize: 11 }}>{ngay(r.created_at)}</div></> },
-    { key: "so_dong", header: "Dòng · SL", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div></> },
+    { key: "so_dong", header: "Dòng · SL", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
     { key: "final", header: "Người duyệt cuối", maxW: 100, render: (r) => ten(r.final_approver_email) },
     {
       key: "act", header: "", align: "center", render: (r) => (
@@ -114,7 +123,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       <FilterBar>
         <div style={{ position: "relative", flex: 1, minWidth: 220, maxWidth: 320 }}>
           <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 11, color: "var(--text-faint)" }} />
-          <input className="input" style={{ paddingLeft: 32 }} placeholder="Tìm kiếm mã EO, mã phê duyệt, tiêu đề..." value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
+          <input className="input" style={{ paddingLeft: 32 }} placeholder="Tìm mã EO, 3TDO, tiêu đề, mã / tên linh kiện…" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
         </div>
         <select className="select" style={{ width: 128 }} value={status} onChange={(e) => { setStatus(e.target.value); setOffset(0); }}>
           <option value="">Trạng thái</option>
@@ -138,7 +147,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         {actions}
       </FilterBar>
 
-      <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
+      <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
 
       {list.data && (
         <Pagination
