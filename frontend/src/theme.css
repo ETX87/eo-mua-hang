@@ -176,3 +176,9 @@ table.eo-lines .select { text-overflow: ellipsis; }
 table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .qv-act .btn.sm { padding: 3px 5px; min-height: 0; }
 .qv-pad { padding: 12px; }
+
+/* ---- cac buoc huong dan (trang Ke hoach hang ve) ---- */
+.buoc { position: relative; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 12px 50px; font-size: 12.5px; line-height: 1.5; display: flex; flex-direction: column; }
+.buoc > b { font-size: 13.5px; }
+.buoc .btn { align-self: flex-start; }
+.buoc-so { position: absolute; left: 12px; top: 12px; width: 28px; height: 28px; border-radius: 50%; background: var(--brand-yellow-btn); color: #3f2d00; font-weight: 900; display: grid; place-items: center; }

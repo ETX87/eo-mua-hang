@@ -101,7 +101,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           <button className="btn sm primary" onClick={() => setBulk(true)}><I.calendar width={14} height={14} /> Cập nhật hàng loạt</button>
           <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
-          <button className="btn sm ghost" onClick={() => dailyTemplate(lines, `Ke_hoach_hang_ve_${eo.eo_code}.xlsx`)}><I.download width={14} height={14} /> Tải mẫu (các dòng của EO)</button>
+          <button className="btn sm ghost" onClick={() => dailyTemplate(lines, plans, `Ke_hoach_hang_ve_${eo.eo_code}.xlsx`)}><I.download width={14} height={14} /> Tải mẫu (các dòng của EO)</button>
           <button className="btn sm ghost" onClick={() => setEdit({})}><I.plus width={14} height={14} /> Thêm 1 đợt</button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </div>

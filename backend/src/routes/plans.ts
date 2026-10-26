@@ -118,6 +118,10 @@ app.get("/lines", async (c) => {
   const eoId = Number(c.req.query("eo_id")) || null;
   const loai = c.req.query("loai") === "TUAN" ? "TUAN" : "NGAY";
   const conLai = c.req.query("con_lai") === "1";
+  // file mau Excel: pham_vi=chua_kh (con SL chua len ke hoach) | cho_hang (chua ve du); kem_ke_hoach=1 -> tra cac dot hien co
+  // de dien san vao file (import che do thay the khong lam mat dot cu ma nguoi dung khong thay).
+  const phamVi = c.req.query("pham_vi");
+  const kemKh = c.req.query("kem_ke_hoach") === "1";
   const lines = await c.env.DB.prepare(
     `SELECT i.id, i.eo_id, i.part_code, i.part_code_goc, i.part_name, i.warehouse, i.supplier, i.current_qty, i.ghi_chu,
             e.eo_code, e.approval_code, e.tieu_de,
@@ -129,7 +133,16 @@ app.get("/lines", async (c) => {
      ORDER BY e.issued_at DESC, e.id DESC, i.id LIMIT 5000`,
   ).bind(...(eoId ? [loai, eoId] : [loai])).all<any>();
   let rows = lines.results;
-  if (conLai) rows = rows.filter((r) => r.current_qty - r.da_len_kh > 0);
+  if (conLai || phamVi === "chua_kh") rows = rows.filter((r) => r.current_qty - r.da_len_kh > 0);
+  if (phamVi === "cho_hang") rows = rows.filter((r) => r.current_qty - r.da_ve > 0);
+  if (kemKh && !eoId) {
+    const ids = JSON.stringify(rows.map((r) => r.id));
+    const pl = await c.env.DB.prepare(
+      `SELECT id, eo_item_id, planned_date, planned_qty, factory_committed_date, ghi_chu FROM item_plan
+       WHERE deleted_at IS NULL AND loai = ? AND eo_item_id IN (SELECT value FROM json_each(?)) ORDER BY eo_item_id, planned_date, id`,
+    ).bind(loai, ids).all();
+    return c.json({ lines: rows, plans: pl.results });
+  }
   const plans = eoId
     ? (await c.env.DB.prepare(
         `SELECT p.* FROM item_plan p JOIN eo_item i ON i.id = p.eo_item_id
@@ -154,11 +167,11 @@ const ERR_TEXT: Record<string, string> = {
   LINE_CANCELLED: "Dòng đã hủy",
   READ_ONLY: "Bạn không có quyền cập nhật kế hoạch dòng này",
   BAD_QTY: "Số lượng không hợp lệ",
-  BAD_DATE: "Ngày về không hợp lệ",
+  BAD_DATE: "Ngày dự kiến không hợp lệ",
   BAD_WEEK: "Tuần không hợp lệ (dạng Y26-W42)",
   BAD_FACTORY_DATE: "Ngày NM cam kết không hợp lệ",
   DUPLICATE_WEEK: "Trùng tuần với dòng khác của cùng linh kiện",
-  PLAN_EXCEEDS_QTY: "Tổng kế hoạch vượt số lượng đặt",
+  PLAN_EXCEEDS_QTY: "Tổng SL các đợt của linh kiện lớn hơn SL đặt",
 };
 
 // POST /api/plans/bulk
