@@ -183,7 +183,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       <div className="qv-body">
         {/* ------- trai: noi dung ------- */}
         <div className="qv-col">
-          <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => { setTab(t.k); setTim(""); }}>{t.l}</button>)}{["lk", "kh", "mail"].includes(tab) && <input className="input qv-tim" placeholder="🔍 Tìm nhanh trong tab (không dấu)…" value={tim} onChange={(e) => setTim(e.target.value)} />}</div>
+          <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => { setTab(t.k); setTim(""); }}>{t.l}</button>)}{["lk", "mail"].includes(tab) && <input className="input qv-tim" placeholder="🔍 Tìm nhanh trong tab (không dấu)…" value={tim} onChange={(e) => setTim(e.target.value)} />}</div>
           <div className="qv-scroll">
             {tab === "lk" && P.issued && (P.canEditPlan || P.canManage) && (
               <div className="qv-toolbar">
@@ -238,14 +238,6 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                 <div className="qv-pad">
                   <TabKeHoach eo={eo} items={d.items} plans={d.plans} issued={P.issued} canEdit={P.canEditPlan} onChanged={() => qc.invalidateQueries()} />
                 </div>
-                <div className="qv-sec">Phiếu nhập AMIS khớp EO</div>
-                <table className="tbl tbl-dense">
-                  <thead><tr><th>Ngày CT</th><th>Số CT</th><th>Kho</th><th>Mã LK</th><th style={{ textAlign: "right" }}>SL nhập</th></tr></thead>
-                  <tbody>
-                    {(b?.phieu_nhap ?? []).length === 0 && <tr><td colSpan={5} className="muted">Chưa có phiếu nhập.</td></tr>}
-                    {(b?.phieu_nhap ?? []).filter(k).map((r: any) => <tr key={r.id}><td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={180}>{r.warehouse_name}</Clip></td><td><PartLink ma={r.part_code} /></td><td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td></tr>)}
-                  </tbody>
-                </table>
                 {(b?.phieu_khong_khop ?? []).length > 0 && (
                   <>
                     <div className="qv-sec" style={{ color: "var(--warn-ink)" }}>Phiếu AMIS có mã {eo.approval_code} nhưng KHÔNG khớp dòng</div>

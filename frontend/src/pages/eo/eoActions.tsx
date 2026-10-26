@@ -49,15 +49,10 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
   const [msg, setMsg] = useState("");
   const [ngayItem, setNgayItem] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const itemById = Object.fromEntries(items.map((i: any) => [i.id, i]));
+  const bs = useQuery({ queryKey: ["eo-bo-sung", eo.id], queryFn: () => api.get<any>(`/xem/eo/${eo.id}/bo-sung`), enabled: issued });
   const po = eo.approval_code || eo.eo_code;
   const plannedOf = (itemId: number, excludeId?: number) =>
     plans.filter((p: any) => p.eo_item_id === itemId && p.id !== excludeId).reduce((s: number, p: any) => s + (p.planned_qty || 0), 0);
-  const del = async (p: any) => {
-    if (!confirm(`Xóa kế hoạch ${p.loai === "TUAN" ? p.tuan : ngay(p.planned_date)} — SL ${soLuong(p.planned_qty)}?`)) return;
-    setErr("");
-    try { await api.del(`/plans/${p.id}`); onChanged(); } catch { setErr("Lỗi xóa kế hoạch."); }
-  };
   const editable = issued && canEdit;
   const activeItems = items.filter((i: any) => i.line_status !== "CANCELLED_LINE");
   const lines = activeItems.map((i: any) => ({ ...i, eo_code: eo.eo_code, approval_code: eo.approval_code, da_len_kh: plannedOf(i.id), da_len_kh_loai: 0, da_ve: i.da_dat }));
@@ -65,37 +60,75 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
     setErr(""); setMsg("");
     try { setImp({ name: f.name, parsed: await parseDailyFile(f) }); } catch { setErr("Không đọc được file Excel."); }
   };
+  // ---- bang THEO DONG linh kien: moi dong = 1 linh kien, gom cac dot ke hoach + cac lan hang ve (AMIS) cua dong do
+  const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+  const dd = (x?: string | null) => (x ? `${x.slice(8, 10)}/${x.slice(5, 7)}` : "—");
+  const nhapBy = new Map<number, any[]>();
+  for (const r of bs.data?.phieu_nhap ?? []) nhapBy.set(r.matched_eo_item_id, [...(nhapBy.get(r.matched_eo_item_id) ?? []), r]);
+  const rowsDong = activeItems.map((i: any) => {
+    const ps = plans.filter((p: any) => p.eo_item_id === i.id).sort((x: any, y: any) => String(x.planned_date).localeCompare(String(y.planned_date)));
+    const ve = (nhapBy.get(i.id) ?? []).sort((x: any, y: any) => String(x.doc_date).localeCompare(String(y.doc_date)));
+    const kh = ps.reduce((s: number, p: any) => s + (p.planned_qty || 0), 0);
+    const thieu = Math.max(0, i.current_qty - (i.da_dat || 0));
+    const dkTiep = ps.map((p: any) => p.planned_date as string).filter((x: string) => x >= homNay)[0] ?? null;
+    const dkCuoi = ps.length ? ps[ps.length - 1].planned_date : null;
+    const tt = thieu <= 0 ? { l: "Về đủ", c: "issued" }
+      : !ps.length ? { l: "Chưa có kế hoạch", c: "reject" }
+      : !dkTiep && dkCuoi && dkCuoi < homNay ? { l: "Quá ngày dự kiến", c: "reject" }
+      : kh < i.current_qty ? { l: `Thiếu KH ${soLuong(i.current_qty - kh)}`, c: "final" }
+      : { l: "Chờ hàng", c: "review" };
+    // chuoi tim: dua ngay cac dot / phieu vao de o tim nhanh cua bang tim duoc theo ngay
+    return { ...i, _ps: ps, _ve: ve, _kh: kh, _thieu: thieu, _tt: tt.l, _ttc: tt.c, _dk: dkTiep,
+      _tim: `${ps.map((p: any) => `${dd(p.factory_committed_date)} ${dd(p.planned_date)} ${p.tuan ?? ""}`).join(" ")} ${ve.map((r: any) => `${dd(r.doc_date)} ${r.doc_no}`).join(" ")}` };
+  });
   const cols: Col<any>[] = [
-    { key: "po", header: "Mã PO", render: () => po },
-    { key: "pc", header: "Mã linh kiện", render: (p) => itemById[p.eo_item_id]?.part_code ?? "" },
-    { key: "pn", header: "Tên linh kiện", render: (p) => itemById[p.eo_item_id]?.part_name ?? "" },
-    { key: "wh", header: "Kho", render: (p) => itemById[p.eo_item_id]?.warehouse ?? "" },
-    { key: "f", header: <NhanNgay k="NM" />, render: (p) => p.factory_committed_date ? <span style={{ color: NGAY.NM.mau }}>{ngay(p.factory_committed_date)}</span> : "" },
-    { key: "d", header: <NhanNgay k="DK" />, render: (p) => p.loai === "TUAN" ? <span title={`đến ${ngay(p.planned_date)}`}><span className="badge final">Tuần</span> {p.tuan}</span> : <b style={{ color: NGAY.DK.mau }}>{ngay(p.planned_date)}</b> },
-    { key: "q", header: "SL kế hoạch", align: "right", render: (p) => soLuong(p.planned_qty) },
-    { key: "g", header: "Ghi chú / nguồn", render: (p) => p.ghi_chu || "" },
     {
-      key: "act", header: "", align: "center", render: (p) => editable ? (
-        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-          {p.loai !== "TUAN" && <button className="btn ghost sm" title="Sửa" onClick={() => setEdit(p)}><I.edit width={14} height={14} /></button>}
-          <button className="btn ghost sm danger" title="Xóa" onClick={() => del(p)}><I.trash width={14} height={14} /></button>
+      key: "act", header: "", render: (r) => (
+        <div style={{ display: "flex", gap: 4 }}>
+          <button className="btn ghost sm" title="Xem / sửa các đợt: ngày nhà máy cam kết · dự kiến · hàng về" onClick={() => setNgayItem(r)}><I.calendar width={14} height={14} /></button>
+          {editable && r._thieu > 0 && <button className="btn ghost sm" title="Thêm 1 đợt hàng về cho dòng này" onClick={() => setEdit({ eo_item_id: r.id })}><I.plus width={14} height={14} /></button>}
         </div>
-      ) : null,
+      ),
     },
+    { key: "pc", header: "Linh kiện", maxW: 170, render: (r) => <><b>{r.part_code}</b>{r.part_code_goc && <span className="muted" style={{ fontSize: 10.5 }}> · thay từ {r.part_code_goc}</span>}<div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></> },
+    { key: "wh", header: <Hoi k="KHO" nhan="Kho" />, maxW: 95, render: (r) => r.warehouse },
+    { key: "sl", header: <Hoi k="SL_DAT" />, align: "right", render: (r) => <b>{soLuong(r.current_qty)}</b> },
+    {
+      key: "ps", header: <span title="Mỗi dòng = 1 đợt: ngày nhà máy cam kết → ngày dự kiến · SL"><NhanNgay k="NM" ngan /> → <NhanNgay k="DK" ngan /> · SL</span>, wrap: true, render: (r) => r._ps.length === 0
+        ? <span style={{ color: "var(--danger-ink)", fontSize: 12 }}>Chưa có đợt nào</span>
+        : <div style={{ fontSize: 12, lineHeight: 1.45, whiteSpace: "nowrap" }}>{r._ps.map((p: any) => (
+          <div key={p.id} title={p.ghi_chu ? `Nguồn: ${p.ghi_chu}` : undefined} style={{ opacity: p.planned_date < homNay && r._thieu > 0 ? 0.75 : 1 }}>
+            {p.loai === "TUAN" ? <span className="badge final" style={{ fontSize: 10 }}>Tuần {Number(String(p.tuan).split("W")[1])}</span>
+              : <span style={{ color: NGAY.NM.mau }}>{dd(p.factory_committed_date)}</span>}
+            {" → "}<b style={{ color: NGAY.DK.mau }}>{dd(p.planned_date)}</b> · {soLuong(p.planned_qty)}{p.ghi_chu ? " ✎" : ""}
+          </div>))}</div>,
+    },
+    { key: "kh", header: <Hoi k="SL_KH" nhan="Lên KH" />, align: "right", render: (r) => <span style={{ color: r._kh < r.current_qty && r._thieu > 0 ? "var(--warn-ink)" : undefined, fontWeight: 600 }}>{soLuong(r._kh)}</span> },
+    {
+      key: "ve", header: <span title="Từng lần nhập kho theo phiếu AMIS khớp dòng: ngày · SL"><NhanNgay k="VE" /> (AMIS)</span>, wrap: true, render: (r) => r._ve.length === 0
+        ? (r.da_dat > 0 ? <b style={{ color: NGAY.VE.mau }}>{soLuong(r.da_dat)}</b> : <span className="muted" style={{ fontSize: 12 }}>Chưa về</span>)
+        : <div style={{ fontSize: 12, lineHeight: 1.45, whiteSpace: "nowrap", color: NGAY.VE.mau }}>{r._ve.map((x: any) => <div key={x.id} title={x.doc_no}>{dd(x.doc_date)} · <b>{soLuong(x.qty_in)}</b></div>)}</div>,
+    },
+    { key: "thieu", header: <Hoi k="SL_THIEU" />, align: "right", render: (r) => r._thieu > 0 ? <b>{soLuong(r._thieu)}</b> : <span style={{ color: "var(--ok-ink)" }}>0</span> },
+    { key: "tt", header: "Tình trạng", render: (r) => <><span className={`badge ${r._ttc}`}>{r._tt}</span>{r._dk && r._thieu > 0 && <div className="muted" style={{ fontSize: 11 }}>về tiếp {dd(r._dk)}</div>}</> },
   ];
+  const tongDat = rowsDong.reduce((s: number, r: any) => s + r.current_qty, 0);
+  const tongKh = rowsDong.reduce((s: number, r: any) => s + r._kh, 0);
+  const tongVe = rowsDong.reduce((s: number, r: any) => s + (r.da_dat || 0), 0);
+  const tongThieu = rowsDong.reduce((s: number, r: any) => s + r._thieu, 0);
+  const demTt = (l: string) => rowsDong.filter((r: any) => r._tt.startsWith(l)).length;
   return (
     <>
       {!issued && <div className="muted" style={{ marginBottom: 10, fontSize: 13 }}>Lập kế hoạch hàng về sau khi EO được ban hành.</div>}
       {issued && (
-        <div style={{ background: "var(--panel-2)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12.5, lineHeight: 1.55 }}>
-          <b>Kế hoạch hàng về là gì, vì sao phải nhập?</b> Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ làm việc sau khi EO ban hành và cập nhật lại khi quá hạn —
-          không nhập hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng. Tổng SL các đợt ≤ SL đặt.
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
-            <span><b>Theo ngày</b> (nhà máy báo ngày giao từng đợt): nút <b>3 loại ngày</b> ở từng dòng bên dưới, hoặc "Cập nhật hàng loạt".</span>
-            <span>· <b>Theo tuần</b> (đơn kế hoạch tháng, nhà máy chỉ báo SL mỗi tuần):</span>
-            <a className="btn sm" href={`/plans/tuan?eo=${eo.id}`}><I.calendar width={13} height={13} /> Nhập theo tuần cho EO này</a>
-          </div>
-        </div>
+        <details style={{ background: "var(--panel-2)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, lineHeight: 1.55 }}>
+          <summary style={{ cursor: "pointer" }}>
+            Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ làm việc sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
+            <a href={`/plans/tuan?eo=${eo.id}`} onClick={(e) => e.stopPropagation()}>nhập theo tuần</a> <span className="muted">(bấm để xem vì sao)</span>
+          </summary>
+          Không nhập / quá ngày dự kiến mà chưa cập nhật → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng.
+          Tổng SL các đợt của 1 dòng ≤ SL đặt. <b>Theo ngày</b>: nhà máy báo ngày giao từng đợt. <b>Theo tuần</b>: đơn kế hoạch tháng, nhà máy chỉ báo SL mỗi tuần.
+        </details>
       )}
       {editable && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
@@ -107,27 +140,15 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
         </div>
       )}
       {msg && <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 10 }}>{msg}</div>}
-      <ChuGiaiNgay />
-      <DataTable cols={cols} rows={plans} keyOf={(p) => p.id} empty="Chưa có đợt hàng về (kế hoạch)" pageSize={PAGE_SIZE} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 10, marginTop: 14 }}>
-        {activeItems.map((i: any) => {
-          const sum = plannedOf(i.id);
-          return (
-            <div key={i.id} className="card card-pad" style={{ fontSize: 12.5 }}>
-              <b>{i.part_code}</b> · {i.warehouse}
-              {i.part_name && <div className="muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{i.part_name}</div>}
-              {i.ghi_chu && <div style={{ fontSize: 12, color: "var(--text-muted)" }} title={i.ghi_chu}>Ghi chú: {i.ghi_chu}</div>}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, marginTop: 4, fontSize: 11.5 }}>
-                <div><div className="muted"><Hoi k="SL_DAT" /></div><b>{soLuong(i.current_qty)}</b></div>
-                <div><div className="muted"><Hoi k="SL_KH" nhan="Đã lên KH" /></div><b style={{ color: sum < i.current_qty ? "var(--warn-ink)" : NGAY.DK.mau }}>{soLuong(sum)}</b></div>
-                <div><div className="muted"><Hoi k="SL_VE" nhan="Đã về" /></div><b style={{ color: NGAY.VE.mau }}>{soLuong(i.da_dat)}</b></div>
-              </div>
-              {sum < i.current_qty && i.da_dat < i.current_qty && <div style={{ fontSize: 11.5, color: "var(--warn-ink)", marginTop: 2 }}>Còn {soLuong(i.current_qty - sum)} chưa biết khi nào về → hỏi nhà máy, thêm đợt</div>}
-              <button className="btn sm" style={{ marginTop: 6 }} onClick={() => setNgayItem(i)}><I.calendar width={13} height={13} /> 3 loại ngày của dòng</button>
-            </div>
-          );
-        })}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 8, fontSize: 12.5 }}>
+        <span className="badge nhap">{rowsDong.length} dòng</span>
+        <span>SL đặt <b>{soLuong(tongDat)}</b> · đã lên KH <b style={{ color: tongKh < tongDat ? "var(--warn-ink)" : NGAY.DK.mau }}>{soLuong(tongKh)}</b> · đã về <b style={{ color: NGAY.VE.mau }}>{soLuong(tongVe)}</b> · còn thiếu <b>{soLuong(tongThieu)}</b></span>
+        {demTt("Chưa có kế hoạch") > 0 && <span className="badge reject">{demTt("Chưa có kế hoạch")} chưa có kế hoạch</span>}
+        {demTt("Quá ngày") > 0 && <span className="badge reject">{demTt("Quá ngày")} quá ngày dự kiến</span>}
+        {demTt("Thiếu KH") > 0 && <span className="badge final">{demTt("Thiếu KH")} thiếu kế hoạch</span>}
+        {demTt("Về đủ") > 0 && <span className="badge issued">{demTt("Về đủ")} về đủ</span>}
       </div>
+      <DataTable cols={cols} rows={rowsDong} keyOf={(r) => r.id} empty="EO không có dòng linh kiện hiệu lực" pageSize={20} />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
       {ngayItem && <NgayHangVeModal dong={{ item_id: ngayItem.id, part_code: ngayItem.part_code }} onClose={() => setNgayItem(null)} onSaved={() => { setNgayItem(null); onChanged(); }} />}
       {edit && (
