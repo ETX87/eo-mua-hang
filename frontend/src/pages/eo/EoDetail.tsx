@@ -43,7 +43,7 @@ export default function EoDetail() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["eo", id] });
 
   const myEmail = me.data?.email;
-  const { canManage, canCancel, canEditPlan, canEditQty, canApprovePostIssue, canDeleteFile, canCancelLine } = quyenEo(eo, me.data);
+  const { canManage, canCancel, canEditPlan, canEditQty, canApprovePostIssue, canDeleteFile, canCancelLine, canCopy } = quyenEo(eo, me.data);
 
   return (
     <div>
@@ -57,6 +57,7 @@ export default function EoDetail() {
           {["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(eo.trang_thai) && canManage && (
             <button className="btn primary" onClick={() => setShowRecall(true)}><I.edit width={14} height={14} /> Sửa EO</button>
           )}
+          {canCopy && <button className="btn" title="Tạo EO mới với tiêu đề, nội dung, loại hình, phòng ban, người duyệt giống EO này (không chép danh sách linh kiện)" onClick={() => nav(`/eo/new?copy=${id}`)}><I.copy width={14} height={14} /> Copy EO</button>}
           <button className="btn" title="Tải Excel mọi dòng linh kiện của EO (kèm kế hoạch, hàng về, theo dõi)" onClick={() => xuatDongEo(eo, items, plans)}><I.download width={14} height={14} /> Tải danh sách linh kiện</button>
           <button className="btn" onClick={() => setTab("Lịch sử thay đổi")}><I.clock width={14} height={14} /> Lịch sử</button>
           {canCancel && <button className="btn danger" onClick={() => setShowCancel(true)}><I.x width={14} height={14} /> Hủy EO</button>}
@@ -286,6 +287,7 @@ function TabLichSu({ events }: any) {
         }
         if (r.event_type === "IMPORT_ITEMS") parts.push(`${m?.so_dong} dòng`);
         if (r.event_type === "CREATE_EO" && m?.so_dong) parts.push(`${m.so_dong} dòng${m.nguon_dong === "excel" ? " (import Excel)" : ""}`);
+        if (r.event_type === "CREATE_EO" && m?.copy_tu) parts.push(`Copy từ ${m.copy_tu.approval_code || m.copy_tu.eo_code}`);
         return <span className="muted">{parts.join(" · ")}</span>;
       },
     },

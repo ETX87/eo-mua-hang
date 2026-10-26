@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Hoi } from "../../lib/thuatNgu";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { PageHeader, Spinner } from "../../components/ui";
@@ -22,6 +22,9 @@ const emptyItem = (): ItemRow => ({ part_code: "", part_name: "", warehouse: "",
 export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const nav = useNavigate();
   const { id } = useParams();
+  // /eo/new?copy=<id>: dien san thong tin phieu tu EO nguon, KHONG chep dong linh kien
+  const [searchParams] = useSearchParams();
+  const copyId = mode === "create" ? Number(searchParams.get("copy")) || null : null;
   const cats = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
@@ -31,6 +34,11 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     enabled: mode === "edit" && !!id,
   });
 
+  const copyQ = useQuery({
+    queryKey: ["eo", String(copyId)],
+    queryFn: () => api.get<any>(`/eo/${copyId}`),
+    enabled: !!copyId,
+  });
   const [loaded, setLoaded] = useState(mode === "create");
   const [tieuDe, setTieuDe] = useState("");
   const [loaiHinh, setLoaiHinh] = useState("");
@@ -49,6 +57,23 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const [deletedFileIds, setDeletedFileIds] = useState<number[]>([]);
   const importRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copyId || copied || !copyQ.data) return;
+    const { eo, approvals } = copyQ.data;
+    setTieuDe(eo.tieu_de || "");
+    setLoaiHinh(eo.loai_hinh || "");
+    setPhongBan(eo.phong_ban || "");
+    setNoiDung(eo.noi_dung || "");
+    setFinalApprover(eo.final_approver_email || "");
+    setReviewers([...new Set(
+      (approvals ?? [])
+        .filter((a: any) => a.submission_id === eo.current_submission_id && a.step_type === "REVIEW")
+        .map((a: any) => a.approver_email as string),
+    )] as string[]);
+    setCopied(true);
+  }, [copyId, copied, copyQ.data]);
 
   useEffect(() => {
     if (mode !== "edit" || loaded || !eoQ.data) return;
@@ -99,6 +124,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     const res = await api.post<{ id: number }>("/eo", {
       tieu_de: tieuDe, noi_dung: noiDung, loai_hinh: loaiHinh || undefined, phong_ban: phongBan || undefined,
       final_approver_email: finalApprover, items: its, nguon_dong: importedFromExcel ? "excel" : undefined,
+      copy_tu_eo_id: copyId ?? undefined,
     });
     await uploadPending(res.id);
     if (send) {
@@ -274,6 +300,14 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         </>}
       />
 
+      {copyId && (
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12, color: "#1E3A8A" }}>
+          {copyQ.isLoading ? "Đang lấy thông tin EO nguồn…" : copyQ.isError ? "Không lấy được EO nguồn — nhập thông tin như tạo mới." : <>
+            Copy từ <b>{copyQ.data?.eo?.approval_code || copyQ.data?.eo?.eo_code}</b>: đã điền sẵn tiêu đề, nội dung, loại hình, phòng ban, người thẩm định &amp; người duyệt cuối — sửa lại nếu cần.
+            Danh sách linh kiện <b>không được chép</b>: nhập hoặc import Excel ở mục 2.
+          </>}
+        </div>
+      )}
       {noReviewer && (
         <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, color: "#92400E" }}>
           Không chọn thẩm định → gửi thẳng người duyệt cuối.

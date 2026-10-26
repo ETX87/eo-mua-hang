@@ -39,6 +39,8 @@ export function quyenEo(eo: any, me: any) {
     canCancelLine: issued && (canManage || m.email === eo.final_approver_email),
     canDeleteFile: role === "Admin" || (canManage && !["ISSUED", "CANCELLED"].includes(eo.trang_thai)),
     readOnly: role === "View",
+    // Copy EO = tao EO moi tu thong tin phieu - khop backend lib/eoAccess.ts canCreateEo
+    canCopy: role === "Admin" || role === "KH cung ung" || m.la_nv_dat_hang === 1 || m.la_nv_kho === 1,
   };
 }
 

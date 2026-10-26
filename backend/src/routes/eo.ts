@@ -115,6 +115,8 @@ interface CreateBody {
   skip_review?: boolean;
   /** 'excel' khi dong linh kien duoc import tu file mau (ghi vao lich su). */
   nguon_dong?: string;
+  /** id EO nguon khi tao bang nut "Copy EO" (chi chep thong tin phieu, khong chep dong) - ghi vao lich su. */
+  copy_tu_eo_id?: number;
   items: Array<{
     part_code: string; part_name?: string; warehouse: string; supplier?: string;
     current_qty: number; reason?: string; crm_id?: string; order_id?: string; ghi_chu?: string;
@@ -131,6 +133,11 @@ app.post("/", async (c) => {
   if (b.items.some((it) => !it.part_code?.trim() || !it.warehouse || !validQty(it.current_qty))) {
     return c.json({ error: "BAD_ITEM" }, 400);
   }
+
+  const copyTu = Number(b.copy_tu_eo_id) > 0
+    ? await c.env.DB.prepare("SELECT id, eo_code, approval_code FROM eo WHERE id = ?").bind(Number(b.copy_tu_eo_id))
+        .first<{ id: number; eo_code: string; approval_code: string | null }>()
+    : null;
 
   const now = nowVN();
   const seq = await c.env.DB.prepare(
@@ -154,7 +161,7 @@ app.post("/", async (c) => {
       it.ghi_chu ?? null, it.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE",
       it.don_gia_du_kien ?? null, u.email, now),
   );
-  batch.push(eventStmt(c.env.DB, { entity_type: "eo", entity_id: eoId, eo_id: eoId, event_type: "CREATE_EO", user_email: u.email, at: now, metadata: { eo_code: eoCode, reviewers: b.reviewers ?? [], skip_review: !!b.skip_review, so_dong: b.items.length, nguon_dong: b.nguon_dong ?? null } }));
+  batch.push(eventStmt(c.env.DB, { entity_type: "eo", entity_id: eoId, eo_id: eoId, event_type: "CREATE_EO", user_email: u.email, at: now, metadata: { eo_code: eoCode, reviewers: b.reviewers ?? [], skip_review: !!b.skip_review, so_dong: b.items.length, nguon_dong: b.nguon_dong ?? null, copy_tu: copyTu ?? null } }));
   await c.env.DB.batch(batch);
   await bumpVersions(c.env.DB, ["eo"]);
 
