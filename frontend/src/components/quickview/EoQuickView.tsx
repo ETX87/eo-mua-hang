@@ -13,7 +13,7 @@ import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, PartLink } from "./QuickView";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
-  actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal,
+  actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, xuatDongEo,
 } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
@@ -185,13 +185,14 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
         <div className="qv-col">
           <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => { setTab(t.k); setTim(""); }}>{t.l}</button>)}{["lk", "mail"].includes(tab) && <input className="input qv-tim" placeholder="🔍 Tìm nhanh trong tab (không dấu)…" value={tim} onChange={(e) => setTim(e.target.value)} />}</div>
           <div className="qv-scroll">
-            {tab === "lk" && P.issued && (P.canEditPlan || P.canManage) && (
+            {tab === "lk" && (
               <div className="qv-toolbar">
-                {coChon && <>
+                <button className="btn sm" title="Tải Excel mọi dòng linh kiện của EO (kèm kế hoạch, hàng về, theo dõi)" onClick={() => xuatDongEo(eo, d.items, d.plans, b)}><I.download width={13} height={13} /> Tải danh sách linh kiện</button>
+                {P.issued && coChon && <>
                   <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
-                {P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
+                {P.issued && P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
                 <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: 3 loại ngày · sửa dòng · thay mã · ! giải trình · lịch sử</span>
               </div>
             )}

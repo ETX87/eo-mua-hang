@@ -11,7 +11,7 @@ import { STATUS_META } from "../../lib/nav";
 import { EVENT_LABEL } from "../../lib/eventLabels";
 import { fileSize } from "../../lib/files";
 import { Hoi } from "../../lib/thuatNgu";
-import { NhanSauBH, TuChoiDongModal, HuyDongModal, quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal } from "./eoActions";
+import { NhanSauBH, TuChoiDongModal, HuyDongModal, xuatDongEo, quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal } from "./eoActions";
 
 const TABS = ["Linh kiện", "Kế hoạch hàng về", "Quy trình duyệt", "Lịch sử thay đổi", "Bình luận", "Tài liệu đính kèm"] as const;
 type Tab = typeof TABS[number];
@@ -57,6 +57,7 @@ export default function EoDetail() {
           {["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(eo.trang_thai) && canManage && (
             <button className="btn primary" onClick={() => setShowRecall(true)}><I.edit width={14} height={14} /> Sửa EO</button>
           )}
+          <button className="btn" title="Tải Excel mọi dòng linh kiện của EO (kèm kế hoạch, hàng về, theo dõi)" onClick={() => xuatDongEo(eo, items, plans)}><I.download width={14} height={14} /> Tải danh sách linh kiện</button>
           <button className="btn" onClick={() => setTab("Lịch sử thay đổi")}><I.clock width={14} height={14} /> Lịch sử</button>
           {canCancel && <button className="btn danger" onClick={() => setShowCancel(true)}><I.x width={14} height={14} /> Hủy EO</button>}
         </>}

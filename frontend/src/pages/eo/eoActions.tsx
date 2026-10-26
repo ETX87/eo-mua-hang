@@ -5,10 +5,11 @@ import { Modal, Card } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
-import { KHO_THEO_PHONG_BAN } from "../../lib/nav";
+import { KHO_THEO_PHONG_BAN, STATUS_META } from "../../lib/nav";
 import { FILE_ACCEPT, checkFile, driveThumb, fileSize, isExcel, isImage, uploadEoFiles } from "../../lib/files";
 import { dailyTemplate, parseDailyFile, type Parsed } from "../../lib/planExcel";
 import { PlanImportModal } from "../../components/PlanImportModal";
+import { exportRowsToXlsx } from "../../lib/exportXlsx";
 import { NGAY, NhanNgay, ChuGiaiNgay } from "../../lib/ngay";
 import { TN, Hoi, type KhoaTN } from "../../lib/thuatNgu";
 import { NgayHangVeModal } from "../theodoi/shared";
@@ -810,4 +811,66 @@ export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: ()
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
+}
+
+// ---------------------------------------------------------------- xuat Excel danh sach linh kien cua 1 EO
+const TT_THEO_DOI: Record<string, string> = { CHO_NDK: "Chờ ngày dự kiến", TRE_NDK: "Trễ 24h chưa có ngày DK", QUA_HAN_NDK: "Quá ngày dự kiến", CHO_HANG: "Chờ hàng", DONG: "Đã đóng" };
+/**
+ * Tai file Excel: moi dong linh kien cua EO + thong tin EO + ke hoach (cac dot, ngay NM / du kien) + hang ve AMIS
+ * + theo doi. Lay them /xem/eo/:id/bo-sung (phieu AMIS, theo doi) neu chua truyen vao.
+ */
+export async function xuatDongEo(eo: any, items: any[], plans: any[], boSung?: any) {
+  const b = boSung ?? (eo.trang_thai === "ISSUED" ? await api.get<any>(`/xem/eo/${eo.id}/bo-sung`).catch(() => null) : null);
+  const nhapBy = new Map<number, any[]>();
+  for (const r of b?.phieu_nhap ?? []) nhapBy.set(r.matched_eo_item_id, [...(nhapBy.get(r.matched_eo_item_id) ?? []), r]);
+  const tdBy = new Map<number, any>((b?.theo_doi ?? []).map((t: any) => [t.item_id, t]));
+  const d = (x?: string | null) => (x ? ngay(x) : "");
+  const rows = items.map((i: any, idx: number) => {
+    const ps = plans.filter((p: any) => p.eo_item_id === i.id).sort((x: any, y: any) => String(x.planned_date).localeCompare(String(y.planned_date)));
+    const ve = (nhapBy.get(i.id) ?? []).sort((x: any, y: any) => String(x.doc_date).localeCompare(String(y.doc_date)));
+    const nm = [...ps].filter((p: any) => p.factory_committed_date).pop()?.factory_committed_date ?? null;
+    return { i, idx, ps, ve, nm, td: tdBy.get(i.id), kh: ps.reduce((s: number, p: any) => s + (p.planned_qty || 0), 0) };
+  });
+  type R = (typeof rows)[number];
+  const cols: { header: string; get: (r: R) => string | number | null | undefined }[] = [
+    { header: "STT", get: (r) => r.idx + 1 },
+    { header: "Mã EO", get: () => eo.eo_code },
+    { header: "Mã phê duyệt (3TDO)", get: () => eo.approval_code ?? "" },
+    { header: "Tiêu đề EO", get: () => eo.tieu_de ?? "" },
+    { header: "Trạng thái EO", get: () => STATUS_META[eo.trang_thai]?.label ?? eo.trang_thai },
+    { header: "Loại hình", get: () => eo.loai_hinh ?? "" },
+    { header: "Phòng ban", get: () => eo.phong_ban ?? "" },
+    { header: "Người tạo EO", get: () => eo.created_by },
+    { header: "Ngày ban hành", get: () => d(eo.issued_at) },
+    { header: "ID dòng", get: (r) => r.i.legacy_id || `EOI-${r.i.id}` },
+    { header: "Mã linh kiện", get: (r) => r.i.part_code },
+    { header: "Mã đã duyệt ban đầu (nếu thay mã)", get: (r) => r.i.part_code_goc ?? "" },
+    { header: "Tên linh kiện", get: (r) => r.i.part_name },
+    { header: "Kho cần đặt", get: (r) => r.i.warehouse },
+    { header: "Đối tác", get: (r) => r.i.supplier ?? "" },
+    { header: "SL đặt", get: (r) => r.i.current_qty },
+    { header: "Đơn giá dự kiến", get: (r) => r.i.don_gia_du_kien ?? "" },
+    { header: "Thành tiền dự kiến", get: (r) => r.i.thanh_tien_du_kien ?? (r.i.don_gia_du_kien != null ? r.i.don_gia_du_kien * r.i.current_qty : "") },
+    { header: "Lý do PS", get: (r) => r.i.reason ?? "" },
+    { header: "Ghi chú", get: (r) => r.i.ghi_chu ?? "" },
+    { header: "ID CRM", get: (r) => r.i.crm_id ?? "" },
+    { header: "ID đặt hàng", get: (r) => r.i.order_id ?? "" },
+    { header: "Trạng thái dòng", get: (r) => r.i.line_status === "CANCELLED_LINE" ? (r.i.post_issue_rejected_at ? `Bị từ chối: ${r.i.post_issue_reject_reason ?? ""}` : "Đã hủy") : "Hiệu lực" },
+    { header: "Thời điểm thêm", get: (r) => !r.i.created_after_issue ? "Trước ban hành"
+      : r.i.post_issue_rejected_at ? "Sau ban hành (bị từ chối)" : r.i.post_issue_status === "PENDING" ? "Sau ban hành (chờ duyệt)" : "Sau ban hành (đã duyệt)" },
+    { header: "Đã lên kế hoạch", get: (r) => r.kh },
+    { header: "Số đợt kế hoạch", get: (r) => r.ps.length },
+    { header: "Các đợt (NM cam kết → dự kiến : SL)", get: (r) => r.ps.map((p: any) => `${p.loai === "TUAN" ? `Tuần ${p.tuan}` : d(p.factory_committed_date) || "—"} → ${d(p.planned_date)} : ${p.planned_qty}`).join("; ") },
+    { header: "Ngày nhà máy cam kết (gần nhất)", get: (r) => d(r.nm) },
+    { header: "Ngày dự kiến (gần nhất)", get: (r) => d(r.td?.ngay_du_kien_gan_nhat ?? r.ps[r.ps.length - 1]?.planned_date) },
+    { header: "Đã về (AMIS)", get: (r) => r.i.da_dat ?? 0 },
+    { header: "Các lần hàng về (ngày : SL : số CT)", get: (r) => r.ve.map((x: any) => `${d(x.doc_date)} : ${x.qty_in} : ${x.doc_no}`).join("; ") },
+    { header: "Ngày hàng về (gần nhất)", get: (r) => d(r.ve[r.ve.length - 1]?.doc_date) },
+    { header: "Còn thiếu", get: (r) => r.i.chua_dat ?? Math.max(0, r.i.current_qty - (r.i.da_dat ?? 0)) },
+    { header: "Tình trạng theo dõi", get: (r) => r.td ? TT_THEO_DOI[r.td.tinh_trang] ?? r.td.tinh_trang : "" },
+    { header: "Số lần lùi ngày", get: (r) => r.td?.so_lan_lui ?? "" },
+    { header: "Số lỗi theo dõi", get: (r) => r.td?.so_loi ?? "" },
+    { header: "Cấp CEO", get: (r) => r.td?.ceo_ly_do?.join("; ") ?? "" },
+  ];
+  exportRowsToXlsx(rows, cols, `Linh_kien_${eo.approval_code || eo.eo_code}.xlsx`, "Linh kien");
 }
