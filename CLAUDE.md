@@ -148,6 +148,16 @@ tỷ lệ đáp ứng tháng/tuần = Σmin(về, đặt)/Σđặt của dòng �
 = ngày tạo) để số trên Tổng quan = số ở Theo dõi (`/theo-doi?ton=<mốc>`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
 `DataTable` có ô tìm nhanh mặc định (`timKiem={false}` khi trang tự tìm phía server).
 
+## 8 giai đoạn đơn hàng — `backend/src/lib/giaiDoan.ts` (FE nhãn `frontend/src/lib/giaiDoan.tsx`)
+
+G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & BH · G4 Gửi đơn NCC (mail GUI đầu tiên trong `tl_mail`, CC theodoimuahang —
+luồng SONG SONG, không chặn giai đoạn hiện tại) · G5 Có ngày dự kiến · G6 Chờ SX & giao (hạn = ngày DK lần đầu) ·
+G7 Nhập kho & lên hệ thống (ngày CT AMIS → `amis_receipt.created_at`, chỉ đo) · G8 Giao bù đến đủ. Giờ & hạn = giờ LÀM VIỆC
+(bỏ Chủ nhật, như R1); hạn `app_settings.giai_doan_sla` (JSON giờ, mặc định 24/…/G8 168). Chốt 2026-10-29: CHỈ đo + báo cáo
+đúng/trễ hạn, chưa sinh lỗi giải trình (bật sau 2–4 tuần). `layGiaiDoan(env)` cache mốc, phần "bây giờ" tính lúc request.
+**Sổ đơn hàng** (`/so-don-hang`, thay Báo cáo Tiến độ đơn hàng; đường dẫn cũ vẫn mở màn này): `GET /api/so-don-hang`
+= báo cáo 0.1 + EO + giai đoạn; chọn cột / lọc / lưu bộ lọc (localStorage `sdh-cot`, `sdh-loc-luu`) làm ở FE.
+
 ## Popup xem nhanh (95% màn hình)
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,

@@ -15,13 +15,13 @@ export const NAV: NavItem[] = [
   { to: "/eo", label: "Danh sách EO", icon: "clipboard" },
   { to: "/approvals", label: "Việc cần duyệt", icon: "bell", badgeKey: "approvals" },
   { to: "/theo-doi", label: "Theo dõi linh kiện đặt", icon: "list" },
+  { to: "/so-don-hang", label: "Sổ đơn hàng", icon: "grid" },
   { to: "/canh-bao-ceo", label: "Cảnh báo CEO", icon: "shield" },
   { to: "/plans", label: "Kế hoạch hàng về", icon: "trend" },
   { to: "/plans/tuan", label: "Kế hoạch tuần (KRF)", icon: "calendar" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },
 
-  { to: "/reports/tien-do-don-hang", label: "Tiến độ đơn hàng", icon: "trend", section: "BÁO CÁO" },
-  { to: "/reports/amis-khong-eo", label: "AMIS không EO", icon: "clock" },
+  { to: "/reports/amis-khong-eo", label: "AMIS không EO", icon: "clock", section: "BÁO CÁO" },
   { to: "/reports/tien-do-tuan", label: "Tiến độ tuần", icon: "calendar" },
   { to: "/reports/luy-ke-nam", label: "Lũy kế năm", icon: "grid" },
 

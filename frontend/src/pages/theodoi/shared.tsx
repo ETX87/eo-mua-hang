@@ -21,6 +21,8 @@ export interface Dong {
   ngay_ve_du: string | null;
   ngay_hang_ve: string | null; ngay_nm_cam_ket: string | null;
   sau_ban_hanh: boolean;
+  // giai doan (lib/giaiDoan) - gan o GET /theo-doi/danh-sach
+  gd_hien_tai?: string | null; gd_hien_tai_ten?: string | null; gd_gio?: number | null; gd_tre?: boolean | null; gd_bat_dau?: string | null;
   ceo_ly_do: string[];
 }
 

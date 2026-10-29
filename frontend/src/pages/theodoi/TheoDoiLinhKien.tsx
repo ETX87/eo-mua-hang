@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MocTon, MOC_TON, mocCua, soNgayTon } from "../../lib/tonDong";
+import { GdBadge, GD_CHINH } from "../../lib/giaiDoan";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { EoLink, PartLink } from "../../components/quickview/QuickView";
@@ -38,6 +39,7 @@ export default function TheoDoiLinhKien() {
   const [nhom, setNhom] = useState<Nhom>((sp.get("nhom") as Nhom) || "tat_ca");
   const [search, setSearch] = useState(sp.get("q") ?? "");
   const [ton, setTon] = useState(sp.get("ton") ?? "");
+  const [gd, setGd] = useState(sp.get("gd") ?? "");
   const [kho, setKho] = useState("");
   const [doiTac, setDoiTac] = useState("");
   const [nguoiDat, setNguoiDat] = useState("");
@@ -50,8 +52,8 @@ export default function TheoDoiLinhKien() {
   const [busy, setBusy] = useState(false);
 
   const all = q.data?.rows ?? [];
-  const base = useMemo(() => all.filter((r) => (!ton || (r.tinh_trang !== "DONG" && mocCua(soNgayTon(r.bat_dau))?.k === ton)) && (!chiApDung || r.ap_dung) && (!kho || r.kho === kho) && (!doiTac || (r.doi_tac ?? "") === doiTac)
-    && (!nguoiDat || r.nguoi_dat === nguoiDat) && timKhongDau(r, search)), [all, chiApDung, kho, doiTac, nguoiDat, search, ton]);
+  const base = useMemo(() => all.filter((r) => (!gd || r.gd_hien_tai === gd) && (!ton || (r.tinh_trang !== "DONG" && mocCua(soNgayTon(r.bat_dau))?.k === ton)) && (!chiApDung || r.ap_dung) && (!kho || r.kho === kho) && (!doiTac || (r.doi_tac ?? "") === doiTac)
+    && (!nguoiDat || r.nguoi_dat === nguoiDat) && timKhongDau(r, search)), [all, chiApDung, kho, doiTac, nguoiDat, search, ton, gd]);
   const rows = base.filter(NHOM.find((n) => n.k === nhom)!.f);
   const trang = rows.slice(page * PAGE, page * PAGE + PAGE);
   const uniq = (f: (r: Dong) => string | null) => [...new Set(all.map(f).filter(Boolean) as string[])].sort();
@@ -102,6 +104,7 @@ export default function TheoDoiLinhKien() {
           <select className="select" style={{ width: 170 }} value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setPage(0); }}><option value="">Tất cả đối tác</option>{uniq((r) => r.doi_tac).map((x) => <option key={x}>{x}</option>)}</select>
           <select className="select" style={{ width: 200 }} value={nguoiDat} onChange={(e) => { setNguoiDat(e.target.value); setPage(0); }}><option value="">Tất cả người đặt</option>{uniq((r) => r.nguoi_dat).map((x) => <option key={x} value={x}>{ten(x)}</option>)}</select>
           <select className="select" style={{ width: 150 }} value={ton} title="Thời gian tồn tính từ ngày đặt" onChange={(e) => { setTon(e.target.value); setPage(0); }}><option value="">Mọi mốc tồn</option>{MOC_TON.map((m) => <option key={m.k} value={m.k}>Tồn {m.l}</option>)}</select>
+          <select className="select" style={{ width: 190 }} value={gd} title="Giai đoạn hiện tại của dòng" onChange={(e) => { setGd(e.target.value); setPage(0); }}><option value="">Mọi giai đoạn</option>{GD_CHINH.map((g) => <option key={g.k} value={g.k}>{g.k} · {g.l}</option>)}</select>
           <select className="select" style={{ width: 150 }} value={phamVi} onChange={(e) => { setPhamVi(e.target.value as any); setPage(0); }}><option value="dang_mo">Đang mở</option><option value="tat_ca">Cả đã đóng</option></select>
           <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chiApDung} onChange={(e) => setChiApDung(e.target.checked)} /> Chỉ EO áp dụng quy tắc</label>
           <div style={{ flex: 1 }} />
@@ -125,7 +128,7 @@ export default function TheoDoiLinhKien() {
                 <th className="qv-act">Thao tác</th>
                 <th style={{ width: 32 }}><input type="checkbox" checked={allOnPage} onChange={() => setChon((s) => { const n = new Set(s); trang.forEach((r) => (allOnPage ? n.delete(r.item_id) : n.add(r.item_id))); return n; })} /></th>
                 <th>EO / 3TDO</th><th>Linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt / Về / Thiếu</th>
-                <th>Đặt lúc · Tồn · Hạn có ngày DK</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng</th>
+                <th>Đặt lúc · Tồn · Hạn có ngày DK</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th style={{ textAlign: "center" }}>Lùi</th><th style={{ textAlign: "center" }}>Lỗi</th><th>Tình trạng · Giai đoạn</th>
               </tr></thead>
               <tbody>
                 {trang.length === 0 && <tr><td colSpan={11} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có dòng phù hợp.</td></tr>}
@@ -147,7 +150,7 @@ export default function TheoDoiLinhKien() {
                       <td style={{ ...cell, whiteSpace: "nowrap" }}><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve} veDu={!!r.ngay_ve_du} />{r.han_cap_nhat_lai && <div style={{ fontSize: 11, color: "var(--danger)" }}>cập nhật trước {ngayGio(r.han_cap_nhat_lai)}</div>}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_lan_lui || ""}</td>
                       <td style={{ ...cell, textAlign: "center" }}>{r.so_loi ? <span className={`badge ${r.so_loi_cho_gt ? "reject" : "nhap"}`} title={`${r.so_loi_cho_gt} chờ giải trình`}>{r.so_loi}{r.so_loi_cho_gt ? ` (${r.so_loi_cho_gt} chờ)` : ""}</span> : ""}</td>
-                      <td style={cell}><span className={`badge ${tt.c}`}>{tt.l}</span>{r.ceo_ly_do.length > 0 && <div><span className="badge reject" title={r.ceo_ly_do.join("\n")} style={{ marginTop: 4 }}>Cấp CEO</span></div>}</td>
+                      <td style={cell}><span className={`badge ${tt.c}`}>{tt.l}</span>{r.ceo_ly_do.length > 0 && <div><span className="badge reject" title={r.ceo_ly_do.join("\n")} style={{ marginTop: 4 }}>Cấp CEO</span></div>}<div style={{ marginTop: 4 }}><GdBadge r={r} /></div></td>
                     </tr>
                   );
                 })}

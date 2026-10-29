@@ -17,6 +17,7 @@ import dvbhSyncRoutes from "./routes/dvbhSync";
 import theoDoiRoutes from "./routes/theoDoi";
 import viecCanLamRoutes from "./routes/viecCanLam";
 import xemNhanhRoutes from "./routes/xemNhanh";
+import soDonHangRoutes from "./routes/soDonHang";
 import partnerRoutes from "./routes/partner";
 import { danhGiaQuyTac } from "./lib/theoDoi";
 import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
@@ -69,6 +70,7 @@ app.route("/api/dvbh-sync", dvbhSyncRoutes);
 app.route("/api/theo-doi", theoDoiRoutes);
 app.route("/api/viec-can-lam", viecCanLamRoutes);
 app.route("/api/xem", xemNhanhRoutes);
+app.route("/api/so-don-hang", soDonHangRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 

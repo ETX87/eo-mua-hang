@@ -4,6 +4,7 @@ import { nowVN, todayVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan } from "../lib/eoAccess";
+import { layGiaiDoan } from "../lib/giaiDoan";
 import { requireAdmin } from "../middleware/guards";
 import { uploadPublicFile } from "../lib/googleDrive";
 import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
@@ -14,7 +15,15 @@ const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 // GET /danh-sach?pham_vi=dang_mo|tat_ca - danh gia quy tac truoc (toi da 10 phut/lan) roi tra danh sach dong
 app.get("/danh-sach", async (c) => {
   await danhGiaQuyTac(c.env).catch((e) => console.error("danhGiaQuyTac", e));
-  const rows = await layDongTheoDoi(c.env, c.req.query("pham_vi") === "tat_ca" ? "tat_ca" : "dang_mo");
+  const [ds, gd] = await Promise.all([
+    layDongTheoDoi(c.env, c.req.query("pham_vi") === "tat_ca" ? "tat_ca" : "dang_mo"),
+    layGiaiDoan(c.env),
+  ]);
+  // gan giai doan hien tai (lib/giaiDoan) de loc / hien cot Giai doan
+  const rows = ds.map((r) => {
+    const g = gd.map.get(r.item_id);
+    return { ...r, gd_hien_tai: g?.gd_hien_tai ?? null, gd_hien_tai_ten: g?.gd_hien_tai_ten ?? null, gd_gio: g?.gd_gio ?? null, gd_tre: g?.gd_tre ?? null, gd_bat_dau: g?.gd_bat_dau ?? null };
+  });
   const st = await c.env.DB.prepare("SELECT danh_gia_luc FROM tl_state WHERE id = 1").first<{ danh_gia_luc: string | null }>();
   return c.json({ rows, danh_gia_luc: st?.danh_gia_luc ?? null });
 });

@@ -14,7 +14,7 @@ import KeHoachTuan from "./pages/KeHoachTuan";
 import TheoDoiLinhKien from "./pages/theodoi/TheoDoiLinhKien";
 import CanhBaoCeo from "./pages/theodoi/CanhBaoCeo";
 import AmisImport from "./pages/amis/AmisImport";
-import ReportTienDo from "./pages/reports/ReportTienDo";
+import SoDonHang from "./pages/SoDonHang";
 import ReportAmisKhongEo from "./pages/reports/ReportAmisKhongEo";
 import ReportTuan from "./pages/reports/ReportTuan";
 import ReportLuyKe from "./pages/reports/ReportLuyKe";
@@ -47,7 +47,9 @@ export default function App() {
         <Route path="/theo-doi" element={<TheoDoiLinhKien />} />
         <Route path="/canh-bao-ceo" element={<CanhBaoCeo />} />
         <Route path="/amis" element={<AmisImport />} />
-        <Route path="/reports/tien-do-don-hang" element={<ReportTienDo />} />
+        {/* "Tien do don hang" da thay bang So don hang (cung du lieu + chon cot / loc / giai doan) - giu duong dan cu */}
+        <Route path="/so-don-hang" element={<SoDonHang />} />
+        <Route path="/reports/tien-do-don-hang" element={<SoDonHang />} />
         <Route path="/reports/amis-khong-eo" element={<ReportAmisKhongEo />} />
         <Route path="/reports/tien-do-tuan" element={<ReportTuan />} />
         <Route path="/reports/luy-ke-nam" element={<ReportLuyKe />} />

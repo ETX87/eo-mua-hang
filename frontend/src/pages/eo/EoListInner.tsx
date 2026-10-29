@@ -15,7 +15,7 @@ interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
   loai_hinh: string | null; phong_ban: string | null; trang_thai: string;
   created_by: string; created_at: string; so_dong: number; tong_sl: number; final_approver_email: string | null;
-  issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number;
+  issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number; sl_ve: number;
 }
 
 const EXPORT_COLS: ExportCol<EoRow>[] = [
@@ -40,7 +40,15 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const [createdBy, setCreatedBy] = useState("");
   const [loaiHinh, setLoaiHinh] = useState("");
   const [phongBan, setPhongBan] = useState("");
-  const limit = 10;
+  // bo loc mo rong (server): khoang ngay tao / ban hanh, kho, doi tac
+  const [moRong, setMoRong] = useState(false);
+  const [ngayTheo, setNgayTheo] = useState<"created" | "issued">("created");
+  const [tu, setTu] = useState("");
+  const [den, setDen] = useState("");
+  const [kho, setKho] = useState("");
+  const [doiTac, setDoiTac] = useState("");
+  const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: moRong });
+  const limit = 20;
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState(false);
 
@@ -51,6 +59,9 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     if (createdBy) p.set("created_by", createdBy);
     if (loaiHinh) p.set("loai_hinh", loaiHinh);
     if (phongBan) p.set("phong_ban", phongBan);
+    if (tu || den) { p.set("ngay_theo", ngayTheo); if (tu) p.set("tu", tu); if (den) p.set("den", den); }
+    if (kho) p.set("kho", kho);
+    if (doiTac.trim()) p.set("doi_tac", doiTac.trim());
     return p;
   };
   const params = filterParams();
@@ -83,6 +94,14 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     },
     { key: "created_by", header: "Người tạo · ngày", maxW: 110, render: (r) => <>{ten(r.created_by)}<div className="muted" style={{ fontSize: 11 }}>{ngay(r.created_at)}</div></> },
     { key: "so_dong", header: "Dòng · SL", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
+    { key: "issued", header: "Ban hành", render: (r) => r.issued_at ? ngay(r.issued_at) : <span className="muted">—</span> },
+    {
+      key: "pct", header: "% về", align: "right", render: (r) => {
+        if (r.trang_thai !== "ISSUED" || !r.tong_sl) return <span className="muted">—</span>;
+        const p = Math.round((r.sl_ve / r.tong_sl) * 100);
+        return <span title={`Về ${soLuong(r.sl_ve)} / đặt ${soLuong(r.tong_sl)}`} style={{ fontWeight: 700, color: p >= 100 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--danger-ink)" }}>{p}%</span>;
+      },
+    },
     { key: "final", header: "Người duyệt cuối", maxW: 100, render: (r) => ten(r.final_approver_email) },
     {
       key: "act", header: "", align: "center", render: (r) => (
@@ -94,7 +113,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     },
   ];
 
-  const reset = () => { setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setOffset(0); };
+  const reset = () => { setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setTu(""); setDen(""); setKho(""); setDoiTac(""); setOffset(0); };
 
   const doExport = async () => {
     setExporting(true);
@@ -141,11 +160,22 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           <option value="">Phòng ban</option>
           {phongBanOpts.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
+        {!compact && <button className="btn sm ghost" onClick={() => setMoRong((x) => !x)}>{moRong ? "Thu gọn" : "Thêm bộ lọc"}{tu || den || kho || doiTac ? " •" : ""}</button>}
         <RefreshFiltersBtn onClick={reset} />
         <div style={{ flex: 1 }} />
         <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
         {actions}
       </FilterBar>
+      {moRong && !compact && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "-4px 0 12px" }}>
+          <select className="select" style={{ width: 160 }} value={ngayTheo} onChange={(e) => { setNgayTheo(e.target.value as any); setOffset(0); }}><option value="created">Theo ngày tạo EO</option><option value="issued">Theo ngày ban hành</option></select>
+          <input className="input" type="date" style={{ width: 150 }} value={tu} title="Từ ngày" onChange={(e) => { setTu(e.target.value); setOffset(0); }} />
+          <span className="muted">→</span>
+          <input className="input" type="date" style={{ width: 150 }} value={den} title="Đến ngày" onChange={(e) => { setDen(e.target.value); setOffset(0); }} />
+          <select className="select" style={{ width: 210 }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}><option value="">EO có dòng ở kho…</option>{(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
+          <input className="input" style={{ width: 170 }} placeholder="Đối tác (vd KRF)" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
+        </div>
+      )}
 
       <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
 

@@ -23,6 +23,10 @@ app.get("/", async (c) => {
   const createdBy = url.searchParams.get("created_by");
   const loaiHinh = url.searchParams.get("loai_hinh");
   const phongBan = url.searchParams.get("phong_ban");
+  // loc them: khoang ngay (tao | ban hanh), kho, doi tac cua dong linh kien
+  const tu = url.searchParams.get("tu"), den = url.searchParams.get("den");
+  const cotNgay = url.searchParams.get("ngay_theo") === "issued" ? "e.issued_at" : "e.created_at";
+  const kho = url.searchParams.get("kho"), doiTac = url.searchParams.get("doi_tac");
   const limit = Math.min(Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50), 200);
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
 
@@ -32,6 +36,10 @@ app.get("/", async (c) => {
   if (createdBy) { where.push("e.created_by = ?"); bind.push(createdBy); }
   if (loaiHinh) { where.push("e.loai_hinh = ?"); bind.push(loaiHinh); }
   if (phongBan) { where.push("e.phong_ban = ?"); bind.push(phongBan); }
+  if (tu) { where.push(`substr(${cotNgay}, 1, 10) >= ?`); bind.push(tu); }
+  if (den) { where.push(`substr(${cotNgay}, 1, 10) <= ?`); bind.push(den); }
+  if (kho) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.warehouse = ?)"); bind.push(kho); }
+  if (doiTac) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.supplier = ?)"); bind.push(doiTac); }
   // tim ca theo ma / ten linh kien trong EO
   if (q) {
     where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ? OR EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND (i.part_code LIKE ? OR i.part_name LIKE ?)))");
@@ -46,6 +54,8 @@ app.get("/", async (c) => {
             (SELECT COALESCE(SUM(i.current_qty),0) FROM eo_item i WHERE i.eo_id = e.id) tong_sl,
             (SELECT GROUP_CONCAT(part_code, ', ') FROM (SELECT DISTINCT i.part_code FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' LIMIT 4)) ma_lk,
             (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.created_after_issue = 1) so_dong_sau_bh,
+            (SELECT COALESCE(SUM(MIN(i.current_qty, COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0))), 0)
+               FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE') sl_ve,
             (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' AND i.current_qty >
                COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0)) so_dong_chua_du
      FROM eo e ${wsql}
