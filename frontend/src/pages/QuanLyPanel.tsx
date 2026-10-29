@@ -56,6 +56,23 @@ export default function QuanLyPanel() {
             <O l="Dòng thêm sau BH chờ duyệt" v={soLuong(t.dong_sau_bh_cho_duyet)} mau={t.dong_sau_bh_cho_duyet ? "var(--warn-ink)" : undefined} to="/approvals" />
           </div>
 
+          {/* dong dang o tung giai doan (lib/giaiDoan) - bam -> So don hang loc san; so do = dang tre han */}
+          {d.giai_doan && (
+            <div style={{ display: "flex", gap: 6, alignItems: "stretch", marginTop: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, alignSelf: "center", width: 90 }}>Đơn đang ở<br />giai đoạn</div>
+              {d.giai_doan.map((g: any, i: number) => (
+                <div key={g.k} style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 120px", minWidth: 0 }}>
+                  <div className="ql-o" onClick={() => nav(`/so-don-hang?gd=${g.k}`)} style={{ cursor: "pointer", flex: 1, borderTop: `3px solid ${g.tre ? "#DC2626" : g.n ? "#F59E0B" : "var(--border)"}` }} title={`${g.l} — ${g.vai_tro}. ${g.n} dòng đang ở, ${g.tre} trễ hạn`}>
+                    <div className="ql-l">{g.k} · {g.l}</div>
+                    <div className="ql-v" style={{ fontSize: 18 }}>{soLuong(g.n)}{g.tre > 0 && <span onClick={(e) => { e.stopPropagation(); nav(`/so-don-hang?gd=${g.k}&tre=tre`); }} style={{ fontSize: 12, color: "var(--danger-ink)", marginLeft: 6 }}>{g.tre} trễ</span>}</div>
+                    <div className="ql-s">{g.vai_tro}</div>
+                  </div>
+                  {i < d.giai_doan.length - 1 && <span className="muted">›</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.25fr) minmax(0, 1fr)", gap: 14, marginTop: 14 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>

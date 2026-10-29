@@ -4,6 +4,7 @@ import { cachedReport } from "../lib/reportCache";
 import { computeTienDo01 } from "./reports";
 import { nowVN } from "../lib/vnTime";
 import { weekLabel, weekStart } from "../lib/week";
+import { layGiaiDoan, GIAI_DOAN } from "../lib/giaiDoan";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -218,7 +219,7 @@ const MO = ["Hàng chưa về", "Chưa đủ hàng"];
 
 app.get("/quan-ly", async (c) => {
   const db = c.env.DB;
-  const [base, choDuyet, sauBh, boQua] = await Promise.all([
+  const [base, choDuyet, sauBh, boQua, gd] = await Promise.all([
     cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(c.env)),
     db.prepare(
       `SELECT e.id, e.trang_thai, COALESCE(s.submitted_at, e.updated_at, e.created_at) t FROM eo e
@@ -226,6 +227,7 @@ app.get("/quan-ly", async (c) => {
     ).all<{ id: number; trang_thai: string; t: string }>(),
     db.prepare("SELECT COUNT(*) n FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED'").first<{ n: number }>(),
     db.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'").first<{ value: string }>(),
+    layGiaiDoan(c.env),
   ]);
   // ton dong dung CUNG moc bo qua voi "Theo doi linh kien" (don dat truoc moc khong tinh) -> so tren Tong quan = so o danh sach
   const now = msVN(nowVN());
@@ -287,6 +289,20 @@ app.get("/quan-ly", async (c) => {
     moc_ton: moc.map(({ _eo, ...m }) => ({ ...m, so_eo: _eo.size, sl_thieu: Math.round(m.sl_thieu) })),
     moc_cho_duyet: mocDuyet,
     bo_qua_truoc: tuNgay,
+    // giai doan hien tai: dong chua xong (EO chua ban hanh + dong da ban hanh dat tu moc bo qua)
+    giai_doan: (() => {
+      const dem = new Map<string, { n: number; tre: number }>();
+      for (const r of base) {
+        const g = gd.map.get(r.item_id);
+        if (!g || ["XONG", "HUY"].includes(g.gd_hien_tai)) continue;
+        if (r.trang_thai_eo === "ISSUED" && ngayDat(r).slice(0, 10) < tuNgay) continue;
+        if (["REJECTED", "CANCELLED"].includes(r.trang_thai_eo)) continue;
+        const x = dem.get(g.gd_hien_tai) ?? { n: 0, tre: 0 };
+        x.n += 1; if (g.gd_tre) x.tre += 1;
+        dem.set(g.gd_hien_tai, x);
+      }
+      return GIAI_DOAN.filter((g) => !["G4", "G7"].includes(g.k)).map((g) => ({ k: g.k, l: g.l, vai_tro: g.vai_tro, ...(dem.get(g.k) ?? { n: 0, tre: 0 }) }));
+    })(),
   });
 });
 

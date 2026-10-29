@@ -112,10 +112,50 @@ export default function SysConfig() {
       <PageHeader title="Cấu hình hệ thống" breadcrumb={["Cài đặt", "Cấu hình hệ thống"]} />
       <GoogleDriveCard />
       <DvbhSyncCard />
+      <SlaGiaiDoanCard rows={rows} onSave={save} />
       <Card>
         {rows.length === 0 && <div className="muted" style={{ padding: 20 }}>Chưa có tham số cấu hình. Các mục sẽ xuất hiện khi hệ thống cần.</div>}
         {rows.map((r) => <ConfigRow key={r.key} r={r} onSave={save} />)}
       </Card>
     </div>
+  );
+}
+
+/** Han xu ly (gio LAM VIEC, bo Chu nhat) cua 8 giai doan don hang - backend lib/giaiDoan.ts doc app_settings 'giai_doan_sla'. */
+const GD_SLA: { k: string; l: string; md: number }[] = [
+  { k: "G1", l: "G1 Lập & trình EO", md: 24 }, { k: "G2", l: "G2 Thẩm định", md: 24 }, { k: "G3", l: "G3 Duyệt cuối & ban hành", md: 24 },
+  { k: "G4", l: "G4 Gửi đơn NCC (mail)", md: 24 }, { k: "G5", l: "G5 Có ngày dự kiến", md: 24 }, { k: "G7", l: "G7 Nhập kho & lên hệ thống", md: 24 },
+  { k: "G8", l: "G8 Giao bù đến đủ", md: 168 },
+];
+function SlaGiaiDoanCard({ rows, onSave }: { rows: any[]; onSave: (k: string, v: string) => Promise<void> }) {
+  const goc = (() => { try { return JSON.parse(rows.find((r) => r.key === "giai_doan_sla")?.value ?? "{}"); } catch { return {}; } })();
+  const [v, setV] = useState<Record<string, string>>(() => Object.fromEntries(GD_SLA.map((g) => [g.k, String(goc[g.k] ?? g.md)])));
+  const [msg, setMsg] = useState("");
+  const luu = async () => {
+    const o: Record<string, number> = {};
+    for (const g of GD_SLA) { const n = Number(v[g.k]); if (!(n > 0)) return setMsg(`${g.l}: nhập số giờ > 0`); o[g.k] = n; }
+    await onSave("giai_doan_sla", JSON.stringify(o));
+    setMsg("Đã lưu — báo cáo giai đoạn tính lại theo hạn mới.");
+  };
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <b>Hạn xử lý các giai đoạn đơn hàng</b>
+      <div className="muted" style={{ fontSize: 12.5, margin: "4px 0 10px" }}>
+        Đơn vị: giờ LÀM VIỆC (bỏ Chủ nhật; 24 = 1 ngày, 168 = 7 ngày). G6 Chờ sản xuất & giao có hạn = ngày dự kiến lần đầu của dòng.
+        Hiện chỉ dùng để đo đúng / trễ hạn (Sổ đơn hàng, báo cáo Giai đoạn), chưa sinh lỗi giải trình.
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+        {GD_SLA.map((g) => (
+          <label key={g.k} style={{ fontSize: 12.5 }}>{g.l}
+            <input className="input" type="number" min={1} value={v[g.k]} onChange={(e) => setV((x) => ({ ...x, [g.k]: e.target.value }))} />
+          </label>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+        <button className="btn primary sm" onClick={luu}>Lưu hạn</button>
+        <button className="btn sm ghost" onClick={() => setV(Object.fromEntries(GD_SLA.map((g) => [g.k, String(g.md)])))}>Về mặc định</button>
+        {msg && <span style={{ fontSize: 12.5 }}>{msg}</span>}
+      </div>
+    </Card>
   );
 }

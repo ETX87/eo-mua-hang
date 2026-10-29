@@ -92,8 +92,9 @@ const BO_COT: Record<string, { l: string; cot: string[] }> = {
 interface Loc {
   q: string; ngayTheo: string; tu: string; den: string; trangThaiEo: string; tinhTrang: string; gd: string; tre: string; ton: string;
   kho: string; doiTac: string; loaiHinh: string; phongBan: string; nguoiTao: string; sauBh: string; coLoi: string; canhBao: string;
+  g4: string; // G4 song song (mail gui NCC): "da" | "chua" | "tre"
 }
-const LOC_TRONG: Loc = { q: "", ngayTheo: "ngay_ban_hanh", tu: "", den: "", trangThaiEo: "", tinhTrang: "", gd: "", tre: "", ton: "", kho: "", doiTac: "", loaiHinh: "", phongBan: "", nguoiTao: "", sauBh: "", coLoi: "", canhBao: "" };
+const LOC_TRONG: Loc = { q: "", ngayTheo: "ngay_ban_hanh", tu: "", den: "", trangThaiEo: "", tinhTrang: "", gd: "", tre: "", ton: "", kho: "", doiTac: "", loaiHinh: "", phongBan: "", nguoiTao: "", sauBh: "", coLoi: "", canhBao: "", g4: "" };
 const LOC_MAU: { l: string; loc: Partial<Loc> }[] = [
   { l: "Đang mở (chưa về đủ)", loc: { tinhTrang: "__mo" } },
   { l: "Trễ hạn ở giai đoạn hiện tại", loc: { tinhTrang: "__mo", tre: "tre" } },
@@ -113,7 +114,7 @@ export default function SoDonHang() {
   const [cot, setCot] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_COT) ?? "null") ?? BO_COT.co_ban.cot; } catch { return BO_COT.co_ban.cot; } });
   const [luu, setLuu] = useState<{ l: string; loc: Loc }[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_LOC) ?? "[]"); } catch { return []; } });
   const [chonCot, setChonCot] = useState(false);
-  const [moRong, setMoRong] = useState(false);
+  const [moRong, setMoRong] = useState(() => ["g4", "ton", "tu", "den", "trangThaiEo", "canhBao", "loaiHinh", "phongBan", "nguoiTao", "sauBh", "coLoi"].some((k) => sp.get(k)));
 
   const all = q.data?.rows ?? [];
   const defs = useMemo(() => cotDefs(q.data?.giai_doan ?? [], q.data?.sla ?? {}), [q.data]);
@@ -141,6 +142,7 @@ export default function SoDonHang() {
       if (loc.sauBh && (loc.sauBh === "sau") !== !!r.sau_ban_hanh) return false;
       if (loc.coLoi && (loc.coLoi === "cho" ? !r.so_loi_cho_gt : !r.so_loi)) return false;
       if (loc.canhBao && r.canh_bao !== loc.canhBao) return false;
+      if (loc.g4 && (loc.g4 === "da" ? r.g4_trang_thai !== "DA_GUI" : loc.g4 === "tre" ? r.g4_trang_thai !== "TRE" : !["CHUA_GHI_NHAN", "TRE"].includes(r.g4_trang_thai) || ["XONG", "HUY"].includes(r.gd_hien_tai))) return false;
       return k({ ...r, gd_moc: undefined, gd_gio_tung: undefined, gd_tre_tung: undefined });
     });
   }, [all, loc]);
@@ -195,6 +197,7 @@ export default function SoDonHang() {
             <S v={loc.phongBan} onChange={(v) => set({ phongBan: v })} w={160}><option value="">Mọi phòng ban</option>{uniq((r) => r.phong_ban).map((x) => <option key={x}>{x}</option>)}</S>
             <S v={loc.nguoiTao} onChange={(v) => set({ nguoiTao: v })} w={160}><option value="">Mọi người tạo</option>{uniq((r) => r.nguoi_tao).map((x) => <option key={x} value={x}>{ten(x)}</option>)}</S>
             <S v={loc.sauBh} onChange={(v) => set({ sauBh: v })} w={150}><option value="">Trước & sau BH</option><option value="truoc">Tạo trước ban hành</option><option value="sau">Thêm sau ban hành</option></S>
+            <S v={loc.g4} onChange={(v) => set({ g4: v })} w={170} title="G4 Gửi đơn cho NCC (mail CC theodoimuahang)"><option value="">G4 mail NCC: mọi</option><option value="da">G4 đã gửi mail</option><option value="chua">G4 chưa ghi nhận mail</option><option value="tre">G4 chưa có mail · trễ</option></S>
             <S v={loc.coLoi} onChange={(v) => set({ coLoi: v })} w={140}><option value="">Có / không lỗi</option><option value="co">Có lỗi theo dõi</option><option value="cho">Lỗi chờ giải trình</option></S>
           </div>
         )}

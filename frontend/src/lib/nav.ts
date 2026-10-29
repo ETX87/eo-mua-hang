@@ -21,7 +21,8 @@ export const NAV: NavItem[] = [
   { to: "/plans/tuan", label: "Kế hoạch tuần (KRF)", icon: "calendar" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },
 
-  { to: "/reports/amis-khong-eo", label: "AMIS không EO", icon: "clock", section: "BÁO CÁO" },
+  { to: "/reports/giai-doan", label: "Giai đoạn đơn hàng", icon: "trend", section: "BÁO CÁO" },
+  { to: "/reports/amis-khong-eo", label: "AMIS không EO", icon: "clock" },
   { to: "/reports/tien-do-tuan", label: "Tiến độ tuần", icon: "calendar" },
   { to: "/reports/luy-ke-nam", label: "Lũy kế năm", icon: "grid" },
 
