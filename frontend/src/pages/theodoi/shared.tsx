@@ -6,6 +6,7 @@ import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { normKey, writeBook } from "../../lib/excel";
 import { NGAY, NhanNgay } from "../../lib/ngay";
+import { krfMoiNhat } from "./KrfGoiY";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -77,6 +78,22 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
   const dkGanNhat = dong.ngay_du_kien_gan_nhat ?? (kh.filter((p) => p.loai !== "TUAN").map((p) => p.planned_date).sort().pop() ?? null);
   const nmGanNhat = [...kh].filter((p) => p.factory_committed_date).sort((a, b) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date ?? null;
   const lech = dkGanNhat && nmGanNhat ? Math.round((Date.parse(dkGanNhat) - Date.parse(nmGanNhat)) / 86400_000) : null;
+  // Mail KRF moi nhat co ngay "KRF đáp ứng" (app theodoimuahang) -> goi y dien vao form (khong tu luu).
+  const krf = krfMoiNhat(d?.mail ?? []);
+  const dienKrf = () => {
+    if (!krf) return;
+    const ghi = `Theo mail KRF ${ngay(krf.thoi_gian)}${krf.note ? `: ${krf.note}` : ""}`.slice(0, 200);
+    const mot = kh.length === 1 && kh[0].loai !== "TUAN" ? kh[0] : null;
+    setErr("");
+    if (mot) {
+      setSua(mot);
+      setQty(String(mot.planned_qty));
+      // giong backend lib/krfGoiY.ts apDungKrf
+      setDk(!mot.factory_committed_date || mot.planned_date === mot.factory_committed_date || mot.planned_date < krf.ngay ? krf.ngay : mot.planned_date);
+    } else if (!dk || dk === nm) setDk(krf.ngay);
+    setNm(krf.ngay);
+    setNote(ghi);
+  };
 
   const moForm = (p: any | null) => {
     setErr(""); setSua(p);
@@ -137,6 +154,16 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
             <The k="NM" v={nmGanNhat ? ngay(nmGanNhat) : "Chưa có"} sub={lech == null ? "—" : lech === 0 ? "Trùng ngày dự kiến" : `Ngày dự kiến ${lech > 0 ? "sau" : "trước"} ${Math.abs(lech)} ngày`} />
           </div>
 
+          {krf && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", border: `1px solid ${NGAY.NM.mau}`, background: NGAY.NM.nen, borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12.5 }}>
+              <div style={{ flex: 1 }}>
+                <b>Mail KRF</b> {ngayGio(krf.thoi_gian)} ({krf.tu}): đáp ứng <b style={{ color: NGAY.NM.mau, fontSize: 14 }}>{ngay(krf.ngay)}</b>
+                {krf.note && <span className="muted"> · {krf.note}</span>}
+                {krf.ngay === nmGanNhat && <span className="badge issued" style={{ marginLeft: 6 }}>Đã khớp {NGAY.NM.l.toLowerCase()}</span>}
+              </div>
+              {krf.ngay !== nmGanNhat && <button className="btn sm" onClick={dienKrf} title={kh.length > 1 ? "Nhiều đợt: điền vào form thêm đợt — chọn Sửa ở đợt cần đổi nếu muốn sửa đợt cũ" : "Điền ngày KRF vào form bên dưới (chưa lưu)"}>Điền vào form</button>}
+            </div>
+          )}
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Các đợt hàng về (kế hoạch)</div>
           <div className="tbl-wrap">
             <table className="tbl tbl-dense">
@@ -301,6 +328,21 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
   );
 }
 
+/** Du lieu dong linh kien trong 1 mail (payload.dong tu app theodoimuahang): ngay 3T can, KRF dap ung, note. */
+function DongMail({ payload }: { payload: string | null }) {
+  let d: any = null;
+  try { d = payload ? JSON.parse(payload)?.dong : null; } catch { /* bo qua */ }
+  if (!d) return null;
+  const parts = [
+    d.ngay_can && `3T cần ${ngay(d.ngay_can)}`,
+    (d.ngay_dap_ung || d.dap_ung) && `KRF đáp ứng ${d.ngay_dap_ung ? ngay(d.ngay_dap_ung) : d.dap_ung}`,
+    d.con_no != null && `còn nợ ${soLuong(d.con_no)}`,
+    d.ton_kho ? `tồn KRF ${soLuong(d.ton_kho)}` : null,
+    d.note,
+  ].filter(Boolean);
+  return parts.length ? <div style={{ fontSize: 12, color: NGAY.NM.mau }}>{parts.join(" · ")}</div> : null;
+}
+
 /** Lich su theo doi 1 dong: loi, giai trinh, push, mail, thay doi ngay du kien. */
 export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void }) {
   const ls = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
@@ -334,7 +376,8 @@ export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void
           ))}
           <H>Mail ({d.mail.length})</H>
           {d.mail.length === 0 ? <div className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</div> : d.mail.map((m: any) => (
-            <div key={m.id} style={{ padding: "4px 0" }}>{m.huong === "GUI" ? "→ Gửi" : "← Nhận"} · {ngayGio(m.thoi_gian)} · {m.tu} → {m.den} · <b>{m.tieu_de}</b>{m.tom_tat ? <div className="muted">{m.tom_tat}</div> : null}</div>
+            <div key={m.id} style={{ padding: "4px 0" }}>{m.huong === "GUI" ? "→ Gửi" : "← Nhận"} · {ngayGio(m.thoi_gian)} · {m.tu} → {m.den} · <b>{m.tieu_de}</b>{m.tom_tat ? <div className="muted">{m.tom_tat}</div> : null}
+              <DongMail payload={m.payload} /></div>
           ))}
           <H>Thay đổi ngày dự kiến ({d.ngay_du_kien.length})</H>
           {d.ngay_du_kien.map((e: any, i: number) => {

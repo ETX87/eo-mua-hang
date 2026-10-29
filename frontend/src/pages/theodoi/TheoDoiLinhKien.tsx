@@ -11,6 +11,7 @@ import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { exportRowsToXlsx } from "../../lib/exportXlsx";
 import { BaNgay, ChuGiaiNgay, NhanNgay } from "../../lib/ngay";
 import { type Dong, TINH_TRANG, timKhongDau, NgayHangVeModal, GiaiTrinhModal, LichSuModal, useDanhMuc, taoPushDoiTac, PushKetQua } from "./shared";
+import { KrfGoiYModal, useGoiYKrf } from "./KrfGoiY";
 
 /**
  * "Theo dõi linh kiện đặt": moi dong = 1 ma linh kien tren 1 EO da ban hanh. Tim kiem (khong dau), loc, cap nhat
@@ -49,6 +50,8 @@ export default function TheoDoiLinhKien() {
   const [modal, setModal] = useState<{ loai: "ndk" | "gt" | "ls"; dong: Dong } | null>(null);
   const [pushKq, setPushKq] = useState<any[] | null>(null);
   const [showDm, setShowDm] = useState(false);
+  const [showKrf, setShowKrf] = useState(false);
+  const krf = useGoiYKrf();
   const [busy, setBusy] = useState(false);
 
   const all = q.data?.rows ?? [];
@@ -108,6 +111,8 @@ export default function TheoDoiLinhKien() {
           <select className="select" style={{ width: 150 }} value={phamVi} onChange={(e) => { setPhamVi(e.target.value as any); setPage(0); }}><option value="dang_mo">Đang mở</option><option value="tat_ca">Cả đã đóng</option></select>
           <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chiApDung} onChange={(e) => setChiApDung(e.target.checked)} /> Chỉ EO áp dụng quy tắc</label>
           <div style={{ flex: 1 }} />
+          <button className={`btn sm ${krf.data?.goi_y.length ? "primary" : ""}`} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết" onClick={() => setShowKrf(true)}>
+            <I.calendar width={14} height={14} /> Ngày KRF từ mail ({soLuong(krf.data?.goi_y.length ?? 0)})</button>
           <button className="btn sm primary" disabled={!chon.size || busy} onClick={taoPush}><I.send width={14} height={14} /> Tạo file push đối tác ({chon.size})</button>
         <button className="btn sm" onClick={xuatExcel}><I.download width={14} height={14} /> Xuất Excel</button>
         {me.data?.vai_tro === "Admin" && <button className="btn sm ghost" onClick={() => setShowDm(true)}><I.tag width={14} height={14} /> Bảng lỗi</button>}
@@ -172,6 +177,7 @@ export default function TheoDoiLinhKien() {
       {modal?.loai === "ls" && <LichSuModal dong={modal.dong} onClose={() => setModal(null)} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
       {showDm && <BangLoiModal onClose={() => setShowDm(false)} />}
+      {showKrf && <KrfGoiYModal onClose={() => setShowKrf(false)} onSaved={refresh} onMoDong={(d) => { setShowKrf(false); setModal({ loai: "ndk", dong: d }); }} />}
     </div>
   );
 }

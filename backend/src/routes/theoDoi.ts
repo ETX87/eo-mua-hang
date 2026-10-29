@@ -8,6 +8,7 @@ import { layGiaiDoan } from "../lib/giaiDoan";
 import { requireAdmin } from "../middleware/guards";
 import { uploadPublicFile } from "../lib/googleDrive";
 import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
+import { apDungKrf, layGoiYKrf } from "../lib/krfGoiY";
 
 // /api/theo-doi - man "Theo doi linh kien dat" + "Canh bao CEO" (quy tac: lib/theoDoi.ts, migrations/0012).
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -154,6 +155,16 @@ app.post("/giai-trinh", async (c) => {
   await c.env.DB.batch(stmts);
   await bumpVersions(c.env.DB, ["theo_doi"]);
   return c.json({ ok: true, id: gt!.id });
+});
+
+// GET /goi-y-krf - dong dang mo co ngay "KRF đáp ứng" (mail KRF moi nhat, app theodoimuahang) khac ngay NM cam ket hien tai.
+app.get("/goi-y-krf", async (c) => c.json(await layGoiYKrf(c.env)));
+
+// POST /ap-dung-krf { eo_item_ids: number[] } - ap dung ngay KRF lam ngay NM cam ket (them / sua dot ke hoach, lib/krfGoiY.ts)
+app.post("/ap-dung-krf", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { eo_item_ids?: number[] };
+  if (!Array.isArray(b.eo_item_ids) || !b.eo_item_ids.length) return c.json({ error: "BAD_INPUT" }, 400);
+  return c.json(await apDungKrf(c.env, c.get("user"), b.eo_item_ids));
 });
 
 // POST /push { eo_item_ids: number[] } - tao dot push doi tac (1 dot / doi tac) -> FE dung du lieu tra ve de tao file
