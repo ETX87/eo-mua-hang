@@ -172,7 +172,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           <input className="input" type="date" style={{ width: 150 }} value={tu} title="Từ ngày" onChange={(e) => { setTu(e.target.value); setOffset(0); }} />
           <span className="muted">→</span>
           <input className="input" type="date" style={{ width: 150 }} value={den} title="Đến ngày" onChange={(e) => { setDen(e.target.value); setOffset(0); }} />
-          <select className="select" style={{ width: 210 }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}><option value="">EO có dòng ở kho…</option>{(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
+          <select className="select" style={{ width: 210 }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}><option value="">EO có dòng ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
           <input className="input" style={{ width: 170 }} placeholder="Đối tác (vd KRF)" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
         </div>
       )}

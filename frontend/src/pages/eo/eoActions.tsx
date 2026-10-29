@@ -648,7 +648,7 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="KHO" req /></label>
       <select className="select" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
         <option value="">Chọn kho</option>
-        {(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
+        {(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
       </select>
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="DOI_TAC" /></label>
       <input className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nhập đối tác" />

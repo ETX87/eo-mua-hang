@@ -376,7 +376,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                         ) : (
                           <select className="select" title={r.warehouse} value={r.warehouse} onChange={(e) => setItem(i, "warehouse", e.target.value)}>
                             <option value="">Chọn kho</option>
-                            {(khos.data ?? []).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
+                            {(khos.data ?? []).filter((k: any) => k.active !== 0 || k.ten_kho === r.warehouse).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}{k.active === 0 ? " (đã ngừng dùng)" : ""}</option>)}
                           </select>
                         )}</td>
                         <td><input className="input" placeholder="Nhập đối tác" value={r.supplier} onChange={(e) => setItem(i, "supplier", e.target.value)} /></td>

@@ -41,7 +41,8 @@ async function recomputeMatchChunk(db: D1Database, scopeCodes?: string[]): Promi
            AND (i.part_code = amis_receipt.part_code OR i.part_code_goc = amis_receipt.part_code)
            AND e.approval_code = amis_receipt.approval_code_raw
            AND e.trang_thai IN ('ISSUED','CANCELLED')
-         ORDER BY i.created_at, i.id LIMIT 1)
+         -- uu tien dong dang hieu luc: dong da huy (tao som hon) khong duoc "giu" phieu nhap
+         ORDER BY (i.line_status = 'ACTIVE') DESC, i.created_at, i.id LIMIT 1)
      ${scopeSql ? scopeSql + " AND" : "WHERE"} ${live} AND EXISTS (
        SELECT 1 FROM eo_item i JOIN eo e ON e.id = i.eo_id
        WHERE i.warehouse = amis_receipt.warehouse_name
