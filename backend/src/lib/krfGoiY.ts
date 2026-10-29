@@ -21,6 +21,8 @@ export interface MailKrf {
   tu: string | null;
   tieu_de: string | null;
   gmail_link: string | null;
+  ma_po: string; // ma 3TDO / ma LK doc trong mail (de kiem tra khop chac truoc khi TU DONG dien)
+  ma_lk: string;
 }
 
 /** Thu KRF (NHAN) MOI NHAT cua tung dong co du lieu dong tu theodoimuahang. */
@@ -31,7 +33,8 @@ export async function mailKrfMoiNhat(env: Env, itemIds: number[]): Promise<Map<n
     `SELECT m.id, m.eo_item_id, m.thoi_gian, m.tu, m.tieu_de,
             json_extract(m.payload, '$.dong.ngay_dap_ung') AS ngay, json_extract(m.payload, '$.dong.dap_ung') AS dap_ung,
             json_extract(m.payload, '$.dong.note') AS note, json_extract(m.payload, '$.dong.ton_kho') AS ton_kho,
-            json_extract(m.payload, '$.gmail_link') AS gmail_link
+            json_extract(m.payload, '$.gmail_link') AS gmail_link,
+            json_extract(m.payload, '$.dong.ma_po') AS ma_po, json_extract(m.payload, '$.dong.ma_lk') AS ma_lk
      FROM tl_mail m
      WHERE m.huong = 'NHAN' AND m.eo_item_id IN (SELECT value FROM json_each(?1))
        AND json_extract(m.payload, '$.nguon') = 'theodoimuahang' AND json_extract(m.payload, '$.dong') IS NOT NULL
@@ -42,6 +45,7 @@ export async function mailKrfMoiNhat(env: Env, itemIds: number[]): Promise<Map<n
       tl_mail_id: r.id, eo_item_id: r.eo_item_id, ngay: /^\d{4}-\d{2}-\d{2}$/.test(String(r.ngay ?? "")) ? r.ngay : null,
       dap_ung: String(r.dap_ung ?? ""), note: String(r.note ?? ""), ton_kho: typeof r.ton_kho === "number" ? r.ton_kho : null,
       thoi_gian: r.thoi_gian, tu: r.tu, tieu_de: r.tieu_de, gmail_link: r.gmail_link ?? null,
+      ma_po: String(r.ma_po ?? ""), ma_lk: String(r.ma_lk ?? ""),
     });
   }
   return out;
@@ -97,11 +101,20 @@ export async function layGoiYKrf(env: Env): Promise<{ goi_y: GoiYKrf[]; khop: nu
 
 const ddmm = (s: string | null) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : "");
 
+
+interface NguoiApDung {
+  email: string; // created_by / updated_by cua item_plan (FK users -> bat buoc email co that)
+  eventEmail: string | null; // event_log.user_email (NULL = He thong)
+  coQuyen: (it: { created_by: string }) => boolean;
+  nguon: "mail_krf" | "mail_krf_tu_dong";
+  tienTo: string; // dau ghi chu dot: "Theo mail KRF" / "Tự động theo mail KRF"
+}
+
 /**
- * Ap dung ngay KRF da chon. Moi dong: kiem tra quyen (canEditPlan nhu sua ke hoach tay), lay lai mail KRF moi nhat (khong tin ngay
- * tu client), them / sua dot ke hoach + ghi event_log (ADD_PLAN / UPDATE_PLAN, metadata.nguon = 'mail_krf') - dem lui ngay nhu sua tay.
+ * Ap dung ngay KRF cho cac dong. Moi dong: kiem tra quyen, lay lai mail KRF moi nhat (khong tin ngay tu client), them / sua dot ke
+ * hoach + ghi event_log (ADD_PLAN / UPDATE_PLAN, metadata.nguon) - dem lui ngay nhu sua tay.
  */
-export async function apDungKrf(env: Env, u: AppUser, itemIds: number[]) {
+async function apDung(env: Env, ai: NguoiApDung, itemIds: number[]) {
   const ids = [...new Set(itemIds.map(Number).filter((x) => x > 0))].slice(0, 2000);
   const db = env.DB;
   const [mail, plans, meta] = await Promise.all([
@@ -124,22 +137,22 @@ export async function apDungKrf(env: Env, u: AppUser, itemIds: number[]) {
     const ps = plans.get(id) ?? [];
     const boQua = (ly_do: string) => kq.bo_qua.push({ eo_item_id: id, ly_do });
     if (!it) { boQua("ITEM_NOT_FOUND"); continue; }
-    if (!canEditPlan(u, it)) { boQua("READ_ONLY"); continue; }
+    if (!ai.coQuyen(it)) { boQua("READ_ONLY"); continue; }
     if (!m?.ngay) { boQua("KHONG_CO_NGAY_KRF"); continue; }
-    const ghiChu = `Theo mail KRF ${ddmm(m.thoi_gian)}: đáp ứng ${ddmm(m.ngay)}${m.note ? ` (${m.note.slice(0, 120)})` : ""}`;
-    const meta2 = { eo_item_id: id, nguon: "mail_krf", tl_mail_id: m.tl_mail_id };
+    if ((it.da_ve || 0) >= it.current_qty) { boQua("DA_VE_DU"); continue; }
+    const ghiChu = `${ai.tienTo} ${ddmm(m.thoi_gian)}: đáp ứng ${ddmm(m.ngay)}${m.note ? ` (${m.note.slice(0, 120)})` : ""}`;
+    const meta2 = { eo_item_id: id, nguon: ai.nguon, tl_mail_id: m.tl_mail_id };
     const cach = cachApDung(ps);
     if (cach === "SUA_TAY") { boQua("NHIEU_DOT"); continue; }
     if (cach === "THEM_DOT") {
-      const qty = Math.max(0, it.current_qty - (it.da_ve || 0));
-      if (!(qty > 0)) { boQua("DA_VE_DU"); continue; }
+      const qty = it.current_qty - (it.da_ve || 0);
       const after = { eo_item_id: id, planned_date: m.ngay, planned_qty: qty, factory_committed_date: m.ngay, ghi_chu: ghiChu };
       stmts.push(
         db.prepare(
           `INSERT INTO item_plan (eo_item_id, planned_date, planned_qty, factory_committed_date, ghi_chu, created_by, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        ).bind(id, m.ngay, qty, m.ngay, ghiChu, u.email, now),
-        eventStmt(db, { entity_type: "eo_item", entity_id: id, eo_id: it.eo_id, event_type: "ADD_PLAN", user_email: u.email, at: now, after, metadata: meta2 }),
+        ).bind(id, m.ngay, qty, m.ngay, ghiChu, ai.email, now),
+        eventStmt(db, { entity_type: "eo_item", entity_id: id, eo_id: it.eo_id, event_type: "ADD_PLAN", user_email: ai.eventEmail, at: now, after, metadata: meta2 }),
       );
       kq.them++;
       continue;
@@ -152,9 +165,9 @@ export async function apDungKrf(env: Env, u: AppUser, itemIds: number[]) {
     const after = { planned_date: dk, factory_committed_date: m.ngay, ghi_chu: ghiChu };
     stmts.push(
       db.prepare("UPDATE item_plan SET planned_date = ?, factory_committed_date = ?, ghi_chu = ?, updated_by = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
-        .bind(dk, m.ngay, ghiChu, u.email, now, p.id),
+        .bind(dk, m.ngay, ghiChu, ai.email, now, p.id),
       eventStmt(db, {
-        entity_type: "eo_item", entity_id: id, eo_id: it.eo_id, event_type: "UPDATE_PLAN", user_email: u.email, at: now,
+        entity_type: "eo_item", entity_id: id, eo_id: it.eo_id, event_type: "UPDATE_PLAN", user_email: ai.eventEmail, at: now,
         before: { planned_date: p.planned_date, planned_qty: p.planned_qty, factory_committed_date: p.factory_committed_date }, after,
         metadata: { ...meta2, plan_id: p.id },
       }),
@@ -164,4 +177,41 @@ export async function apDungKrf(env: Env, u: AppUser, itemIds: number[]) {
   for (let i = 0; i < stmts.length; i += 50) await db.batch(stmts.slice(i, i + 50));
   if (stmts.length) await bumpVersions(db, ["eo", "theo_doi"]);
   return kq;
+}
+
+/** Nguoi dung chon dong o man "Ngày KRF từ mail" roi bam ap dung - quyen nhu sua ke hoach tay (canEditPlan). */
+export function apDungKrf(env: Env, u: AppUser, itemIds: number[]) {
+  return apDung(env, { email: u.email, eventEmail: u.email, coQuyen: (it) => canEditPlan(u, it), nguon: "mail_krf", tienTo: "Theo mail KRF" }, itemIds);
+}
+
+/**
+ * TU DONG dien ngay KRF khi nhan mail-events (routes/partner.ts) - chi dong KHOP CHAC:
+ *  - ma 3TDO + ma LK trong mail = approval_code + part_code / part_code_goc cua dong EO (app theodoimuahang da gan eo_item_id, kiem lai);
+ *  - trong EO chi DUNG 1 dong dang hieu luc mang ma LK do (2 dong cung ma khac kho -> khong chac -> de goi y bam tay);
+ *  - dong chua ve du, co 0 hoac 1 dot ke hoach ngay (nhieu dot -> khong biet dot nao -> goi y).
+ * Nguoi ghi = BOOTSTRAP_ADMIN_EMAIL (item_plan.created_by bat buoc la user co that), event_log.user_email = NULL (He thong),
+ * metadata.nguon = 'mail_krf_tu_dong'. Dong con lai van hien o "Ngày KRF từ mail".
+ */
+export async function tuDongDienKrf(env: Env, itemIds: number[]) {
+  const ids = [...new Set(itemIds)];
+  if (!ids.length || !env.BOOTSTRAP_ADMIN_EMAIL) return { them: 0, sua: 0, bo_qua: [] as { eo_item_id: number; ly_do: string }[] };
+  const [mail, info] = await Promise.all([
+    mailKrfMoiNhat(env, ids),
+    env.DB.prepare(
+      `SELECT i.id, e.approval_code, upper(i.part_code) AS ma, upper(COALESCE(i.part_code_goc, '')) AS ma_goc,
+              (SELECT COUNT(*) FROM eo_item j WHERE j.eo_id = i.eo_id AND j.line_status = 'ACTIVE'
+                 AND (upper(j.part_code) = upper(i.part_code) OR upper(COALESCE(j.part_code_goc, '')) = upper(i.part_code))) AS cung_ma
+       FROM eo_item i JOIN eo e ON e.id = i.eo_id
+       WHERE i.id IN (SELECT value FROM json_each(?)) AND i.line_status = 'ACTIVE' AND e.trang_thai = 'ISSUED'`,
+    ).bind(JSON.stringify(ids)).all<{ id: number; approval_code: string | null; ma: string; ma_goc: string; cung_ma: number }>(),
+  ]);
+  const chac = info.results.filter((r) => {
+    const m = mail.get(r.id);
+    const lk = (m?.ma_lk ?? "").trim().toUpperCase();
+    return !!m?.ngay && !!r.approval_code && m.ma_po === r.approval_code && !!lk && (lk === r.ma || lk === r.ma_goc) && r.cung_ma === 1;
+  }).map((r) => r.id);
+  if (!chac.length) return { them: 0, sua: 0, bo_qua: [] as { eo_item_id: number; ly_do: string }[] };
+  return apDung(env, {
+    email: env.BOOTSTRAP_ADMIN_EMAIL, eventEmail: null, coQuyen: () => true, nguon: "mail_krf_tu_dong", tienTo: "Tự động theo mail KRF",
+  }, chac);
 }

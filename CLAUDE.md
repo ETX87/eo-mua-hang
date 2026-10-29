@@ -119,9 +119,14 @@ idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state
 **Ngày KRF từ mail** (v0.047, `lib/krfGoiY.ts`): app `theodoimuahang` (`../../thu ky mua hang`, Worker cùng tên) đọc mail
 theodoimuahang@gmail.com theo **mã 3TDO + mã LK** (không dùng mẫu EO-PUSH) và đẩy `tl_mail` mỗi dòng 1 bản ghi, `payload.dong` =
 {ngay_can, dap_ung, ngay_dap_ung, note, ton_kho…} (cột "KRF đáp ứng" của file/bảng KRF trả lời). `GET /theo-doi/goi-y-krf` = dòng đang
-mở có ngày KRF (mail NHAN mới nhất) khác ngày NM cam kết; `POST /theo-doi/ap-dung-krf` = **người dùng chọn rồi áp dụng** (không tự ghi —
-ảnh hưởng R1/R4, số lần lùi, CEO): 0 đợt → thêm đợt (NM = DK = ngày KRF, SL = còn thiếu); 1 đợt ngày → sửa NM, DK theo NM khi DK trống /
+mở có ngày KRF (mail NHAN mới nhất) khác ngày NM cam kết; `POST /theo-doi/ap-dung-krf` = người dùng chọn rồi áp dụng.
+Cách áp dụng: 0 đợt → thêm đợt (NM = DK = ngày KRF, SL = còn thiếu); 1 đợt ngày → sửa NM, DK theo NM khi DK trống /
 bằng NM cũ / sớm hơn ngày KRF; nhiều đợt / kế hoạch tuần → sửa tay. Ghi `ADD_PLAN`/`UPDATE_PLAN` metadata `nguon='mail_krf'`.
+**Tự động (v0.048, yêu cầu người dùng 2026-10-30):** `POST /api/partner/mail-events` nhận thư KRF (NHAN) có `payload.dong.ngay_dap_ung`
+→ `tuDongDienKrf` điền ngay cho dòng **khớp chắc**: mã 3TDO + mã LK trong mail = `approval_code` + `part_code`/`part_code_goc`, EO chỉ có
+đúng 1 dòng ACTIVE mang mã LK đó, chưa về đủ, 0/1 đợt ngày. Người ghi `item_plan` = `BOOTSTRAP_ADMIN_EMAIL` (FK users), `event_log.user_email`
+= NULL (FE hiện "Hệ thống"), `nguon='mail_krf_tu_dong'`, ghi chú "Tự động theo mail KRF …". Dòng không chắc vẫn ở danh sách gợi ý.
+Mail đã nhận TRƯỚC v0.048 không tự chạy lại (tl_mail chống trùng) — dùng nút áp dụng ở danh sách gợi ý.
 FE: nút "Ngày KRF từ mail (n)" ở `/theo-doi` (`pages/theodoi/KrfGoiY.tsx`), khung "Mail KRF … Điền vào form" trong `NgayHangVeModal`,
 lịch sử mail hiện dữ liệu dòng (`DongMail`).
 Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file

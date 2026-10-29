@@ -386,7 +386,8 @@ export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void
               const a = e.after_json ? JSON.parse(e.after_json) : null;
               txt = Array.isArray(a) ? a.map((x: any) => `${x.tuan ?? ngay(x.planned_date)}: ${soLuong(x.planned_qty)}`).join(", ") : a?.planned_date ? `${ngay(a.planned_date)}${a.planned_qty ? `: ${soLuong(a.planned_qty)}` : ""}` : e.event_type === "DELETE_PLAN" ? "Xóa mốc" : "";
             } catch { /* bo qua */ }
-            return <div key={i} style={{ padding: "3px 0" }}>{ngayGio(e.created_at)} · {ten(e.user_email)} · {txt}</div>;
+            // user_email NULL = He thong (vd tu dong dien ngay KRF tu mail - lib/krfGoiY.ts tuDongDienKrf)
+            return <div key={i} style={{ padding: "3px 0" }}>{ngayGio(e.created_at)} · {e.user_email ? ten(e.user_email) : "Hệ thống"} · {txt}</div>;
           })}
         </div>
       )}
