@@ -1,0 +1,113 @@
+# ── TRỢ LÝ MÂY · APP TỰ SỬA ─────────────────────────────────────────────────────────────────────
+# Chạy khi Trợ lý Mây mở issue gắn nhãn `may:tu-sua` (hoặc Giám đốc duyệt → đổi nhãn sang may:tu-sua).
+# Claude Code đọc issue, sửa mã, chạy kiểm tra, mở PR nhánh may/<mã>. Mỗi mốc đều báo về Trợ lý Mây qua webhook.
+# Từ 24/10/2026: xác thực WIF trước bước Claude → AI ĐỌC được dữ liệu Firestore + log thật (tài khoản may-deployer chỉ có datastore.viewer + logging.viewer, không ghi được)
+# qua `.github/may-du-lieu.mjs`, để tái hiện lỗi thay vì trả về "không tái hiện được". Cần biến GCP_WIF_PROVIDER, GCP_SA, FIREBASE_PROJECT (app có project).
+# Cần secrets: CLAUDE_CODE_OAUTH_TOKEN (claude setup-token, gói Claude của Giám đốc) — hoặc ANTHROPIC_API_KEY; MAY_WEBHOOK_SECRET. Cần biến: MAY_APP_ID (id app trong ung_dung).
+name: Mây · App tự sửa
+on:
+  issues:
+    types: [labeled]
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+concurrency:
+  group: may-${{ github.event.issue.number }}
+  cancel-in-progress: false
+jobs:
+  tu-sua:
+    if: github.event.label.name == 'may:tu-sua'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Lấy mã báo cáo MAY-xxxxx từ tiêu đề issue
+        id: ma
+        run: |
+          MA=$(echo "${{ github.event.issue.title }}" | grep -oE 'MAY-[0-9]{5}' | head -1)
+          echo "ma=$MA" >> "$GITHUB_OUTPUT"
+      - name: Báo Mây — đang sửa
+        if: steps.ma.outputs.ma != ''
+        run: |
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/${{ vars.MAY_APP_ID }}" \
+            -H "Content-Type: application/json" -H "X-May-Secret: ${{ secrets.MAY_WEBHOOK_SECRET }}" \
+            -d "{\"id\":\"${{ steps.ma.outputs.ma }}\",\"suKien\":\"dang_sua\",\"ghiChu\":\"workflow #${{ github.run_number }}\"}"
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Xác thực Google (WIF — chỉ đọc dữ liệu + log, không khoá)
+        if: vars.GCP_WIF_PROVIDER != '' && vars.GCP_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA }}
+      - name: Claude Code sửa theo issue
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAY_PROJECT: ${{ vars.FIREBASE_PROJECT }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          label_trigger: 'may:tu-sua'
+          branch_prefix: 'may/'
+          display_report: true
+          claude_args: |
+            --allowedTools "Read,Edit,Write,Glob,Grep,TodoWrite,Bash,mcp__github_file_ops__commit_files,mcp__github_file_ops__delete_files,mcp__github_comment__update_claude_comment"
+            --disallowedTools "Bash(firebase deploy*),Bash(firebase firestore:delete*),Bash(gcloud iam*),Bash(gcloud projects*),Bash(gcloud functions deploy*),Bash(gcloud run deploy*),Bash(gcloud firestore import*),Bash(gcloud firestore export*),Bash(gcloud firestore databases*),Bash(gcloud firestore delete*),Bash(gcloud storage rm*),Bash(gcloud storage cp*),Bash(rm -rf *),Bash(git push --force*),WebFetch,WebSearch"
+            --max-turns 80
+          prompt: |
+            REPO: ${{ github.repository }} · ISSUE: #${{ github.event.issue.number }} · MÃ BÁO CÁO: ${{ steps.ma.outputs.ma }}
+
+            Bạn là AI sửa lỗi của app này, nhận việc từ Trợ lý Mây. Làm đúng thứ tự:
+            1. Đọc CLAUDE.md, TONG_HOP_LOGIC.md (nếu có) và nội dung issue #${{ github.event.issue.number }} (kể cả ảnh/bình luận bổ sung).
+               Nếu thân issue có mục "CHỈ ĐẠO CỦA GIÁM ĐỐC — LÀM ĐÚNG CHÍNH XÁC": đó là yêu cầu bắt buộc, ưu tiên cao nhất — làm đúng và chỉ đúng từng ý, không tự thêm/bớt/đổi cách làm; ý nào mơ hồ thì bình luận "MÂY: CẦN NGƯỜI" + câu hỏi rồi dừng.
+               Nếu có mục "Giám đốc duyệt — AI tự quyết cách làm": tự chọn cách hợp lý nhất trong phạm vi báo cáo và ghi rõ lựa chọn trong mô tả PR.
+            2. TÁI HIỆN bằng DỮ LIỆU & LOG THẬT trước khi kết luận gì: `node .github/may-du-lieu.mjs doc|list|query|count|log|collections …` (cách dùng ở đầu tệp; project = env MAY_PROJECT; app ở project khác (ghi trong issue) thì thêm `--project <id>`).
+               Tài khoản CHỈ ĐỌC — không thể và không được tìm cách ghi/xoá dữ liệu. TUYỆT ĐỐI KHÔNG dán nội dung cá nhân (tên, SĐT, email, CCCD, số tiền của khách/nhân sự) vào PR, issue, commit, nhật ký — chỉ ghi MÃ bản ghi (ID).
+            3. Tìm nguyên nhân gốc trong mã. Sửa ĐÚNG phạm vi lỗi mô tả; không đổi tính năng khác, không đụng secrets, firestore.rules, storage.rules, hàm hrLink, lệnh deploy.
+            4. Chạy `npm ci` (nếu có package.json) rồi `npm run build` (hoặc lệnh kiểm trong CLAUDE.md). Đỏ thì sửa tới khi xanh; không xanh được thì KHÔNG mở PR.
+            5. Ghi 1 dòng vào NHAT_KY_LAM_VIEC.md: ngày · ${{ steps.ma.outputs.ma }} · sửa gì.
+            6. Tạo nhánh `may/${{ steps.ma.outputs.ma }}` (chữ thường) từ nhánh hiện tại, commit (tiếng Việt, bắt đầu bằng "${{ steps.ma.outputs.ma }}:"), rồi `git push -u origin may/<mã chữ thường>`. KHÔNG cần mở PR — workflow sẽ tự mở PR từ nhánh này. Nếu muốn, ghi sẵn mô tả PR (nguyên nhân · cách sửa · cách thử) vào tệp `.may-pr.md` ở gốc kho (tệp này sẽ bị bỏ khỏi commit).
+            7. Nếu KHÔNG phải lỗi mã, bình luận vào issue bắt đầu bằng "MÂY: CẦN NGƯỜI" rồi dừng, theo đúng 1 trong 3 dạng để Mây xử lý tiếp được:
+               • "MÂY: CẦN NGƯỜI — VIỆC DỮ LIỆU:" + từng thao tác cụ thể `collection/docId · trường: <giá trị hiện tại> → <giá trị mới>` (đã xem dữ liệu thật, ghi ID chứ không ghi nội dung cá nhân).
+               • "MÂY: CẦN NGƯỜI — QUYẾT ĐỊNH:" + quy tắc hiện tại (dẫn tệp:dòng) + 2–3 lựa chọn, mỗi lựa chọn 1 dòng.
+               • "MÂY: CẦN NGƯỜI — HỎI:" + đúng câu hỏi còn thiếu để làm được (sau khi đã xem dữ liệu + log).
+      - name: Mở PR từ nhánh may/<mã>
+        id: pr
+        if: always() && steps.ma.outputs.ma != ''
+        env:
+          # Token mặc định của workflow (token Claude App đã bị thu hồi khi bước Claude kết thúc).
+          # Kiểm tra PR chạy theo sự kiện PUSH nhánh may/** (Claude đẩy) nên không cần PR do App tạo.
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NHANH="may/$(echo '${{ steps.ma.outputs.ma }}' | tr 'A-Z' 'a-z')"
+          [ -n "${{ steps.claude.outputs.branch_name }}" ] && NHANH="${{ steps.claude.outputs.branch_name }}"
+          # Kiểm nhánh qua API (không dùng git fetch: sau bước Claude, credential git của checkout có thể đã bị thay).
+          gh api "repos/${{ github.repository }}/branches/$NHANH" >/dev/null 2>&1 || { echo "Không có nhánh $NHANH"; echo "url=" >> "$GITHUB_OUTPUT"; exit 0; }
+          PR=$(gh pr list --repo "${{ github.repository }}" --head "$NHANH" --state open --json url -q '.[0].url')
+          if [ -z "$PR" ]; then
+            MOTA="Closes #${{ github.event.issue.number }}"
+            if gh api "repos/${{ github.repository }}/contents/.may-pr.md?ref=$NHANH" --jq .content 2>/dev/null | base64 -d > /tmp/pr.md 2>/dev/null && [ -s /tmp/pr.md ]; then MOTA="$(cat /tmp/pr.md)"$'\n\n'"Closes #${{ github.event.issue.number }}"; fi
+            PR=$(gh pr create --repo "${{ github.repository }}" --head "$NHANH" --base "${{ github.event.repository.default_branch }}" --title "${{ github.event.issue.title }}" --body "$MOTA")
+          fi
+          echo "url=$PR" >> "$GITHUB_OUTPUT"; echo "PR: $PR"
+      - name: Báo Mây — kết quả
+        if: always() && steps.ma.outputs.ma != ''
+        run: |
+          PR="${{ steps.pr.outputs.url }}"
+          if [ -n "$PR" ]; then SK=pr_mo; else SK=that_bai; fi
+          # Không có PR → gửi kèm kết luận cuối của Claude (bình luận bot mới nhất, 600 ký tự) để Mây/Giám đốc biết VÌ SAO, không chỉ "claude: success".
+          GC="claude: ${{ steps.claude.outputs.conclusion }}"
+          if [ -z "$PR" ]; then
+            KL=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments?per_page=100" --jq '[.[] | select(.user.type=="Bot")] | last | .body // ""' 2>/dev/null | tr -d '\r' | head -c 600)
+            [ -n "$KL" ] && GC="$GC · $KL"
+          fi
+          jq -n --arg id "${{ steps.ma.outputs.ma }}" --arg sk "$SK" --arg pr "$PR" --arg gc "$GC" '{id:$id,suKien:$sk,pr:$pr,ghiChu:$gc}' > /tmp/may.json
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/${{ vars.MAY_APP_ID }}" \
+            -H "Content-Type: application/json" -H "X-May-Secret: ${{ secrets.MAY_WEBHOOK_SECRET }}" \
+            --data-binary @/tmp/may.json
+        env:
+          GH_TOKEN: ${{ github.token }}

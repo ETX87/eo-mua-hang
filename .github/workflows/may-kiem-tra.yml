@@ -1,0 +1,37 @@
+# ── TRỢ LÝ MÂY · KIỂM TRA PR ────────────────────────────────────────────────────────────────────
+# Mỗi PR nhánh may/* : eslint + build. Xanh → báo Mây `kiem_tra_xanh` (việc nhỏ sẽ tự được cho deploy; việc khác chờ Giám đốc).
+name: Mây · Kiểm tra PR
+on:
+  push:
+    branches: ['may/**']
+permissions: { contents: read, pull-requests: read }
+jobs:
+  kiem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Build (trong thư mục MAY_BUILD_DIR, mặc định gốc kho)
+        working-directory: ${{ vars.MAY_BUILD_DIR || '.' }}
+        env:
+          MAY_ENV: ${{ secrets.MAY_ENV_PRODUCTION }}
+        run: |
+          # Cấu hình Firebase công khai (VITE_*) lưu ở secret MAY_ENV_PRODUCTION — chỉ ghi khi kho chưa commit .env.production.
+          if [ ! -f .env.production ] && [ -n "$MAY_ENV" ]; then printf '%s\n' "$MAY_ENV" > .env.production; fi
+          [ -f .env.production ] || [ ! -f .env.example ] || cp .env.example .env
+          if [ -f package.json ]; then if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi && npm run build; else echo "Không có package.json — bỏ qua build"; fi
+      - name: Mã báo cáo
+        id: ma
+        run: echo "ma=$(echo '${{ github.ref_name }}' | grep -oiE 'may-[0-9]{5}' | tr a-z A-Z | head -1)" >> "$GITHUB_OUTPUT"
+      - name: Báo Mây
+        if: always() && steps.ma.outputs.ma != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SK=$([ "${{ job.status }}" = "success" ] && echo kiem_tra_xanh || echo kiem_tra_do)
+          PR=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --state open --json url -q '.[0].url' 2>/dev/null || true)
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/${{ vars.MAY_APP_ID }}" \
+            -H "Content-Type: application/json" -H "X-May-Secret: ${{ secrets.MAY_WEBHOOK_SECRET }}" \
+            -d "{\"id\":\"${{ steps.ma.outputs.ma }}\",\"suKien\":\"$SK\",\"pr\":\"$PR\"}"
