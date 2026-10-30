@@ -13,3 +13,5 @@ scripts/_data/
 
 # du lieu that (phieu AMIS) - khong dua len git
 scripts/amis_rows.json
+# script chuyen du lieu Google Sheet (co email nhan vien) - chi giu tren may
+scripts/migrate.mjs
