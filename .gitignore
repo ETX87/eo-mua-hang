@@ -10,3 +10,6 @@ secrets.md
 Thumbs.db
 *.tsbuildinfo
 scripts/_data/
+
+# du lieu that (phieu AMIS) - khong dua len git
+scripts/amis_rows.json
