@@ -91,10 +91,10 @@ const BO_COT: Record<string, { l: string; cot: string[] }> = {
 
 interface Loc {
   q: string; ngayTheo: string; tu: string; den: string; trangThaiEo: string; tinhTrang: string; gd: string; tre: string; ton: string;
-  kho: string; doiTac: string; loaiHinh: string; phongBan: string; nguoiTao: string; sauBh: string; coLoi: string; canhBao: string;
+  kho: string; doiTac: string; lyDo: string; maLk: string; loaiHinh: string; phongBan: string; nguoiTao: string; sauBh: string; coLoi: string; canhBao: string;
   g4: string; // G4 song song (mail gui NCC): "da" | "chua" | "tre"
 }
-const LOC_TRONG: Loc = { q: "", ngayTheo: "ngay_ban_hanh", tu: "", den: "", trangThaiEo: "", tinhTrang: "", gd: "", tre: "", ton: "", kho: "", doiTac: "", loaiHinh: "", phongBan: "", nguoiTao: "", sauBh: "", coLoi: "", canhBao: "", g4: "" };
+const LOC_TRONG: Loc = { q: "", ngayTheo: "ngay_ban_hanh", tu: "", den: "", trangThaiEo: "", tinhTrang: "", gd: "", tre: "", ton: "", kho: "", doiTac: "", lyDo: "", maLk: "", loaiHinh: "", phongBan: "", nguoiTao: "", sauBh: "", coLoi: "", canhBao: "", g4: "" };
 const LOC_MAU: { l: string; loc: Partial<Loc> }[] = [
   { l: "Đang mở (chưa về đủ)", loc: { tinhTrang: "__mo" } },
   { l: "Trễ hạn ở giai đoạn hiện tại", loc: { tinhTrang: "__mo", tre: "tre" } },
@@ -118,6 +118,12 @@ export default function SoDonHang() {
 
   const all = q.data?.rows ?? [];
   const defs = useMemo(() => cotDefs(q.data?.giai_doan ?? [], q.data?.sla ?? {}), [q.data]);
+  // goi y o loc ma LK: ma + ten co trong so (khong goi them API)
+  const dsLk = useMemo(() => {
+    const m = new Map<string, { ma: string; ten: string }>();
+    for (const r of all) if (r.part_code && !m.has(String(r.part_code).toUpperCase())) m.set(String(r.part_code).toUpperCase(), { ma: r.part_code, ten: r.part_name ?? "" });
+    return [...m.values()].sort((a, b) => a.ma.localeCompare(b.ma));
+  }, [all]);
   const set = (p: Partial<Loc>) => setLoc((l) => ({ ...l, ...p }));
   const datCot = (c: string[]) => { setCot(c); localStorage.setItem(KEY_COT, JSON.stringify(c)); };
   const uniq = (f: (r: Row) => any) => [...new Set(all.map(f).filter(Boolean) as string[])].sort((a, b) => String(a).localeCompare(String(b)));
@@ -136,6 +142,8 @@ export default function SoDonHang() {
       if (loc.ton && (!MO.includes(r.trang_thai_don_hang) || mocCua(soNgayTon(ngayDatCua(r)))?.k !== loc.ton)) return false;
       if (loc.kho && r.kho !== loc.kho) return false;
       if (loc.doiTac && r.doi_tac !== loc.doiTac) return false;
+      if (loc.lyDo && r.ly_do_ps !== loc.lyDo) return false;
+      if (loc.maLk) { const m = loc.maLk.trim().toUpperCase(); if (![r.part_code, r.part_code_goc].some((x) => String(x ?? "").toUpperCase().includes(m))) return false; }
       if (loc.loaiHinh && r.loai_hinh !== loc.loaiHinh) return false;
       if (loc.phongBan && r.phong_ban !== loc.phongBan) return false;
       if (loc.nguoiTao && r.nguoi_tao !== loc.nguoiTao) return false;
@@ -179,6 +187,9 @@ export default function SoDonHang() {
           <S v={loc.tre} onChange={(v) => set({ tre: v })} w={130} title="Đúng / trễ hạn ở giai đoạn hiện tại"><option value="">Đúng & trễ hạn</option><option value="tre">Trễ hạn</option><option value="dung">Đúng hạn</option></S>
           <S v={loc.kho} onChange={(v) => set({ kho: v })} w={170}><option value="">Mọi kho</option>{uniq((r) => r.kho).map((x) => <option key={x}>{x}</option>)}</S>
           <S v={loc.doiTac} onChange={(v) => set({ doiTac: v })} w={140}><option value="">Mọi NCC</option>{uniq((r) => r.doi_tac).map((x) => <option key={x}>{x}</option>)}</S>
+          <S v={loc.lyDo} onChange={(v) => set({ lyDo: v })} w={150} title="Lý do phát sinh"><option value="">Mọi lý do PS</option>{uniq((r) => r.ly_do_ps).map((x) => <option key={x}>{x}</option>)}</S>
+          <input className="input" list="dl-sdh-lk" style={{ width: 150, height: 32, fontSize: 12.5, borderColor: loc.maLk ? "var(--brand-yellow-btn)" : undefined }} placeholder="Mã linh kiện" title="Gõ 1 phần mã hoặc chọn (khớp cả mã gốc trước khi thay)" value={loc.maLk} onChange={(e) => set({ maLk: e.target.value })} />
+          <datalist id="dl-sdh-lk">{dsLk.map((x) => <option key={x.ma} value={x.ma} label={x.ten || undefined} />)}</datalist>
           <button className="btn sm ghost" onClick={() => setMoRong((x) => !x)}>{moRong ? "Thu gọn bộ lọc" : "Thêm bộ lọc"}{soLoc ? ` (${soLoc} đang lọc)` : ""}</button>
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={() => setChonCot(true)}><I.grid width={14} height={14} /> Chọn cột ({hien.length})</button>

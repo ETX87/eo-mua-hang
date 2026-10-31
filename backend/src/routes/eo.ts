@@ -27,6 +27,7 @@ app.get("/", async (c) => {
   const tu = url.searchParams.get("tu"), den = url.searchParams.get("den");
   const cotNgay = url.searchParams.get("ngay_theo") === "issued" ? "e.issued_at" : "e.created_at";
   const kho = url.searchParams.get("kho"), doiTac = url.searchParams.get("doi_tac");
+  const lyDo = url.searchParams.get("ly_do"), maLk = url.searchParams.get("ma_lk");
   const limit = Math.min(Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50), 200);
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
 
@@ -39,7 +40,10 @@ app.get("/", async (c) => {
   if (tu) { where.push(`substr(${cotNgay}, 1, 10) >= ?`); bind.push(tu); }
   if (den) { where.push(`substr(${cotNgay}, 1, 10) <= ?`); bind.push(den); }
   if (kho) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.warehouse = ?)"); bind.push(kho); }
-  if (doiTac) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.supplier = ?)"); bind.push(doiTac); }
+  if (doiTac) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND UPPER(TRIM(i.supplier)) = UPPER(TRIM(?)))"); bind.push(doiTac); }
+  if (lyDo) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND UPPER(TRIM(i.reason)) = UPPER(TRIM(?)))"); bind.push(lyDo); }
+  // ma LK: khop ca ma dang dung lan ma goc (truoc khi thay ma tuong duong); go 1 phan ma cung loc duoc
+  if (maLk) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND (i.part_code LIKE ? OR i.part_code_goc LIKE ?))"); bind.push(`%${maLk.trim()}%`, `%${maLk.trim()}%`); }
   // tim ca theo ma / ten linh kien trong EO
   if (q) {
     where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ? OR EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND (i.part_code LIKE ? OR i.part_name LIKE ?)))");

@@ -13,6 +13,7 @@ import { exportRowsToXlsx } from "../../lib/exportXlsx";
 import { NGAY, NhanNgay, ChuGiaiNgay } from "../../lib/ngay";
 import { TN, Hoi, type KhoaTN } from "../../lib/thuatNgu";
 import { NgayHangVeModal } from "../theodoi/shared";
+import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa } from "../../lib/goiY";
 
 /**
  * Cac thao tac xu ly EO dung chung cho trang Chi tiet EO va popup xem nhanh (components/quickview):
@@ -605,8 +606,10 @@ export function CancelModal({ eo, onClose, onDone }: any) {
 export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onSaved }: any) {
   const tuDuyet = !!nguoiDuyet && nguoiDuyet === meEmail;
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
+  const goiY = useGoiYDong();
   const [partCode, setPartCode] = useState("");
   const [partName, setPartName] = useState("");
+  const doiMa = (v: string) => { setPartName(tenKhiDoiMa(goiY.tenTheoMa, partCode, v, partName)); setPartCode(v); };
   const [warehouse, setWarehouse] = useState<string>(KHO_THEO_PHONG_BAN[phongBan ?? ""] ?? "");
   const [supplier, setSupplier] = useState("");
   const [qty, setQty] = useState("");
@@ -641,8 +644,9 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
         {tuDuyet ? <>Bạn là <b>người duyệt cuối</b> của EO này — dòng mới được <b>duyệt luôn</b> khi lưu.</>
           : <>Dòng mới sẽ <b>chờ {ten(nguoiDuyet)} duyệt</b> (người duyệt cuối của EO) hoặc Admin. Chưa duyệt thì chưa đặt hàng; người duyệt có thể từ chối.</>}
       </div>
+      <GoiYDatalists data={goiY.data} />
       <label className="field-label">Mã linh kiện <span className="req">*</span></label>
-      <input className="input" value={partCode} onChange={(e) => setPartCode(e.target.value)} placeholder="Nhập mã LK" />
+      <input className="input" list={DL.lk} value={partCode} onChange={(e) => doiMa(e.target.value)} placeholder="Nhập / chọn mã LK" />
       <label className="field-label" style={{ marginTop: 12 }}>Tên linh kiện</label>
       <input className="input" value={partName} onChange={(e) => setPartName(e.target.value)} placeholder="Nhập tên linh kiện" />
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="KHO" req /></label>
@@ -651,11 +655,11 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
         {(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}
       </select>
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="DOI_TAC" /></label>
-      <input className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nhập đối tác" />
+      <input className="input" list={DL.doiTac} value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nhập / chọn đối tác" />
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="SL_DAT" req /></label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="LY_DO_PS" /></label>
-      <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do..." />
+      <input className="input" list={DL.lyDo} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập / chọn lý do" />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>

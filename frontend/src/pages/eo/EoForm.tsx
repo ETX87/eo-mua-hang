@@ -10,6 +10,7 @@ import { soLuong, ten } from "../../lib/format";
 import { PHONG_BAN, KHO_THEO_PHONG_BAN } from "../../lib/nav";
 import { readSheet, pick, str, parseNum, normKey, writeBook } from "../../lib/excel";
 import { FILE_ACCEPT, checkFile, fileSize, uploadEoFiles } from "../../lib/files";
+import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa } from "../../lib/goiY";
 
 interface ItemRow {
   id?: number; part_code: string; part_name: string; warehouse: string; supplier: string;
@@ -28,6 +29,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const cats = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
+  const goiY = useGoiYDong();
   const eoQ = useQuery({
     queryKey: ["eo", id],
     queryFn: () => api.get<any>(`/eo/${id}`),
@@ -105,6 +107,9 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
 
   const setItem = (i: number, k: keyof ItemRow, v: string) =>
     setItems((rows) => rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+  // ma LK: go moi hoac chon tu danh sach - ma da co thi tu dien ten linh kien
+  const setPartCode = (i: number, v: string) =>
+    setItems((rows) => rows.map((r, j) => (j === i ? { ...r, part_code: v, part_name: tenKhiDoiMa(goiY.tenTheoMa, r.part_code, v, r.part_name) } : r)));
   const tongSL = items.reduce((s, r) => s + (Number(r.current_qty) || 0), 0);
 
   const userOpts = (users.data ?? []).map((u: any) => u.email);
@@ -357,6 +362,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 Dòng đã lưu chỉ sửa được số lượng / tên linh kiện / đối tác / ghi chú (mã linh kiện và kho không đổi được sau khi tạo).
               </div>
             )}
+            <GoiYDatalists data={goiY.data} />
             <div className="tbl-wrap">
               <table className="tbl tbl-dense eo-lines">
                 <colgroup>{itemCols.map((c) => <col key={c.key} style={{ width: c.width }} />)}</colgroup>
@@ -368,7 +374,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                       <tr key={r.id ?? `new-${i}`}>
                         <td style={{ textAlign: "center" }}>{i + 1}</td>
                         <td>{existing ? <b>{r.part_code}</b> : (
-                          <input className="input" placeholder="Nhập mã LK" value={r.part_code} onChange={(e) => setItem(i, "part_code", e.target.value)} />
+                          <input className="input" list={DL.lk} placeholder="Nhập / chọn mã LK" value={r.part_code} onChange={(e) => setPartCode(i, e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập tên linh kiện" value={r.part_name} onChange={(e) => setItem(i, "part_name", e.target.value)} /></td>
                         <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.warehouse}>{r.warehouse}</span> : khoMacDinh ? (
@@ -379,10 +385,10 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                             {(khos.data ?? []).filter((k: any) => k.active !== 0 || k.ten_kho === r.warehouse).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}{k.active === 0 ? " (đã ngừng dùng)" : ""}</option>)}
                           </select>
                         )}</td>
-                        <td><input className="input" placeholder="Nhập đối tác" value={r.supplier} onChange={(e) => setItem(i, "supplier", e.target.value)} /></td>
+                        <td><input className="input" list={DL.doiTac} placeholder="Nhập / chọn đối tác" value={r.supplier} onChange={(e) => setItem(i, "supplier", e.target.value)} /></td>
                         <td><input className="input right" placeholder="Nhập SL" value={r.current_qty} onChange={(e) => setItem(i, "current_qty", e.target.value)} /></td>
                         <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.reason}>{r.reason || "—"}</span> : (
-                          <input className="input" placeholder="Nhập lý do..." value={r.reason} onChange={(e) => setItem(i, "reason", e.target.value)} />
+                          <input className="input" list={DL.lyDo} placeholder="Nhập / chọn lý do" value={r.reason} onChange={(e) => setItem(i, "reason", e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập ghi chú..." value={r.ghi_chu} onChange={(e) => setItem(i, "ghi_chu", e.target.value)} /></td>
                         <td><input className="input" placeholder="Mã ca" value={r.crm_id} onChange={(e) => setItem(i, "crm_id", e.target.value)} /></td>

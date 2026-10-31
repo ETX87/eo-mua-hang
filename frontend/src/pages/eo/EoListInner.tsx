@@ -10,6 +10,7 @@ import { soLuong, ngay, ten } from "../../lib/format";
 import { STATUS_META, PHONG_BAN } from "../../lib/nav";
 import { MocTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
+import { DL, GoiYDatalists, useGoiYDong } from "../../lib/goiY";
 
 interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
@@ -46,7 +47,11 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const [tu, setTu] = useState("");
   const [den, setDen] = useState("");
   const [kho, setKho] = useState("");
+  // loc theo dong linh kien: doi tac, ly do PS (khop dung), ma LK (khop 1 phan, ca ma goc truoc khi thay)
   const [doiTac, setDoiTac] = useState("");
+  const [lyDo, setLyDo] = useState("");
+  const [maLk, setMaLk] = useState("");
+  const goiY = useGoiYDong();
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: moRong });
   const limit = 20;
   const [offset, setOffset] = useState(0);
@@ -62,6 +67,8 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     if (tu || den) { p.set("ngay_theo", ngayTheo); if (tu) p.set("tu", tu); if (den) p.set("den", den); }
     if (kho) p.set("kho", kho);
     if (doiTac.trim()) p.set("doi_tac", doiTac.trim());
+    if (lyDo.trim()) p.set("ly_do", lyDo.trim());
+    if (maLk.trim()) p.set("ma_lk", maLk.trim());
     return p;
   };
   const params = filterParams();
@@ -113,7 +120,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     },
   ];
 
-  const reset = () => { setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setTu(""); setDen(""); setKho(""); setDoiTac(""); setOffset(0); };
+  const reset = () => { setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setTu(""); setDen(""); setKho(""); setDoiTac(""); setLyDo(""); setMaLk(""); setOffset(0); };
 
   const doExport = async () => {
     setExporting(true);
@@ -160,7 +167,13 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           <option value="">Phòng ban</option>
           {phongBanOpts.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        {!compact && <button className="btn sm ghost" onClick={() => setMoRong((x) => !x)}>{moRong ? "Thu gọn" : "Thêm bộ lọc"}{tu || den || kho || doiTac ? " •" : ""}</button>}
+        {!compact && <>
+          <GoiYDatalists data={goiY.data} />
+          <input className="input" list={DL.lk} style={{ width: 140, borderColor: maLk ? "var(--brand-yellow-btn)" : undefined }} placeholder="Mã linh kiện" title="EO có dòng mang mã linh kiện này (gõ 1 phần mã hoặc chọn)" value={maLk} onChange={(e) => { setMaLk(e.target.value); setOffset(0); }} />
+          <input className="input" list={DL.doiTac} style={{ width: 130, borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" title="EO có dòng đặt đối tác này" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
+          <input className="input" list={DL.lyDo} style={{ width: 140, borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" title="EO có dòng mang lý do phát sinh này" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
+          <button className="btn sm ghost" onClick={() => setMoRong((x) => !x)}>{moRong ? "Thu gọn" : "Thêm bộ lọc"}{tu || den || kho ? " •" : ""}</button>
+        </>}
         <RefreshFiltersBtn onClick={reset} />
         <div style={{ flex: 1 }} />
         <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
@@ -173,7 +186,6 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           <span className="muted">→</span>
           <input className="input" type="date" style={{ width: 150 }} value={den} title="Đến ngày" onChange={(e) => { setDen(e.target.value); setOffset(0); }} />
           <select className="select" style={{ width: 210 }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}><option value="">EO có dòng ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
-          <input className="input" style={{ width: 170 }} placeholder="Đối tác (vd KRF)" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
         </div>
       )}
 

@@ -5,10 +5,31 @@ import { requireAdmin } from "../middleware/guards";
 import { bumpVersions } from "../lib/dataVersions";
 import { encryptSecret } from "../lib/secretBox";
 import { nowVN } from "../lib/vnTime";
+import { cachedReport } from "../lib/reportCache";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 // ---- doc: ai cung xem duoc (dung cho dropdown form) ----
+// goi y o nhap dong linh kien (form EO) + bo loc: ma LK -> ten (EO truoc, AMIS sau), doi tac, ly do PS da tung dung
+app.get("/goi-y-dong", async (c) => c.json(await cachedReport(c.env.DB, "dm:goi-y-dong", ["eo", "amis"], async () => {
+  const [lk, dt, ld] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT ma, ten FROM (
+         SELECT part_code ma, MAX(NULLIF(TRIM(part_name), '')) ten, 0 nguon FROM eo_item WHERE TRIM(part_code) <> '' GROUP BY UPPER(TRIM(part_code))
+         UNION ALL
+         SELECT part_code, MAX(NULLIF(TRIM(part_name), '')), 1 FROM amis_receipt WHERE voided_at IS NULL AND TRIM(part_code) <> ''
+           AND UPPER(TRIM(part_code)) NOT IN (SELECT UPPER(TRIM(part_code)) FROM eo_item) GROUP BY UPPER(TRIM(part_code))
+       ) ORDER BY ma`,
+    ).all<{ ma: string; ten: string | null }>(),
+    c.env.DB.prepare("SELECT MIN(TRIM(supplier)) v FROM eo_item WHERE TRIM(COALESCE(supplier, '')) <> '' GROUP BY UPPER(TRIM(supplier)) ORDER BY COUNT(*) DESC").all<{ v: string }>(),
+    c.env.DB.prepare("SELECT MIN(TRIM(reason)) v FROM eo_item WHERE TRIM(COALESCE(reason, '')) <> '' GROUP BY UPPER(TRIM(reason)) ORDER BY COUNT(*) DESC").all<{ v: string }>(),
+  ]);
+  return {
+    linh_kien: lk.results.map((r) => ({ ma: r.ma.trim(), ten: r.ten ?? "" })),
+    doi_tac: dt.results.map((r) => r.v),
+    ly_do: ld.results.map((r) => r.v),
+  };
+})));
 app.get("/kho", async (c) => c.json((await c.env.DB.prepare("SELECT * FROM settings_warehouse ORDER BY ten_kho").all()).results));
 app.get("/loai-hinh", async (c) => c.json((await c.env.DB.prepare("SELECT * FROM settings_eo_category ORDER BY code").all()).results));
 app.get("/toc-do", async (c) => c.json((await c.env.DB.prepare("SELECT * FROM settings_speed_bucket ORDER BY min_days").all()).results));
