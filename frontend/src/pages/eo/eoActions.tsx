@@ -128,7 +128,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
         <details style={{ background: "var(--panel-2)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, lineHeight: 1.55 }}>
           <summary style={{ cursor: "pointer" }}>
             Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ làm việc sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
-            <a href={`/plans/tuan?eo=${eo.id}`} onClick={(e) => e.stopPropagation()}>nhập theo tuần</a> <span className="muted">(bấm để xem vì sao)</span>
+            <a href={`/don-hang/ke-hoach-tuan?eo=${eo.id}`} onClick={(e) => e.stopPropagation()}>nhập theo tuần</a> <span className="muted">(bấm để xem vì sao)</span>
           </summary>
           Không nhập / quá ngày dự kiến mà chưa cập nhật → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng.
           Tổng SL các đợt của 1 dòng ≤ SL đặt. <b>Theo ngày</b>: nhà máy báo ngày giao từng đợt. <b>Theo tuần</b>: đơn kế hoạch tháng, nhà máy chỉ báo SL mỗi tuần.

@@ -89,9 +89,9 @@ app.get("/", async (c) => {
       chiTiet.push({ label: "Cần push đối tác hôm nay", count: chuaPush });
       ids.forEach((id) => viec.add(id));
     }
-    if (viec.size) out.push({ key: "theo_doi", to: "/theo-doi", label: "Linh kiện đặt cần xử lý", count: viec.size, chi_tiet: chiTiet.filter((x) => x.count > 0) });
+    if (viec.size) out.push({ key: "theo_doi", to: "/don-hang?nhom=can_xl", label: "Linh kiện đặt cần xử lý", count: viec.size, chi_tiet: chiTiet.filter((x) => x.count > 0) });
     const ceo = rows.filter((r) => r.ceo_ly_do.length > 0);
-    if (ceo.length) out.push({ key: "ceo", to: "/canh-bao-ceo", label: "Đơn hàng cấp CEO", count: ceo.length,
+    if (ceo.length) out.push({ key: "ceo", to: "/don-hang?nhom=CEO", label: "Đơn hàng cấp CEO", count: ceo.length,
       chi_tiet: [
         { label: "Lùi ngày dự kiến ≥ 3 lần", count: ceo.filter((r) => r.ceo_ly_do.some((x) => x.startsWith("Lùi"))).length },
         { label: "Ngày DK ≥ 30 ngày sau ngày đặt", count: ceo.filter((r) => r.ceo_ly_do.some((x) => x.includes("ngày đặt"))).length },

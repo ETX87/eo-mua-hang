@@ -174,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 )}
                 <NavLink
                   to={n.to}
-                  end={n.to === "/" || n.to === "/plans"}
+                  end={n.to === "/"}
                   style={({ isActive }) => ({
                     display: "flex", alignItems: "center", gap: 13, padding: open ? "11px 14px" : "11px", position: "relative",
                     borderRadius: 14, margin: "3px 0", fontWeight: 600, fontSize: 14,
@@ -234,7 +234,8 @@ function titleFor(path: string): string {
   if (/^\/eo\/new/.test(path)) return "Tạo mới EO";
   if (/^\/eo\/\d+\/edit/.test(path)) return "Sửa EO";
   if (/^\/eo\/\d+/.test(path)) return "Chi tiết EO";
-  // khop dai nhat (/plans/tuan truoc /plans)
+  if (path.startsWith("/don-hang/ke-hoach-tuan")) return "Kế hoạch tuần KRF";
+  // khop dai nhat
   const hit = NAV.filter((n) => n.to !== "/" && path.startsWith(n.to)).sort((a, b) => b.to.length - a.to.length)[0];
   return hit?.label ?? "EO Mua hàng";
 }

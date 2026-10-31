@@ -52,7 +52,8 @@ const CHIEU: { k: string; l: string; get: (r: Row) => string | null; hien?: (v: 
   { k: "loai_hinh", l: "Loại hình", get: (r) => r.loai_hinh },
 ];
 
-export default function BaoCaoGiaiDoan() {
+/** nhung = hien trong tab Bao cao cua Quan ly don hang (khong PageHeader rieng). */
+export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
   const nav = useNavigate();
   const q = useQuery({ queryKey: ["so-don-hang"], queryFn: () => api.get<{ giai_doan: any[]; sla: Record<string, number>; rows: Row[] }>("/so-don-hang") });
   const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
@@ -93,7 +94,7 @@ export default function BaoCaoGiaiDoan() {
   }, [rows, gdXh]);
 
   // G4 song song -> loc rieng g4 (khong phai "giai doan hien tai"); con lai loc giai doan hien tai
-  const den2 = (k: string, tre?: boolean) => nav(k === "G4" ? `/so-don-hang?g4=${tre ? "tre" : "chua"}` : `/so-don-hang?gd=${k}${tre ? "&tre=tre" : ""}`);
+  const den2 = (k: string, tre?: boolean) => nav(k === "G4" ? `/don-hang?g4=${tre ? "tre" : "chua"}` : `/don-hang?gd=${k}${tre ? "&tre=tre" : ""}`);
   const S = ({ v, on, opts, l }: { v: string; on: (v: string) => void; opts: string[]; l: string }) => (
     <select className="select" style={{ width: 170, height: 32 }} value={v} onChange={(e) => on(e.target.value)}><option value="">{l}</option>{opts.map((x) => <option key={x}>{x}</option>)}</select>
   );
@@ -102,7 +103,7 @@ export default function BaoCaoGiaiDoan() {
 
   return (
     <div>
-      <PageHeader title="Báo cáo – Giai đoạn đơn hàng" />
+      {!nhung && <PageHeader title="Báo cáo – Giai đoạn đơn hàng" />}
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span className="muted" style={{ fontSize: 12.5 }}>Đơn đặt từ</span>

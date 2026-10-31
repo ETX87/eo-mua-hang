@@ -14,17 +14,10 @@ export const NAV: NavItem[] = [
   { to: "/", label: "Tổng quan", icon: "home" },
   { to: "/eo", label: "Danh sách EO", icon: "clipboard" },
   { to: "/approvals", label: "Việc cần duyệt", icon: "bell", badgeKey: "approvals" },
-  { to: "/theo-doi", label: "Theo dõi linh kiện đặt", icon: "list" },
-  { to: "/so-don-hang", label: "Sổ đơn hàng", icon: "grid" },
-  { to: "/canh-bao-ceo", label: "Cảnh báo CEO", icon: "shield" },
-  { to: "/plans", label: "Kế hoạch hàng về", icon: "trend" },
-  { to: "/plans/tuan", label: "Kế hoạch tuần (KRF)", icon: "calendar" },
+  // Quan ly don hang gop: Theo doi LK dat, So don hang, Canh bao CEO, Ke hoach hang ve / tuan, 3 bao cao (../UI_GOP_2_MAN_HINH.md)
+  { to: "/don-hang", label: "Quản lý đơn hàng", icon: "list" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },
-
-  { to: "/reports/giai-doan", label: "Giai đoạn đơn hàng", icon: "trend", section: "BÁO CÁO" },
   { to: "/reports/amis-khong-eo", label: "AMIS không EO", icon: "clock" },
-  { to: "/reports/tien-do-tuan", label: "Tiến độ tuần", icon: "calendar" },
-  { to: "/reports/luy-ke-nam", label: "Lũy kế năm", icon: "grid" },
 
   { to: "/admin/users", label: "Người dùng", icon: "user", section: "CÀI ĐẶT", adminOnly: true },
   { to: "/admin/roles", label: "Phân quyền", icon: "shield", adminOnly: true },

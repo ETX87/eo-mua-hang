@@ -6,7 +6,8 @@ import { soLuong, pct } from "../../lib/format";
 
 const WEEKS = Array.from({ length: 53 }, (_, i) => `W${String(i + 1).padStart(2, "0")}`);
 
-export default function ReportLuyKe() {
+/** nhung = hien trong tab Bao cao cua Quan ly don hang (khong PageHeader rieng). */
+export default function ReportLuyKe({ nhung }: { nhung?: boolean }) {
   const nowY = new Date().getUTCFullYear();
   const [nam, setNam] = useState(nowY);
   const [kieuXem, setKieuXem] = useState("eo");
@@ -18,7 +19,7 @@ export default function ReportLuyKe() {
 
   return (
     <div>
-      <PageHeader title="Báo cáo – Kế hoạch lũy kế năm" />
+      {!nhung && <PageHeader title="Báo cáo – Kế hoạch lũy kế năm" />}
       <Card>
         <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
           <select className="select" style={{ width: 120 }} value={nam} onChange={(e) => setNam(Number(e.target.value))}>

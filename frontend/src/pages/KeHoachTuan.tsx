@@ -20,7 +20,7 @@ export default function KeHoachTuan() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [sp] = useSearchParams();
-  // mo tu tab Ke hoach cua EO: /plans/tuan?eo=ID -> chon san EO do
+  // mo tu tab Ke hoach cua EO: /don-hang/ke-hoach-tuan?eo=ID -> chon san EO do
   const [eoId, setEoId] = useState<number | null>(sp.get("eo") ? Number(sp.get("eo")) : null);
   const [hd, setHd] = useState(!sp.get("eo"));
   const [imp, setImp] = useState<{ name: string; parsed: Parsed } | null>(null);
@@ -58,7 +58,7 @@ export default function KeHoachTuan() {
 
   return (
     <div>
-      <PageHeader title="Kế hoạch tuần (đơn KH tháng KRF)" back={() => nav("/plans")} breadcrumb={["Kế hoạch hàng về", "Kế hoạch tuần"]}
+      <PageHeader title="Kế hoạch tuần (đơn KH tháng KRF)" back={() => nav("/don-hang")} breadcrumb={["Quản lý đơn hàng", "Kế hoạch tuần KRF"]}
         actions={<>
           <button className="btn primary" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
           <button className="btn" disabled={busyTpl} onClick={downloadTemplate}>

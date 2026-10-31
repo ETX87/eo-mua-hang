@@ -48,9 +48,9 @@ export default function QuanLyPanel() {
             <O l={`Đáp ứng ${tuanNay?.nhan?.toLowerCase() ?? "tuần"}`} v={tuanNay?.ty_le_sl != null ? `${tuanNay.ty_le_sl}%` : "—"} mau={mauTyLe(tuanNay?.ty_le_sl)}
               sub={tuanNay ? `${soLuong(tuanNay.sl_ve)} / ${soLuong(tuanNay.sl_dat)} · ${tuanNay.ty_le_dong}% dòng đủ` : "chưa có đơn"}
               title="Tuần Chủ nhật – Thứ Bảy, theo ngày đặt" />
-            <O l="Dòng chưa về đủ" v={soLuong(t.dong_chua_du)} mau={t.dong_chua_du ? "var(--warn-ink)" : undefined} sub={`thiếu ${soLuong(t.sl_thieu)} SL`} to="/theo-doi" />
-            <O l="Dòng về = 0" v={soLuong(t.dong_ve_0)} mau={t.dong_ve_0 ? "var(--danger-ink)" : undefined} sub={`${soLuong(t.dong_ve_thieu)} dòng về thiếu`} to="/theo-doi" />
-            <O l="Quá ngày dự kiến" v={soLuong(t.dong_qua_du_kien)} mau={t.dong_qua_du_kien ? "var(--danger-ink)" : undefined} sub={`${soLuong(t.dong_chua_ngay_du_kien)} dòng chưa có ngày DK`} to="/theo-doi?nhom=QUA_HAN_NDK" />
+            <O l="Dòng chưa về đủ" v={soLuong(t.dong_chua_du)} mau={t.dong_chua_du ? "var(--warn-ink)" : undefined} sub={`thiếu ${soLuong(t.sl_thieu)} SL`} to="/don-hang?tinhTrang=__mo" />
+            <O l="Dòng về = 0" v={soLuong(t.dong_ve_0)} mau={t.dong_ve_0 ? "var(--danger-ink)" : undefined} sub={`${soLuong(t.dong_ve_thieu)} dòng về thiếu`} to={`/don-hang?tinhTrang=${encodeURIComponent("Hàng chưa về")}`} />
+            <O l="Quá ngày dự kiến" v={soLuong(t.dong_qua_du_kien)} mau={t.dong_qua_du_kien ? "var(--danger-ink)" : undefined} sub={`${soLuong(t.dong_chua_ngay_du_kien)} dòng chưa có ngày DK`} to="/don-hang?nhom=QUA_HAN_NDK" />
             <O l="EO đang tồn" v={soLuong(t.eo_ton)} sub="đã ban hành, chưa về đủ" to="/eo" />
             <O l="EO chưa duyệt" v={soLuong(t.eo_chua_duyet)} mau={t.eo_chua_duyet ? "var(--warn-ink)" : undefined} sub={`${t.eo_tham_dinh} đang thẩm định`} to="/eo" />
             <O l="Dòng thêm sau BH chờ duyệt" v={soLuong(t.dong_sau_bh_cho_duyet)} mau={t.dong_sau_bh_cho_duyet ? "var(--warn-ink)" : undefined} to="/approvals" />
@@ -62,9 +62,9 @@ export default function QuanLyPanel() {
               <div style={{ fontSize: 12, fontWeight: 700, alignSelf: "center", width: 90 }}>Đơn đang ở<br />giai đoạn</div>
               {d.giai_doan.map((g: any, i: number) => (
                 <div key={g.k} style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 120px", minWidth: 0 }}>
-                  <div className="ql-o" onClick={() => nav(`/so-don-hang?gd=${g.k}`)} style={{ cursor: "pointer", flex: 1, borderTop: `3px solid ${g.tre ? "#DC2626" : g.n ? "#F59E0B" : "var(--border)"}` }} title={`${g.l} — ${g.vai_tro}. ${g.n} dòng đang ở, ${g.tre} trễ hạn`}>
+                  <div className="ql-o" onClick={() => nav(`/don-hang?gd=${g.k}`)} style={{ cursor: "pointer", flex: 1, borderTop: `3px solid ${g.tre ? "#DC2626" : g.n ? "#F59E0B" : "var(--border)"}` }} title={`${g.l} — ${g.vai_tro}. ${g.n} dòng đang ở, ${g.tre} trễ hạn`}>
                     <div className="ql-l">{g.k} · {g.l}</div>
-                    <div className="ql-v" style={{ fontSize: 18 }}>{soLuong(g.n)}{g.tre > 0 && <span onClick={(e) => { e.stopPropagation(); nav(`/so-don-hang?gd=${g.k}&tre=tre`); }} style={{ fontSize: 12, color: "var(--danger-ink)", marginLeft: 6 }}>{g.tre} trễ</span>}</div>
+                    <div className="ql-v" style={{ fontSize: 18 }}>{soLuong(g.n)}{g.tre > 0 && <span onClick={(e) => { e.stopPropagation(); nav(`/don-hang?gd=${g.k}&tre=tre`); }} style={{ fontSize: 12, color: "var(--danger-ink)", marginLeft: 6 }}>{g.tre} trễ</span>}</div>
                     <div className="ql-s">{g.vai_tro}</div>
                   </div>
                   {i < d.giai_doan.length - 1 && <span className="muted">›</span>}
@@ -106,7 +106,7 @@ export default function QuanLyPanel() {
                 {d.moc_ton.map((m: any) => {
                   const c = MOC_TON.find((x) => x.k === m.k)!;
                   return (
-                    <div key={m.k} onClick={() => nav(`/theo-doi?ton=${m.k}`)} title={`${m.so_dong} dòng · ${m.so_eo} EO · thiếu ${soLuong(m.sl_thieu)} SL`}
+                    <div key={m.k} onClick={() => nav(`/don-hang?ton=${m.k}`)} title={`${m.so_dong} dòng · ${m.so_eo} EO · thiếu ${soLuong(m.sl_thieu)} SL`}
                       style={{ cursor: "pointer", background: m.so_dong ? c.nen : "var(--panel-2)", borderRadius: 8, padding: "6px 8px", borderLeft: `4px solid ${m.so_dong ? c.mau : "var(--border)"}` }}>
                       <div style={{ fontSize: 11, color: m.so_dong ? c.mau : "var(--text-muted)", fontWeight: 700 }}>{m.l}</div>
                       <div style={{ fontSize: 19, fontWeight: 900, color: m.so_dong ? c.mau : "var(--text-muted)" }}>{soLuong(m.so_dong)}</div>

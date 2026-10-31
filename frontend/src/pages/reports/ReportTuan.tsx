@@ -5,7 +5,8 @@ import { PageHeader, Card, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { soLuong, pct } from "../../lib/format";
 
-export default function ReportTuan() {
+/** nhung = hien trong tab Bao cao cua Quan ly don hang (khong PageHeader rieng). */
+export default function ReportTuan({ nhung }: { nhung?: boolean }) {
   const [ma, setMa] = useState("");
   const [ky, setKy] = useState("");
   const tomtat = useQuery({ queryKey: ["tuan-tomtat"], queryFn: () => api.get<any>("/dashboard/tuan-tomtat") });
@@ -32,7 +33,7 @@ export default function ReportTuan() {
 
   return (
     <div>
-      <PageHeader title="Báo cáo – Tiến độ tuần" />
+      {!nhung && <PageHeader title="Báo cáo – Tiến độ tuần" />}
       {tomtat.data && (
         <Card style={{ marginBottom: 16, maxWidth: 420 }}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Tóm tắt 7 ngày gần nhất</div>
