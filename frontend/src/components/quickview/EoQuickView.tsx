@@ -11,7 +11,7 @@ import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, PartLink, useQuickView } from "./QuickView";
-import { TienTrinh, type GdDef } from "../TienTrinh";
+import { TienTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
@@ -219,7 +219,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
             {tab === "lk" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Giai đoạn</th><th>Ca / ghi chú</th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th title="8 giai đoạn: bấm để xem chi tiết đơn hàng (thời gian, hạn, lỗi từng bước)">Tiến trình</th><th>Ca / ghi chú</th></tr></thead>
                 <tbody>
                   {d.items.map((r: any, i: number) => ({ r, i })).filter(({ r }: any) => k({ ...r, ...(tdBy.get(r.id) as any ?? {}) })).map(({ r, i }: any) => {
                     const t = tdBy.get(r.id) as any;
@@ -247,8 +247,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                         <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.chua_dat)}</td>
                         <td><BaNgay nm={t?.ngay_nm_cam_ket ?? [...kh].filter((p: any) => p.factory_committed_date).sort((a: any, b: any) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date}
                           dk={ndk} ve={(b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop()} veDu={r.da_dat >= r.current_qty} /></td>
-                        <td style={{ whiteSpace: "nowrap" }}>{t ? <><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={t.ceo_ly_do.join("\n")}>CEO</span>}</> : <span className="muted">—</span>}</td>
-                        <td>{(() => { const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id); return g ? <span className="qv-link" onClick={() => qv.openDong(r.id)}><GdBadge r={g} /></span> : <span className="muted">—</span>; })()}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>{t ? <><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>CEO</span>}</> : <span className="muted">—</span>}</td>
+                        <td>{(() => { const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id); return g ? <TienTrinhGon r={g} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.id)} /> : <span className="muted">—</span>; })()}</td>
                         <td><Clip w={120}>{[r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—"}</Clip></td>
                       </tr>
                     );

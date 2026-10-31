@@ -1,3 +1,4 @@
+import { TienTrinhGon } from "../TienTrinh";
 import { gopTrung } from "../../lib/gopTrung";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,7 @@ import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, EoLink } from "./QuickView";
+import { QvHeader, Kpi, EoLink, useQuickView } from "./QuickView";
 import { quyenEo, QtyModal } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
@@ -23,6 +24,7 @@ const TRANG_THAI_MAU: Record<string, string> = {
 type Tab = "kho" | "eo" | "amis" | "loi";
 
 export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma: string; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
+  const qv = useQuickView();
   const q = useQuery({ queryKey: ["xem-lk", ma], queryFn: () => api.get<any>(`/xem/linh-kien?ma=${encodeURIComponent(ma)}`) });
   const [tab, setTab] = useState<Tab>("kho");
   const [chiMo, setChiMo] = useState(false);
@@ -159,9 +161,9 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
             )}
             {tab === "eo" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th>Lý do / ghi chú</th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th title="8 giai đoạn: bấm để xem chi tiết đơn hàng">Tiến trình</th><th>Lý do / ghi chú</th></tr></thead>
                 <tbody>
-                  {dong.length === 0 && <tr><td colSpan={12} className="muted">Không có dòng.</td></tr>}
+                  {dong.length === 0 && <tr><td colSpan={13} className="muted">Không có dòng.</td></tr>}
                   {dong.filter(khopTim(tim)).map((r: any) => {
                     const Q = quyen(r);
                     const mo = moDong(r);
@@ -183,6 +185,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.so_luong_con_thieu)}</td>
                       <td><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} /></td>
                       <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={120} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
+                      <td><TienTrinhGon r={d.giai_doan?.[r.item_id]} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.item_id)} /></td>
                       <td><Clip w={120}>{[r.ly_do_ps, r.ghi_chu, r.id_crm && `Ca ${r.id_crm}`].filter(Boolean).join(" · ") || "—"}</Clip></td>
                     </tr>
                     );

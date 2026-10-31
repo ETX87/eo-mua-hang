@@ -202,6 +202,11 @@ Quản lý đơn hàng / nút tiến trình trong popup EO), mã linh kiện (`o
 R3→G4, R1→G5, R4→G6). **Gom log trùng khi hiển thị** `lib/gopTrung.ts`: `tl_mail` lưu 1 bản ghi / dòng cho cùng 1 thư (gom theo
 hướng + tiêu đề + thời gian); lỗi R3/R4 nhiều ngày cùng loại → "× n lần"; event_log kế hoạch chuyển từ Sheet cũ trùng giây → "(×n)".
 Dữ liệu gốc không sửa.
+**Tiến trình thu gọn** `TienTrinhGon` (8 chấm, 1 ô bảng; bấm → popup đơn hàng): cột Tiến trình ở popup EO (tab Linh kiện), popup mã LK
+(tab Lịch sử EO / đặt hàng — `GET /xem/linh-kien` trả `giai_doan` theo item), cột chọn được ở Quản lý đơn hàng.
+**Diễn giải cấp CEO**: `layDongTheoDoi` trả `ceo_chi_tiet` (LUI: từng lần lùi — lúc, ai, từ → đến; XA: ngày đặt → ngày DK; LOI: số lỗi
+theo quy tắc, đếm từng lần) + `lui_ds`, `loi_qt`; FE `GiaiThichCeo` / `ceoTxt`. **Không đổi chuỗi `ceo_ly_do`** (viecCanLam lọc theo chữ).
+Khóa cache `tl:goc-theo-doi:v2` (đổi hậu tố khi đổi định dạng dữ liệu cache).
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,
 Esc đóng popup trên cùng. Mở từ bất kỳ đâu bằng `useQuickView().openEo/openPart`, `<EoLink id>`, `<PartLink ma>`.

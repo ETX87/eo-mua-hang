@@ -10,6 +10,7 @@ import { soLuong, ngay, ngayGio, ten } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
 import { MocTon, MOC_TON, mocCua, soNgayTon, khopTim } from "../lib/tonDong";
 import { GdBadge, gioTxt } from "../lib/giaiDoan";
+import { TienTrinhGon, ceoTxt } from "../components/TienTrinh";
 import { BaNgay, ChuGiaiNgay } from "../lib/ngay";
 import { TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, type Dong } from "./theodoi/shared";
 import { KrfGoiYModal, useGoiYKrf } from "./theodoi/KrfGoiY";
@@ -89,12 +90,16 @@ function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Rec
     { k: "so_loi", l: "Lỗi theo dõi", nhom: "Tiến độ", get: (r) => r.so_loi, render: (r) => r.so_loi ? <span className={`badge ${r.so_loi_cho_gt ? "reject" : "nhap"}`}>{r.so_loi}{r.so_loi_cho_gt ? ` (${r.so_loi_cho_gt} chờ)` : ""}</span> : "", align: "center" },
     // ---- theo doi (quy tac ngay du kien - lib/theoDoi; chi dong EO da ban hanh trong pham vi theo doi)
     { k: "td_tinh_trang", l: "Tình trạng theo dõi", nhom: "Theo dõi", get: (r) => r.tinh_trang ? `${TT(r)?.l ?? r.tinh_trang}${r.ceo_ly_do?.length ? " · Cấp CEO" : ""}` : "",
-      render: (r) => r.tinh_trang ? <><span className={`badge ${TT(r)?.c ?? "nhap"}`}>{TT(r)?.l ?? r.tinh_trang}</span>{r.ceo_ly_do?.length > 0 && <span className="badge reject" title={r.ceo_ly_do.join("\n")} style={{ marginLeft: 4 }}>Cấp CEO</span>}</> : <span className="muted">—</span> },
+      render: (r) => r.tinh_trang ? <><span className={`badge ${TT(r)?.c ?? "nhap"}`}>{TT(r)?.l ?? r.tinh_trang}</span>{r.ceo_ly_do?.length > 0 && <span className="badge reject" title={ceoTxt(r.ceo_chi_tiet, r.ceo_ly_do)} style={{ marginLeft: 4 }}>Cấp CEO</span>}</> : <span className="muted">—</span> },
     { k: "ba_ngay", l: "Ngày NM / dự kiến / hàng về", nhom: "Theo dõi", get: (r) => [ngay(r.ngay_nm_cam_ket), ngay(r.ngay_du_kien_gan_nhat), ngay(r.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo)].join(" | "),
       render: (r) => <span style={{ whiteSpace: "nowrap" }}><BaNgay nm={r.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={r.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={!!r.ngay_ve_du} />{r.han_cap_nhat_lai && <div style={{ fontSize: 11, color: "var(--danger)" }}>cập nhật trước {ngayGio(r.han_cap_nhat_lai)}</div>}</span> },
     { k: "han_ndk", l: "Hạn có ngày dự kiến", nhom: "Theo dõi", get: (r) => r.theo_doi ? (r.ap_dung ? ngayGio(r.han_ngay_du_kien) : "không áp dụng quy tắc") : "" },
     { k: "so_lan_lui", l: "Số lần lùi ngày DK", nhom: "Theo dõi", align: "center", get: (r) => r.so_lan_lui || "" },
-    { k: "ceo", l: "Lý do cấp CEO", nhom: "Theo dõi", maxW: 220, get: (r) => (r.ceo_ly_do ?? []).join("; "), render: (r) => r.ceo_ly_do?.length ? <span style={{ color: "var(--danger)", fontSize: 12 }}>{r.ceo_ly_do.join(" · ")}</span> : "" },
+    { k: "ceo", l: "Lý do cấp CEO (diễn giải)", nhom: "Theo dõi", get: (r) => ceoTxt(r.ceo_chi_tiet, r.ceo_ly_do),
+      render: (r) => r.ceo_ly_do?.length ? <div title={ceoTxt(r.ceo_chi_tiet, r.ceo_ly_do)} style={{ color: "var(--danger)", fontSize: 12, minWidth: 200, whiteSpace: "normal" }}>
+        {(r.ceo_chi_tiet?.length ? r.ceo_chi_tiet : r.ceo_ly_do.map((x: string) => ({ tieu_de: x, gia_tri: "", nguong: "" }))).map((c: any, i: number) =>
+          <div key={i}>• {c.tieu_de}{c.gia_tri ? <>: <b>{c.gia_tri}</b> <span className="muted">({c.nguong})</span></> : null}</div>)}</div> : "" },
+    { k: "tien_trinh", l: "Tiến trình 8 giai đoạn", nhom: "Giai đoạn", get: (r) => r.gd_hien_tai_ten ? `${r.gd_hien_tai} ${r.gd_hien_tai_ten}` : "", render: (r) => <TienTrinhGon r={r} soLoi={r.so_loi} loiCho={r.so_loi_cho_gt} /> },
     // ---- giai doan
     { k: "gd_hien_tai", l: "Giai đoạn hiện tại", nhom: "Giai đoạn", get: (r) => r.gd_hien_tai_ten ? `${r.gd_hien_tai} ${r.gd_hien_tai_ten}${r.gd_tre ? " (trễ)" : ""}` : "", render: (r) => <GdBadge r={r} /> },
     { k: "g4_tt", l: "G4 Gửi đơn NCC (mail)", nhom: "Giai đoạn", get: (r) => ({ DA_GUI: "Đã gửi", CHUA_GHI_NHAN: "Chưa ghi nhận mail", TRE: "Trễ" } as any)[r.g4_trang_thai] ?? "", render: (r) => r.g4_trang_thai === "DA_GUI" ? <span className="badge issued">Đã gửi</span> : r.g4_trang_thai === "TRE" ? <span className="badge reject">Chưa thấy mail · trễ</span> : r.g4_trang_thai ? <span className="badge nhap">Chưa ghi nhận</span> : <span className="muted">—</span> },

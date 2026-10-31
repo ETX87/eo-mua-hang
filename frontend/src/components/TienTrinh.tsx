@@ -108,3 +108,71 @@ export function TienTrinh({ defs, sla, rows, loi, onChonNut }: {
     </div>
   );
 }
+
+/** 8 giai doan (khop backend lib/giaiDoan GIAI_DOAN) - dung cho tien trinh thu gon khi khong co defs tu API. */
+export const GD_8: GdDef[] = [
+  { k: "G1", l: "Lập & trình EO", vai_tro: "Người tạo EO" }, { k: "G2", l: "Thẩm định", vai_tro: "Người thẩm định" },
+  { k: "G3", l: "Duyệt cuối & ban hành", vai_tro: "Người duyệt cuối" }, { k: "G4", l: "Gửi đơn cho NCC (mail)", vai_tro: "NV đặt hàng" },
+  { k: "G5", l: "Có ngày dự kiến", vai_tro: "NV đặt hàng" }, { k: "G6", l: "Chờ sản xuất & giao", vai_tro: "Nhà cung cấp" },
+  { k: "G7", l: "Nhập kho & lên hệ thống", vai_tro: "Kho / Kế toán" }, { k: "G8", l: "Giao bù đến đủ", vai_tro: "NCC + NV theo dõi" },
+];
+
+/**
+ * Tien trinh THU GON cua 1 dong (1 o bang): 8 cham noi lien + "Gx ten · thoi gian · tre" + so loi. Bam -> popup don hang.
+ * r: dong co gd_moc / gd_gio_tung / gd_tre_tung / gd_hien_tai (GET /so-don-hang, /xem/linh-kien giai_doan).
+ */
+export function TienTrinhGon({ r, soLoi = 0, loiCho = 0, onClick }: { r: Row | null | undefined; soLoi?: number; loiCho?: number; onClick?: () => void }) {
+  if (!r?.gd_hien_tai) return <span className="muted">—</span>;
+  const xongHet = r.gd_hien_tai === "XONG", huy = r.gd_hien_tai === "HUY";
+  const cur = GD_8.find((g) => g.k === r.gd_hien_tai);
+  const tre = !!r.gd_tre;
+  return (
+    <div className="ttg" onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined} style={{ cursor: onClick ? "pointer" : undefined }}
+      title={GD_8.map((g) => {
+        const m = r.gd_moc?.[g.k];
+        const gio = r.gd_gio_tung?.[g.k];
+        return `${g.k} ${g.l}: ${!m?.bd ? "chưa tới" : m.kt ? `xong${gio != null ? ` (${gioTxt(gio)})` : ""}` : `đang${gio != null ? ` ${gioTxt(gio)}` : ""}`}${r.gd_tre_tung?.[g.k] ? " · trễ" : ""}`;
+      }).join("\n") + (onClick ? "\n— Bấm để xem chi tiết đơn hàng" : "")}>
+      <div className="ttg-cham">
+        {GD_8.map((g, i) => {
+          const m = r.gd_moc?.[g.k];
+          const dang = r.gd_hien_tai === g.k;
+          const tt: TrangThai = dang ? (r.gd_tre_tung?.[g.k] ? "tre" : "dang") : m?.kt ? (r.gd_tre_tung?.[g.k] ? "mot_phan" : "xong") : m?.bd && g.k === "G4" ? "dang" : "chua";
+          const c = MAU[tt];
+          return (
+            <span key={g.k} style={{ display: "inline-flex", alignItems: "center" }}>
+              {i > 0 && <span className="ttg-noi" style={{ background: r.gd_moc?.[GD_8[i - 1].k]?.kt ? "#22C55E" : "#E2E8F0" }} />}
+              <span className={`ttg-dot${dang ? " on" : ""}`} style={{ background: c.nen, borderColor: c.vien }} />
+            </span>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, whiteSpace: "nowrap", color: tre && !xongHet && !huy ? "var(--danger-ink)" : "var(--text-muted)" }}>
+        {xongHet ? "✓ Hoàn tất (về đủ)" : huy ? "Đã hủy" : `${r.gd_hien_tai} ${cur?.l ?? r.gd_hien_tai_ten ?? ""}${r.gd_gio != null ? ` · ${gioTxt(r.gd_gio)}` : ""}${tre ? " · trễ" : ""}`}
+        {soLoi > 0 && <span className={`badge ${loiCho ? "reject" : "nhap"}`} style={{ fontSize: 9.5, marginLeft: 4, padding: "0 5px" }}>{soLoi} lỗi</span>}
+      </div>
+    </div>
+  );
+}
+
+export interface CeoCt { ma: string; tieu_de: string; nguong: string; gia_tri: string; dong: string[] }
+/** Chuoi giai thich cap CEO (tooltip / Excel). */
+export const ceoTxt = (ct?: CeoCt[], lyDo?: string[]) =>
+  ct?.length ? ct.map((c) => `• ${c.tieu_de}: ${c.gia_tri} (ngưỡng ${c.nguong})${c.dong.length ? "\n   " + c.dong.join("\n   ") : ""}`).join("\n") : (lyDo ?? []).join("\n");
+
+/** Khung "Vi sao don nay o cap CEO" - dien giai tung ly do (backend lib/theoDoi ceo_chi_tiet). */
+export function GiaiThichCeo({ ct, lyDo }: { ct?: CeoCt[]; lyDo?: string[] }) {
+  if (!ct?.length && !lyDo?.length) return null;
+  return (
+    <div style={{ marginTop: 10, border: "1px solid #FCA5A5", background: "#FEF2F2", borderRadius: 10, padding: "8px 12px", fontSize: 12.5 }}>
+      <b style={{ color: "var(--danger-ink)" }}>Vì sao đơn này ở cấp CEO</b>
+      <span className="muted" style={{ marginLeft: 8, fontSize: 11.5 }}>Lên cấp CEO khi có 1 trong 3: lùi ngày dự kiến ≥ 3 lần · ngày dự kiến cách ngày đặt ≥ 30 ngày · ≥ 3 lỗi theo dõi</span>
+      {(ct?.length ? ct : (lyDo ?? []).map((x) => ({ ma: "", tieu_de: x, nguong: "", gia_tri: "", dong: [] }))).map((c, i) => (
+        <div key={i} style={{ marginTop: 6 }}>
+          <div><b>{i + 1}. {c.tieu_de}</b>{c.gia_tri && <>: <b style={{ color: "var(--danger-ink)" }}>{c.gia_tri}</b> <span className="muted">(ngưỡng {c.nguong})</span></>}</div>
+          {c.dong.length > 0 && <ul style={{ margin: "2px 0 0", paddingLeft: 20 }}>{c.dong.map((d, j) => <li key={j}>{d}</li>)}</ul>}
+        </div>
+      ))}
+    </div>
+  );
+}

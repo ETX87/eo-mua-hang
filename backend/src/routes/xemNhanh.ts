@@ -1,3 +1,4 @@
+import { layGiaiDoan } from "../lib/giaiDoan";
 import { Hono } from "hono";
 import type { Env, AppVariables } from "../types";
 import { cachedReport } from "../lib/reportCache";
@@ -127,12 +128,19 @@ app.get("/linh-kien", async (c) => {
   ]);
   const idSet = new Set(dong.map((r) => r.item_id));
   const td = dong.some((r) => r.trang_thai_eo === "ISSUED") ? (await layDongTheoDoi(c.env, "tat_ca")).filter((r) => idSet.has(r.item_id)) : [];
+  // giai doan tung dong (lib/giaiDoan, da cache) -> tien trinh thu gon o tab lich su dat hang
+  const gd = await layGiaiDoan(c.env);
+  const giaiDoan = Object.fromEntries(dong.map((r) => {
+    const g = gd.map.get(r.item_id);
+    return [r.item_id, g ? { item_id: r.item_id, gd_hien_tai: g.gd_hien_tai, gd_hien_tai_ten: g.gd_hien_tai_ten, gd_gio: g.gd_gio, gd_tre: g.gd_tre,
+      gd_moc: g.moc, gd_gio_tung: g.gio, gd_tre_tung: g.tre } : null];
+  }));
   const mo = dong.filter((r) => !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang) && r.trang_thai_eo === "ISSUED");
   const xong = dong.filter((r) => r.trang_thai_don_hang === "Kết thúc" && r.thoi_gian_xu_ly_ngay != null);
   const tenMoiNhat = dong.find((r) => r.part_name)?.part_name ?? nhap.results.find((r) => r.part_name)?.part_name ?? "";
   const thayMa = [...new Set(dong.filter((r) => r.part_code_goc).map((r) => `${r.part_code_goc} → ${r.part_code}`))];
   return c.json({
-    ma, ten: tenMoiNhat, thay_ma: thayMa,
+    ma, ten: tenMoiNhat, thay_ma: thayMa, giai_doan: giaiDoan,
     tong: {
       so_eo: new Set(dong.map((r) => r.eo_id)).size, so_dong: dong.length,
       sl_dat: dong.filter((r) => r.trang_thai_eo === "ISSUED").reduce((s, r) => s + (r.so_luong_dat || 0), 0),

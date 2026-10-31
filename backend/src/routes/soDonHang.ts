@@ -61,7 +61,7 @@ app.get("/", async (c) => {
       // theo doi (null khi dong ngoai pham vi: chua ban hanh / EO huy / dat truoc moc bo qua)
       theo_doi: !!t, tinh_trang: t?.tinh_trang ?? null, ap_dung: t?.ap_dung ?? false, bat_dau: t?.bat_dau ?? null,
       han_ngay_du_kien: t?.han_ngay_du_kien ?? null, han_cap_nhat_lai: t?.han_cap_nhat_lai ?? null,
-      so_lan_lui: t?.so_lan_lui ?? 0, ceo_ly_do: t?.ceo_ly_do ?? [], ngay_hang_ve: t?.ngay_hang_ve ?? null,
+      so_lan_lui: t?.so_lan_lui ?? 0, ceo_ly_do: t?.ceo_ly_do ?? [], ceo_chi_tiet: t?.ceo_chi_tiet ?? [], ngay_hang_ve: t?.ngay_hang_ve ?? null,
       ngay_ve_du: t?.ngay_ve_du ?? null, sl_nhap_amis: t?.sl_nhap_amis ?? r.sl_nhap_amis_dung_eo ?? 0, nguoi_dat: t?.nguoi_dat ?? e.created_by ?? null,
     };
   });

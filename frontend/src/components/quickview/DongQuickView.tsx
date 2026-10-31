@@ -8,7 +8,7 @@ import { gioTxt } from "../../lib/giaiDoan";
 import { MocTon } from "../../lib/tonDong";
 import { NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink, PartLink } from "./QuickView";
-import { TienTrinh, tinhNut, LOI_GD, type GdDef } from "../TienTrinh";
+import { TienTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong } from "../../pages/theodoi/shared";
 
 /**
@@ -57,7 +57,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             <span style={{ fontSize: 15, fontWeight: 600 }}>{it.part_name}</span>
             {r.trang_thai_don_hang && <span className="badge nhap">{r.trang_thai_don_hang}</span>}
             {tt && <span className={`badge ${tt.c}`}>{tt.l}</span>}
-            {(r.ceo_ly_do ?? []).length > 0 && <span className="badge reject" title={r.ceo_ly_do.join("\n")}>Cấp CEO</span>}
+            {(r.ceo_ly_do ?? []).length > 0 && <span className="badge reject" title={ceoTxt(r.ceo_chi_tiet, r.ceo_ly_do)}>Cấp CEO</span>}
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
             <span>EO <EoLink id={it.eo_id}>{it.approval_code || it.eo_code}</EoLink>{it.approval_code ? ` (${it.eo_code})` : ""} {r.trang_thai_eo && <StatusBadge status={r.trang_thai_eo} />}</span>
@@ -79,6 +79,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           <Kpi l="Tồn (từ ngày đặt)" v={["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? <MocTon tu={r.bat_dau ?? r.ngay_ban_hanh} nho /> : "—"} />
           <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
         </div>
+        {(r.ceo_ly_do ?? []).length > 0 && <GiaiThichCeo ct={r.ceo_chi_tiet} lyDo={r.ceo_ly_do} />}
         {r.item_id ? <TienTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} /> : <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
       </div>
 

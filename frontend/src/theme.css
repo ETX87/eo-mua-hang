@@ -201,3 +201,9 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .tt-ten { font-size: 12px; font-weight: 800; margin-top: 4px; line-height: 1.2; }
 .tt-phu { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
 .tt-gio { font-size: 12px; font-weight: 800; margin-top: 2px; }
+/* Tien trinh thu gon 1 dong (TienTrinhGon) */
+.ttg { display: inline-flex; flex-direction: column; gap: 2px; }
+.ttg-cham { display: inline-flex; align-items: center; }
+.ttg-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid; display: inline-block; }
+.ttg-dot.on { width: 13px; height: 13px; box-shadow: 0 0 0 2px #fff, 0 0 0 3px currentColor; }
+.ttg-noi { width: 7px; height: 2px; display: inline-block; }

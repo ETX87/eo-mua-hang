@@ -60,8 +60,19 @@ export interface DongTheoDoi {
   ngay_nm_cam_ket: string | null;
   /** dong them SAU khi EO ban hanh (1) hay co tu luc trinh duyet (0) */
   sau_ban_hanh: boolean;
+  /** chuoi ngan (viecCanLam loc theo noi dung: "Lùi…", "…ngày đặt…", "…lỗi") - KHONG doi chu */
   ceo_ly_do: string[];
+  /** dien giai tung ly do cap CEO (nguong, gia tri, cac lan lui / moc ngay / loi theo quy tac) - FE GiaiThichCeo */
+  ceo_chi_tiet: CeoChiTiet[];
+  /** cac lan LUI ngay du kien (ngay moi > ngay truoc) - chi dong co lui */
+  lui_ds?: LanLui[];
+  /** so loi theo quy tac { R1: 1, R3: 4, ... } */
+  loi_qt?: Record<string, number>;
 }
+export interface LanLui { luc: string; tu: string; den: string; ai: string | null }
+export interface CeoChiTiet { ma: "LUI" | "XA" | "LOI"; tieu_de: string; nguong: string; gia_tri: string; dong: string[] }
+const QT_TEN: Record<string, string> = { R1: "Không có ngày DK trong 24h", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
+const dmy = (s: string) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
 
 async function ngayApDung(env: Env): Promise<string> {
   const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_ap_dung_tu'").first<{ value: string }>();
@@ -75,7 +86,7 @@ async function ngayBoQuaTruoc(env: Env): Promise<string> {
 }
 
 /** Phan doc DB cua 1 dong theo doi (khong phu thuoc gio hien tai) - cache theo version, xem layDongTheoDoi. */
-type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do" | "co_ngay_du_kien"> & { ngay_tao: string };
+type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do" | "ceo_chi_tiet" | "co_ngay_du_kien"> & { ngay_tao: string };
 
 /**
  * Toan bo dong EO DA BAN HANH (khong gom EO huy) + chi so theo doi. pham_vi 'dang_mo' = chua ket thuc.
@@ -84,7 +95,7 @@ type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do"
  * phan phu thuoc "bay gio" (tre 24h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
  */
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v2", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -98,13 +109,28 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
     const tinhTrang: DongTheoDoi["tinh_trang"] = dong ? "DONG" : quaHan ? "QUA_HAN_NDK"
       : !coNdk ? (r.han_ngay_du_kien && now > r.han_ngay_du_kien ? "TRE_NDK" : "CHO_NDK") : "CHO_HANG";
     const ceo: string[] = [];
+    const ct: CeoChiTiet[] = [];
     if (r.ap_dung && !dong) {
-      if (r.so_lan_lui >= 3) ceo.push(`Lùi ngày dự kiến ${r.so_lan_lui} lần`);
+      if (r.so_lan_lui >= 3) {
+        ceo.push(`Lùi ngày dự kiến ${r.so_lan_lui} lần`);
+        ct.push({ ma: "LUI", tieu_de: "Lùi ngày dự kiến nhiều lần", nguong: "≥ 3 lần", gia_tri: `${r.so_lan_lui} lần`,
+          dong: (r.lui_ds ?? []).map((x, i) => `Lần ${i + 1}: ${dmy(x.luc)} ${x.luc.slice(11, 16)}${x.ai ? ` · ${x.ai}` : " · Hệ thống"} — ${dmy(x.tu)} → ${dmy(x.den)} (+${soNgay(x.tu, x.den)} ngày)`) });
+      }
       const ngayDat = (r.bat_dau ?? ngay_tao).slice(0, 10);
-      if (ndk && soNgay(ngayDat, ndk) >= 30) ceo.push(`Ngày dự kiến cách ngày đặt ${soNgay(ngayDat, ndk)} ngày, chưa có hàng`);
-      if (r.so_loi >= 3) ceo.push(`${r.so_loi} lỗi`);
+      if (ndk && soNgay(ngayDat, ndk) >= 30) {
+        ceo.push(`Ngày dự kiến cách ngày đặt ${soNgay(ngayDat, ndk)} ngày, chưa có hàng`);
+        ct.push({ ma: "XA", tieu_de: "Ngày dự kiến quá xa ngày đặt", nguong: "≥ 30 ngày", gia_tri: `${soNgay(ngayDat, ndk)} ngày`,
+          dong: [`Ngày đặt ${dmy(ngayDat)} (${r.sau_ban_hanh ? "dòng thêm sau ban hành được duyệt" : "EO ban hành"})`,
+            `Ngày dự kiến gần nhất ${dmy(ndk)} → cách ${soNgay(ngayDat, ndk)} ngày`,
+            `Đã về ${r.sl_nhap_amis} / ${r.so_luong_dat}, còn thiếu ${r.so_luong_con_thieu}`] });
+      }
+      if (r.so_loi >= 3) {
+        ceo.push(`${r.so_loi} lỗi`);
+        ct.push({ ma: "LOI", tieu_de: "Nhiều lỗi theo dõi", nguong: "≥ 3 lỗi (đếm từng lần)", gia_tri: `${r.so_loi} lỗi, ${r.so_loi_cho_gt} chờ giải trình`,
+          dong: Object.entries(r.loi_qt ?? {}).map(([q, n]) => `${QT_TEN[q] ?? q}: ${n} lần`) });
+      }
     }
-    out.push({ ...r, co_ngay_du_kien: coNdk, han_cap_nhat_lai: quaHan ? congGioLamViec(ngaySau(ndk!)) : null, tinh_trang: tinhTrang, ceo_ly_do: ceo });
+    out.push({ ...r, co_ngay_du_kien: coNdk, han_cap_nhat_lai: quaHan ? congGioLamViec(ngaySau(ndk!)) : null, tinh_trang: tinhTrang, ceo_ly_do: ceo, ceo_chi_tiet: ct });
   }
   return out;
 }
@@ -130,12 +156,12 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
        FROM item_plan p WHERE p.eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY p.eo_item_id`,
     ).bind(ids).all<any>(),
     db.prepare(
-      `SELECT eo_item_id, COUNT(*) n, SUM(trang_thai = 'CHO_GIAI_TRINH') cho FROM tl_loi
-       WHERE eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY eo_item_id`,
+      `SELECT eo_item_id, quy_tac, COUNT(*) n, SUM(trang_thai = 'CHO_GIAI_TRINH') cho FROM tl_loi
+       WHERE eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY eo_item_id, quy_tac`,
     ).bind(ids).all<any>(),
     // lich su ngay du kien (dem so lan lui) - chi dong ap dung de nhe
     db.prepare(
-      `SELECT entity_id, event_type, after_json, metadata_json, created_at FROM event_log
+      `SELECT entity_id, event_type, after_json, metadata_json, created_at, user_email FROM event_log
        WHERE event_type IN ('ADD_PLAN','UPDATE_PLAN','BULK_PLAN') AND created_at >= ?
          AND eo_id IN (SELECT id FROM eo WHERE issued_at >= ?) ORDER BY created_at, id`,
     ).bind(apDung, apDung).all<any>(),
@@ -159,7 +185,14 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
   const metaBy = new Map(meta.results.map((r: any) => [r.id, r]));
   const fpBy = new Map(firstPlan.results.map((r: any) => [r.eo_item_id, r.t as string]));
   const nmBy = new Map(firstPlan.results.map((r: any) => [r.eo_item_id, (r.nm as string | null) ?? null]));
-  const loiBy = new Map(loi.results.map((r: any) => [r.eo_item_id, r]));
+  // loi: tong + theo quy tac (dien giai cap CEO)
+  const loiBy = new Map<number, { n: number; cho: number; qt: Record<string, number> }>();
+  for (const x of loi.results as any[]) {
+    const g = loiBy.get(x.eo_item_id) ?? { n: 0, cho: 0, qt: {} };
+    g.n += x.n; g.cho += x.cho ?? 0; g.qt[x.quy_tac] = x.n;
+    loiBy.set(x.eo_item_id, g);
+  }
+  const luiDs = new Map<number, LanLui[]>();
   // so lan lui: chuoi ngay du kien moi nhat theo thoi gian, dem lan ngay moi > ngay truoc
   const luiBy = new Map<number, number>();
   const lastBy = new Map<number, string>();
@@ -180,7 +213,10 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
     } catch { continue; }
     if (!itemId || !ngay) continue;
     const truoc = lastBy.get(itemId);
-    if (truoc && ngay > truoc) luiBy.set(itemId, (luiBy.get(itemId) ?? 0) + 1);
+    if (truoc && ngay > truoc) {
+      luiBy.set(itemId, (luiBy.get(itemId) ?? 0) + 1);
+      luiDs.set(itemId, [...(luiDs.get(itemId) ?? []), { luc: e.created_at, tu: truoc, den: ngay, ai: e.user_email ?? null }]);
+    }
     lastBy.set(itemId, ngay);
   }
 
@@ -205,6 +241,7 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
       so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0, ngay_ve_du: veDuBy.get(r.item_id) ?? null,
       ngay_hang_ve: veCuoiBy.get(r.item_id) ?? null, ngay_nm_cam_ket: nmBy.get(r.item_id) ?? null,
       sau_ban_hanh: m?.created_after_issue === 1, ngay_tao: r.ngay_tao,
+      ...(luiDs.has(r.item_id) ? { lui_ds: luiDs.get(r.item_id) } : {}), ...(l ? { loi_qt: l.qt } : {}),
     };
   });
 }
