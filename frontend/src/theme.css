@@ -129,10 +129,11 @@ table.tbl tbody tr { height: 40px; }
 .qv-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); z-index: 80; display: grid; place-items: center; }
 .qv-panel {
   width: 95vw; height: 95vh; background: var(--panel-2); border-radius: 18px; box-shadow: 0 24px 64px rgba(15,23,42,.35);
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto;
 }
 .qv-head { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 20px; }
-.qv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 420px); gap: 14px; padding: 14px 20px 18px; }
+/* min-height: dau popup cao (KPI + duong tien trinh) tren man nho -> than van du cao, popup cuon */
+.qv-body { flex: 1 1 0; min-height: max(320px, 45vh); display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 420px); gap: 14px; padding: 14px 20px 18px; }
 .qv-col { min-height: 0; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 .qv-scroll { flex: 1; min-height: 0; overflow: auto; }
 .qv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin-top: 12px; }
@@ -159,7 +160,7 @@ table.tbl tbody tr { height: 40px; }
 .qv-link { color: var(--link-amber); font-weight: 600; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; text-align: left; }
 .qv-link:hover { text-decoration: underline; }
 .qv-sec { font-size: 12px; font-weight: 800; letter-spacing: .4px; color: var(--text-muted); text-transform: uppercase; margin: 14px 14px 6px; }
-@media (max-width: 1100px) { .qv-body { grid-template-columns: minmax(0, 1fr); overflow: auto; } }
+@media (max-width: 1100px) { .qv-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, auto) minmax(300px, auto); overflow: auto; } }
 
 /* Form tao / sua EO */
 .eo-form-info { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; }
@@ -190,3 +191,13 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .ql-v { font-size: 22px; font-weight: 900; line-height: 1.2; }
 .ql-s { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qv-tim { margin-left: auto; width: 230px; height: 30px; font-size: 12.5px; align-self: center; flex-shrink: 0; }
+
+/* Duong tien trinh 8 giai doan (components/TienTrinh.tsx) */
+.tt-wrap { margin-top: 12px; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; }
+.tt-line { display: flex; overflow-x: auto; padding-top: 2px; }
+.tt-nut { position: relative; flex: 1 1 0; min-width: 112px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 4px; }
+.tt-noi { position: absolute; top: 14px; right: 50%; width: 100%; height: 3px; z-index: 0; }
+.tt-tron { position: relative; z-index: 1; width: 30px; height: 30px; border-radius: 50%; border: 2px solid; display: grid; place-items: center; font-weight: 900; font-size: 13px; }
+.tt-ten { font-size: 12px; font-weight: 800; margin-top: 4px; line-height: 1.2; }
+.tt-phu { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
+.tt-gio { font-size: 12px; font-weight: 800; margin-top: 2px; }

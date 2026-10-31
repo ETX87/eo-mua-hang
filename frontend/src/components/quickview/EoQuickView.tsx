@@ -10,11 +10,14 @@ import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, PartLink } from "./QuickView";
+import { QvHeader, Kpi, PartLink, useQuickView } from "./QuickView";
+import { TienTrinh, type GdDef } from "../TienTrinh";
+import { GdBadge } from "../../lib/giaiDoan";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
   actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, xuatDongEo,
 } from "../../pages/eo/eoActions";
+import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 
 /**
@@ -47,6 +50,9 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const qc = useQueryClient();
   const goc = useQuery({ queryKey: ["eo", String(id)], queryFn: () => api.get<any>(`/eo/${id}`) });
   const bs = useQuery({ queryKey: ["eo-bo-sung", id], queryFn: () => api.get<any>(`/xem/eo/${id}/bo-sung`) });
+  // giai doan tung dong (cung nguon Quan ly don hang) -> duong tien trinh EO + cot giai doan
+  const sdh = useQuery({ queryKey: ["so-don-hang", "eo", id], queryFn: () => api.get<{ giai_doan: GdDef[]; sla: Record<string, number>; rows: any[] }>(`/so-don-hang?eo_id=${id}`) });
+  const qv = useQuickView();
   const [tab, setTab] = useState<Tab>("lk");
   const [nhom, setNhom] = useState<Nhom>("all");
   const [cmt, setCmt] = useState("");
@@ -68,17 +74,25 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const tl = useMemo(() => {
     if (!d) return [];
     const out: { at: string; nhom: Nhom; h: string; ai?: string | null; text?: string }[] = [];
-    for (const e of d.events) {
+    // gom muc trung (lib/gopTrung): su kien giong het (du lieu chuyen tu Sheet cu), loi cung quy tac & han tren nhieu dong,
+    // thu luu 1 ban ghi / dong -> 1 muc kem so dong / ma LK
+    const lk = (ids: number[]) => lietKe(ids.map((x) => (itemBy.get(x) as any)?.part_code));
+    for (const { x: e, ds } of gopTrung(d.events as any[], (e) => `${e.event_type}|${e.entity_type}|${e.entity_id}|${e.created_at}|${moTaSuKien(e) ?? ""}`)) {
       const it = itemBy.get(e.entity_id) as any;
-      out.push({ at: e.created_at, nhom: nhomCua(e.event_type), h: `${EVENT_LABEL[e.event_type] ?? e.event_type}${e.entity_type === "eo_item" && it ? ` · ${it.part_code}` : ""}`, ai: e.user_email, text: moTaSuKien(e) });
+      out.push({ at: e.created_at, nhom: nhomCua(e.event_type), h: `${EVENT_LABEL[e.event_type] ?? e.event_type}${e.entity_type === "eo_item" && it ? ` · ${it.part_code}` : ""}${ds.length > 1 ? ` (×${ds.length})` : ""}`, ai: e.user_email, text: moTaSuKien(e) });
     }
     for (const c of d.comments) out.push({ at: c.created_at, nhom: "binhluan", h: "Bình luận", ai: c.user_email, text: c.noi_dung });
-    for (const l of b?.loi ?? []) {
-      const it = itemBy.get(l.eo_item_id) as any;
-      out.push({ at: l.han || l.created_at, nhom: "loi", h: `Lỗi: ${QUY_TAC[l.quy_tac] ?? l.quy_tac}${it ? ` · ${it.part_code}` : ""}`, ai: l.ai_email, text: l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình" });
+    for (const { x: l, ds } of gopTrung((b?.loi ?? []) as any[], (l) => `${l.quy_tac}|${String(l.han || l.created_at).slice(0, 10)}|${l.trang_thai}`)) {
+      const ids = ds.map((y) => y.eo_item_id);
+      out.push({ at: l.han || l.created_at, nhom: "loi", h: `Lỗi: ${QUY_TAC[l.quy_tac] ?? l.quy_tac}${ds.length > 1 ? ` · ${new Set(ids).size} dòng` : ` · ${lk(ids)}`}`, ai: l.ai_email,
+        text: `${l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}${ds.length > 1 ? ` — ${lk(ids)}` : ""}` });
     }
     for (const p of b?.push ?? []) out.push({ at: p.created_at, nhom: "mail", h: `Tạo push ${p.ma_push} · ${p.doi_tac}`, ai: p.created_by, text: `${p.so_dong} dòng · ${p.trang_thai === "DA_TAO" ? "đã tạo file" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"}` });
-    for (const m of b?.mail ?? []) out.push({ at: m.thoi_gian || m.synced_at, nhom: "mail", h: `${m.huong === "GUI" ? "✉ Gửi" : "✉ Nhận"}: ${m.tieu_de ?? ""}`, ai: m.huong === "GUI" ? m.den : m.tu, text: m.tom_tat ?? "" });
+    for (const { x: m, ds } of gopTrung((b?.mail ?? []) as any[], khoaMail)) {
+      const ids = ds.map((y) => y.eo_item_id).filter((x) => itemBy.has(x));
+      out.push({ at: m.thoi_gian || m.synced_at, nhom: "mail", h: `${m.huong === "GUI" ? "✉ Gửi" : "✉ Nhận"}: ${m.tieu_de ?? ""}`, ai: m.huong === "GUI" ? m.den : m.tu,
+        text: [m.tom_tat, ids.length ? `${new Set(ids).size} dòng của EO: ${lk(ids)}` : ""].filter(Boolean).join(" · ") });
+    }
     return out.sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 300);
   }, [d, b, itemBy]);
 
@@ -127,12 +141,13 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     finally { setBusy(false); }
   };
 
+  const mailGop = gopTrung((b?.mail ?? []) as any[], khoaMail);
   const tabs: { k: Tab; l: string }[] = [
     { k: "lk", l: `Linh kiện (${d.items.length})` },
     { k: "kh", l: `Kế hoạch & hàng về (${d.plans.length} · ${(b?.phieu_nhap ?? []).length})` },
     { k: "duyet", l: `Quy trình duyệt (${d.submissions.length})` },
     { k: "file", l: `Tài liệu (${d.files.length})` },
-    { k: "mail", l: `Mail & push (${(b?.mail ?? []).length + (b?.push ?? []).length})` },
+    { k: "mail", l: `Mail & push (${mailGop.length + (b?.push ?? []).length})` },
   ];
 
   return (
@@ -173,6 +188,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
           <Kpi l="Tài liệu" v={soLuong(d.files.length)} />
         </div>
+        {sdh.data && <TienTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []} />}
         <div className="qv-alerts">
           {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
             : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
@@ -199,7 +215,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
             {tab === "lk" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Ca / ghi chú</th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th>Giai đoạn</th><th>Ca / ghi chú</th></tr></thead>
                 <tbody>
                   {d.items.map((r: any, i: number) => ({ r, i })).filter(({ r }: any) => k({ ...r, ...(tdBy.get(r.id) as any ?? {}) })).map(({ r, i }: any) => {
                     const t = tdBy.get(r.id) as any;
@@ -208,6 +224,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                     const active = r.line_status !== "CANCELLED_LINE";
                     return (
                       <tr key={r.id} style={{ opacity: active ? 1 : 0.5 }}><td className="qv-act">
+                          <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi" onClick={() => qv.openDong(r.id)}><I.trend width={14} height={14} /></button>
                           {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
                           {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
                           {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
@@ -227,6 +244,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                         <td><BaNgay nm={t?.ngay_nm_cam_ket ?? [...kh].filter((p: any) => p.factory_committed_date).sort((a: any, b: any) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date}
                           dk={ndk} ve={(b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop()} veDu={r.da_dat >= r.current_qty} /></td>
                         <td style={{ whiteSpace: "nowrap" }}>{t ? <><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={t.ceo_ly_do.join("\n")}>CEO</span>}</> : <span className="muted">—</span>}</td>
+                        <td>{(() => { const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id); return g ? <span className="qv-link" onClick={() => qv.openDong(r.id)}><GdBadge r={g} /></span> : <span className="muted">—</span>; })()}</td>
                         <td><Clip w={120}>{[r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—"}</Clip></td>
                       </tr>
                     );
@@ -290,10 +308,14 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                 </table>
                 <div className="qv-sec">Luồng mail theodoimuahang@gmail.com</div>
                 <table className="tbl tbl-dense">
-                  <thead><tr><th></th><th>Lúc</th><th>Từ → Đến</th><th>Tiêu đề / tóm tắt</th></tr></thead>
+                  <thead><tr><th></th><th>Lúc</th><th>Từ → Đến</th><th>Tiêu đề / tóm tắt</th><th title="Thư chung cho nhiều dòng — app đọc mail lưu 1 bản ghi / dòng">Dòng của EO</th></tr></thead>
                   <tbody>
-                    {(b?.mail ?? []).length === 0 && <tr><td colSpan={4} className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</td></tr>}
-                    {(b?.mail ?? []).filter(k).map((m: any) => <tr key={m.id}><td>{m.huong === "GUI" ? "→" : "←"}</td><td style={{ whiteSpace: "nowrap" }}>{ngayGio(m.thoi_gian)}</td><td><Clip w={220}>{m.tu} → {m.den}</Clip></td><td><Clip w={420}><b>{m.tieu_de}</b>{m.tom_tat ? ` — ${m.tom_tat}` : ""}</Clip></td></tr>)}
+                    {mailGop.length === 0 && <tr><td colSpan={5} className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</td></tr>}
+                    {mailGop.filter(({ x }) => k(x)).map(({ x: m, ds }) => {
+                      const ids = ds.map((y: any) => y.eo_item_id).filter((x: number) => itemBy.has(x));
+                      return <tr key={m.id}><td>{m.huong === "GUI" ? "→" : "←"}</td><td style={{ whiteSpace: "nowrap" }}>{ngayGio(m.thoi_gian)}</td><td><Clip w={220}>{m.tu} → {m.den}</Clip></td><td><Clip w={420}><b>{m.tieu_de}</b>{m.tom_tat ? ` — ${m.tom_tat}` : ""}</Clip></td>
+                        <td><Clip w={160}>{ids.length ? `${new Set(ids).size}: ${lietKe(ids.map((x: number) => (itemBy.get(x) as any)?.part_code))}` : "—"}</Clip></td></tr>;
+                    })}
                   </tbody>
                 </table>
               </>

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner, Modal, StatusBadge } from "../components/ui";
 import { DataTable, type Col } from "../components/DataTable";
-import { EoLink, PartLink } from "../components/quickview/QuickView";
+import { EoLink, PartLink, useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
@@ -192,6 +192,7 @@ function DanhSach() {
   const [sp] = useSearchParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const qv = useQuickView();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const q = useQuery({ queryKey: ["so-don-hang"], queryFn: () => api.get<{ giai_doan: any[]; sla: Record<string, number>; rows: Row[]; danh_gia_luc: string | null }>("/so-don-hang") });
   const [loc, setLoc] = useState<Loc>(() => {
@@ -278,10 +279,10 @@ function DanhSach() {
         <input type="checkbox" title="Chọn mọi dòng đang lọc còn mở (để push đối tác)" checked={tatCaChon} disabled={!chonDuoc.length}
           onChange={() => setChon(tatCaChon ? new Set() : new Set(chonDuoc.map((r) => r.item_id)))} /> Thao tác</span>,
       render: (r) => (
-        <span style={{ display: "inline-flex", gap: 2, alignItems: "center", whiteSpace: "nowrap" }}>
+        <span style={{ display: "inline-flex", gap: 2, alignItems: "center", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
           <input type="checkbox" disabled={!pushDuoc(r)} title={pushDuoc(r) ? "Chọn để push đối tác" : "Chỉ dòng EO đã ban hành, còn mở"} checked={chon.has(r.item_id)}
             onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />
-          <EoLink id={r.eo_id}><span className="btn ghost sm" title="Xem EO (sửa SL, thay mã, hủy / duyệt dòng…)"><I.eye width={14} height={14} /></span></EoLink>
+          <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi, kế hoạch, lịch sử" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
           {r.trang_thai_eo === "ISSUED" && <>
             <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (cập nhật)" onClick={() => setModal({ loai: "ndk", dong: r as Dong })}><I.calendar width={14} height={14} /></button>
             {r.theo_doi && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì + ảnh)" onClick={() => setModal({ loai: "gt", dong: r as Dong })}><I.edit width={14} height={14} /></button>}
@@ -387,7 +388,7 @@ function DanhSach() {
               return n ? <button key={g.k} className={`qv-chip ${loc.gd === g.k ? "on" : ""}`} title={`${g.l} — ${g.vai_tro}`} onClick={() => set({ gd: loc.gd === g.k ? "" : g.k })}>{g.k} {g.l}: <b>{soLuong(n)}</b></button> : null;
             })}
           </div>
-          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={50} empty="Không có dòng nào khớp bộ lọc" />
+          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={50} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc" />
         </Card>
       )}
 

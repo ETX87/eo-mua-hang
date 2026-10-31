@@ -190,6 +190,13 @@ Báo cáo giai đoạn = tab Báo cáo của Quản lý đơn hàng (`/don-hang?
 
 ## Popup xem nhanh (95% màn hình)
 
+**3 loại popup** (v0.052): EO (`openEo`), **đơn hàng = 1 dòng linh kiện** (`openDong(itemId)`, `DongQuickView` — mở khi bấm dòng ở
+Quản lý đơn hàng / nút tiến trình trong popup EO), mã linh kiện (`openPart`). **Đường tiến trình 8 giai đoạn** `components/TienTrinh.tsx`
+(dữ liệu `GET /so-don-hang?eo_id=` — `gd_moc/gd_gio_tung/gd_tre_tung`; EO = gộp các dòng, thời gian = dòng chậm nhất; lỗi gắn giai đoạn
+R3→G4, R1→G5, R4→G6). **Gom log trùng khi hiển thị** `lib/gopTrung.ts`: `tl_mail` lưu 1 bản ghi / dòng cho cùng 1 thư (gom theo
+hướng + tiêu đề + thời gian); lỗi R3/R4 nhiều ngày cùng loại → "× n lần"; event_log kế hoạch chuyển từ Sheet cũ trùng giây → "(×n)".
+Dữ liệu gốc không sửa.
+
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,
 Esc đóng popup trên cùng. Mở từ bất kỳ đâu bằng `useQuickView().openEo/openPart`, `<EoLink id>`, `<PartLink ma>`.
 Dữ liệu bổ sung: `routes/xemNhanh.ts` mount `/api/xem` — `GET /eo/:id/bo-sung` (theo dõi, lỗi, giải trình, push, mail,

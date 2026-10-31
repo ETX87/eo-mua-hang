@@ -1,3 +1,4 @@
+import { gopTrung } from "../../lib/gopTrung";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -63,9 +64,11 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
     return { ty_le: tyLe(daBh), dk: dkTiep(daBh), qua: moDong.filter((r: any) => r.canh_bao === "Quá dự kiến").length, theoKho };
   }, [d]);
 
-  const log = useMemo(() => (d?.log ?? []).filter((e: any) =>
+  // gom ban ghi giong het (du lieu ke hoach chuyen tu Google Sheet cu: nhieu dot tuan cung giay) -> 1 muc "(×n)"
+  const log = useMemo(() => gopTrung((d?.log ?? []).filter((e: any) =>
     loaiLog === "all" ? true : loaiLog === "kh" ? /PLAN/.test(e.event_type)
-      : loaiLog === "sl" ? /QUANTITY|CANCEL_LINE|REPLACE_PART|ADD_ITEM/.test(e.event_type) : !/PLAN|QUANTITY|CANCEL_LINE|REPLACE_PART|ADD_ITEM/.test(e.event_type)), [d, loaiLog]);
+      : loaiLog === "sl" ? /QUANTITY|CANCEL_LINE|REPLACE_PART|ADD_ITEM/.test(e.event_type) : !/PLAN|QUANTITY|CANCEL_LINE|REPLACE_PART|ADD_ITEM/.test(e.event_type)),
+    (e: any) => `${e.event_type}|${e.eo_id}|${e.entity_id}|${e.created_at}|${e.user_email ?? ""}|${moTaSuKien(e) ?? ""}`).map(({ x, ds }) => ({ ...x, so_ban: ds.length })), [d, loaiLog]);
 
   if (q.isLoading) return <Spinner />;
   if (!d) return <div style={{ padding: 30 }}>Không tải được dữ liệu mã {ma}. <button className="btn sm" onClick={onClose}>Đóng</button></div>;
@@ -208,11 +211,11 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                 <thead><tr><th className="qv-act">Thao tác</th><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th></tr></thead>
                 <tbody>
                   {d.loi.length === 0 && <tr><td colSpan={7} className="muted">Không có lỗi theo dõi.</td></tr>}
-                  {d.loi.filter(khopTim(tim)).map((l: any) => <tr key={l.id}><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td><td className="qv-act">{(() => {
+                  {d.loi.filter(khopTim(tim)).map((l: any) => <tr key={l.id}><td className="qv-act">{(() => {
                       const r = d.dong.find((x: any) => x.item_id === l.eo_item_id);
                       return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH"
                         ? <button className="btn sm primary" onClick={() => setMd({ k: "gt", x: asDong(r) })}>Giải trình</button> : null;
-                    })()}</td>
+                    })()}</td><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td>
                     </tr>)}
                 </tbody>
               </table>
@@ -235,7 +238,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
               {log.filter(khopTim(timLog)).map((e: any) => (
                 <li key={e.id} style={{ ["--dot" as any]: /PLAN/.test(e.event_type) ? "#10B981" : /QUANTITY|REPLACE|CANCEL/.test(e.event_type) ? "#F59E0B" : "#3B82F6" }}>
                   <div className="t">{ngayGio(e.created_at)} · {ten(e.user_email)} · {e.eo_id ? <EoLink id={e.eo_id}>{e.eo_code}</EoLink> : null}</div>
-                  <div className="h">{EVENT_LABEL[e.event_type] ?? e.event_type}</div>
+                  <div className="h">{EVENT_LABEL[e.event_type] ?? e.event_type}{e.so_ban > 1 && <span className="muted" style={{ fontWeight: 400 }} title="Bản ghi giống hệt nhau (dữ liệu chuyển từ Google Sheet cũ)"> (×{e.so_ban})</span>}</div>
                   {moTaSuKien(e) && <div className="d">{moTaSuKien(e)}</div>}
                 </li>
               ))}

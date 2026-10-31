@@ -1,3 +1,4 @@
+import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -345,21 +346,37 @@ function DongMail({ payload }: { payload: string | null }) {
 
 /** Lich su theo doi 1 dong: loi, giai trinh, push, mail, thay doi ngay du kien. */
 export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void }) {
+  return (
+    <Modal title={`Lịch sử theo dõi — ${dong.part_code} (${dong.ma_phe_duyet || dong.eo_code})`} onClose={onClose} width={900}>
+      <LichSuDong dong={dong} />
+    </Modal>
+  );
+}
+
+/** Noi dung lich su theo doi 1 dong (dung trong LichSuModal + popup don hang). Gom trung: thu (1 ban ghi / dong), loi cung quy tac. */
+export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" | "kho" | "doi_tac" | "so_luong_dat" | "sl_nhap_amis" | "bat_dau" | "han_ngay_du_kien"> }) {
   const ls = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
   const d = ls.data;
   const H = ({ children }: any) => <div style={{ fontWeight: 700, fontSize: 13.5, margin: "14px 0 6px" }}>{children}</div>;
+  // thu: cung 1 thu luu 1 ban ghi / dong (ca cac dong khac cung dot push) -> 1 muc, uu tien ban ghi cua chinh dong nay (payload dung dong)
+  const mailGop = gopTrung([...(d?.mail ?? [])].sort((a: any, b: any) => (b.eo_item_id === dong.item_id ? 1 : 0) - (a.eo_item_id === dong.item_id ? 1 : 0)), khoaMail)
+    .sort((a: any, b: any) => String(b.x.thoi_gian).localeCompare(String(a.x.thoi_gian)));
+  const loiGop = gopTrung(d?.loi ?? [], (l: any) => `${l.quy_tac}|${l.trang_thai}|${l.ai_ma ?? ""}|${l.loi_ma ?? ""}`);
+  const ndkGop = gopTrung(d?.ngay_du_kien ?? [], (e: any) => `${e.created_at}|${e.event_type}|${e.after_json ?? ""}|${e.user_email ?? ""}`);
   return (
-    <Modal title={`Lịch sử theo dõi — ${dong.part_code} (${dong.ma_phe_duyet || dong.eo_code})`} onClose={onClose} width={900}>
+    <>
       {ls.isLoading || !d ? <Spinner /> : (
         <div style={{ fontSize: 12.5 }}>
           <div className="muted">{dong.part_name} · {dong.kho} · {dong.doi_tac ?? "—"} · đặt {soLuong(dong.so_luong_dat)}, về {soLuong(dong.sl_nhap_amis)} · bắt đầu theo dõi {ngayGio(dong.bat_dau)} · hạn có ngày DK {ngayGio(dong.han_ngay_du_kien)}</div>
-          <H>Lỗi ({d.loi.length})</H>
-          {d.loi.length === 0 ? <div className="muted">Không có lỗi.</div> : d.loi.map((l: any) => (
+          <H>Lỗi ({d.loi.length}{loiGop.length < d.loi.length ? ` — ${loiGop.length} loại` : ""})</H>
+          {d.loi.length === 0 ? <div className="muted">Không có lỗi.</div> : loiGop.map(({ x: l, ds }: any) => (
             <div key={l.id} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
               <span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span>{" "}
-              <b>{QUY_TAC[l.quy_tac]}</b>{l.ngay_tham_chieu ? ` (${ngay(l.ngay_tham_chieu)})` : ""} · hạn {ngayGio(l.han)} · Ai: {tenDm("AI", l.ai_ma)}{l.ai_email ? ` (${ten(l.ai_email)})` : ""} · Lỗi: {tenDm("LOI", l.loi_ma)}
+              <b>{QUY_TAC[l.quy_tac]}</b>{ds.length > 1 && <span className="badge final" style={{ marginLeft: 6 }} title="Quy tắc ghi 1 lỗi cho mỗi lần vi phạm (mỗi ngày / mỗi mốc)">× {ds.length} lần</span>}
+              {" "}· {ds.length > 1 ? `ngày: ${lietKe(ds.map((y: any) => ngay(y.ngay_tham_chieu ?? y.han)), 8)}` : `${l.ngay_tham_chieu ? `(${ngay(l.ngay_tham_chieu)}) · ` : ""}hạn ${ngayGio(l.han)}`}
+              {" "}· Ai: {tenDm("AI", l.ai_ma)}{l.ai_email ? ` (${ten(l.ai_email)})` : ""} · Lỗi: {tenDm("LOI", l.loi_ma)}
             </div>
           ))}
           <H>Giải trình ({d.giai_trinh.length})</H>
@@ -374,24 +391,25 @@ export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void
           {d.push.length === 0 ? <div className="muted">Chưa push.</div> : d.push.map((p: any) => (
             <div key={p.ma_push} style={{ padding: "4px 0" }}><b>{p.ma_push}</b> · {p.doi_tac} · {ngayGio(p.created_at)} · {ten(p.created_by)} · <span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Đã tạo file" : p.trang_thai === "DA_GUI" ? "Đã gửi mail" : "Đối tác đã phản hồi"}</span></div>
           ))}
-          <H>Mail ({d.mail.length})</H>
-          {d.mail.length === 0 ? <div className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</div> : d.mail.map((m: any) => (
-            <div key={m.id} style={{ padding: "4px 0" }}>{m.huong === "GUI" ? "→ Gửi" : "← Nhận"} · {ngayGio(m.thoi_gian)} · {m.tu} → {m.den} · <b>{m.tieu_de}</b>{m.tom_tat ? <div className="muted">{m.tom_tat}</div> : null}
-              <DongMail payload={m.payload} /></div>
+          <H>Mail ({mailGop.length} thư)</H>
+          {mailGop.length === 0 ? <div className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</div> : mailGop.map(({ x: m, ds }: any) => (
+            <div key={m.id} style={{ padding: "4px 0" }}>{m.huong === "GUI" ? "→ Gửi" : "← Nhận"} · {ngayGio(m.thoi_gian)} · {m.tu} → {m.den} · <b>{m.tieu_de}</b>
+              {ds.length > 1 && <span className="muted"> · thư chung cho {ds.length} dòng</span>}{m.tom_tat ? <div className="muted">{m.tom_tat}</div> : null}
+              {m.eo_item_id === dong.item_id && <DongMail payload={m.payload} />}</div>
           ))}
-          <H>Thay đổi ngày dự kiến ({d.ngay_du_kien.length})</H>
-          {d.ngay_du_kien.map((e: any, i: number) => {
+          <H>Thay đổi ngày dự kiến ({ndkGop.length})</H>
+          {ndkGop.map(({ x: e, ds }: any, i: number) => {
             let txt = "";
             try {
               const a = e.after_json ? JSON.parse(e.after_json) : null;
               txt = Array.isArray(a) ? a.map((x: any) => `${x.tuan ?? ngay(x.planned_date)}: ${soLuong(x.planned_qty)}`).join(", ") : a?.planned_date ? `${ngay(a.planned_date)}${a.planned_qty ? `: ${soLuong(a.planned_qty)}` : ""}` : e.event_type === "DELETE_PLAN" ? "Xóa mốc" : "";
             } catch { /* bo qua */ }
             // user_email NULL = He thong (vd tu dong dien ngay KRF tu mail - lib/krfGoiY.ts tuDongDienKrf)
-            return <div key={i} style={{ padding: "3px 0" }}>{ngayGio(e.created_at)} · {e.user_email ? ten(e.user_email) : "Hệ thống"} · {txt}</div>;
+            return <div key={i} style={{ padding: "3px 0" }}>{ngayGio(e.created_at)} · {e.user_email ? ten(e.user_email) : "Hệ thống"} · {txt}{ds.length > 1 && <span className="muted" title="Bản ghi giống hệt nhau (dữ liệu chuyển từ Google Sheet cũ)"> (×{ds.length})</span>}</div>;
           })}
         </div>
       )}
-    </Modal>
+    </>
   );
 }
 
