@@ -47,11 +47,19 @@ app.get("/dong/:itemId", async (c) => {
       `SELECT p.ma_push, p.doi_tac, p.tieu_de, p.trang_thai, p.created_by, p.created_at, pi.ngay
        FROM tl_push_item pi JOIN tl_push p ON p.id = pi.push_id WHERE pi.eo_item_id = ? ORDER BY p.id DESC`,
     ).bind(id).all(),
+    // thu cua chinh dong (kem payload dong) + thu cung dot push cua dong (moi thu 1 ban, khong keo ban sao cua cac dong khac)
     db.prepare(
-      `SELECT m.* FROM tl_mail m WHERE m.eo_item_id = ?
-         OR m.ma_push IN (SELECT p.ma_push FROM tl_push_item pi JOIN tl_push p ON p.id = pi.push_id WHERE pi.eo_item_id = ?)
-       ORDER BY m.thoi_gian DESC LIMIT 100`,
-    ).bind(id, id).all(),
+      `SELECT * FROM (
+         SELECT m.* FROM tl_mail m WHERE m.eo_item_id = ?1
+         UNION ALL
+         SELECT m.* FROM tl_mail m WHERE m.id IN (
+           SELECT MIN(x.id) FROM tl_mail x
+           WHERE x.ma_push IN (SELECT p.ma_push FROM tl_push_item pi JOIN tl_push p ON p.id = pi.push_id WHERE pi.eo_item_id = ?1)
+             AND (x.eo_item_id IS NULL OR x.eo_item_id <> ?1)
+             AND NOT EXISTS (SELECT 1 FROM tl_mail y WHERE y.eo_item_id = ?1 AND y.huong = x.huong AND y.tieu_de IS x.tieu_de AND y.thoi_gian IS x.thoi_gian)
+           GROUP BY x.huong, x.tieu_de, x.thoi_gian))
+       ORDER BY thoi_gian DESC LIMIT 100`,
+    ).bind(id).all(),
     db.prepare(
       `SELECT event_type, after_json, before_json, user_email, created_at FROM event_log
        WHERE event_type IN ('ADD_PLAN','UPDATE_PLAN','DELETE_PLAN','BULK_PLAN') AND (entity_id = ? OR json_extract(metadata_json,'$.eo_item_id') = ?)
@@ -110,12 +118,14 @@ app.post("/upload", async (c) => {
   }
 });
 
-// POST /giai-trinh { eo_item_id, loi_id?, ai_ma, ai_email?, loi_ma, noi_dung, hinh_anh: [{name,drive_file_id,url}] }
+// POST /giai-trinh { eo_item_id, loi_id?, cung_loai?, ai_ma, ai_email?, loi_ma, noi_dung, hinh_anh: [{name,drive_file_id,url}] }
 //   loi_id: giai trinh 1 loi he thong da ghi (R1/R4 bat buoc anh). Khong loi_id: ghi them 1 loi tay (quy_tac TAY) -
 //   "moi giai trinh deu phai xac dinh loi".
+//   cung_loai (mac dinh true, 2026-10-31): 1 giai trinh dong luon MOI loi cung quy tac dang cho cua dong (vd R3 ghi moi thu 2 / thu 4
+//   -> 5 loi "khong push" chi can giai trinh 1 lan, hien "x 5 lan"). Tra so_loi = so loi duoc dong.
 app.post("/giai-trinh", async (c) => {
   const u = c.get("user");
-  const b = (await c.req.json()) as { eo_item_id?: number; loi_id?: number; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[] };
+  const b = (await c.req.json()) as { eo_item_id?: number; loi_id?: number; cung_loai?: boolean; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[] };
   const itemId = Number(b.eo_item_id);
   const it = await c.env.DB.prepare("SELECT i.id, i.eo_id, e.created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?")
     .bind(itemId).first<{ id: number; eo_id: number; created_by: string }>();
@@ -142,8 +152,13 @@ app.post("/giai-trinh", async (c) => {
   ).bind(itemId, it.eo_id, loi?.id ?? null, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, noiDung, JSON.stringify(hinh), u.email, now).first<{ id: number }>();
   const stmts = [
     loi
-      ? c.env.DB.prepare("UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = ?, loi_ma = ? WHERE id = ?")
-          .bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, loi.id)
+      ? (b.cung_loai !== false
+          ? c.env.DB.prepare(
+              `UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = ?, loi_ma = ?
+               WHERE eo_item_id = ? AND quy_tac = ? AND trang_thai = 'CHO_GIAI_TRINH'`,
+            ).bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, itemId, loi.quy_tac)
+          : c.env.DB.prepare("UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = ?, loi_ma = ? WHERE id = ?")
+              .bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, loi.id))
       : c.env.DB.prepare(
           `INSERT INTO tl_loi (eo_item_id, eo_id, quy_tac, khoa, han, ai_ma, ai_email, loi_ma, trang_thai, giai_trinh_id, created_at)
            VALUES (?, ?, 'TAY', ?, ?, ?, ?, ?, 'DA_GIAI_TRINH', ?, ?)`,

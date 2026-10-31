@@ -74,12 +74,46 @@ async function ngayBoQuaTruoc(env: Env): Promise<string> {
   return (r?.value || "2026-07-01").slice(0, 10);
 }
 
-/** Toan bo dong EO DA BAN HANH (khong gom EO huy) + chi so theo doi. pham_vi 'dang_mo' = chua ket thuc. */
+/** Phan doc DB cua 1 dong theo doi (khong phu thuoc gio hien tai) - cache theo version, xem layDongTheoDoi. */
+type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do" | "co_ngay_du_kien"> & { ngay_tao: string };
+
+/**
+ * Toan bo dong EO DA BAN HANH (khong gom EO huy) + chi so theo doi. pham_vi 'dang_mo' = chua ket thuc.
+ * Hieu nang (2026-10-31, d1 insights: ~900 lan / tuan x 5 truy van khi chua cache): phan doc DB (meta, ke hoach dau, loi,
+ * so lan lui tu event_log, ngay ve du) cache qua cachedReport theo version eo/amis/settings/theo_doi + ngay;
+ * phan phu thuoc "bay gio" (tre 24h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
+ */
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const now = nowVN();
+  const today = todayVN();
+  const out: DongTheoDoi[] = [];
+  for (const g of goc) {
+    const dong = DONG.includes(g.trang_thai_don_hang);
+    if (phamVi === "dang_mo" && dong) continue;
+    const { ngay_tao, ...r } = g;
+    const ndk = r.ngay_du_kien_gan_nhat;
+    const coNdk = !!ndk;
+    const quaHan = !dong && !!ndk && ndk < today;
+    const tinhTrang: DongTheoDoi["tinh_trang"] = dong ? "DONG" : quaHan ? "QUA_HAN_NDK"
+      : !coNdk ? (r.han_ngay_du_kien && now > r.han_ngay_du_kien ? "TRE_NDK" : "CHO_NDK") : "CHO_HANG";
+    const ceo: string[] = [];
+    if (r.ap_dung && !dong) {
+      if (r.so_lan_lui >= 3) ceo.push(`Lùi ngày dự kiến ${r.so_lan_lui} lần`);
+      const ngayDat = (r.bat_dau ?? ngay_tao).slice(0, 10);
+      if (ndk && soNgay(ngayDat, ndk) >= 30) ceo.push(`Ngày dự kiến cách ngày đặt ${soNgay(ngayDat, ndk)} ngày, chưa có hàng`);
+      if (r.so_loi >= 3) ceo.push(`${r.so_loi} lỗi`);
+    }
+    out.push({ ...r, co_ngay_du_kien: coNdk, han_cap_nhat_lai: quaHan ? congGioLamViec(ngaySau(ndk!)) : null, tinh_trang: tinhTrang, ceo_ly_do: ceo });
+  }
+  return out;
+}
+
+async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
   const db = env.DB;
   const [apDung, boQuaTruoc] = await Promise.all([ngayApDung(env), ngayBoQuaTruoc(env)]);
   const base = (await cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(env)))
-    .filter((r) => r.trang_thai_eo === "ISSUED" && (phamVi === "tat_ca" || !DONG.includes(r.trang_thai_don_hang))
+    .filter((r) => r.trang_thai_eo === "ISSUED"
       // ngay dat = muon hon giua ngay ban hanh EO va ngay tao dong (dong them sau ban hanh)
       && [r.ngay_ban_hanh, r.ngay_tao].filter(Boolean).sort().pop()!.slice(0, 10) >= boQuaTruoc);
   if (!base.length) return [];
@@ -150,31 +184,16 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
     lastBy.set(itemId, ngay);
   }
 
-  const now = nowVN();
-  const today = todayVN();
   return base.map((r) => {
     const m = metaBy.get(r.item_id);
     const batDau: string | null = m ? (m.created_after_issue ? (m.post_issue_approved_at || m.created_at) : m.issued_at) : null;
     const apDungDong = !!batDau && batDau.slice(0, 10) >= apDung;
     const han = batDau ? congGioLamViec(batDau) : null;
     const lanDau = fpBy.get(r.item_id) ?? null;
-    const coNdk = !!r.ngay_du_kien_gan_nhat;
-    const dong = DONG.includes(r.trang_thai_don_hang);
     const ndk = r.ngay_du_kien_gan_nhat as string | null;
-    const quaHan = !dong && !!ndk && ndk < today;
-    const hanLai = quaHan ? congGioLamViec(ngaySau(ndk!)) : null;
-    const tinhTrang: DongTheoDoi["tinh_trang"] = dong ? "DONG" : quaHan ? "QUA_HAN_NDK"
-      : !coNdk ? (han && now > han ? "TRE_NDK" : "CHO_NDK") : "CHO_HANG";
     const l = loiBy.get(r.item_id);
     const soLoi = l?.n ?? 0;
     const soLui = luiBy.get(r.item_id) ?? 0;
-    const ceo: string[] = [];
-    if (apDungDong && !dong) {
-      if (soLui >= 3) ceo.push(`Lùi ngày dự kiến ${soLui} lần`);
-      const ngayDat = (batDau ?? r.ngay_tao).slice(0, 10);
-      if (ndk && soNgay(ngayDat, ndk) >= 30) ceo.push(`Ngày dự kiến cách ngày đặt ${soNgay(ngayDat, ndk)} ngày, chưa có hàng`);
-      if (soLoi >= 3) ceo.push(`${soLoi} lỗi`);
-    }
     return {
       item_id: r.item_id, eo_id: r.eo_id, eo_code: r.eo_code, ma_phe_duyet: r.ma_phe_duyet ?? null, id_dat_lk: r.id_dat_lk,
       part_code: r.part_code, part_name: r.part_name ?? "", kho: r.kho, doi_tac: r.doi_tac ?? null, loai_hinh: r.loai_hinh ?? null,
@@ -182,11 +201,10 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
       so_luong_dat: r.so_luong_dat, sl_nhap_amis: r.sl_nhap_amis_dung_eo, so_luong_con_thieu: r.so_luong_con_thieu,
       trang_thai_don_hang: r.trang_thai_don_hang, canh_bao: r.canh_bao, toc_do_hang_ve: r.toc_do_hang_ve,
       ngay_ban_hanh: r.ngay_ban_hanh, ngay_du_kien_gan_nhat: ndk,
-      ap_dung: apDungDong, bat_dau: batDau, han_ngay_du_kien: han, co_ngay_du_kien: coNdk, lan_dau_co_ndk: lanDau,
-      han_cap_nhat_lai: hanLai, so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0,
-      tinh_trang: tinhTrang, ceo_ly_do: ceo, ngay_ve_du: veDuBy.get(r.item_id) ?? null,
+      ap_dung: apDungDong, bat_dau: batDau, han_ngay_du_kien: han, lan_dau_co_ndk: lanDau,
+      so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0, ngay_ve_du: veDuBy.get(r.item_id) ?? null,
       ngay_hang_ve: veCuoiBy.get(r.item_id) ?? null, ngay_nm_cam_ket: nmBy.get(r.item_id) ?? null,
-      sau_ban_hanh: m?.created_after_issue === 1,
+      sau_ban_hanh: m?.created_after_issue === 1, ngay_tao: r.ngay_tao,
     };
   });
 }

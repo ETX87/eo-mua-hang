@@ -211,11 +211,11 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                 <thead><tr><th className="qv-act">Thao tác</th><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th></tr></thead>
                 <tbody>
                   {d.loi.length === 0 && <tr><td colSpan={7} className="muted">Không có lỗi theo dõi.</td></tr>}
-                  {d.loi.filter(khopTim(tim)).map((l: any) => <tr key={l.id}><td className="qv-act">{(() => {
+                  {gopTrung(d.loi.filter(khopTim(tim)) as any[], (l) => `${l.eo_item_id}|${l.quy_tac}|${l.trang_thai}`).map(({ x: l, ds }) => <tr key={l.id} title={ds.length > 1 ? `Các lần: ${ds.map((y: any) => ngayGio(y.han)).join(", ")}` : undefined}><td className="qv-act">{(() => {
                       const r = d.dong.find((x: any) => x.item_id === l.eo_item_id);
                       return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH"
                         ? <button className="btn sm primary" onClick={() => setMd({ k: "gt", x: asDong(r) })}>Giải trình</button> : null;
-                    })()}</td><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td>
+                    })()}</td><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}{ds.length > 1 && <span className="badge final" style={{ marginLeft: 4 }}>× {ds.length} lần</span>}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td>
                     </tr>)}
                 </tbody>
               </table>

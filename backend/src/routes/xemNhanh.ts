@@ -32,11 +32,20 @@ app.get("/eo/:id/bo-sung", async (c) => {
       `SELECT p.*, GROUP_CONCAT(pi.eo_item_id) item_ids FROM tl_push p JOIN tl_push_item pi ON pi.push_id = p.id
        JOIN eo_item i ON i.id = pi.eo_item_id WHERE i.eo_id = ? GROUP BY p.id ORDER BY p.id DESC`,
     ).bind(id).all<any>(),
+    // 1 THU = 1 dong ket qua (app doc mail luu 1 ban ghi / dong linh kien): gom trong SQL, item_ids = cac dong CUA EO NAY nhan thu.
+    // UNION thay OR (de dung chi muc eo_item_id / ma_push), khong lay payload (nang, popup EO khong dung).
     db.prepare(
-      `SELECT m.* FROM tl_mail m WHERE m.eo_item_id IN (SELECT id FROM eo_item WHERE eo_id = ?)
-         OR m.ma_push IN (SELECT p.ma_push FROM tl_push p JOIN tl_push_item pi ON pi.push_id = p.id JOIN eo_item i ON i.id = pi.eo_item_id WHERE i.eo_id = ?)
-       ORDER BY m.thoi_gian DESC LIMIT 200`,
-    ).bind(id, id).all<any>(),
+      `WITH dong AS (SELECT id FROM eo_item WHERE eo_id = ?1),
+       m AS (
+         SELECT id, ma_push, eo_item_id, huong, doi_tac, tu, den, tieu_de, tom_tat, thoi_gian, synced_at FROM tl_mail WHERE eo_item_id IN (SELECT id FROM dong)
+         UNION
+         SELECT id, ma_push, eo_item_id, huong, doi_tac, tu, den, tieu_de, tom_tat, thoi_gian, synced_at FROM tl_mail
+         WHERE ma_push IN (SELECT p.ma_push FROM tl_push p JOIN tl_push_item pi ON pi.push_id = p.id WHERE pi.eo_item_id IN (SELECT id FROM dong)))
+       SELECT MIN(id) id, huong, MAX(ma_push) ma_push, MAX(doi_tac) doi_tac, MAX(tu) tu, MAX(den) den, tieu_de, MAX(tom_tat) tom_tat,
+              thoi_gian, MAX(synced_at) synced_at, COUNT(*) so_ban,
+              GROUP_CONCAT(CASE WHEN eo_item_id IN (SELECT id FROM dong) THEN eo_item_id END) item_ids
+       FROM m GROUP BY huong, tieu_de, thoi_gian ORDER BY thoi_gian DESC LIMIT 200`,
+    ).bind(id).all<any>(),
     db.prepare(
       `SELECT r.id, r.matched_eo_item_id, r.doc_no, r.doc_date, r.warehouse_name, r.part_code, r.qty_in
        FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id IN (SELECT id FROM eo_item WHERE eo_id = ?)

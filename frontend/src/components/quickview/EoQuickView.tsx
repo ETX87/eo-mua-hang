@@ -44,6 +44,8 @@ const nhomCua = (t: string): Nhom =>
     : /PLAN/.test(t) ? "kehoach" : /GIAI_TRINH/.test(t) ? "loi" : "capnhat";
 
 type Tab = "lk" | "kh" | "duyet" | "file" | "mail";
+/** Dong cua EO nhan 1 thu: backend (xemNhanh) da gom 1 thu = 1 ban ghi kem item_ids "1,2,3"; ban ghi tung dong (cu) dung eo_item_id. */
+const idsThu = (ds: any[]): number[] => ds.flatMap((y) => String(y.item_ids ?? y.eo_item_id ?? "").split(",").filter(Boolean).map(Number));
 
 export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: number; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
   const nav = useNavigate();
@@ -82,14 +84,16 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       out.push({ at: e.created_at, nhom: nhomCua(e.event_type), h: `${EVENT_LABEL[e.event_type] ?? e.event_type}${e.entity_type === "eo_item" && it ? ` · ${it.part_code}` : ""}${ds.length > 1 ? ` (×${ds.length})` : ""}`, ai: e.user_email, text: moTaSuKien(e) });
     }
     for (const c of d.comments) out.push({ at: c.created_at, nhom: "binhluan", h: "Bình luận", ai: c.user_email, text: c.noi_dung });
-    for (const { x: l, ds } of gopTrung((b?.loi ?? []) as any[], (l) => `${l.quy_tac}|${String(l.han || l.created_at).slice(0, 10)}|${l.trang_thai}`)) {
+    // loi: 1 muc / (quy tac, trang thai) - "x n lan" (R3 ghi moi thu 2 / thu 4, R4 moi moc qua han), moc = lan gan nhat
+    for (const { x: l, ds } of gopTrung((b?.loi ?? []) as any[], (l) => `${l.quy_tac}|${l.trang_thai}`)) {
       const ids = ds.map((y) => y.eo_item_id);
-      out.push({ at: l.han || l.created_at, nhom: "loi", h: `Lỗi: ${QUY_TAC[l.quy_tac] ?? l.quy_tac}${ds.length > 1 ? ` · ${new Set(ids).size} dòng` : ` · ${lk(ids)}`}`, ai: l.ai_email,
-        text: `${l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}${ds.length > 1 ? ` — ${lk(ids)}` : ""}` });
+      const moi = ds.map((y) => String(y.han || y.created_at)).sort().pop()!;
+      out.push({ at: moi, nhom: "loi", h: `Lỗi: ${QUY_TAC[l.quy_tac] ?? l.quy_tac}${ds.length > 1 ? ` × ${ds.length} lần` : ""} · ${new Set(ids).size > 1 ? `${new Set(ids).size} dòng` : lk(ids)}`, ai: l.ai_email,
+        text: `${l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}${new Set(ids).size > 1 ? ` — ${lk(ids)}` : ""}${ds.length > 1 ? ` · từ ${ngay(ds.map((y) => String(y.han || y.created_at)).sort()[0])} đến ${ngay(moi)}` : ""}` });
     }
     for (const p of b?.push ?? []) out.push({ at: p.created_at, nhom: "mail", h: `Tạo push ${p.ma_push} · ${p.doi_tac}`, ai: p.created_by, text: `${p.so_dong} dòng · ${p.trang_thai === "DA_TAO" ? "đã tạo file" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"}` });
     for (const { x: m, ds } of gopTrung((b?.mail ?? []) as any[], khoaMail)) {
-      const ids = ds.map((y) => y.eo_item_id).filter((x) => itemBy.has(x));
+      const ids = idsThu(ds).filter((x) => itemBy.has(x));
       out.push({ at: m.thoi_gian || m.synced_at, nhom: "mail", h: `${m.huong === "GUI" ? "✉ Gửi" : "✉ Nhận"}: ${m.tieu_de ?? ""}`, ai: m.huong === "GUI" ? m.den : m.tu,
         text: [m.tom_tat, ids.length ? `${new Set(ids).size} dòng của EO: ${lk(ids)}` : ""].filter(Boolean).join(" · ") });
     }
@@ -312,7 +316,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <tbody>
                     {mailGop.length === 0 && <tr><td colSpan={5} className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</td></tr>}
                     {mailGop.filter(({ x }) => k(x)).map(({ x: m, ds }) => {
-                      const ids = ds.map((y: any) => y.eo_item_id).filter((x: number) => itemBy.has(x));
+                      const ids = idsThu(ds).filter((x: number) => itemBy.has(x));
                       return <tr key={m.id}><td>{m.huong === "GUI" ? "→" : "←"}</td><td style={{ whiteSpace: "nowrap" }}>{ngayGio(m.thoi_gian)}</td><td><Clip w={220}>{m.tu} → {m.den}</Clip></td><td><Clip w={420}><b>{m.tieu_de}</b>{m.tom_tat ? ` — ${m.tom_tat}` : ""}</Clip></td>
                         <td><Clip w={160}>{ids.length ? `${new Set(ids).size}: ${lietKe(ids.map((x: number) => (itemBy.get(x) as any)?.part_code))}` : "—"}</Clip></td></tr>;
                     })}

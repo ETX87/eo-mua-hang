@@ -266,7 +266,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     setBusy(true);
     try {
       await api.post("/theo-doi/giai-trinh", {
-        eo_item_id: dong.item_id, loi_id: loiId && loiId !== "moi" ? Number(loiId) : undefined,
+        eo_item_id: dong.item_id, loi_id: loiId && loiId !== "moi" ? Number(loiId) : undefined, cung_loai: true,
         ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh,
       });
       onSaved();
@@ -285,7 +285,9 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
         <>
           <label className="field-label">Giải trình cho lỗi</label>
           <select className="select" value={loiId} onChange={(e) => { setLoiId(e.target.value); const l = mo.find((x: any) => String(x.id) === e.target.value); if (l) setLoiMa(l.loi_ma ?? ""); }}>
-            {mo.map((l: any) => <option key={l.id} value={l.id}>{QUY_TAC[l.quy_tac]}{l.ngay_tham_chieu ? ` (${ngay(l.ngay_tham_chieu)})` : ""} — hạn {ngayGio(l.han)}</option>)}
+            {/* 1 lua chon / loai loi: giai trinh 1 lan dong ca n loi cung loai dang cho (backend cung_loai) */}
+            {gopTrung(mo, (l: any) => l.quy_tac).map(({ x: l, ds }: any) => <option key={l.id} value={l.id}>{QUY_TAC[l.quy_tac]}{ds.length > 1
+              ? ` × ${ds.length} lần (${lietKe(ds.map((y: any) => ngay(y.ngay_tham_chieu ?? y.han)), 3)})` : `${l.ngay_tham_chieu ? ` (${ngay(l.ngay_tham_chieu)})` : ""} — hạn ${ngayGio(l.han)}`}</option>)}
             <option value="moi">Ghi lỗi mới (vd NCC báo trễ, hết hàng…)</option>
           </select>
           {!mo.length && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng này không có lỗi chờ giải trình — giải trình sẽ ghi thành 1 lỗi mới.</div>}

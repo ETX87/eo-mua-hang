@@ -45,6 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -114,9 +115,14 @@ payload = DVBH nhận nguyên JSON (`po_dat_hang_eo.payload`), map ở `frontend
 ## Theo dõi linh kiện đặt (kiểm soát ngày dự kiến)
 
 Quy tắc R1/R3/R4, giải trình (Ai + Lỗi gì + ảnh), cấp CEO, form push chuẩn, API mail: **`../THEO_DOI_LINH_KIEN_DAT.md`**.
-`lib/theoDoi.ts`: `layDongTheoDoi` (dựa trên báo cáo 0.1 + item_plan + event_log + tl_loi), `danhGiaQuyTac` (ghi lỗi
+`lib/theoDoi.ts`: `layDongTheoDoi` (dựa trên báo cáo 0.1 + item_plan + event_log + tl_loi; phần đọc DB **cache** `tl:goc-theo-doi`
+theo version eo/amis/settings/theo_doi — phần theo giờ hiện tại (trễ 24h, quá ngày DK, hạn cập nhật lại, cấp CEO) tính mỗi lần gọi), `danhGiaQuyTac` (ghi lỗi
 idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state` trước, không ghi khóa mỗi request).
-`/api/partner/*` (`routes/partner.ts`) mount TRƯỚC session middleware. Domain version `theo_doi` (DVBH tag có).
+`/api/partner/*` (`routes/partner.ts`) mount TRƯỚC session middleware. `POST /partner/mail-events` ghi **theo lô** (INSERT … SELECT
+json_each, tra mã LK- 1 lần) — không lặp truy vấn theo dòng: D1 giới hạn 1.000 truy vấn / request (1 thư KRF có thể 100+ dòng).
+Payload > 20.000 ký tự → bỏ (không cắt chuỗi JSON). Đọc mail theo EO (`xemNhanh`) gom 1 thư = 1 dòng trong SQL (`item_ids`), dùng UNION
+thay OR. Giải trình (`POST /theo-doi/giai-trinh`, `cung_loai` mặc định true) đóng MỌI lỗi cùng quy tắc đang chờ của dòng — R3 ghi mỗi
+thứ 2/4 chỉ cần giải trình 1 lần; FE hiện 1 dòng "× n lần". Hiệu năng đo bằng `npx wrangler d1 insights eo-mua-hang-db --timePeriod 7d`. Domain version `theo_doi` (DVBH tag có).
 **Ngày KRF từ mail** (v0.047, `lib/krfGoiY.ts`): app `theodoimuahang` (`../../thu ky mua hang`, Worker cùng tên) đọc mail
 theodoimuahang@gmail.com theo **mã 3TDO + mã LK** (không dùng mẫu EO-PUSH) và đẩy `tl_mail` mỗi dòng 1 bản ghi, `payload.dong` =
 {ngay_can, dap_ung, ngay_dap_ung, note, ton_kho…} (cột "KRF đáp ứng" của file/bảng KRF trả lời). `GET /theo-doi/goi-y-krf` = dòng đang

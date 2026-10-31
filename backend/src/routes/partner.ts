@@ -33,37 +33,70 @@ app.post("/mail-events", async (c) => {
   const evs = Array.isArray(b?.events) ? b!.events : null;
   if (!evs || evs.length > 500) return c.json({ error: "INVALID_BODY" }, 400);
   const db = c.env.DB;
-  let them = 0;
-  const krfDong = new Set<number>();
-  for (const e of evs) {
-    if (!e?.ext_id || (e.huong !== "GUI" && e.huong !== "NHAN")) continue;
+  // Ghi THEO LO (2026-10-31): truoc day moi dong cua moi thu = 1 INSERT tuan tu (+1 SELECT / ma LK-...) -> 1 lo 10 thu x 121 dong
+  // = 1.210 truy van, vuot gioi han 1.000 truy van / request cua D1 (mat thu). Nay: 1 truy van tra ma LK-, 1 truy van ext_id da co,
+  // INSERT ... SELECT FROM json_each theo goi (~700KB / goi), 1 batch cap nhat trang thai push -> so truy van khong phu thuoc so dong.
+  const hopLe = evs.filter((e) => e?.ext_id && (e.huong === "GUI" || e.huong === "NHAN"));
+  const maLk = [...new Set(hopLe.flatMap((e) => (e.id_dong ?? []).map((d) => String(d).trim())).filter((d) => d && !/^EOI-\d+$/.test(d)))];
+  const lkId = new Map<string, number>();
+  for (let i = 0; i < maLk.length; i += 500) {
+    const rs = await db.prepare("SELECT id, legacy_id FROM eo_item WHERE legacy_id IN (SELECT value FROM json_each(?))")
+      .bind(JSON.stringify(maLk.slice(i, i + 500))).all<{ id: number; legacy_id: string }>();
+    for (const r of rs.results) lkId.set(r.legacy_id, r.id);
+  }
+  // 1 ban ghi / dong (app doc mail tach theo ma 3TDO + ma LK); payload qua 20.000 ky tu -> bo (truoc day cat ngang chuoi JSON -> hong JSON)
+  type Dong = [string, string | null, number | null, string, string | null, string | null, string | null, string | null, string | null, string | null, string | null];
+  const dong: Dong[] = [];
+  const pushCapNhat = new Map<string, "GUI" | "NHAN">();
+  for (const e of hopLe) {
     const maPush = (e.ma_push ?? /PUSH-\d{6}-\d{4}/.exec(`${e.tieu_de ?? ""}`)?.[0]) || null;
-    // id dong: EOI-<id> truc tiep; LK-... tra legacy_id
     const itemIds: number[] = [];
     for (const d of e.id_dong ?? []) {
-      const m = /^EOI-(\d+)$/.exec(d.trim());
-      if (m) itemIds.push(Number(m[1]));
-      else {
-        const r = await db.prepare("SELECT id FROM eo_item WHERE legacy_id = ?").bind(d.trim()).first<{ id: number }>();
-        if (r) itemIds.push(r.id);
-      }
+      const m = /^EOI-(\d+)$/.exec(String(d).trim());
+      const id = m ? Number(m[1]) : lkId.get(String(d).trim());
+      if (id) itemIds.push(id);
     }
     const targets = itemIds.length ? itemIds : [null];
+    const pl = e.payload ? JSON.stringify(e.payload) : null;
     for (const [i, itemId] of targets.entries()) {
-      const res = await db.prepare(
-        `INSERT OR IGNORE INTO tl_mail (ext_id, ma_push, eo_item_id, huong, doi_tac, tu, den, tieu_de, tom_tat, thoi_gian, payload)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(targets.length > 1 ? `${e.ext_id}#${i}` : e.ext_id, maPush, itemId, e.huong, e.doi_tac ?? null, e.tu ?? null, e.den ?? null,
-        e.tieu_de ?? null, (e.tom_tat ?? "").slice(0, 2000) || null, e.thoi_gian ?? null, e.payload ? JSON.stringify(e.payload).slice(0, 20000) : null).run();
-      them += res.meta.changes ?? 0;
-      // Thu KRF tra loi co ngay "KRF đáp ứng" cho dong nay -> tu dong dien ngay NM cam ket (lib/krfGoiY.ts, chi dong khop chac).
-      if (itemId && e.huong === "NHAN" && (res.meta.changes ?? 0) > 0 && (e.payload as any)?.dong?.ngay_dap_ung) krfDong.add(itemId);
+      dong.push([targets.length > 1 ? `${e.ext_id}#${i}` : e.ext_id, maPush, itemId, e.huong, e.doi_tac ?? null, e.tu ?? null, e.den ?? null,
+        e.tieu_de ?? null, (e.tom_tat ?? "").slice(0, 2000) || null, e.thoi_gian ?? null, pl && pl.length <= 20000 ? pl : null]);
     }
-    if (maPush) {
-      await db.prepare(
-        `UPDATE tl_push SET trang_thai = CASE WHEN ? = 'NHAN' THEN 'DA_PHAN_HOI' WHEN trang_thai = 'DA_TAO' THEN 'DA_GUI' ELSE trang_thai END
-         WHERE ma_push = ?`,
-      ).bind(e.huong, maPush).run();
+    if (maPush && pushCapNhat.get(maPush) !== "NHAN") pushCapNhat.set(maPush, e.huong);
+  }
+  // ext_id da co (chong trung, UNIQUE) -> biet chinh xac dong nao MOI (de tu dong dien ngay KRF chi cho thu moi)
+  const daCo = new Set<string>();
+  const ext = dong.map((d) => d[0]);
+  for (let i = 0; i < ext.length; i += 500) {
+    const rs = await db.prepare("SELECT ext_id FROM tl_mail WHERE ext_id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ext.slice(i, i + 500))).all<{ ext_id: string }>();
+    for (const r of rs.results) daCo.add(r.ext_id);
+  }
+  const moi = dong.filter((d) => !daCo.has(d[0]));
+  let them = 0;
+  for (let i = 0; i < moi.length;) {
+    // goi theo kich thuoc (gioi han do dai tham so D1)
+    let j = i, kt = 0;
+    while (j < moi.length && (j === i || kt + JSON.stringify(moi[j]).length < 700_000)) kt += JSON.stringify(moi[j++]).length;
+    const res = await db.prepare(
+      `INSERT OR IGNORE INTO tl_mail (ext_id, ma_push, eo_item_id, huong, doi_tac, tu, den, tieu_de, tom_tat, thoi_gian, payload)
+       SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]'), json_extract(value,'$[3]'), json_extract(value,'$[4]'),
+              json_extract(value,'$[5]'), json_extract(value,'$[6]'), json_extract(value,'$[7]'), json_extract(value,'$[8]'), json_extract(value,'$[9]'),
+              json_extract(value,'$[10]') FROM json_each(?)`,
+    ).bind(JSON.stringify(moi.slice(i, j))).run();
+    them += res.meta.changes ?? 0;
+    i = j;
+  }
+  if (pushCapNhat.size) {
+    await db.batch([...pushCapNhat].map(([maPush, huong]) => db.prepare(
+      `UPDATE tl_push SET trang_thai = CASE WHEN ? = 'NHAN' THEN 'DA_PHAN_HOI' WHEN trang_thai = 'DA_TAO' THEN 'DA_GUI' ELSE trang_thai END
+       WHERE ma_push = ?`,
+    ).bind(huong, maPush)));
+  }
+  // Thu KRF tra loi co ngay "KRF dap ung" cho dong nay -> tu dong dien ngay NM cam ket (lib/krfGoiY.ts, chi dong khop chac, chi thu MOI).
+  const krfDong = new Set<number>();
+  for (const d of moi) {
+    if (d[2] && d[3] === "NHAN" && d[10]) {
+      try { if (JSON.parse(d[10])?.dong?.ngay_dap_ung) krfDong.add(d[2]); } catch { /* bo qua */ }
     }
   }
   if (them) await bumpVersions(db, ["theo_doi"]);
