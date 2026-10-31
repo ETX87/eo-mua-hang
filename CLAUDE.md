@@ -55,7 +55,8 @@ backend/src/
 frontend/src/
   components/                AppShell (sidebar + topbar), DataTable (phân trang 10 dòng), ui
   lib/nav.ts                 menu sidebar  ↔ quyền ở backend lib/eoAccess.ts (đồng bộ tay)
-  pages/                     Dashboard, eo/ (List/Detail/Form), Approvals, Plans, amis/, reports/ (4), admin/
+  pages/                     Dashboard (Tổng quan), eo/ (EoList = Quản lý EO, EoForm, eoActions), DonHang (Quản lý đơn hàng)
+                             + donhang/, theodoi/ (modal dùng chung), KeHoachTuan, amis/, reports/ (nhúng làm tab), admin/
 scripts/                     migrate.mjs (xlsx → SQL), import_amis_history.mjs, seed_demo.mjs
 ../huong-dan/                tài liệu hướng dẫn .docx + _build/ (script dựng tài liệu + chụp ảnh)
 ```
@@ -127,7 +128,7 @@ bằng NM cũ / sớm hơn ngày KRF; nhiều đợt / kế hoạch tuần → s
 đúng 1 dòng ACTIVE mang mã LK đó, chưa về đủ, 0/1 đợt ngày. Người ghi `item_plan` = `BOOTSTRAP_ADMIN_EMAIL` (FK users), `event_log.user_email`
 = NULL (FE hiện "Hệ thống"), `nguon='mail_krf_tu_dong'`, ghi chú "Tự động theo mail KRF …". Dòng không chắc vẫn ở danh sách gợi ý.
 Mail đã nhận TRƯỚC v0.048 không tự chạy lại (tl_mail chống trùng) — dùng nút áp dụng ở danh sách gợi ý.
-FE: nút "Ngày KRF từ mail (n)" ở `/theo-doi` (`pages/theodoi/KrfGoiY.tsx`), khung "Mail KRF … Điền vào form" trong `NgayHangVeModal`,
+FE: nút "Ngày KRF từ mail (n)" ở `/don-hang` (`pages/theodoi/KrfGoiY.tsx`), khung "Mail KRF … Điền vào form" trong `NgayHangVeModal`,
 lịch sử mail hiện dữ liệu dòng (`DongMail`).
 Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file
 trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate key này).
@@ -158,7 +159,7 @@ Người thêm chính là người duyệt cuối → tự duyệt (log APPROVE_
 `GET /api/dashboard/quan-ly` gom từ báo cáo 0.1 đã cache (không cache kết quả — mốc tồn "< 1 ngày" tính theo giờ):
 tỷ lệ đáp ứng tháng/tuần = Σmin(về, đặt)/Σđặt của dòng ĐẶT trong kỳ; tồn đọng + 8 mốc tồn (`MOC_TON`, khớp
 `frontend/src/lib/tonDong.tsx`) dùng CÙNG mốc bỏ qua & ngày đặt với `lib/theoDoi` (dòng trước BH = ngày ban hành, thêm sau BH
-= ngày tạo) để số trên Tổng quan = số ở Theo dõi (`/theo-doi?ton=<mốc>`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
+= ngày tạo) để số trên Tổng quan = số ở Quản lý đơn hàng (`/don-hang?ton=<mốc>` — lọc mốc tồn chỉ tính dòng `theo_doi`, theo `bat_dau`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
 `DataTable` có ô tìm nhanh mặc định (`timKiem={false}` khi trang tự tìm phía server).
 
 ## 8 giai đoạn đơn hàng — `backend/src/lib/giaiDoan.ts` (FE nhãn `frontend/src/lib/giaiDoan.tsx`)
@@ -168,8 +169,24 @@ luồng SONG SONG, không chặn giai đoạn hiện tại) · G5 Có ngày dự
 G7 Nhập kho & lên hệ thống (ngày CT AMIS → `amis_receipt.created_at`, chỉ đo) · G8 Giao bù đến đủ. Giờ & hạn = giờ LÀM VIỆC
 (bỏ Chủ nhật, như R1); hạn `app_settings.giai_doan_sla` (JSON giờ, mặc định 24/…/G8 168). Chốt 2026-10-29: CHỈ đo + báo cáo
 đúng/trễ hạn, chưa sinh lỗi giải trình (bật sau 2–4 tuần). `layGiaiDoan(env)` cache mốc, phần "bây giờ" tính lúc request.
-**Sổ đơn hàng** (`/so-don-hang`, thay Báo cáo Tiến độ đơn hàng; đường dẫn cũ vẫn mở màn này): `GET /api/so-don-hang`
-= báo cáo 0.1 + EO + giai đoạn; chọn cột / lọc / lưu bộ lọc (localStorage `sdh-cot`, `sdh-loc-luu`) làm ở FE.
+Báo cáo giai đoạn = tab Báo cáo của Quản lý đơn hàng (`/don-hang?tab=bao-cao&bc=giai-doan`).
+
+## 2 màn chính (v0.050–0.051, `../UI_GOP_2_MAN_HINH.md`) — menu: Tổng quan · Quản lý EO · Quản lý đơn hàng · Nhập AMIS · Cài đặt
+
+- **Quản lý EO** `/eo` (`pages/eo/EoList.tsx` + `EoListInner.tsx`): chip có số đếm (`GET /eo/dem`, lọc `GET /eo?chip=`, định nghĩa
+  `CHIP_EO` ở `routes/eo.ts`: cho_toi_duyet = phiếu PENDING của tôi ở lần trình mở + EO tôi duyệt cuối có dòng sau BH chờ duyệt, …);
+  nút Đồng ý / Từ chối / Yêu cầu cập nhật ngay trên dòng (`phieu_cho_toi_id/buoc` trong list). **Chi tiết EO = popup** — `/eo/:id`
+  mở màn này + bật popup rồi đổi URL về `/eo`. Đã bỏ trang EoDetail và Approvals (`/approvals` → `/eo?chip=cho_toi_duyet`).
+- **Quản lý đơn hàng** `/don-hang` (`pages/DonHang.tsx`, mỗi dòng = 1 dòng linh kiện mọi trạng thái): `GET /api/so-don-hang` =
+  báo cáo 0.1 + EO + giai đoạn + **chỉ số theo dõi** (`layDongTheoDoi`: `theo_doi`, `tinh_trang`, `ap_dung`, `han_*`, `so_lan_lui`,
+  `ceo_ly_do`…; gọi `danhGiaQuyTac` trước). Nhóm nhanh `NHOM` (Cần xử lý, Trễ 24h, Quá DK, Lỗi chờ GT, Cấp CEO, Về tuần này…), cột
+  Thao tác (ngày NM/DK, giải trình, lịch sử), tick → push đối tác, Ngày KRF từ mail, KH hàng về Excel (`donhang/KeHoachExcelModal`),
+  KH tuần KRF = trang con `/don-hang/ke-hoach-tuan`, Bảng lỗi (Admin, `theodoi/BangLoi`), tab Báo cáo (Giai đoạn, Tiến độ tuần, Lũy kế
+  năm — component báo cáo nhận `nhung`). Chọn cột / lọc / lưu bộ lọc ở FE (localStorage `sdh-cot`, `sdh-loc-luu`). Trang remount theo
+  query string (link nội bộ đổi `?nhom=`/`?gd=`… áp lọc mới).
+- Đường dẫn cũ chuyển hướng giữ query (`ChuyenHuong` trong `App.tsx`): `/theo-doi`, `/so-don-hang`, `/canh-bao-ceo`, `/plans`,
+  `/plans/tuan`, `/reports/*`. "AMIS không EO" = tab **Chứng từ chưa khớp** ở `/amis?tab=chua-khop`.
+- Số đỏ menu: `badgeOf` so theo đường dẫn bỏ `?query` — `viecCanLam` trỏ `/eo?chip=…`, `/don-hang?nhom=…` vẫn cộng vào mục menu.
 
 ## Popup xem nhanh (95% màn hình)
 
@@ -191,7 +208,7 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - Mọi thay đổi nghiệp vụ có ý nghĩa audit → 1 dòng `event_log`. Thảo luận → `eo_comment`.
 - Không hard-delete `eo_item` / `item_plan` / `eo_approval` / `eo_file` / `amis_receipt`.
 - Mọi write path gọi `bumpVersions(db, [...domains])`.
-- `navConfig.ts` (FE) ↔ `moduleAccess` (BE) đồng bộ tay khi thêm.
+- `lib/nav.ts` (FE) ↔ quyền ở BE đồng bộ tay khi thêm.
 - **Luôn commit trước khi deploy.** Không chạy `npm run deploy` khi cây làm việc còn thay đổi
   chưa commit — commit (hoặc stash) hết, rồi mới deploy, để mỗi bản deploy khớp đúng 1 commit.
 

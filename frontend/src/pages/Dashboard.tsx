@@ -3,10 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import { api } from "../api/client";
-import { Card, KpiCard, StatusBadge, Avatar, Spinner } from "../components/ui";
-import { I } from "../lib/icons";
-import { soLuong, tuBayGio, ten } from "../lib/format";
-import EoListInner from "./eo/EoListInner";
+import { Card, Spinner } from "../components/ui";
+import { soLuong } from "../lib/format";
 import QuanLyPanel from "./QuanLyPanel";
 
 const DONUT_COLOR: Record<string, string> = {
@@ -15,7 +13,6 @@ const DONUT_COLOR: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const nav = useNavigate();
   const [soThang, setSoThang] = useState(6);
   const q = useQuery({
     queryKey: ["dash-summary", soThang],
@@ -29,17 +26,8 @@ export default function Dashboard() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <QuanLyPanel />
       <ViecCanXuLy />
-      {/* KPI */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
-        <KpiCard icon="clipboard" tint="#F5CC18" label="Tổng số EO" value={soLuong(d.kpi.tong)} />
-        <KpiCard icon="clock" tint="#FC7000" label="Đang thẩm định" value={soLuong(d.kpi.tham_dinh)} />
-        <KpiCard icon="user" tint="#FC7000" label="Chờ duyệt cuối" value={soLuong(d.kpi.cho_duyet)} />
-        <KpiCard icon="check" tint="#6CD13D" label="Đã ban hành" value={soLuong(d.kpi.ban_hanh)} />
-        <KpiCard icon="x" tint="#FC4244" label="Từ chối / Đã hủy" value={soLuong(d.kpi.tu_choi)} />
-      </div>
-
-      {/* 3 columns */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.18fr 1fr 1fr", gap: 16, alignItems: "stretch" }}>
+      {/* bieu do (Tong quan = bao cao tong quan; danh sach EO / viec cho duyet / dem trang thai nam o man Quan ly EO) */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "stretch" }}>
         <Card style={{ minHeight: 270, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <strong style={{ fontSize: 16, whiteSpace: "nowrap" }}>Xu hướng EO theo tháng</strong>
@@ -100,35 +88,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card style={{ minHeight: 270 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <strong style={{ fontSize: 16 }}>Việc cần duyệt</strong>
-            <span onClick={() => nav("/approvals")} style={{ cursor: "pointer", fontSize: 12.5, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>Xem tất cả <I.arrowRight width={13} height={13} /></span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {d.viec_can_duyet.map((r: any) => (
-              <div key={r.id} onClick={() => nav(`/eo/${r.id}`)} style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
-                <Avatar name={ten(r.nguoi_tao)} size={34} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.eo_code} - {r.tieu_de || "(không tiêu đề)"}</div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>Người tạo: {ten(r.nguoi_tao)} • {tuBayGio(r.luc)}</div>
-                </div>
-                <StatusBadge status={r.trang_thai} />
-              </div>
-            ))}
-            {d.viec_can_duyet.length === 0 && <div className="muted" style={{ padding: 20, textAlign: "center", fontSize: 12.5 }}>Không có EO chờ duyệt</div>}
-          </div>
-        </Card>
       </div>
-
-      {/* Danh sách EO nhúng */}
-      <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <strong style={{ fontSize: 16 }}>Danh sách EO</strong>
-          <button className="btn primary" onClick={() => nav("/eo/new")}><I.plus width={15} height={15} /> Tạo EO</button>
-        </div>
-        <EoListInner compact />
-      </Card>
     </div>
   );
 }

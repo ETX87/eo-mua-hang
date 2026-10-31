@@ -45,7 +45,7 @@ app.get("/", async (c) => {
     `SELECT COUNT(*) n, SUM(EXISTS (SELECT 1 FROM eo_submission s WHERE s.eo_id = e.id)) tra_ve
      FROM eo e WHERE e.trang_thai = 'DRAFT' AND e.created_by = ?`,
   ).bind(u.email).first<{ n: number; tra_ve: number }>();
-  if (nhap?.n) out.push({ key: "eo_nhap", to: "/eo", label: "EO nháp / bị trả về chờ gửi trình", count: nhap.n,
+  if (nhap?.n) out.push({ key: "eo_nhap", to: "/eo?chip=nhap_cua_toi", label: "EO nháp / bị trả về chờ gửi trình", count: nhap.n,
     chi_tiet: [{ label: "Bị trả về / rút về sửa", count: nhap.tra_ve ?? 0 }, { label: "Nháp chưa gửi", count: nhap.n - (nhap.tra_ve ?? 0) }] });
 
   // 2. Viec can duyet (giong /approvals/count)
@@ -59,7 +59,7 @@ app.get("/", async (c) => {
        WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?`,
     ).bind(u.email).first<{ n: number }>(),
   ]);
-  if ((pa?.n ?? 0) + (pi?.n ?? 0) > 0) out.push({ key: "duyet", to: "/approvals", label: "Phiếu chờ bạn duyệt", count: (pa?.n ?? 0) + (pi?.n ?? 0),
+  if ((pa?.n ?? 0) + (pi?.n ?? 0) > 0) out.push({ key: "duyet", to: "/eo?chip=cho_toi_duyet", label: "Phiếu chờ bạn duyệt", count: (pa?.n ?? 0) + (pi?.n ?? 0),
     chi_tiet: [{ label: "Thẩm định / duyệt cuối", count: pa?.n ?? 0 }, { label: "Dòng thêm sau ban hành", count: pi?.n ?? 0 }] });
 
   // 3 + 4. Theo doi linh kien dat / Canh bao CEO (chi dong ap dung quy tac)
@@ -108,7 +108,7 @@ app.get("/", async (c) => {
   // 6. AMIS co ma EO nhung khong khop dong
   if (canImportAmis(u) || u.vai_tro === "KH cung ung") {
     const r = await db.prepare("SELECT COUNT(*) n FROM amis_receipt WHERE match_status = 'CODE_ONLY_NO_LINE' AND voided_at IS NULL").first<{ n: number }>();
-    if (r?.n) out.push({ key: "amis_khong_eo", to: "/reports/amis-khong-eo", label: "Chứng từ AMIS có mã EO nhưng không khớp dòng", count: r.n });
+    if (r?.n) out.push({ key: "amis_khong_eo", to: "/amis?tab=chua-khop", label: "Chứng từ AMIS có mã EO nhưng không khớp dòng", count: r.n });
   }
   // 7 + 8. Admin
   if (u.vai_tro === "Admin") {

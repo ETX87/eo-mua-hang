@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useQuickView } from "../../components/quickview/QuickView";
 import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, type Col } from "../../components/DataTable";
@@ -11,13 +11,26 @@ import { STATUS_META, PHONG_BAN } from "../../lib/nav";
 import { MocTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 import { DL, GoiYDatalists, useGoiYDong } from "../../lib/goiY";
+import { actionsFor, ApprovalActionModal } from "./eoActions";
 
 interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
   loai_hinh: string | null; phong_ban: string | null; trang_thai: string;
   created_by: string; created_at: string; so_dong: number; tong_sl: number; final_approver_email: string | null;
   issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number; sl_ve: number;
+  so_dong_cho_duyet: number; phieu_cho_toi_id: number | null; phieu_cho_toi_buoc: string | null;
 }
+
+/** Nhom nhanh man Quan ly EO (backend routes/eo.ts CHIP_EO) - thay man "Viec can duyet" + KPI trang thai o Tong quan. */
+const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
+  { k: "cho_toi_duyet", l: "Chờ tôi duyệt", mau: "#DC2626", title: "Phiếu thẩm định / duyệt cuối đang chờ bạn + EO bạn là người duyệt cuối có dòng thêm sau ban hành chờ duyệt" },
+  { k: "nhap_cua_toi", l: "Nháp / bị trả về của tôi", mau: "#C2410C" },
+  { k: "dang_tham_dinh", l: "Đang thẩm định" },
+  { k: "cho_duyet_cuoi", l: "Chờ duyệt cuối" },
+  { k: "da_ban_hanh", l: "Đã ban hành" },
+  { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
+  { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
+];
 
 const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Mã EO", get: (r) => r.eo_code },
@@ -36,6 +49,11 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
 /** actions: nut them o cuoi thanh loc (vd "Tao EO" o trang Danh sach EO - trang khong co dong tieu de rieng). */
 export default function EoListInner({ compact, actions }: { compact?: boolean; actions?: ReactNode }) {
   const nav = useNavigate();
+  const qc = useQueryClient();
+  const [sp] = useSearchParams();
+  const [chip, setChip] = useState(sp.get("chip") ?? "");
+  const [duyet, setDuyet] = useState<{ row: any; action: string } | null>(null);
+  const dem = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, number>>("/eo/dem"), enabled: !compact });
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [createdBy, setCreatedBy] = useState("");
@@ -59,6 +77,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
 
   const filterParams = () => {
     const p = new URLSearchParams();
+    if (chip) p.set("chip", chip);
     if (q) p.set("q", q);
     if (status) p.set("trang_thai", status);
     if (createdBy) p.set("created_by", createdBy);
@@ -112,15 +131,19 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     { key: "final", header: "Người duyệt cuối", maxW: 100, render: (r) => ten(r.final_approver_email) },
     {
       key: "act", header: "", align: "center", render: (r) => (
-        <div style={{ display: "flex", gap: 4, justifyContent: "center" }} onClick={(e) => e.stopPropagation()}>
-          <button className="btn ghost sm" title="Xem nhanh" onClick={() => qv.openEo(r.id)}><I.eye width={15} height={15} /></button>
-          <button className="btn ghost sm" title="Mở trang chi tiết" onClick={() => nav(`/eo/${r.id}`)}><I.arrowRight width={15} height={15} /></button>
+        <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+          <button className="btn ghost sm" title="Xem / thao tác EO" onClick={() => qv.openEo(r.id)}><I.eye width={15} height={15} /></button>
+          {r.phieu_cho_toi_id && r.phieu_cho_toi_buoc && actionsFor(r.phieu_cho_toi_buoc).map((a) => (
+            <button key={a.key} className={`btn sm ${a.cls || ""}`} title={`${r.phieu_cho_toi_buoc === "FINAL" ? "Duyệt cuối" : "Thẩm định"} — ${a.label}`}
+              onClick={() => setDuyet({ row: { id: r.phieu_cho_toi_id, eo_code: r.eo_code }, action: a.key })}>{a.label}</button>
+          ))}
+          {r.so_dong_cho_duyet > 0 && <button className="btn sm" title="Dòng thêm sau ban hành chờ duyệt — mở EO để duyệt / từ chối từng dòng" onClick={() => qv.openEo(r.id)}>{r.so_dong_cho_duyet} dòng chờ duyệt</button>}
         </div>
       ),
     },
   ];
 
-  const reset = () => { setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setTu(""); setDen(""); setKho(""); setDoiTac(""); setLyDo(""); setMaLk(""); setOffset(0); };
+  const reset = () => { setChip(""); setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setTu(""); setDen(""); setKho(""); setDoiTac(""); setLyDo(""); setMaLk(""); setOffset(0); };
 
   const doExport = async () => {
     setExporting(true);
@@ -146,6 +169,16 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
 
   return (
     <div>
+      {!compact && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          <button className={`btn sm ${!chip ? "primary" : ""}`} onClick={() => { setChip(""); setOffset(0); }}>Tất cả ({soLuong(dem.data?.tat_ca ?? 0)})</button>
+          {CHIP.map((c) => {
+            const n = dem.data?.[c.k] ?? 0;
+            return <button key={c.k} className={`btn sm ${chip === c.k ? "primary" : ""}`} title={c.title} style={{ color: chip !== c.k && n && c.mau ? c.mau : undefined, fontWeight: chip !== c.k && n && c.mau ? 800 : undefined }}
+              onClick={() => { setChip(chip === c.k ? "" : c.k); setOffset(0); }}>{c.l} ({soLuong(n)})</button>;
+          })}
+        </div>
+      )}
       <FilterBar>
         <div style={{ position: "relative", flex: 1, minWidth: 220, maxWidth: 320 }}>
           <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 11, color: "var(--text-faint)" }} />
@@ -190,6 +223,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       )}
 
       <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
+      {duyet && <ApprovalActionModal act={duyet} onClose={() => setDuyet(null)} onDone={() => { setDuyet(null); ["eo-list", "eo-dem", "inbox-count", "inbox"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); }} />}
 
       {list.data && (
         <Pagination

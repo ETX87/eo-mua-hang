@@ -12,12 +12,11 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { to: "/", label: "Tổng quan", icon: "home" },
-  { to: "/eo", label: "Danh sách EO", icon: "clipboard" },
-  { to: "/approvals", label: "Việc cần duyệt", icon: "bell", badgeKey: "approvals" },
+  // Quan ly EO gop: Danh sach EO, Viec can duyet, trang Chi tiet EO (popup)
+  { to: "/eo", label: "Quản lý EO", icon: "clipboard" },
   // Quan ly don hang gop: Theo doi LK dat, So don hang, Canh bao CEO, Ke hoach hang ve / tuan, 3 bao cao (../UI_GOP_2_MAN_HINH.md)
   { to: "/don-hang", label: "Quản lý đơn hàng", icon: "list" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },
-  { to: "/reports/amis-khong-eo", label: "AMIS không EO", icon: "clock" },
 
   { to: "/admin/users", label: "Người dùng", icon: "user", section: "CÀI ĐẶT", adminOnly: true },
   { to: "/admin/roles", label: "Phân quyền", icon: "shield", adminOnly: true },

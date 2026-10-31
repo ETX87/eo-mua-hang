@@ -53,7 +53,7 @@ export default function QuanLyPanel() {
             <O l="Quá ngày dự kiến" v={soLuong(t.dong_qua_du_kien)} mau={t.dong_qua_du_kien ? "var(--danger-ink)" : undefined} sub={`${soLuong(t.dong_chua_ngay_du_kien)} dòng chưa có ngày DK`} to="/don-hang?nhom=QUA_HAN_NDK" />
             <O l="EO đang tồn" v={soLuong(t.eo_ton)} sub="đã ban hành, chưa về đủ" to="/eo" />
             <O l="EO chưa duyệt" v={soLuong(t.eo_chua_duyet)} mau={t.eo_chua_duyet ? "var(--warn-ink)" : undefined} sub={`${t.eo_tham_dinh} đang thẩm định`} to="/eo" />
-            <O l="Dòng thêm sau BH chờ duyệt" v={soLuong(t.dong_sau_bh_cho_duyet)} mau={t.dong_sau_bh_cho_duyet ? "var(--warn-ink)" : undefined} to="/approvals" />
+            <O l="Dòng thêm sau BH chờ duyệt" v={soLuong(t.dong_sau_bh_cho_duyet)} mau={t.dong_sau_bh_cho_duyet ? "var(--warn-ink)" : undefined} to="/eo?chip=sau_bh_cho" />
           </div>
 
           {/* dong dang o tung giai doan (lib/giaiDoan) - bam -> So don hang loc san; so do = dang tre han */}

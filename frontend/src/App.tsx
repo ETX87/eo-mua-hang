@@ -6,13 +6,10 @@ import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
 import EoList from "./pages/eo/EoList";
-import EoDetail from "./pages/eo/EoDetail";
 import EoForm from "./pages/eo/EoForm";
-import Approvals from "./pages/Approvals";
 import KeHoachTuan from "./pages/KeHoachTuan";
 import AmisImport from "./pages/amis/AmisImport";
 import DonHang from "./pages/DonHang";
-import ReportAmisKhongEo from "./pages/reports/ReportAmisKhongEo";
 import Users from "./pages/admin/Users";
 import Roles from "./pages/admin/Roles";
 import DanhMuc from "./pages/admin/DanhMuc";
@@ -41,9 +38,10 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/eo" element={<EoList />} />
         <Route path="/eo/new" element={<EoForm key="create" mode="create" />} />
-        <Route path="/eo/:id" element={<EoDetail />} />
+        {/* chi tiet EO = popup tren man Quan ly EO; /approvals -> chip "Cho toi duyet" (v0.051) */}
+        <Route path="/eo/:id" element={<EoList />} />
         <Route path="/eo/:id/edit" element={<EoForm key="edit" mode="edit" />} />
-        <Route path="/approvals" element={<Approvals />} />
+        <Route path="/approvals" element={<ChuyenHuong to="/eo" them="chip=cho_toi_duyet" />} />
         {/* Quan ly don hang (v0.050) gop Theo doi / So don hang / Canh bao CEO / Ke hoach / 3 bao cao - duong dan cu chuyen huong */}
         <Route path="/don-hang" element={<DonHang />} />
         <Route path="/don-hang/ke-hoach-tuan" element={<KeHoachTuan />} />
@@ -57,7 +55,7 @@ export default function App() {
         <Route path="/reports/tien-do-tuan" element={<ChuyenHuong to="/don-hang" them="tab=bao-cao&bc=tien-do-tuan" />} />
         <Route path="/reports/luy-ke-nam" element={<ChuyenHuong to="/don-hang" them="tab=bao-cao&bc=luy-ke-nam" />} />
         <Route path="/amis" element={<AmisImport />} />
-        <Route path="/reports/amis-khong-eo" element={<ReportAmisKhongEo />} />
+        <Route path="/reports/amis-khong-eo" element={<ChuyenHuong to="/amis" them="tab=chua-khop" />} />
         <Route path="/admin/users" element={<Users />} />
         <Route path="/admin/roles" element={<Roles />} />
         <Route path="/admin/danh-muc" element={<DanhMuc />} />

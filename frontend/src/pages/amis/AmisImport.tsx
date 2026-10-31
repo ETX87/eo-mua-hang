@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import ReportAmisKhongEo from "../reports/ReportAmisKhongEo";
 import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { docSheetAmis } from "../../lib/amisSheet";
@@ -31,7 +33,29 @@ const COT_MO_TA: [string, string, string, string][] = [
   ["Mã phê duyệt", "Bắt buộc", "Mã phê duyệt của EO (3TDO-xxxxxx) — dòng không có mã bị bỏ qua", "3TDO-000123"],
 ];
 
+/**
+ * Man "Nhap AMIS": tab Nhap & doi chieu (ke toan) + tab "Chung tu chua khop" (truoc la bao cao AMIS khong EO,
+ * gop v0.051 - ../UI_GOP_2_MAN_HINH.md). /reports/amis-khong-eo chuyen huong ?tab=chua-khop.
+ */
 export default function AmisImport() {
+  const [sp, setSp] = useSearchParams();
+  const tab = sp.get("tab") === "chua-khop" ? "chua-khop" : "nhap";
+  const dem = useQuery({ queryKey: ["rep-amis-ko-eo"], queryFn: () => api.get<any>("/reports/amis-khong-eo") });
+  return (
+    <div>
+      <PageHeader title="Nhập AMIS" actions={
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className={`btn sm ${tab === "nhap" ? "primary" : ""}`} onClick={() => setSp({})}><I.upload width={14} height={14} /> Nhập & đối chiếu</button>
+          <button className={`btn sm ${tab === "chua-khop" ? "primary" : ""}`} title="Chứng từ AMIS có mã phê duyệt nhưng không khớp dòng EO nào" onClick={() => setSp({ tab: "chua-khop" })}>
+            <I.clock width={14} height={14} /> Chứng từ chưa khớp ({soLuong(dem.data?.rows?.length ?? 0)})</button>
+        </div>
+      } />
+      {tab === "nhap" ? <NhapAmis /> : <ReportAmisKhongEo nhung />}
+    </div>
+  );
+}
+
+function NhapAmis() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<any[] | null>(null);
   const [docInfo, setDocInfo] = useState<{ dongTieuDe: number; nhanDang: "mau" | "so_chi_tiet"; thieuCot: string[] } | null>(null);
@@ -187,7 +211,6 @@ export default function AmisImport() {
 
   return (
     <div>
-      <PageHeader title="Nhập AMIS" />
 
       {/* Tong quan doi chieu */}
       <Card style={{ marginBottom: 16 }}>

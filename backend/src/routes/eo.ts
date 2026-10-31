@@ -15,6 +15,38 @@ const validQty = (v: unknown): v is number => typeof v === "number" && Number.is
 /** Chi sua dong khi EO dang DRAFT (soan / bi yeu cau cap nhat) hoac ISSUED (sua SL sau ban hanh) - WORKFLOW_SPEC §6, §8. */
 const ITEM_EDITABLE_STATES = ["DRAFT", "ISSUED"];
 
+// Nhom nhanh (chip) cua man Quan ly EO - dung chung cho GET / (loc) va GET /dem (so dem). email = nguoi dang xem.
+// cho_toi_duyet = phieu tham dinh / duyet cuoi PENDING cua toi o lan trinh dang mo (= /approvals/inbox)
+//   + EO toi la nguoi duyet cuoi co dong them sau ban hanh cho duyet (= /approvals/post-issue).
+const CHIP_EO: Record<string, (email: string) => { sql: string; bind: unknown[] }> = {
+  cho_toi_duyet: (email) => ({
+    sql: `(EXISTS (SELECT 1 FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
+                   WHERE s.eo_id = e.id AND a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING')
+           OR (e.trang_thai = 'ISSUED' AND e.final_approver_email = ?
+               AND EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.post_issue_status = 'PENDING')))`,
+    bind: [email, email],
+  }),
+  nhap_cua_toi: (email) => ({ sql: "(e.trang_thai = 'DRAFT' AND e.created_by = ?)", bind: [email] }),
+  dang_tham_dinh: () => ({ sql: "e.trang_thai = 'IN_REVIEW'", bind: [] }),
+  cho_duyet_cuoi: () => ({ sql: "e.trang_thai = 'WAITING_FINAL_APPROVAL'", bind: [] }),
+  da_ban_hanh: () => ({ sql: "e.trang_thai = 'ISSUED'", bind: [] }),
+  sau_bh_cho: () => ({ sql: "(e.trang_thai = 'ISSUED' AND EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.post_issue_status = 'PENDING'))", bind: [] }),
+  tu_choi_huy: () => ({ sql: "e.trang_thai IN ('REJECTED', 'CANCELLED')", bind: [] }),
+};
+
+// ------------------------------------------------------------------ GET /dem (so dem tren tung chip)
+app.get("/dem", async (c) => {
+  const email = c.get("user").email;
+  const keys = Object.keys(CHIP_EO);
+  const res = await c.env.DB.batch([
+    c.env.DB.prepare("SELECT COUNT(*) n FROM eo e"),
+    ...keys.map((k) => { const w = CHIP_EO[k](email); return c.env.DB.prepare(`SELECT COUNT(*) n FROM eo e WHERE ${w.sql}`).bind(...w.bind); }),
+  ]);
+  const out: Record<string, number> = { tat_ca: (res[0].results[0] as any)?.n ?? 0 };
+  keys.forEach((k, i) => { out[k] = (res[i + 1].results[0] as any)?.n ?? 0; });
+  return c.json(out);
+});
+
 // ------------------------------------------------------------------ GET / (list)
 app.get("/", async (c) => {
   const url = new URL(c.req.url);
@@ -28,11 +60,14 @@ app.get("/", async (c) => {
   const cotNgay = url.searchParams.get("ngay_theo") === "issued" ? "e.issued_at" : "e.created_at";
   const kho = url.searchParams.get("kho"), doiTac = url.searchParams.get("doi_tac");
   const lyDo = url.searchParams.get("ly_do"), maLk = url.searchParams.get("ma_lk");
+  const chip = url.searchParams.get("chip");
+  const email = c.get("user").email;
   const limit = Math.min(Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50), 200);
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
 
   const where: string[] = [];
   const bind: unknown[] = [];
+  if (chip && CHIP_EO[chip]) { const w = CHIP_EO[chip](email); where.push(w.sql); bind.push(...w.bind); }
   if (status) { where.push("e.trang_thai = ?"); bind.push(status); }
   if (createdBy) { where.push("e.created_by = ?"); bind.push(createdBy); }
   if (loaiHinh) { where.push("e.loai_hinh = ?"); bind.push(loaiHinh); }
@@ -58,13 +93,19 @@ app.get("/", async (c) => {
             (SELECT COALESCE(SUM(i.current_qty),0) FROM eo_item i WHERE i.eo_id = e.id) tong_sl,
             (SELECT GROUP_CONCAT(part_code, ', ') FROM (SELECT DISTINCT i.part_code FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' LIMIT 4)) ma_lk,
             (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.created_after_issue = 1) so_dong_sau_bh,
+            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.post_issue_status = 'PENDING') so_dong_cho_duyet,
+            -- phieu duyet dang cho CHINH nguoi xem (lan trinh dang mo) -> nut Duyet / Tra ve / Tu choi ngay tren dong
+            (SELECT a.id FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
+              WHERE s.eo_id = e.id AND a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING' LIMIT 1) phieu_cho_toi_id,
+            (SELECT a.step_type FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
+              WHERE s.eo_id = e.id AND a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING' LIMIT 1) phieu_cho_toi_buoc,
             (SELECT COALESCE(SUM(MIN(i.current_qty, COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0))), 0)
                FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE') sl_ve,
             (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' AND i.current_qty >
                COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0)) so_dong_chua_du
      FROM eo e ${wsql}
      ORDER BY e.created_at DESC LIMIT ? OFFSET ?`,
-  ).bind(...bind, limit, offset).all();
+  ).bind(email, email, ...bind, limit, offset).all();
 
   const total = await c.env.DB.prepare(`SELECT COUNT(*) n FROM eo e ${wsql}`).bind(...bind).first<{ n: number }>();
   return c.json({ rows: rows.results, total: total?.n ?? 0, limit, offset });

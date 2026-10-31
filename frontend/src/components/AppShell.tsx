@@ -143,7 +143,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 60000,
     refetchIntervalInBackground: false,
   });
-  const badgeOf = (to: string) => (viec.data?.items ?? []).filter((x) => x.to === to).reduce((s, x) => s + x.count, 0);
+  // so khop theo duong dan (bo ?query): viec tro toi /don-hang?nhom=... van cong vao muc /don-hang
+  const badgeOf = (to: string) => (viec.data?.items ?? []).filter((x) => x.to.split("?")[0] === to).reduce((s, x) => s + x.count, 0);
   const uName = me.data?.ho_ten && !me.data.ho_ten.includes("@") ? me.data.ho_ten : ten(me.data?.email) || "—";
 
   return (

@@ -16,7 +16,8 @@ const EXPORT_COLS: ExportCol<any>[] = [
   { header: "Mã phê duyệt", get: (r) => r.approval_code_raw },
 ];
 
-export default function ReportAmisKhongEo() {
+/** nhung = hien trong tab "Chứng từ chưa khớp" cua man Nhap AMIS (khong PageHeader rieng). */
+export default function ReportAmisKhongEo({ nhung }: { nhung?: boolean }) {
   const q = useQuery({ queryKey: ["rep-amis-ko-eo"], queryFn: () => api.get<any>("/reports/amis-khong-eo") });
   if (q.isLoading) return <Spinner />;
   const rows = q.data?.rows ?? [];
@@ -31,7 +32,7 @@ export default function ReportAmisKhongEo() {
   ];
   return (
     <div>
-      <PageHeader title="Báo cáo – AMIS không có EO" />
+      {!nhung && <PageHeader title="Báo cáo – AMIS không có EO" />}
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span className="muted" style={{ fontSize: 12.5 }}>Các mã phê duyệt này có trên EO nhưng dòng hàng không khớp EO nào.</span>

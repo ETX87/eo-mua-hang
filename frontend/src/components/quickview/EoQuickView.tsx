@@ -148,7 +148,6 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           {P.canRecall && <button className="btn sm" onClick={() => setMd({ k: "recall" })}><I.edit width={13} height={13} /> Rút về &amp; sửa</button>}
           {P.canCancel && <button className="btn sm ghost danger" onClick={() => setMd({ k: "cancel" })}><I.x width={13} height={13} /> Hủy EO</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
-          <button className="btn sm ghost" title="Mở trang chi tiết đầy đủ" onClick={() => { onCloseAll(); nav(`/eo/${id}`); }}><I.arrowRight width={13} height={13} /> Trang chi tiết</button>
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}>{eo.eo_code}</span>
