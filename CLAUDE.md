@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO)
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -124,7 +124,7 @@ Payload > 20.000 ký tự → bỏ (không cắt chuỗi JSON). Đọc mail theo
 thay OR. Giải trình (`POST /theo-doi/giai-trinh`, `cung_loai` mặc định true) đóng MỌI lỗi cùng quy tắc đang chờ của dòng — R3 ghi mỗi
 thứ 2/4 chỉ cần giải trình 1 lần; FE hiện 1 dòng "× n lần". Hiệu năng đo bằng `npx wrangler d1 insights eo-mua-hang-db --timePeriod 7d`. Domain version `theo_doi` (DVBH tag có).
 **Ngày KRF từ mail** (v0.047, `lib/krfGoiY.ts`): app `theodoimuahang` (`../../thu ky mua hang`, Worker cùng tên) đọc mail
-theodoimuahang@gmail.com theo **mã 3TDO + mã LK** (không dùng mẫu EO-PUSH) và đẩy `tl_mail` mỗi dòng 1 bản ghi, `payload.dong` =
+theodoimuahang@gmail.com theo **mã 3TDO + mã LK** (không dùng mẫu MH-PUSH / EO-PUSH cũ) và đẩy `tl_mail` mỗi dòng 1 bản ghi, `payload.dong` =
 {ngay_can, dap_ung, ngay_dap_ung, note, ton_kho…} (cột "KRF đáp ứng" của file/bảng KRF trả lời). `GET /theo-doi/goi-y-krf` = dòng đang
 mở có ngày KRF (mail NHAN mới nhất) khác ngày NM cam kết; `POST /theo-doi/ap-dung-krf` = người dùng chọn rồi áp dụng.
 Cách áp dụng: 0 đợt → thêm đợt (NM = DK = ngày KRF, SL = còn thiếu); 1 đợt ngày → sửa NM, DK theo NM khi DK trống /
@@ -138,6 +138,19 @@ FE: nút "Ngày KRF từ mail (n)" ở `/don-hang` (`pages/theodoi/KrfGoiY.tsx`)
 lịch sử mail hiện dữ liệu dòng (`DongMail`).
 Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file
 trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate key này).
+
+## Vi phạm & giải trình (v0.055, `/vi-pham`, migration 0016)
+
+`routes/viPham.ts` + FE `pages/ViPham.tsx`: mỗi dòng = 1 lỗi `tl_loi` kèm người vi phạm (`ai_email`, mặc định người đặt), **mức độ**
+(CEO = dòng cấp CEO · CAO = cùng loại lặp ≥ 3 lần / chờ ≥ 7 ngày · TB = lặp 2 / chờ ≥ 3 ngày "quá lâu" · THẤP), lần thứ / số lần,
+số ngày chờ, giải trình, số lần nhắc. Phạm vi: Admin / KH cung ứng / Theo dõi TD / chỉ xem = tất cả (`xemToanBoTheoDoi`), còn lại = lỗi
+của mình / đơn mình đặt / kho phụ trách. FE: "Của tôi / Toàn bộ", 6 thẻ số bấm = lọc, xem theo lỗi (gộp lỗi lặp "× n") / theo PO / theo người.
+**Nhắc nhở** `tl_nhac_nho`: hệ thống tự nhắc khi `danhGiaQuyTac` ghi lỗi mới (+ `notification` loai `vi_pham`), quản lý nhắc tay
+`POST /vi-pham/nhac-nho` (loai `nhac_vi_pham`, event `NHAC_NHO_VI_PHAM`). **Giải trình cả PO** (PO = 1 EO): `POST /vi-pham/giai-trinh-po`
+đóng mọi lỗi chờ của các dòng được chọn (hoặc `moi: true` = ghi lỗi TAY cho mọi dòng đang theo dõi); mỗi dòng vẫn 1 bản ghi
+`tl_giai_trinh` (`pham_vi='PO'`, chung `nhom`) nên các màn cũ đọc như giải trình thường. Form `pages/theodoi/GiaiTrinhPo.tsx` (cũng ở popup EO).
+Số đỏ menu: `viecCanLam` key `vi_pham` = lỗi chờ giải trình CỦA TÔI.
+Tiền tố mã EO mới `MH-` (từ 2026-11-04; mã `EO-` đã cấp giữ nguyên), push `[MH-PUSH]` / `MH-PUSH_<mã>.xlsx`.
 
 ## 3 loại ngày của 1 dòng linh kiện — tên & định nghĩa CHUNG ở `frontend/src/lib/ngay.tsx`
 

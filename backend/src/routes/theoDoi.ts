@@ -183,7 +183,8 @@ app.post("/ap-dung-krf", async (c) => {
 });
 
 // POST /push { eo_item_ids: number[] } - tao dot push doi tac (1 dot / doi tac) -> FE dung du lieu tra ve de tao file
-// Excel chuan EO-PUSH_<ma>.xlsx + tieu de mail "[EO-PUSH][<ma>] ..." (app theo-doi-mua-hang bat theo ma nay).
+// Excel chuan MH-PUSH_<ma>.xlsx + tieu de mail "[MH-PUSH][<ma>] ..." (truoc 2026-11-04: EO-PUSH; app theo-doi-mua-hang
+// chi bat theo ma PUSH-YYMMDD-NNNN nen doi tien to khong anh huong).
 app.post("/push", async (c) => {
   const u = c.get("user");
   const b = (await c.req.json()) as { eo_item_ids?: number[] };
@@ -210,8 +211,8 @@ app.post("/push", async (c) => {
       "UPDATE id_counters SET gia_tri_hien_tai = gia_tri_hien_tai + 1 WHERE ten_bang = 'tl_push' RETURNING gia_tri_hien_tai",
     ).first<{ gia_tri_hien_tai: number }>();
     const ma = `PUSH-${yymmdd}-${String(seq?.gia_tri_hien_tai ?? 1).padStart(4, "0")}`;
-    const tieuDe = `[EO-PUSH][${ma}] ${doiTac} - Đề nghị xác nhận ngày giao hàng (${list.length} dòng)`;
-    const tenFile = `EO-PUSH_${ma}.xlsx`;
+    const tieuDe = `[MH-PUSH][${ma}] ${doiTac} - Đề nghị xác nhận ngày giao hàng (${list.length} dòng)`;
+    const tenFile = `MH-PUSH_${ma}.xlsx`;
     const p = await c.env.DB.prepare(
       "INSERT INTO tl_push (ma_push, doi_tac, so_dong, tieu_de, ten_file, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
     ).bind(ma, doiTac, list.length, tieuDe, tenFile, u.email, now).first<{ id: number }>();

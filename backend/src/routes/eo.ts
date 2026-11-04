@@ -198,7 +198,8 @@ app.post("/", async (c) => {
   const seq = await c.env.DB.prepare(
     "UPDATE id_counters SET gia_tri_hien_tai = gia_tri_hien_tai + 1 WHERE ten_bang = 'eo_code' RETURNING gia_tri_hien_tai",
   ).first<{ gia_tri_hien_tai: number }>();
-  const eoCode = `EO-${String(seq?.gia_tri_hien_tai ?? 1).padStart(6, "0")}`;
+  // tien to 'MH-' tu 2026-11-04 (truoc do 'EO-' - ma da cap giu nguyen, cung bo dem eo_code)
+  const eoCode = `MH-${String(seq?.gia_tri_hien_tai ?? 1).padStart(6, "0")}`;
 
   const ins = await c.env.DB.prepare(
     `INSERT INTO eo (eo_code, tieu_de, noi_dung, loai_hinh, phong_ban, trang_thai, final_approver_email, created_by, created_at)

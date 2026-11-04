@@ -19,6 +19,7 @@ import {
 } from "../../pages/eo/eoActions";
 import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
+import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
 
 /**
  * Popup xem nhanh 1 EO (95% man hinh). Du lieu: GET /eo/:id (goc) + GET /xem/eo/:id/bo-sung (theo doi, loi, giai trinh,
@@ -166,6 +167,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           {P.canEditDraft && <button className="btn sm" onClick={() => { onCloseAll(); nav(`/eo/${id}/edit`); }}><I.edit width={13} height={13} /> Sửa / gửi trình</button>}
           {P.canRecall && <button className="btn sm" onClick={() => setMd({ k: "recall" })}><I.edit width={13} height={13} /> Rút về &amp; sửa</button>}
           {P.canCancel && <button className="btn sm ghost danger" onClick={() => setMd({ k: "cancel" })}><I.x width={13} height={13} /> Hủy EO</button>}
+          {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} lỗi)</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -363,6 +365,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       {md?.k === "add" && <AddItemModal eoId={String(id)} phongBan={eo.phong_ban} nguoiDuyet={eo.final_approver_email} meEmail={me.data?.email} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "bulk" && <BulkPlanModal po={eo.approval_code || eo.eo_code} items={activeItems} plans={d.plans} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "ndk" && <NgayHangVeModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "gt-po" && <GiaiTrinhPoModal eoId={id} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "huy" && <HuyDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "tuchoi" && <TuChoiDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}

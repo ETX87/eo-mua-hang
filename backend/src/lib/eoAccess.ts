@@ -35,6 +35,11 @@ export function isViewOnly(u: AppUser): boolean {
   );
 }
 
+/** Xem / quan ly theo doi linh kien dat & vi pham cua TOAN BO don (khong chi don cua minh / kho minh). */
+export function xemToanBoTheoDoi(u: AppUser): boolean {
+  return u.vai_tro === "Admin" || u.vai_tro === "KH cung ung" || u.vai_tro === "Theo doi tien do";
+}
+
 export function canImportAmis(u: AppUser): boolean {
   return u.vai_tro === "Admin" || u.vai_tro === "Ke toan" || u.la_ke_toan === 1;
 }

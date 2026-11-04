@@ -308,7 +308,22 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       ).bind(now, JSON.stringify(loi.slice(i, i + 300))).run();
       moi += res.meta.changes ?? 0;
     }
-    if (moi > 0) await bumpVersions(db, ["theo_doi"]);
+    if (moi > 0) {
+      // nhac nho tu dong (migrations/0016): moi loi moi 1 ban ghi tl_nhac_nho + 1 thong bao / (nguoi vi pham, EO)
+      await db.batch([
+        db.prepare(
+          `INSERT INTO tl_nhac_nho (eo_item_id, eo_id, loi_id, den_email, kenh, noi_dung, created_at)
+           SELECT eo_item_id, eo_id, id, ai_email, 'HE_THONG', 'Hệ thống ghi lỗi — cần giải trình', ? FROM tl_loi WHERE created_at = ? AND quy_tac <> 'TAY'`,
+        ).bind(now, now),
+        db.prepare(
+          `INSERT INTO notification (email, loai, noi_dung, eo_id, created_at)
+           SELECT l.ai_email, 'vi_pham', 'Có ' || COUNT(*) || ' lỗi mới cần giải trình ở ' || COALESCE(e.approval_code, e.eo_code) || ' — mở "Vi phạm & giải trình"', l.eo_id, ?
+           FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN users u ON u.email = l.ai_email
+           WHERE l.created_at = ? AND l.quy_tac <> 'TAY' GROUP BY l.ai_email, l.eo_id`,
+        ).bind(now, now),
+      ]).catch((e) => console.error("nhac nho tu dong", e));
+      await bumpVersions(db, ["theo_doi"]);
+    }
     await db.prepare("UPDATE tl_state SET danh_gia_luc = ?, running_until = NULL, so_loi_moi = ? WHERE id = 1").bind(nowVN(), moi).run();
   } catch (err) {
     await db.prepare("UPDATE tl_state SET running_until = NULL WHERE id = 1").run();

@@ -3,7 +3,7 @@ import type { Env, AppVariables, AppUser } from "../types";
 import { versionTag } from "../lib/dataVersions";
 import { todayVN, nowVN } from "../lib/vnTime";
 import { layDongTheoDoi, type DongTheoDoi } from "../lib/theoDoi";
-import { canImportAmis, canEditPlan, isViewOnly } from "../lib/eoAccess";
+import { canImportAmis, canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { dvbhEnabled } from "../lib/dvbhSync";
 
 /**
@@ -28,7 +28,7 @@ async function dongTheoDoi(env: Env): Promise<Gon[]> {
   return rows;
 }
 
-const TOAN_BO = (u: AppUser) => u.vai_tro === "Admin" || u.vai_tro === "KH cung ung" || u.vai_tro === "Theo doi tien do";
+const TOAN_BO = xemToanBoTheoDoi;
 
 interface Muc { key: string; to: string; label: string; count: number; chi_tiet?: { label: string; count: number }[] }
 
@@ -98,6 +98,14 @@ app.get("/", async (c) => {
         { label: "≥ 3 lỗi", count: ceo.filter((r) => r.ceo_ly_do.some((x) => x.endsWith("lỗi"))).length },
       ].filter((x) => x.count > 0) });
   }
+
+  // 4b. Vi pham CUA TOI chua giai trinh (nguoi vi pham = ai_email, mac dinh nguoi dat) -> man Vi pham & giai trinh
+  const vp = await db.prepare(
+    `SELECT COUNT(*) n, COUNT(DISTINCT l.eo_id) po FROM tl_loi l JOIN eo e ON e.id = l.eo_id
+     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR e.created_by = ?1)`,
+  ).bind(u.email).first<{ n: number; po: number }>();
+  if (vp?.n) out.push({ key: "vi_pham", to: "/vi-pham?xem=cua_toi&tt=cho", label: "Vi phạm của bạn chờ giải trình", count: vp.n,
+    chi_tiet: [{ label: "Số PO có lỗi (giải trình chung được cho cả PO)", count: vp.po }] });
 
   // 5. Nhap AMIS hom nay (Ke toan / Admin), bo Chu nhat
   if (canImportAmis(u) && dow !== 0) {

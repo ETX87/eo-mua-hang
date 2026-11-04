@@ -10,6 +10,7 @@ import EoForm from "./pages/eo/EoForm";
 import KeHoachTuan from "./pages/KeHoachTuan";
 import AmisImport from "./pages/amis/AmisImport";
 import DonHang from "./pages/DonHang";
+import ViPham from "./pages/ViPham";
 import Users from "./pages/admin/Users";
 import Roles from "./pages/admin/Roles";
 import DanhMuc from "./pages/admin/DanhMuc";
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/reports/giai-doan" element={<ChuyenHuong to="/don-hang" them="tab=bao-cao&bc=giai-doan" />} />
         <Route path="/reports/tien-do-tuan" element={<ChuyenHuong to="/don-hang" them="tab=bao-cao&bc=tien-do-tuan" />} />
         <Route path="/reports/luy-ke-nam" element={<ChuyenHuong to="/don-hang" them="tab=bao-cao&bc=luy-ke-nam" />} />
+        <Route path="/vi-pham" element={<ViPham />} />
         <Route path="/amis" element={<AmisImport />} />
         <Route path="/reports/amis-khong-eo" element={<ChuyenHuong to="/amis" them="tab=chua-khop" />} />
         <Route path="/admin/users" element={<Users />} />
