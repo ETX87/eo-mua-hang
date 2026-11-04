@@ -15,7 +15,7 @@ import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
  *    TB   cung loai lap 2 lan | cho giai trinh >= 3 ngay ("qua lau")
  *    THAP con lai
  * Pham vi: Admin / KH cung ung / Theo doi tien do / tai khoan chi xem: tat ca. Con lai: loi minh vi pham, don minh dat,
- * Kho: + kho phu trach.
+ * Kho: + kho phu trach. PO ban hanh truoc moc 'theo_doi_bo_qua_truoc' (mac dinh 2026-07-01) khong tinh (chot 2026-11-04).
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -67,6 +67,8 @@ app.get("/", async (c) => {
   for (const l of loiRs.results) {
     const nguoiVp: string | null = l.ai_email || l.nguoi_dat;
     if (!pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: nguoiVp, kho: l.kho })) continue;
+    // PO ban hanh truoc moc bo qua (app_settings theo_doi_bo_qua_truoc) khong con trong layDongTheoDoi -> khong tinh vi pham
+    if (!dongBy.has(l.eo_item_id)) continue;
     const ds = nhomLoai.get(`${l.eo_item_id}|${l.quy_tac}`)!;
     const soLan = ds.length;
     const lanThu = ds.indexOf(l) + 1;

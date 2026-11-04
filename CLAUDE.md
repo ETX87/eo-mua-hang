@@ -177,8 +177,8 @@ Người thêm chính là người duyệt cuối → tự duyệt (log APPROVE_
 
 `GET /api/dashboard/quan-ly` gom từ báo cáo 0.1 đã cache (không cache kết quả — mốc tồn "< 1 ngày" tính theo giờ):
 tỷ lệ đáp ứng tháng/tuần = Σmin(về, đặt)/Σđặt của dòng ĐẶT trong kỳ; tồn đọng + 8 mốc tồn (`MOC_TON`, khớp
-`frontend/src/lib/tonDong.tsx`) dùng CÙNG mốc bỏ qua & ngày đặt với `lib/theoDoi` (dòng trước BH = ngày ban hành, thêm sau BH
-= ngày tạo) để số trên Tổng quan = số ở Quản lý đơn hàng (`/don-hang?ton=<mốc>` — lọc mốc tồn chỉ tính dòng `theo_doi`, theo `bat_dau`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
+`frontend/src/lib/tonDong.tsx`) dùng CÙNG mốc bỏ qua với `lib/theoDoi` (`theo_doi_bo_qua_truoc` so với **ngày ban hành PO** — PO cũ bỏ cả dòng thêm sau,
+chốt 2026-11-04; vi phạm của PO cũ cũng không tính) & ngày đặt (dòng trước BH = ngày ban hành, thêm sau BH = ngày tạo) để số trên Tổng quan = số ở Quản lý đơn hàng (`/don-hang?ton=<mốc>` — lọc mốc tồn chỉ tính dòng `theo_doi`, theo `bat_dau`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
 `DataTable` có ô tìm nhanh mặc định (`timKiem={false}` khi trang tự tìm phía server).
 
 ## 8 giai đoạn đơn hàng — `backend/src/lib/giaiDoan.ts` (FE nhãn `frontend/src/lib/giaiDoan.tsx`)
@@ -219,7 +219,7 @@ Dữ liệu gốc không sửa.
 (tab Lịch sử EO / đặt hàng — `GET /xem/linh-kien` trả `giai_doan` theo item), cột chọn được ở Quản lý đơn hàng.
 **Diễn giải cấp CEO**: `layDongTheoDoi` trả `ceo_chi_tiet` (LUI: từng lần lùi — lúc, ai, từ → đến; XA: ngày đặt → ngày DK; LOI: số lỗi
 theo quy tắc, đếm từng lần) + `lui_ds`, `loi_qt`; FE `GiaiThichCeo` / `ceoTxt`. **Không đổi chuỗi `ceo_ly_do`** (viecCanLam lọc theo chữ).
-Khóa cache `tl:goc-theo-doi:v2` (đổi hậu tố khi đổi định dạng dữ liệu cache).
+Khóa cache `tl:goc-theo-doi:v3` (đổi hậu tố khi đổi định dạng dữ liệu cache).
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,
 Esc đóng popup trên cùng. Mở từ bất kỳ đâu bằng `useQuickView().openEo/openPart`, `<EoLink id>`, `<PartLink ma>`.

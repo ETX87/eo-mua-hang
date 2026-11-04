@@ -256,7 +256,8 @@ app.get("/quan-ly", async (c) => {
 
   // ---- ton dong: dong chua ve du + moc thoi gian ton (tinh tu ngay dat, theo gio)
   const tuNgay = (boQua?.value || "2026-07-01").slice(0, 10); // khop lib/theoDoi ngayBoQuaTruoc
-  const mo = dong.filter((r) => MO.includes(r.trang_thai_don_hang) && ngayDat(r).slice(0, 10) >= tuNgay);
+  // moc bo qua theo NGAY BAN HANH PO (khop lib/theoDoi tinhGocTheoDoi) - PO cu bo ca dong them sau
+  const mo = dong.filter((r) => MO.includes(r.trang_thai_don_hang) && String(r.ngay_ban_hanh ?? r.ngay_tao).slice(0, 10) >= tuNgay);
   const moc = MOC_TON.map((m) => ({ ...m, den: Number.isFinite(m.den) ? m.den : null, so_dong: 0, so_eo: 0, sl_thieu: 0, _eo: new Set<number>() }));
   let qua = 0, chuaNdk = 0;
   for (const r of mo) {

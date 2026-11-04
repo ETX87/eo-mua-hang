@@ -102,7 +102,8 @@ app.get("/", async (c) => {
   // 4b. Vi pham CUA TOI chua giai trinh (nguoi vi pham = ai_email, mac dinh nguoi dat) -> man Vi pham & giai trinh
   const vp = await db.prepare(
     `SELECT COUNT(*) n, COUNT(DISTINCT l.eo_id) po FROM tl_loi l JOIN eo e ON e.id = l.eo_id
-     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR e.created_by = ?1)`,
+     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR e.created_by = ?1)
+       AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')`,
   ).bind(u.email).first<{ n: number; po: number }>();
   if (vp?.n) out.push({ key: "vi_pham", to: "/vi-pham?xem=cua_toi&tt=cho", label: "Vi phạm của bạn chờ giải trình", count: vp.n,
     chi_tiet: [{ label: "Số PO có lỗi (giải trình chung được cho cả PO)", count: vp.po }] });

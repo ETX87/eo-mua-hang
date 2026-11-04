@@ -78,8 +78,8 @@ async function ngayApDung(env: Env): Promise<string> {
   const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_ap_dung_tu'").first<{ value: string }>();
   return (r?.value || "2026-10-21").slice(0, 10);
 }
-/** Dong dat (ban hanh / tao dong) TRUOC ngay nay bi bo khoi Theo doi hoan toan (chot 2026-10-21: bo don tu thang 06/2026
- *  ve truoc). app_settings 'theo_doi_bo_qua_truoc', Admin sua o Cau hinh he thong. */
+/** PO (EO) BAN HANH TRUOC ngay nay bi bo khoi Theo doi + Vi pham hoan toan, ke ca dong them sau (chot 2026-10-21: bo don tu
+ *  thang 06/2026 ve truoc; 2026-11-04: tinh theo ngay ban hanh PO). app_settings 'theo_doi_bo_qua_truoc'. */
 async function ngayBoQuaTruoc(env: Env): Promise<string> {
   const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'").first<{ value: string }>();
   return (r?.value || "2026-07-01").slice(0, 10);
@@ -95,7 +95,7 @@ type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do"
  * phan phu thuoc "bay gio" (tre 24h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
  */
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v2", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v3", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -140,8 +140,8 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
   const [apDung, boQuaTruoc] = await Promise.all([ngayApDung(env), ngayBoQuaTruoc(env)]);
   const base = (await cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(env)))
     .filter((r) => r.trang_thai_eo === "ISSUED"
-      // ngay dat = muon hon giua ngay ban hanh EO va ngay tao dong (dong them sau ban hanh)
-      && [r.ngay_ban_hanh, r.ngay_tao].filter(Boolean).sort().pop()!.slice(0, 10) >= boQuaTruoc);
+      // theo NGAY BAN HANH PO (chot 2026-11-04): PO ban hanh truoc moc -> bo ca PO, ke ca dong them sau moc
+      && String(r.ngay_ban_hanh ?? r.ngay_tao).slice(0, 10) >= boQuaTruoc);
   if (!base.length) return [];
   const ids = JSON.stringify(base.map((r) => r.item_id));
   const [meta, firstPlan, loi, ev, veDau] = await Promise.all([
