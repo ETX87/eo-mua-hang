@@ -8,7 +8,7 @@ export const EVENT_LABEL: Record<string, string> = {
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
   IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
-  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm",
+  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi",
 };
 
 const sl = (v: unknown) => (v == null || v === "" ? "" : Number(v).toLocaleString("vi-VN"));
@@ -39,6 +39,7 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   if (e.event_type === "CREATE_EO" && m?.copy_tu) p.push(`Copy từ ${m.copy_tu.approval_code || m.copy_tu.eo_code}`);
   if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.pham_vi === "PO") p.push(`Giải trình chung cả PO (${a.so_loi ?? a.so_dong ?? ""} ${a.so_loi != null ? "lỗi" : "dòng"})`);
   if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.noi_dung) p.push(a.noi_dung);
+  if (e.event_type === "XOA_LOI_THEO_DOI" && Array.isArray(b)) p.push(`${b.length} lỗi`);
   if (e.event_type === "NHAC_NHO_VI_PHAM") p.push(`Nhắc giải trình ${a?.so_loi ?? ""} lỗi${a?.noi_dung ? `: ${a.noi_dung}` : ""}`);
   if (e.event_type === "UPDATE_EO" && a) p.push(Object.keys(a).join(", "));
   if (m?.comment) p.push(m.comment);
