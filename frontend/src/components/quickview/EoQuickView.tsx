@@ -26,10 +26,10 @@ import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
  * push, mail theodoimuahang, phieu AMIS, canh bao). Trai: tab noi dung; phai: nhat ky hop nhat co loc.
  */
 const TT: Record<string, { l: string; c: string }> = {
-  CHO_NDK: { l: "Chờ ngày DK", c: "final" }, TRE_NDK: { l: "Trễ 24h chưa ngày DK", c: "reject" },
+  CHO_NDK: { l: "Chờ ngày DK", c: "final" }, TRE_NDK: { l: "Trễ 48h chưa ngày DK", c: "reject" },
   QUA_HAN_NDK: { l: "Quá ngày DK", c: "reject" }, CHO_HANG: { l: "Chờ hàng", c: "review" }, DONG: { l: "Đã đóng", c: "issued" },
 };
-const QUY_TAC: Record<string, string> = { R1: "Không có ngày DK trong 24h", R3: "Không push đối tác", R4: "Quá hạn không cập nhật ngày DK", TAY: "Lỗi ghi khi giải trình" };
+const QUY_TAC: Record<string, string> = { R1: "Không có ngày DK trong 48h", R3: "Không push đối tác", R4: "Quá hạn không cập nhật ngày DK", TAY: "Lỗi ghi khi giải trình" };
 const APR: Record<string, { l: string; c: string }> = {
   PENDING: { l: "Chờ xử lý", c: "final" }, APPROVED: { l: "Đồng ý", c: "issued" }, REJECTED: { l: "Từ chối", c: "reject" },
   REQUEST_UPDATE: { l: "Yêu cầu cập nhật", c: "final" }, WITHDRAWN: { l: "Đã rút", c: "nhap" }, SKIPPED: { l: "Bỏ qua", c: "nhap" },

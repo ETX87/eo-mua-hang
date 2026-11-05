@@ -127,7 +127,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
       {issued && (
         <details style={{ background: "var(--panel-2)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, lineHeight: 1.55 }}>
           <summary style={{ cursor: "pointer" }}>
-            Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ làm việc sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
+            Mỗi dòng phải có <b>ngày dự kiến</b> trong 48 giờ làm việc sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
             <a href={`/don-hang/ke-hoach-tuan?eo=${eo.id}`} onClick={(e) => e.stopPropagation()}>nhập theo tuần</a> <span className="muted">(bấm để xem vì sao)</span>
           </summary>
           Không nhập / quá ngày dự kiến mà chưa cập nhật → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng.
@@ -820,7 +820,7 @@ export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: ()
 }
 
 // ---------------------------------------------------------------- xuat Excel danh sach linh kien cua 1 EO
-const TT_THEO_DOI: Record<string, string> = { CHO_NDK: "Chờ ngày dự kiến", TRE_NDK: "Trễ 24h chưa có ngày DK", QUA_HAN_NDK: "Quá ngày dự kiến", CHO_HANG: "Chờ hàng", DONG: "Đã đóng" };
+const TT_THEO_DOI: Record<string, string> = { CHO_NDK: "Chờ ngày dự kiến", TRE_NDK: "Trễ 48h chưa có ngày DK", QUA_HAN_NDK: "Quá ngày dự kiến", CHO_HANG: "Chờ hàng", DONG: "Đã đóng" };
 /**
  * Tai file Excel: moi dong linh kien cua EO + thong tin EO + ke hoach (cac dot, ngay NM / du kien) + hang ve AMIS
  * + theo doi. Lay them /xem/eo/:id/bo-sung (phieu AMIS, theo doi) neu chua truyen vao.

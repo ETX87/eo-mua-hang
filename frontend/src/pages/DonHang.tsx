@@ -145,8 +145,8 @@ const veTrongTuan = (r: Row, lech: number) => { const [a, b] = tuan(lech); const
 const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?: string }[] = [
   { k: "can_xl", l: "Cần xử lý", mau: "#DC2626", title: "Dòng áp dụng quy tắc: cần nhập ngày dự kiến, quá ngày dự kiến hoặc có lỗi chờ giải trình (= Việc cần xử lý)",
     f: (r) => r.ap_dung && (["CHO_NDK", "TRE_NDK", "QUA_HAN_NDK"].includes(r.tinh_trang) || r.so_loi_cho_gt > 0) },
-  { k: "TRE_NDK", l: "Trễ 24h chưa có ngày DK", f: (r) => r.tinh_trang === "TRE_NDK" },
-  { k: "CHO_NDK", l: "Chờ ngày DK (24h)", f: (r) => r.tinh_trang === "CHO_NDK" },
+  { k: "TRE_NDK", l: "Trễ 48h chưa có ngày DK", f: (r) => r.tinh_trang === "TRE_NDK" },
+  { k: "CHO_NDK", l: "Chờ ngày DK (48h)", f: (r) => r.tinh_trang === "CHO_NDK" },
   { k: "QUA_HAN_NDK", l: "Quá ngày dự kiến", f: (r) => r.tinh_trang === "QUA_HAN_NDK" },
   { k: "CO_LOI", l: "Lỗi chờ giải trình", f: (r) => r.so_loi_cho_gt > 0 },
   { k: "CEO", l: "Cấp CEO", mau: "#DC2626", title: "Lùi ngày dự kiến ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi", f: (r) => (r.ceo_ly_do ?? []).length > 0 },
@@ -376,7 +376,7 @@ function DanhSach() {
         </div>
         <div style={{ marginTop: 8 }}><ChuGiaiNgay gon /></div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
-          Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 24h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
+          Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 48h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
           quá ngày DK phải nhập ngày mới trong 24h — vi phạm tự ghi lỗi, phải giải trình. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
           {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
         </div>

@@ -37,6 +37,7 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   if (e.event_type === "ADD_ITEM" && a?.part_code) p.push(`${a.part_code} · ${a.warehouse ?? ""} · SL ${sl(a.current_qty)}`);
   if (e.event_type === "IMPORT_ITEMS") p.push(`${m?.so_dong ?? ""} dòng`);
   if (e.event_type === "CREATE_EO" && m?.copy_tu) p.push(`Copy từ ${m.copy_tu.approval_code || m.copy_tu.eo_code}`);
+  if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.pham_vi === "NHIEU") p.push(`Giải trình chung nhiều lỗi cùng loại (${a.so_dong ?? ""} dòng)`);
   if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.pham_vi === "PO") p.push(`Giải trình chung cả PO (${a.so_loi ?? a.so_dong ?? ""} ${a.so_loi != null ? "lỗi" : "dòng"})`);
   if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.noi_dung) p.push(a.noi_dung);
   if (e.event_type === "XOA_LOI_THEO_DOI" && Array.isArray(b)) p.push(`${b.length} lỗi`);

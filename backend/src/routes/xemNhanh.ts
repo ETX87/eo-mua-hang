@@ -85,8 +85,8 @@ app.get("/eo/:id/bo-sung", async (c) => {
   const qua = dem((r) => r.ap_dung && r.tinh_trang === "QUA_HAN_NDK");
   const loiCho = loi.results.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
   const ceo = td.filter((r) => r.ceo_ly_do.length > 0);
-  if (tre) cb.push({ muc: "danger", text: `${tre} dòng quá 24h chưa có ngày dự kiến` });
-  if (cho) cb.push({ muc: "warn", text: `${cho} dòng cần nhập ngày dự kiến (trong 24h làm việc)` });
+  if (tre) cb.push({ muc: "danger", text: `${tre} dòng quá 48h chưa có ngày dự kiến` });
+  if (cho) cb.push({ muc: "warn", text: `${cho} dòng cần nhập ngày dự kiến (trong 48h làm việc)` });
   if (qua) cb.push({ muc: "danger", text: `${qua} dòng đã quá ngày dự kiến — phải nhập ngày mới` });
   if (loiCho) cb.push({ muc: "danger", text: `${loiCho} lỗi chờ giải trình` });
   if (ceo.length) cb.push({ muc: "danger", text: `${ceo.length} dòng ở cấp CEO: ${[...new Set(ceo.flatMap((r) => r.ceo_ly_do))].join("; ")}` });

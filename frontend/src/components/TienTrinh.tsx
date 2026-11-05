@@ -4,7 +4,7 @@ import { gioTxt } from "../lib/giaiDoan";
 /**
  * Duong tien trinh 8 giai doan (backend lib/giaiDoan.ts) - 1 dong don hang hoac ca EO (gop cac dong).
  * Du lieu: dong cua GET /so-don-hang[?eo_id=] (gd_moc, gd_gio_tung, gd_tre_tung, gd_hien_tai, so_lan_tra_ve...).
- * Loi theo doi gan vao giai doan theo quy tac: R3 khong push -> G4, R1 khong co ngay DK 24h -> G5, R4 qua han cap nhat -> G6.
+ * Loi theo doi gan vao giai doan theo quy tac: R3 khong push -> G4, R1 khong co ngay DK 48h -> G5, R4 qua han cap nhat -> G6.
  * G4 chay SONG SONG (mail gui NCC), G7 CHI DO (khong bao gio "dang o").
  */
 export interface GdDef { k: string; l: string; vai_tro: string }

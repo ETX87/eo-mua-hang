@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO)
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -150,6 +150,10 @@ của mình / đơn mình đặt / kho phụ trách. FE: "Của tôi / Toàn b�
 `POST /vi-pham/nhac-nho` (loai `nhac_vi_pham`, event `NHAC_NHO_VI_PHAM`). **Giải trình cả PO** (PO = 1 EO): `POST /vi-pham/giai-trinh-po`
 đóng mọi lỗi chờ của các dòng được chọn (hoặc `moi: true` = ghi lỗi TAY cho mọi dòng đang theo dõi); mỗi dòng vẫn 1 bản ghi
 `tl_giai_trinh` (`pham_vi='PO'`, chung `nhom`) nên các màn cũ đọc như giải trình thường. Form `pages/theodoi/GiaiTrinhPo.tsx` (cũng ở popup EO).
+**Giải trình chung nhiều lỗi cùng loại** (v0.059): tick các lỗi ở màn Vi phạm → `POST /vi-pham/giai-trinh-nhieu` (`loi_ids`, bắt buộc cùng
+`quy_tac` — khác loại trả `KHAC_LOAI`; quyền trên mọi EO), `pham_vi='NHIEU'`, form `GiaiTrinhNhieuModal`.
+R1 = **48h làm việc** (`GIO_R1` ở `lib/theoDoi.ts`, v0.059); `danhGiaQuyTac` đồng bộ lỗi R1 đang chờ với mốc hiện tại (hết vi phạm → xóa + event
+`XOA_LOI_THEO_DOI`, còn → cập nhật `han`). Mã lỗi danh mục vẫn `KHONG_NDK_24H`.
 Số đỏ menu: `viecCanLam` key `vi_pham` = lỗi chờ giải trình CỦA TÔI.
 Tiền tố mã EO mới `MH-` (từ 2026-11-04; mã `EO-` đã cấp giữ nguyên), push `[MH-PUSH]` / `MH-PUSH_<mã>.xlsx`.
 
@@ -220,7 +224,7 @@ Dữ liệu gốc không sửa.
 (tab Lịch sử EO / đặt hàng — `GET /xem/linh-kien` trả `giai_doan` theo item), cột chọn được ở Quản lý đơn hàng.
 **Diễn giải cấp CEO**: `layDongTheoDoi` trả `ceo_chi_tiet` (LUI: từng lần lùi — lúc, ai, từ → đến; XA: ngày đặt → ngày DK; LOI: số lỗi
 theo quy tắc, đếm từng lần) + `lui_ds`, `loi_qt`; FE `GiaiThichCeo` / `ceoTxt`. **Không đổi chuỗi `ceo_ly_do`** (viecCanLam lọc theo chữ).
-Khóa cache `tl:goc-theo-doi:v3` (đổi hậu tố khi đổi định dạng dữ liệu cache).
+Khóa cache `tl:goc-theo-doi:v4` (đổi hậu tố khi đổi định dạng dữ liệu cache).
 
 `components/quickview/QuickView.tsx`: `QuickViewProvider` (bọc trong App) giữ **ngăn xếp** popup EO / mã linh kiện,
 Esc đóng popup trên cùng. Mở từ bất kỳ đâu bằng `useQuickView().openEo/openPart`, `<EoLink id>`, `<PartLink ma>`.

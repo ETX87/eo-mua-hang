@@ -233,4 +233,56 @@ app.post("/giai-trinh-po", async (c) => {
   return c.json({ ok: true, so_dong: res[0].meta.changes ?? 0, so_loi: res[1].meta.changes ?? 0 });
 });
 
+/**
+ * POST /giai-trinh-nhieu { loi_ids, ai_ma, ai_email?, loi_ma, noi_dung, hinh_anh } - 1 giai trinh cho NHIEU loi CUNG LOAI
+ * (cung quy tac) duoc chon o man Vi pham, co the tren nhieu dong / nhieu PO (2026-11-05). Moi dong 1 ban ghi tl_giai_trinh
+ * (pham_vi 'NHIEU', chung khoa nhom). Phai co quyen tren moi EO lien quan; R1/R4 bat buoc anh.
+ */
+app.post("/giai-trinh-nhieu", async (c) => {
+  const u = c.get("user");
+  const db = c.env.DB;
+  const b = (await c.req.json().catch(() => ({}))) as { loi_ids?: number[]; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[] };
+  const ids = JSON.stringify([...new Set((b.loi_ids ?? []).map(Number).filter((x) => x > 0))].slice(0, 2000));
+  const noiDung = (b.noi_dung ?? "").trim();
+  if (ids === "[]") return c.json({ error: "BAD_INPUT" }, 400);
+  if (!b.ai_ma || !b.loi_ma || !noiDung) return c.json({ error: "MISSING_FIELDS" }, 400);
+  const dm = await db.prepare("SELECT loai FROM tl_danh_muc WHERE (loai = 'AI' AND ma = ?) OR (loai = 'LOI' AND ma = ?)").bind(b.ai_ma, b.loi_ma).all();
+  if (dm.results.length < 2) return c.json({ error: "BAD_CATALOG" }, 400);
+  const ds = (await db.prepare(
+    `SELECT l.id, l.quy_tac, l.eo_id, e.created_by FROM tl_loi l JOIN eo e ON e.id = l.eo_id
+     WHERE l.id IN (SELECT value FROM json_each(?)) AND l.trang_thai = 'CHO_GIAI_TRINH'`,
+  ).bind(ids).all<{ id: number; quy_tac: string; eo_id: number; created_by: string }>()).results;
+  if (!ds.length) return c.json({ error: "KHONG_CO_LOI" }, 400);
+  if (new Set(ds.map((l) => l.quy_tac)).size > 1) return c.json({ error: "KHAC_LOAI" }, 400);
+  if (ds.some((l) => !canEditPlan(u, l))) return c.json({ error: "READ_ONLY" }, 403);
+  const hinh = JSON.stringify((Array.isArray(b.hinh_anh) ? b.hinh_anh : []).filter((x: any) => x && x.url).slice(0, 10));
+  if ((ds[0].quy_tac === "R1" || ds[0].quy_tac === "R4") && hinh === "[]") return c.json({ error: "CAN_HINH_ANH" }, 400);
+  const aiEmail = b.ai_email?.trim() || null;
+  const now = nowVN();
+  const nhom = `N:${crypto.randomUUID().slice(0, 12)}`;
+  const chon = JSON.stringify(ds.map((l) => l.id));
+  const res = await db.batch([
+    db.prepare(
+      `INSERT INTO tl_giai_trinh (eo_item_id, eo_id, loi_id, ai_ma, ai_email, loi_ma, noi_dung, hinh_anh, created_by, created_at, pham_vi, nhom)
+       SELECT eo_item_id, eo_id, MIN(id), ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'NHIEU', ?9 FROM tl_loi
+       WHERE id IN (SELECT value FROM json_each(?1)) AND trang_thai = 'CHO_GIAI_TRINH' GROUP BY eo_item_id`,
+    ).bind(chon, b.ai_ma, aiEmail, b.loi_ma, noiDung, hinh, u.email, now, nhom),
+    db.prepare(
+      `UPDATE tl_loi AS l SET trang_thai = 'DA_GIAI_TRINH', ai_ma = ?2, ai_email = ?3, loi_ma = ?4,
+         giai_trinh_id = (SELECT g.id FROM tl_giai_trinh g WHERE g.nhom = ?5 AND g.eo_item_id = l.eo_item_id)
+       WHERE l.id IN (SELECT value FROM json_each(?1)) AND l.trang_thai = 'CHO_GIAI_TRINH'
+         AND l.eo_item_id IN (SELECT g.eo_item_id FROM tl_giai_trinh g WHERE g.nhom = ?5)`,
+    ).bind(chon, b.ai_ma, aiEmail, b.loi_ma, nhom),
+    db.prepare(
+      `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, after_json, metadata_json, user_email, created_at)
+       SELECT 'eo', g.eo_id, g.eo_id, 'GIAI_TRINH_THEO_DOI',
+              json_object('ai_ma', ?2, 'ai_email', ?3, 'loi_ma', ?4, 'noi_dung', ?5, 'pham_vi', 'NHIEU', 'so_dong', COUNT(*)),
+              json_object('quy_tac', ?6, 'nhom', ?1, 'eo_item_ids', json_group_array(g.eo_item_id)), ?7, ?8
+       FROM tl_giai_trinh g WHERE g.nhom = ?1 GROUP BY g.eo_id`,
+    ).bind(nhom, b.ai_ma, aiEmail, b.loi_ma, noiDung, ds[0].quy_tac, u.email, now),
+  ]);
+  await bumpVersions(db, ["theo_doi"]);
+  return c.json({ ok: true, so_dong: res[0].meta.changes ?? 0, so_loi: res[1].meta.changes ?? 0, so_po: res[2].meta.changes ?? 0 });
+});
+
 export default app;

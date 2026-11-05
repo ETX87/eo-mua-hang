@@ -162,3 +162,84 @@ export function GiaiTrinhPoModal({ eoId, onClose, onSaved }: { eoId: number; onC
     </Modal>
   );
 }
+
+/**
+ * Giai trinh 1 lan cho NHIEU loi CUNG LOAI duoc chon o man Vi pham (co the nhieu linh kien / nhieu PO) - POST /vi-pham/giai-trinh-nhieu.
+ * nhom = cac nhom loi da chon (1 nhom = 1 linh kien x 1 loai loi, ds = cac lan loi dang cho).
+ */
+export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
+  nhom: { x: any; ds: any[] }[]; onClose: () => void; onSaved: (kq: { so_dong: number; so_loi: number; so_po: number }) => void;
+}) {
+  const dm = useDanhMuc();
+  const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
+  const quyTac = nhom[0]?.x.quy_tac as string;
+  const ids = nhom.flatMap((n) => n.ds.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").map((l) => l.id));
+  const soPo = new Set(nhom.map((n) => n.x.eo_id)).size;
+  const [aiMa, setAiMa] = useState("NGUOI_DAT");
+  const [aiEmail, setAiEmail] = useState("");
+  const [loiMa, setLoiMa] = useState(quyTac === "R1" ? "KHONG_NDK_24H" : quyTac === "R3" ? "KHONG_PUSH" : quyTac === "R4" ? "KHONG_NDK_QUA_HAN" : "");
+  const [noiDung, setNoiDung] = useState("");
+  const [anh, setAnh] = useState<Anh[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const canAnh = quyTac === "R1" || quyTac === "R4";
+  const save = async () => {
+    setErr("");
+    if (!loiMa) return setErr("Chọn Lỗi gì.");
+    if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
+    if (canAnh && !anh.length) return setErr("Loại lỗi này bắt buộc ảnh bằng chứng.");
+    setBusy(true);
+    try {
+      onSaved(await api.post("/vi-pham/giai-trinh-nhieu", { loi_ids: ids, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh }));
+    } catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "KHAC_LOAI" ? "Chỉ giải trình chung được các lỗi cùng loại." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các lỗi đã chọn đã được giải trình." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
+      setBusy(false);
+    }
+  };
+  const ai = (dm.data ?? []).filter((x) => x.loai === "AI" && x.active);
+  const dmLoi = (dm.data ?? []).filter((x) => x.loai === "LOI" && x.active);
+  return (
+    <Modal title={`Giải trình chung ${ids.length} lỗi “${QUY_TAC[quyTac] ?? quyTac}”`} onClose={onClose} width={860}
+      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : `Gửi giải trình (${nhom.length} linh kiện · ${soPo} PO)`}</button></>}>
+      <div style={{ fontSize: 13 }}>
+        <div className="qv-alert warn" style={{ display: "block", marginBottom: 10 }}>
+          1 nội dung giải trình cho <b>{ids.length} lỗi cùng loại</b> trên <b>{nhom.length} linh kiện</b> thuộc <b>{soPo} PO</b> — dùng khi các lỗi có cùng nguyên nhân.
+        </div>
+        <div className="tbl-wrap" style={{ maxHeight: 220, overflow: "auto" }}>
+          <table className="tbl tbl-dense">
+            <thead><tr><th>PO</th><th>Mã linh kiện</th><th>Tên</th><th>Số lần</th><th>Ngày vi phạm</th></tr></thead>
+            <tbody>{nhom.map((n) => (
+              <tr key={`${n.x.eo_item_id}|${n.x.quy_tac}`}><td>{n.x.approval_code || n.x.eo_code}</td><td><b>{n.x.part_code}</b></td><td>{n.x.part_name}</td>
+                <td>{n.ds.length}</td><td style={{ fontSize: 12 }}>{lietKe(n.ds.map((y: any) => ngay(y.ngay_tham_chieu ?? y.han)), 4)}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
+          <div>
+            <label className="field-label">Ai chịu trách nhiệm <span className="req">*</span></label>
+            <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
+          </div>
+          <div>
+            <label className="field-label">Người cụ thể</label>
+            <select className="select" value={aiEmail} onChange={(e) => setAiEmail(e.target.value)}>
+              <option value="">— Không chọn —</option>
+              {(users.data ?? []).map((u: any) => <option key={u.email} value={u.email}>{u.ho_ten ? `${u.ho_ten} (${u.email})` : u.email}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="field-label">Lỗi gì <span className="req">*</span></label>
+            <select className="select" value={loiMa} onChange={(e) => setLoiMa(e.target.value)}>
+              <option value="">Chọn lỗi</option>
+              {dmLoi.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}
+            </select>
+          </div>
+        </div>
+        <label className="field-label" style={{ marginTop: 12 }}>Nội dung giải trình chung <span className="req">*</span></label>
+        <textarea className="textarea" value={noiDung} onChange={(e) => setNoiDung(e.target.value)} placeholder="Nguyên nhân chung, đã làm gì, khi nào có ngày dự kiến…" />
+        <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} />
+        {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      </div>
+    </Modal>
+  );
+}

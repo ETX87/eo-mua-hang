@@ -11,7 +11,7 @@ import { exportRowsToXlsx } from "../lib/exportXlsx";
 import { gopTrung, lietKe } from "../lib/gopTrung";
 import { boDau } from "../lib/tonDong";
 import { GiaiTrinhModal, LichSuDong, NgayHangVeModal, QUY_TAC, TINH_TRANG, useDanhMuc, type Dong } from "./theodoi/shared";
-import { GiaiTrinhPoModal } from "./theodoi/GiaiTrinhPo";
+import { GiaiTrinhNhieuModal, GiaiTrinhPoModal } from "./theodoi/GiaiTrinhPo";
 
 /**
  * "Vi phạm & giải trình" (/vi-pham) - theo doi rieng mang loi (backend routes/viPham.ts, migrations/0016).
@@ -37,7 +37,7 @@ const CACH_XU_LY: Record<string, string> = {
   TAY: "Lỗi ghi tay lúc giải trình (NCC trễ, hết hàng…) — đã có giải trình, chỉ để thống kê.",
 };
 const QT_DAI: Record<string, string> = {
-  R1: "Sau khi EO ban hành (hoặc dòng thêm sau ban hành được duyệt) phải có ngày dự kiến trong 24 giờ làm việc (bỏ Chủ nhật).",
+  R1: "Sau khi EO ban hành (hoặc dòng thêm sau ban hành được duyệt) phải có ngày dự kiến trong 48 giờ làm việc (bỏ Chủ nhật).",
   R3: "Mỗi thứ 2 / thứ 4, dòng chưa từng có ngày dự kiến phải được push đối tác trong ngày (có mail với đối tác qua theodoimuahang@gmail.com trong kỳ cũng tính là đã push).",
   R4: "Quá ngày dự kiến mà hàng chưa về đủ → phải nhập ngày dự kiến mới trong 24 giờ làm việc.",
   TAY: "Lỗi do người giải trình tự xác định.",
@@ -45,7 +45,7 @@ const QT_DAI: Record<string, string> = {
 const MucBadge = ({ m }: { m: string }) => <span className={`badge ${MUC[m]?.c ?? "nhap"}`} title={MUC[m]?.gt} style={m === "CEO" ? { background: "#7F1D1D", color: "#fff" } : undefined}>{MUC[m]?.l ?? m}</span>;
 const TrangThai = ({ l }: { l: L }) => l.trang_thai === "CHO_GIAI_TRINH"
   ? <span className="badge reject">Chờ giải trình</span>
-  : <span className="badge issued" title={l.gt_pham_vi === "PO" ? "Giải trình chung cả PO" : undefined}>Đã giải trình{l.gt_pham_vi === "PO" ? " (PO)" : ""}</span>;
+  : <span className="badge issued" title={l.gt_pham_vi === "PO" ? "Giải trình chung cả PO" : l.gt_pham_vi === "NHIEU" ? "Giải trình chung nhiều lỗi cùng loại" : undefined}>Đã giải trình{l.gt_pham_vi === "PO" ? " (PO)" : l.gt_pham_vi === "NHIEU" ? " (chung)" : ""}</span>;
 const maPo = (l: L) => l.approval_code || l.eo_code;
 const mucCao = (ds: L[]) => ds.reduce((m, l) => (MUC[l.muc]?.thu ?? 0) > (MUC[m]?.thu ?? 0) ? l.muc : m, "THAP");
 const cho = (l: L) => l.trang_thai === "CHO_GIAI_TRINH";
@@ -83,7 +83,7 @@ export default function ViPham() {
   const [muc, setMuc] = useState(""); const [qt, setQt] = useState(""); const [nguoi, setNguoi] = useState(sp.get("nguoi") || "");
   const [kho, setKho] = useState(""); const [doiTac, setDoiTac] = useState(""); const [tu, setTu] = useState(""); const [den, setDen] = useState("");
   const [chiTiet, setChiTiet] = useState<Nhom | null>(null);
-  const [md, setMd] = useState<{ k: "gt"; x: L } | { k: "po"; eo: number } | { k: "nhac"; ids: number[]; ten: string } | { k: "ndk"; x: L } | null>(null);
+  const [md, setMd] = useState<{ k: "gt"; x: L } | { k: "po"; eo: number } | { k: "nhac"; ids: number[]; ten: string } | { k: "ndk"; x: L } | { k: "nhieu"; nhom: Nhom[] } | null>(null);
   const [chon, setChon] = useState<Set<string>>(new Set());
   const [thongBao, setThongBao] = useState("");
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
@@ -123,7 +123,13 @@ export default function ViPham() {
   const xoaLoc = () => { setMuc(""); setQt(""); setNguoi(""); setKho(""); setDoiTac(""); setTu(""); setDen(""); setTim(""); set("kpi", ""); };
   const xong = (msg?: string) => { setMd(null); if (msg) setThongBao(msg); qc.invalidateQueries({ queryKey: ["vi-pham"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["tl-dong"] }); qc.invalidateQueries({ queryKey: ["theo-doi"] }); };
   const khoaNhom = (n: Nhom) => `${n.x.eo_item_id}|${n.x.quy_tac}|${n.x.trang_thai}`;
-  const idsChon = nhom.filter((n) => chon.has(khoaNhom(n)) && cho(n.x)).flatMap((n) => n.ds.map((l) => l.id));
+  const nhomChon = nhom.filter((n) => chon.has(khoaNhom(n)) && cho(n.x));
+  const idsChon = nhomChon.flatMap((n) => n.ds.map((l) => l.id));
+  const loaiChon = [...new Set(nhomChon.map((n) => n.x.quy_tac))];
+  const coChon = d.quan_ly || d.co_the_gt;
+  // "chon tat ca": cac loi CHO cung loai - loai dang loc, khong loc thi loai cua dong dau tien (giai trinh chung chi cho loi cung loai)
+  const loaiTatCa = qt || nhom.find((n) => cho(n.x))?.x.quy_tac;
+  const tatCaCungLoai = nhom.filter((n) => cho(n.x) && n.x.quy_tac === loaiTatCa);
   const choDong = (x: L): Dong => ({ ...x, item_id: x.eo_item_id, ma_phe_duyet: x.approval_code, nguoi_dat: x.nguoi_dat } as any);
 
   // ------ dai bao "viec cua ban" (3-5 giay)
@@ -136,9 +142,9 @@ export default function ViPham() {
         {d.quan_ly ? <> Việc cần làm: xem mức <b>Cao / CEO</b> trước, tick lỗi → <b>Nhắc nhở</b> người vi phạm; xem tab <b>Theo người</b> để biết ai vi phạm nhiều.</> : null}</>;
 
   const colsLoi: Col<Nhom>[] = [
-    { key: "act", header: d.quan_ly ? <input type="checkbox" title="Chọn tất cả lỗi chờ (để nhắc nhở)" checked={nhom.some((n) => cho(n.x)) && nhom.filter((n) => cho(n.x)).every((n) => chon.has(khoaNhom(n)))} onChange={(e) => setChon(e.target.checked ? new Set(nhom.filter((n) => cho(n.x)).map(khoaNhom)) : new Set())} /> : "",
+    { key: "act", header: coChon ? <input type="checkbox" title={`Chọn tất cả lỗi chờ loại “${QUY_TAC[loaiTatCa ?? ""] ?? ""}” đang hiển thị (lọc “Loại lỗi” để chọn loại khác)`} checked={chon.size > 0} onChange={(e) => setChon(e.target.checked ? new Set(tatCaCungLoai.map(khoaNhom)) : new Set())} /> : "",
       render: (n) => <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
-        {d.quan_ly && <input type="checkbox" disabled={!cho(n.x)} checked={chon.has(khoaNhom(n))} onChange={() => setChon((s) => { const m = new Set(s); const k = khoaNhom(n); if (m.has(k)) m.delete(k); else m.add(k); return m; })} />}
+        {coChon && <input type="checkbox" disabled={!cho(n.x)} title={cho(n.x) ? "Chọn để giải trình chung / nhắc nhở" : undefined} checked={chon.has(khoaNhom(n))} onChange={() => setChon((s) => { const m = new Set(s); const k = khoaNhom(n); if (m.has(k)) m.delete(k); else m.add(k); return m; })} />}
         {cho(n.x) && d.co_the_gt && <button className="btn sm primary" onClick={() => setMd({ k: "gt", x: n.x })}>Giải trình</button>}
         <button className="btn sm ghost" title="Chi tiết" onClick={() => setChiTiet(n)}><I.eye width={14} height={14} /></button>
       </div> },
@@ -286,9 +292,15 @@ export default function ViPham() {
           <button key={k} className={`qv-chip ${kieu === k ? "on" : ""}`} style={{ fontSize: 13, padding: "5px 14px" }} onClick={() => set("kieu", k === "loi" ? "" : k)}>{t}</button>
         ))}
         <span className="muted" style={{ fontSize: 12 }}>
-          {kieu === "loi" ? "Lỗi lặp cùng loại trên 1 linh kiện gộp 1 dòng (× n lần) — bấm dòng xem từng lần." : kieu === "po" ? "Giải trình cả PO: 1 nội dung cho mọi linh kiện trong PO." : "Xếp theo số lỗi chờ — bấm “Xem lỗi” để lọc theo người."}
+          {kieu === "loi" ? "Lỗi lặp cùng loại trên 1 linh kiện gộp 1 dòng (× n lần) — tick nhiều lỗi cùng loại để giải trình chung 1 lần." : kieu === "po" ? "Giải trình cả PO: 1 nội dung cho mọi linh kiện trong PO." : "Xếp theo số lỗi chờ — bấm “Xem lỗi” để lọc theo người."}
         </span>
         <div style={{ flex: 1 }} />
+        {kieu === "loi" && idsChon.length > 0 && <>
+          <span className="muted" style={{ fontSize: 12 }}>Đã chọn {nhomChon.length} linh kiện · {idsChon.length} lỗi{loaiChon.length > 1 ? ` · ${loaiChon.length} loại khác nhau` : ""}</span>
+          {d.co_the_gt && <button className="btn sm primary" disabled={loaiChon.length > 1} title={loaiChon.length > 1 ? "Chỉ giải trình chung được các lỗi cùng loại — bỏ chọn bớt hoặc lọc theo Loại lỗi" : "1 nội dung giải trình cho mọi lỗi đã chọn"}
+            onClick={() => setMd({ k: "nhieu", nhom: nhomChon })}>Giải trình chung ({idsChon.length} lỗi)</button>}
+          <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>
+        </>}
         {d.quan_ly && kieu === "loi" && idsChon.length > 0 && <button className="btn sm primary" onClick={() => setMd({ k: "nhac", ids: idsChon, ten: `${chon.size} nhóm lỗi đã chọn` })}><I.bell width={14} height={14} /> Nhắc nhở ({idsChon.length} lỗi)</button>}
         {d.danh_gia_luc && <span className="muted" style={{ fontSize: 11 }} title="Hệ thống kiểm tra quy tắc và ghi lỗi tối đa 10 phút / lần">Kiểm tra lỗi lúc {ngayGio(d.danh_gia_luc)}</span>}
       </div>
@@ -308,6 +320,7 @@ export default function ViPham() {
       {md?.k === "gt" && <GiaiTrinhModal dong={choDong(md.x)} onClose={() => setMd(null)} onSaved={() => { setChiTiet(null); xong("Đã gửi giải trình."); }} />}
       {md?.k === "po" && <GiaiTrinhPoModal eoId={md.eo} onClose={() => setMd(null)} onSaved={(kq) => { setChiTiet(null); xong(`Đã giải trình chung cả PO: ${kq.so_loi} lỗi trên ${kq.so_dong} linh kiện.`); }} />}
       {md?.k === "ndk" && <NgayHangVeModal dong={choDong(md.x)} onClose={() => setMd(null)} onSaved={() => xong()} />}
+      {md?.k === "nhieu" && <GiaiTrinhNhieuModal nhom={md.nhom} onClose={() => setMd(null)} onSaved={(kq) => { setChon(new Set()); xong(`Đã giải trình chung ${kq.so_loi} lỗi trên ${kq.so_dong} linh kiện (${kq.so_po} PO).`); }} />}
       {md?.k === "nhac" && <NhacNhoModal ids={md.ids} ten={md.ten} onClose={() => setMd(null)} onSaved={(m) => { setChon(new Set()); xong(m); }} />}
     </>
   );

@@ -6,7 +6,7 @@ import { nowVN, todayVN } from "./vnTime";
 
 /**
  * "Theo doi linh kien dat" - kiem soat ngay du kien hang ve tung dong EO (migrations/0012). Quy tac:
- *  R1  tu luc dong bat dau (EO ban hanh / dong them sau ban hanh duoc duyet) -> 24h LAM VIEC (bo Chu nhat) phai co
+ *  R1  tu luc dong bat dau (EO ban hanh / dong them sau ban hanh duoc duyet) -> 48h LAM VIEC (bo Chu nhat, tu 2026-11-05; truoc la 24h) phai co
  *      ngay du kien (co it nhat 1 item_plan, ke ca da xoa mem). Tre -> loi.
  *  R3  Thu 2 / thu 4 (ngay X, dong bat dau truoc X): het ngay X ma dong van chua tung co ngay du kien va khong nam
  *      trong dot push doi tac (tl_push_item ngay X) -> loi.
@@ -21,6 +21,8 @@ import { nowVN, todayVN } from "./vnTime";
 
 const DONG = ["Kết thúc", "Đơn trên EO bị hủy"];
 const EVAL_GAP_MS = 10 * 60_000;
+/** R1: so gio LAM VIEC tu luc dong bat dau den han phai co ngay du kien (2026-11-05: 24 -> 48). */
+export const GIO_R1 = 48;
 
 const parseVN = (s: string) => new Date(s.slice(0, 19).replace(" ", "T") + "Z");
 const fmtVN = (d: Date) => d.toISOString().slice(0, 19).replace("T", " ");
@@ -71,7 +73,7 @@ export interface DongTheoDoi {
 }
 export interface LanLui { luc: string; tu: string; den: string; ai: string | null }
 export interface CeoChiTiet { ma: "LUI" | "XA" | "LOI"; tieu_de: string; nguong: string; gia_tri: string; dong: string[] }
-const QT_TEN: Record<string, string> = { R1: "Không có ngày DK trong 24h", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
+const QT_TEN: Record<string, string> = { R1: "Không có ngày DK trong 48h", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
 const dmy = (s: string) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
 
 async function ngayApDung(env: Env): Promise<string> {
@@ -92,10 +94,10 @@ type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do"
  * Toan bo dong EO DA BAN HANH (khong gom EO huy) + chi so theo doi. pham_vi 'dang_mo' = chua ket thuc.
  * Hieu nang (2026-10-31, d1 insights: ~900 lan / tuan x 5 truy van khi chua cache): phan doc DB (meta, ke hoach dau, loi,
  * so lan lui tu event_log, ngay ve du) cache qua cachedReport theo version eo/amis/settings/theo_doi + ngay;
- * phan phu thuoc "bay gio" (tre 24h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
+ * phan phu thuoc "bay gio" (tre 48h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
  */
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v3", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v4", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -224,7 +226,7 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
     const m = metaBy.get(r.item_id);
     const batDau: string | null = m ? (m.created_after_issue ? (m.post_issue_approved_at || m.created_at) : m.issued_at) : null;
     const apDungDong = !!batDau && batDau.slice(0, 10) >= apDung;
-    const han = batDau ? congGioLamViec(batDau) : null;
+    const han = batDau ? congGioLamViec(batDau, GIO_R1) : null;
     const lanDau = fpBy.get(r.item_id) ?? null;
     const ndk = r.ngay_du_kien_gan_nhat as string | null;
     const l = loiBy.get(r.item_id);
@@ -281,12 +283,15 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
     const loi: unknown[][] = [];
     const add = (r: DongTheoDoi, quyTac: string, khoa: string, han: string, ngayTc: string | null, loiMa: string) =>
       loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, "NGUOI_DAT", r.nguoi_dat, loiMa]);
+    // R1 vi pham? (hang da ve DU truoc han theo ngay chung tu -> khong loi)
+    const viPhamR1 = (r: DongTheoDoi) => !!r.han_ngay_du_kien && now > r.han_ngay_du_kien
+      && (!r.lan_dau_co_ndk || r.lan_dau_co_ndk > r.han_ngay_du_kien) && !(r.ngay_ve_du && r.ngay_ve_du <= r.han_ngay_du_kien.slice(0, 10));
     for (const r of rows) {
       // R1
       // hang da ve DU truoc moc (theo ngay chung tu) -> khong loi
       const veTruoc = (moc: string) => !!r.ngay_ve_du && r.ngay_ve_du <= moc.slice(0, 10);
-      if (r.han_ngay_du_kien && now > r.han_ngay_du_kien && (!r.lan_dau_co_ndk || r.lan_dau_co_ndk > r.han_ngay_du_kien) && !veTruoc(r.han_ngay_du_kien)) {
-        add(r, "R1", `R1:${r.item_id}`, r.han_ngay_du_kien, null, "KHONG_NDK_24H");
+      if (viPhamR1(r)) {
+        add(r, "R1", `R1:${r.item_id}`, r.han_ngay_du_kien!, null, "KHONG_NDK_24H");
       }
       // R4
       if (r.han_cap_nhat_lai && now > r.han_cap_nhat_lai && r.ngay_du_kien_gan_nhat) {
@@ -308,6 +313,32 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           if (!pushed.has(`${r.item_id}|${x}`) && !coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
         }
       }
+    }
+    // Dong bo loi R1 DANG CHO voi moc hien tai (doi 24h -> 48h 2026-11-05): het vi pham -> bo (ghi event_log); con -> cap nhat han.
+    const r1Cho = rows.length
+      ? (await db.prepare("SELECT id, eo_item_id, eo_id, han FROM tl_loi WHERE quy_tac = 'R1' AND trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?))")
+          .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ id: number; eo_item_id: number; eo_id: number; han: string | null }>()).results
+      : [];
+    const dongBy = new Map(rows.map((r) => [r.item_id, r]));
+    const bo = r1Cho.filter((l) => !viPhamR1(dongBy.get(l.eo_item_id)!));
+    const doiHan = r1Cho.filter((l) => !bo.includes(l) && l.han !== dongBy.get(l.eo_item_id)!.han_ngay_du_kien);
+    if (bo.length || doiHan.length) {
+      const ids = JSON.stringify(bo.map((l) => l.id));
+      await db.batch([
+        db.prepare(
+          `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, before_json, metadata_json, user_email, created_at)
+           SELECT 'eo', eo_id, eo_id, 'XOA_LOI_THEO_DOI', json_group_array(json_object('id', id, 'khoa', khoa, 'han', han)),
+                  json_object('ly_do', 'Không còn vi phạm theo mốc R1 hiện tại (' || ? || 'h làm việc)'), NULL, ?
+           FROM tl_loi WHERE id IN (SELECT value FROM json_each(?)) GROUP BY eo_id`,
+        ).bind(GIO_R1, now, ids),
+        db.prepare("DELETE FROM tl_nhac_nho WHERE loi_id IN (SELECT value FROM json_each(?))").bind(ids),
+        db.prepare("DELETE FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND id IN (SELECT value FROM json_each(?))").bind(ids),
+        db.prepare(
+          `UPDATE tl_loi SET han = json_extract(v.value, '$[1]') FROM json_each(?) v
+           WHERE tl_loi.id = json_extract(v.value, '$[0]') AND tl_loi.trang_thai = 'CHO_GIAI_TRINH'`,
+        ).bind(JSON.stringify(doiHan.map((l) => [l.id, dongBy.get(l.eo_item_id)!.han_ngay_du_kien]))),
+      ]);
+      await bumpVersions(db, ["theo_doi"]);
     }
     for (let i = 0; i < loi.length; i += 300) {
       const res = await db.prepare(

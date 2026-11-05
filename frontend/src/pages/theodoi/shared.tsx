@@ -30,13 +30,13 @@ export interface Dong {
 
 export const TINH_TRANG: Record<Dong["tinh_trang"], { l: string; c: string }> = {
   CHO_NDK: { l: "Chờ ngày dự kiến", c: "final" },
-  TRE_NDK: { l: "Trễ 24h chưa có ngày DK", c: "reject" },
+  TRE_NDK: { l: "Trễ 48h chưa có ngày DK", c: "reject" },
   QUA_HAN_NDK: { l: "Quá ngày dự kiến", c: "reject" },
   CHO_HANG: { l: "Chờ hàng", c: "review" },
   DONG: { l: "Đã đóng", c: "issued" },
 };
 export const QUY_TAC: Record<string, string> = {
-  R1: "Không có ngày dự kiến trong 24h", R3: "Không push đối tác (thứ 2/4)", R4: "Quá hạn không cập nhật ngày dự kiến", TAY: "Ghi khi giải trình",
+  R1: "Không có ngày dự kiến trong 48h", R3: "Không push đối tác (thứ 2/4)", R4: "Quá hạn không cập nhật ngày dự kiến", TAY: "Ghi khi giải trình",
 };
 
 export const timKhongDau = (r: Dong, q: string) => {

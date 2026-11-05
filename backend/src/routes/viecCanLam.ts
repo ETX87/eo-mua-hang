@@ -10,7 +10,7 @@ import { dvbhEnabled } from "../lib/dvbhSync";
  * GET /api/viec-can-lam - "viec can xu ly" theo vai tro: so dem hien sau ten menu (sidebar) + khung tong hop o Tong quan.
  * Moi muc: { key, to (duong dan menu), label, count, chi_tiet[] }. Ma tran vai tro x viec: xem ../THEO_DOI_LINH_KIEN_DAT.md
  * muc 4. Dem theo doi linh kien (nang) dung chi muc trong bo nho isolate, dung lai khi version eo/amis/settings/theo_doi
- * doi hoac sang moc 10 phut moi (trang thai tre 24h thay doi theo thoi gian).
+ * doi hoac sang moc 10 phut moi (trang thai tre 48h thay doi theo thoi gian).
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -72,8 +72,8 @@ app.get("/", async (c) => {
     const loiCho = rows.filter((r) => r.so_loi_cho_gt > 0);
     const viec = new Set([...canNdk, ...quaHan, ...loiCho].map((r) => r.item_id));
     const chiTiet = [
-      { label: "Cần nhập ngày dự kiến (24h)", count: canNdk.length },
-      { label: "Trong đó đã trễ 24h", count: canNdk.filter((r) => r.tinh_trang === "TRE_NDK").length },
+      { label: "Cần nhập ngày dự kiến (48h)", count: canNdk.length },
+      { label: "Trong đó đã trễ 48h", count: canNdk.filter((r) => r.tinh_trang === "TRE_NDK").length },
       { label: "Quá ngày dự kiến — cần ngày mới", count: quaHan.length },
       { label: "Lỗi chờ giải trình (dòng)", count: loiCho.length },
     ];
