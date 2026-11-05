@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { computeTienDo01 } from "../routes/reports";
+import { computeTienDo01, TRANG_THAI_DONG } from "../routes/reports";
 import { cachedReport } from "./reportCache";
 import { versionTag } from "./dataVersions";
 import { nowVN, todayVN } from "./vnTime";
@@ -27,7 +27,7 @@ export function dvbhEnabled(env: Env): boolean {
 }
 
 const vnPlus = (ms: number) => new Date(Date.now() + 7 * 3600_000 + ms).toISOString().slice(0, 19).replace("T", " ");
-const TRANG_THAI_DONG = ["Kết thúc", "Đơn trên EO bị hủy"];
+// TRANG_THAI_DONG: routes/reports.ts (gom "Kết thúc", "Kết thúc sớm", "Đơn trên EO bị hủy")
 
 /** Payload day du cho moi dong (thu tu field co dinh -> hash on dinh). */
 export async function buildDvbhRows(env: Env) {

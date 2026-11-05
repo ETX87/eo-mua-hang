@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { computeTienDo01 } from "../routes/reports";
+import { computeTienDo01, TRANG_THAI_DONG } from "../routes/reports";
 import { cachedReport } from "./reportCache";
 import { bumpVersions } from "./dataVersions";
 import { nowVN, todayVN } from "./vnTime";
@@ -19,7 +19,7 @@ import { nowVN, todayVN } from "./vnTime";
  * request (toi da 10 phut/lan, khoa tl_state) + khi mo man Theo doi. Loi ghi theo dung han, idempotent (khoa UNIQUE).
  */
 
-const DONG = ["Kết thúc", "Đơn trên EO bị hủy"];
+const DONG = TRANG_THAI_DONG;
 const EVAL_GAP_MS = 10 * 60_000;
 /** R1: so gio LAM VIEC tu luc dong bat dau den han phai co ngay du kien (2026-11-05: 24 -> 48). */
 export const GIO_R1 = 48;

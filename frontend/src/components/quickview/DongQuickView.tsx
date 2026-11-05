@@ -10,6 +10,7 @@ import { NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink, PartLink } from "./QuickView";
 import { TienTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong } from "../../pages/theodoi/shared";
+import { HuyDongModal, KetThucSomModal } from "../../pages/eo/eoActions";
 
 /**
  * Popup "don hang" = 1 dong linh kien tren EO: duong tien trinh 8 giai doan + bang chi tiet tung giai doan (bat dau, ket thuc,
@@ -27,7 +28,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
     queryFn: () => api.get<{ giai_doan: GdDef[]; sla: Record<string, number>; rows: any[] }>(`/so-don-hang?eo_id=${eoId}`),
   });
   const [tab, setTab] = useState<Tab>("gd");
-  const [md, setMd] = useState<"ndk" | "gt" | null>(null);
+  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | null>(null);
 
   if (ls.isLoading || (eoId && sdh.isLoading)) return <Spinner />;
   const it = ls.data?.item;
@@ -43,12 +44,18 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const xong = () => { setMd(null); ["so-don-hang", "tl-dong", "theo-doi", "inbox-count", "eo-bo-sung"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const tt = r.tinh_trang ? TINH_TRANG[r.tinh_trang as Dong["tinh_trang"]] : null;
   const loiCho = loi.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
+  // huy / ket thuc som don dat (dong): backend kiem quyen (nguoi quan ly EO / nguoi duyet cuoi), loi tra ve hien trong modal
+  const daVe = (ls.data.phieu_nhap ?? []).reduce((s: number, p: any) => s + (p.qty_in || 0), 0);
+  const moDong = issued && it.line_status === "ACTIVE" && r.phan_loai_thoi_diem_dat !== "Tạo sau ban hành (chờ duyệt)";
+  const itemHuy = { id, part_code: it.part_code, part_name: it.part_name, warehouse: it.warehouse, current_qty: it.current_qty, da_dat: daVe };
 
   return (
     <>
       <div className="qv-head">
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll} actions={<>
           {issued && <button className="btn sm primary" onClick={() => setMd("ndk")}><I.calendar width={13} height={13} /> Ngày NM / dự kiến / hàng về</button>}
+          {moDong && daVe > 0 && daVe < it.current_qty && <button className="btn sm" title="SL đặt về đúng SL đã về, không chờ phần còn lại" onClick={() => setMd("kts")}><I.check width={13} height={13} /> Kết thúc sớm</button>}
+          {moDong && <button className="btn sm ghost danger" title="Không đặt nữa — SL đã về (nếu có) không tính" onClick={() => setMd("huy")}><I.x width={13} height={13} /> Hủy đơn</button>}
           {r.theo_doi && <button className="btn sm" onClick={() => setMd("gt")} style={{ color: loiCho ? "var(--danger)" : undefined }}><I.edit width={13} height={13} /> Giải trình{loiCho ? ` (${loiCho})` : ""}</button>}
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -67,6 +74,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             {r.id_dat_lk && <span>ID dòng <b>{r.id_dat_lk}</b></span>}
             {r.ly_do_ps && <span>Lý do PS <b>{r.ly_do_ps}</b></span>}
             {r.part_code_goc && <span>Thay từ mã <b>{r.part_code_goc}</b></span>}
+            {r.ket_thuc_som_at && <span style={{ color: "var(--ok-ink)" }}>Kết thúc sớm <b>{ngayGio(r.ket_thuc_som_at)}</b>{r.sl_dat_truoc_kts != null ? <> · SL đặt ban đầu <b>{soLuong(r.sl_dat_truoc_kts)}</b></> : null}</span>}
           </div>
         </QvHeader>
         <div className="qv-kpis">
@@ -151,6 +159,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
 
       {md === "ndk" && <NgayHangVeModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
       {md === "gt" && <GiaiTrinhModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
+      {md === "huy" && <HuyDongModal item={itemHuy} onClose={() => setMd(null)} onDone={xong} />}
+      {md === "kts" && <KetThucSomModal item={itemHuy} onClose={() => setMd(null)} onDone={xong} />}
     </>
   );
 }

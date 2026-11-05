@@ -120,7 +120,8 @@ app.get("/:id", async (c) => {
   const [items, subs, apprs, plans, files, comments, events] = await Promise.all([
     c.env.DB.prepare(
       `SELECT i.*,
-              COALESCE((SELECT SUM(qty_in) FROM amis_receipt r WHERE r.match_status='MATCHED_EO' AND r.matched_eo_item_id = i.id), 0) da_dat,
+              CASE WHEN i.line_status = 'CANCELLED_LINE' THEN 0 ELSE
+                COALESCE((SELECT SUM(qty_in) FROM amis_receipt r WHERE r.match_status='MATCHED_EO' AND r.matched_eo_item_id = i.id), 0) END da_dat,
               COALESCE(i.don_gia_du_kien, 0) * i.current_qty thanh_tien_du_kien
        FROM eo_item i WHERE i.eo_id = ? ORDER BY i.id`,
     ).bind(id).all(),
@@ -322,6 +323,36 @@ app.post("/:id/items", async (c) => {
   return c.json({ id: ins!.id, post_issue_status: afterIssue ? (tuDuyet ? "APPROVED" : "PENDING") : null });
 });
 
+/**
+ * Giam tong ke hoach song cua 1 dong di `du`: giam / xoa mem cac dot tu dot XA NHAT (co log). Tra ve cac statement de chay chung batch.
+ * Dung khi giam SL dat (PATCH cat_ke_hoach) va ket thuc som.
+ */
+async function catKeHoach(db: D1Database, itemId: number, eoId: number, du: number, u: string, now: string, lyDo: string) {
+  const stmts: D1PreparedStatement[] = [];
+  const pls = await db.prepare(
+    "SELECT id, planned_date, planned_qty, tuan, loai FROM item_plan WHERE eo_item_id = ? AND deleted_at IS NULL ORDER BY planned_date DESC, id DESC",
+  ).bind(itemId).all<any>();
+  for (const p of pls.results) {
+    if (du <= 1e-9) break;
+    const meta = { eo_item_id: itemId, plan_id: p.id, ly_do: lyDo };
+    if (p.planned_qty <= du + 1e-9) {
+      du -= p.planned_qty;
+      stmts.push(
+        db.prepare("UPDATE item_plan SET deleted_at = ?, deleted_by = ? WHERE id = ?").bind(now, u, p.id),
+        eventStmt(db, { entity_type: "eo_item", entity_id: itemId, eo_id: eoId, event_type: "DELETE_PLAN", user_email: u, at: now, before: { planned_date: p.planned_date, planned_qty: p.planned_qty, tuan: p.tuan }, metadata: meta }),
+      );
+    } else {
+      const q = round3(p.planned_qty - du);
+      stmts.push(
+        db.prepare("UPDATE item_plan SET planned_qty = ?, updated_by = ?, updated_at = ? WHERE id = ?").bind(q, u, now, p.id),
+        eventStmt(db, { entity_type: "eo_item", entity_id: itemId, eo_id: eoId, event_type: "UPDATE_PLAN", user_email: u, at: now, before: { planned_date: p.planned_date, planned_qty: p.planned_qty }, after: { planned_date: p.planned_date, planned_qty: q }, metadata: meta }),
+      );
+      du = 0;
+    }
+  }
+  return stmts;
+}
+
 // ------------------------------------------------------------------ PATCH /items/:itemId (qty / fields)
 app.patch("/items/:itemId", async (c) => {
   const itemId = Number(c.req.param("itemId"));
@@ -344,32 +375,9 @@ app.patch("/items/:itemId", async (c) => {
     const sump = await c.env.DB.prepare(
       "SELECT COALESCE(SUM(planned_qty),0) s FROM item_plan WHERE eo_item_id = ? AND deleted_at IS NULL",
     ).bind(itemId).first<{ s: number }>();
-    let du = (sump?.s ?? 0) - b.current_qty;
+    const du = (sump?.s ?? 0) - b.current_qty;
     if (du > 1e-9 && !b.cat_ke_hoach) return c.json({ error: "QTY_BELOW_PLANNED_SUM", planned_sum: sump?.s }, 409);
-    if (du > 1e-9) {
-      const pls = await c.env.DB.prepare(
-        "SELECT id, planned_date, planned_qty, tuan, loai FROM item_plan WHERE eo_item_id = ? AND deleted_at IS NULL ORDER BY planned_date DESC, id DESC",
-      ).bind(itemId).all<any>();
-      const u = c.get("user").email;
-      for (const p of pls.results) {
-        if (du <= 1e-9) break;
-        const meta = { eo_item_id: itemId, plan_id: p.id, ly_do: "Giảm SL đặt — tự giảm kế hoạch" };
-        if (p.planned_qty <= du + 1e-9) {
-          du -= p.planned_qty;
-          stmts.push(
-            c.env.DB.prepare("UPDATE item_plan SET deleted_at = ?, deleted_by = ? WHERE id = ?").bind(now, u, p.id),
-            eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "DELETE_PLAN", user_email: u, at: now, before: { planned_date: p.planned_date, planned_qty: p.planned_qty, tuan: p.tuan }, metadata: meta }),
-          );
-        } else {
-          const q = Math.round((p.planned_qty - du) * 1000) / 1000;
-          stmts.push(
-            c.env.DB.prepare("UPDATE item_plan SET planned_qty = ?, updated_by = ?, updated_at = ? WHERE id = ?").bind(q, u, now, p.id),
-            eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "UPDATE_PLAN", user_email: u, at: now, before: { planned_date: p.planned_date, planned_qty: p.planned_qty }, after: { planned_date: p.planned_date, planned_qty: q }, metadata: meta }),
-          );
-          du = 0;
-        }
-      }
-    }
+    if (du > 1e-9) stmts.push(...(await catKeHoach(c.env.DB, itemId, row.eo_id, du, c.get("user").email, now, "Giảm SL đặt — tự giảm kế hoạch")));
     const newLine = b.current_qty === 0 ? "CANCELLED_LINE" : "ACTIVE";
     stmts.push(
       c.env.DB.prepare("UPDATE eo_item SET current_qty = ?, line_status = ?, updated_by = ?, updated_at = ? WHERE id = ?")
@@ -717,6 +725,43 @@ app.post("/items/:itemId/cancel-line", async (c) => {
   if (row.approval_code) await recomputeMatch(c.env.DB, [row.approval_code]);
   await bumpVersions(c.env.DB, ["eo", "amis"]);
   return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ POST /items/:itemId/ket-thuc-som
+// Ket thuc som 1 don dat (dong EO DA BAN HANH, da ve 1 phan theo AMIS): SL dat ve DUNG SL da ve, cat ke hoach con lai, danh dau
+// ket_thuc_som_* (bao cao 0.1 trang thai "Kết thúc sớm" = dong). Quyen nhu huy dong; bat buoc ly do. Chua ve gi -> dung Huy don.
+app.post("/items/:itemId/ket-thuc-som", async (c) => {
+  const itemId = Number(c.req.param("itemId"));
+  const b = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const reason = String(b.reason ?? "").trim();
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+  const row = await c.env.DB.prepare(
+    `SELECT i.*, e.final_approver_email, e.created_by eo_created_by, e.trang_thai eo_status,
+            COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id AND r.voided_at IS NULL), 0) da_ve
+     FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?`,
+  ).bind(itemId).first<any>();
+  if (!row) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (!canManageEo(u, { created_by: row.eo_created_by }) && u.email !== row.final_approver_email) return c.json({ error: "FORBIDDEN" }, 403);
+  if (row.eo_status !== "ISSUED") return c.json({ error: "ONLY_ISSUED" }, 409);
+  if (row.line_status !== "ACTIVE" || row.post_issue_status === "PENDING") return c.json({ error: "NOT_ACTIVE" }, 409);
+  const daVe = round3(row.da_ve);
+  if (daVe <= 0) return c.json({ error: "CHUA_VE" }, 409);
+  if (daVe >= row.current_qty) return c.json({ error: "DA_VE_DU" }, 409);
+  const now = nowVN();
+  const sump = await c.env.DB.prepare("SELECT COALESCE(SUM(planned_qty),0) s FROM item_plan WHERE eo_item_id = ? AND deleted_at IS NULL").bind(itemId).first<{ s: number }>();
+  const du = (sump?.s ?? 0) - daVe;
+  await c.env.DB.batch([
+    ...(du > 1e-9 ? await catKeHoach(c.env.DB, itemId, row.eo_id, du, u.email, now, "Kết thúc sớm — SL đặt về SL đã về") : []),
+    c.env.DB.prepare(
+      `UPDATE eo_item SET current_qty = ?, sl_dat_truoc_kts = ?, ket_thuc_som_at = ?, ket_thuc_som_by = ?, ket_thuc_som_ly_do = ?,
+         updated_by = ?, updated_at = ? WHERE id = ?`,
+    ).bind(daVe, row.current_qty, now, u.email, reason, u.email, now, itemId),
+    eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "KET_THUC_SOM", user_email: u.email, at: now,
+      before: { qty: row.current_qty }, after: { qty: daVe }, metadata: { reason } }),
+  ]);
+  await bumpVersions(c.env.DB, ["eo"]);
+  return c.json({ ok: true, sl_dat: daVe, sl_dat_truoc: row.current_qty });
 });
 
 // ------------------------------------------------------------------ POST /items/:itemId/reject-post-issue

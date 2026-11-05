@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -176,7 +176,11 @@ Giảm SL đặt < tổng kế hoạch: `PATCH /eo/items/:id` với `cat_ke_hoac
 Dòng thêm sau ban hành: người duyệt cuối của EO / Admin duyệt (`approve-post-issue`) hoặc từ chối (`reject-post-issue`,
 bắt buộc lý do → dòng hủy SL 0, xóa kế hoạch; ghi ở cột `post_issue_rejected_*` vì CHECK của `post_issue_status`).
 Người thêm chính là người duyệt cuối → tự duyệt (log APPROVE_POST_ISSUE_ITEM). Hủy 1 dòng sau ban hành (kể cả đã duyệt):
-`POST /eo/items/:id/cancel-line` (người quản lý EO / người duyệt cuối, bắt buộc lý do).
+`POST /eo/items/:id/cancel-line` (người quản lý EO / người duyệt cuối, bắt buộc lý do) — nút "Hủy đơn" ở popup đơn hàng + popup EO;
+dòng hủy **không tính SL đã về** (báo cáo 0.1 `actual_eo = 0`, `/eo/:id` `da_dat = 0`; v0.060). **Kết thúc sớm** (v0.060, migration 0018):
+`POST /eo/items/:id/ket-thuc-som` (cùng quyền, bắt buộc lý do, chỉ khi 0 < đã về < SL đặt) → `current_qty` = SL đã về AMIS, cắt kế hoạch
+(`catKeHoach`, dùng chung với giảm SL), lưu `ket_thuc_som_at/by/ly_do`, `sl_dat_truoc_kts`, event `KET_THUC_SOM`; báo cáo 0.1 trạng thái
+**"Kết thúc sớm"**. Danh sách trạng thái đã đóng dùng chung `TRANG_THAI_DONG` (`routes/reports.ts`) — thêm trạng thái đóng thì sửa ở đó.
 
 ## Bảng điều khiển quản lý (đầu trang Tổng quan) — `frontend/src/pages/QuanLyPanel.tsx`
 

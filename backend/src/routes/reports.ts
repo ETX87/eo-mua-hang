@@ -6,6 +6,9 @@ import { cachedReport } from "../lib/reportCache";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
+/** Trang thai don hang (bao cao 0.1) coi la DA DONG - khong con theo doi / ton dong. Them trang thai dong moi thi sua o day. */
+export const TRANG_THAI_DONG = ["Kết thúc", "Kết thúc sớm", "Đơn trên EO bị hủy"];
+
 function sum(arr: any[], k: string) {
   return Math.round(arr.reduce((s, r) => s + (Number(r[k]) || 0), 0) * 1000) / 1000;
 }
@@ -67,7 +70,7 @@ export async function computeTienDo01(env: Env) {
         MIN(COALESCE(pa.first_date, ea.first_date), COALESCE(ea.first_date, pa.first_date)) ngay_dk_dau,
         COALESCE(pl.planned_date, el.planned_date) ngay_dk_gan_nhat,
         qc.last_at ngay_cap_nhat_sl, i.created_at ngay_tao,
-        e.trang_thai eo_status, i.line_status, i.created_after_issue, i.post_issue_status,
+        e.trang_thai eo_status, i.line_status, i.created_after_issue, i.post_issue_status, i.ket_thuc_som_at, i.sl_dat_truoc_kts,
         (julianday(COALESCE(ae.last_date, ?)) - julianday(substr(i.created_at, 1, 10))) tg_xu_ly
       FROM eo_item i
       JOIN eo e ON e.id = i.eo_id
@@ -92,8 +95,12 @@ export async function computeTienDo01(env: Env) {
 
   return rows.map((r) => {
     const cancelled = r.eo_status === "CANCELLED" || r.line_status === "CANCELLED_LINE";
+    // don da huy: KHONG tinh SL da ve (yeu cau 2026-11-05) - hang ve (neu co) khong dem vao dong nay
+    if (cancelled) r.actual_eo = 0;
     let trang_thai: string;
     if (cancelled) trang_thai = "Đơn trên EO bị hủy";
+    // ket thuc som (POST /eo/items/:id/ket-thuc-som): SL dat da ve bang SL da ve -> dong lai nhu "Kết thúc"
+    else if (r.ket_thuc_som_at) trang_thai = "Kết thúc sớm";
     else if (r.ngay_ve_eo) trang_thai = r.actual_eo >= r.current_qty ? "Kết thúc" : "Chưa đủ hàng";
     else if (r.eo_status !== "ISSUED") trang_thai = "Chưa ban hành";
     else trang_thai = "Hàng chưa về";
@@ -131,6 +138,7 @@ export async function computeTienDo01(env: Env) {
       item_id: r.item_id as number, eo_id: r.eo_id as number, eo_code: r.eo_code as string, trang_thai_eo: r.eo_status as string,
       part_code_goc: r.part_code_goc as string | null, ngay_cap_nhat_dong: r.item_updated_at as string,
       nguoi_duyet_cuoi: r.final_approver_email as string | null, ngay_ban_hanh: r.issued_at as string | null,
+      ket_thuc_som_at: r.ket_thuc_som_at as string | null, sl_dat_truoc_kts: r.sl_dat_truoc_kts as number | null,
     };
   });
 }
@@ -139,8 +147,8 @@ app.get("/tien-do-don-hang", async (c) => {
   const kieuXem = c.req.query("kieu_xem") ?? "toan_bo";
   const out = await cachedReport(c.env.DB, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(c.env));
   const filtered = out.filter((r) =>
-    kieuXem === "ton" ? !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang)
-      : kieuXem === "dong" ? ["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang)
+    kieuXem === "ton" ? !TRANG_THAI_DONG.includes(r.trang_thai_don_hang)
+      : kieuXem === "dong" ? TRANG_THAI_DONG.includes(r.trang_thai_don_hang)
         : true);
   const tong = {
     so_dong: filtered.length,

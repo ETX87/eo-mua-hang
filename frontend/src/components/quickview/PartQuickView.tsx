@@ -19,7 +19,7 @@ import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac,
  * AMIS, nhat ky sua / ke hoach / thay ma / giai trinh, loi theo doi. Du lieu: GET /api/xem/linh-kien?ma=.
  */
 const TRANG_THAI_MAU: Record<string, string> = {
-  "Kết thúc": "issued", "Đơn trên EO bị hủy": "nhap", "Chưa đủ hàng": "final", "Hàng chưa về": "reject", "Chưa ban hành": "nhap",
+  "Kết thúc": "issued", "Kết thúc sớm": "issued", "Đơn trên EO bị hủy": "nhap", "Chưa đủ hàng": "final", "Hàng chưa về": "reject", "Chưa ban hành": "nhap",
 };
 type Tab = "kho" | "eo" | "amis" | "loi";
 
@@ -50,7 +50,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
     const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
     const dkTiep = (a: any[]) => a.filter((r) => MO.includes(r.trang_thai_don_hang) && r.ngay_du_kien_gan_nhat).map((r) => r.ngay_du_kien_gan_nhat as string).sort()
       .find((x) => x >= homNay) ?? null;
-    const tocDo = (a: any[]) => { const x = a.filter((r) => r.trang_thai_don_hang === "Kết thúc" && r.thoi_gian_xu_ly_ngay != null); return x.length ? Math.round((sum(x, (r) => r.thoi_gian_xu_ly_ngay) / x.length) * 10) / 10 : null; };
+    const tocDo = (a: any[]) => { const x = a.filter((r) => ["Kết thúc", "Kết thúc sớm"].includes(r.trang_thai_don_hang) && r.thoi_gian_xu_ly_ngay != null); return x.length ? Math.round((sum(x, (r) => r.thoi_gian_xu_ly_ngay) / x.length) * 10) / 10 : null; };
     const nhap = d.phieu_nhap.filter((r: any) => !r.voided_at);
     const khos = [...new Set([...daBh.map((r: any) => r.kho), ...nhap.map((r: any) => r.warehouse_name)].filter(Boolean))] as string[];
     const theoKho = khos.map((k) => {
@@ -78,7 +78,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
   const tdBy = new Map<number, Dong>((d.theo_doi ?? []).map((x: Dong) => [x.item_id, x]));
   // dong theo doi (lib/theoDoi) neu co, khong thi dung dong bao cao 0.1 (cung ten truong) cho modal ngay DK / giai trinh / lich su
   const asDong = (r: any): Dong => tdBy.get(r.item_id) ?? ({ ...r, sl_nhap_amis: r.sl_nhap_amis_dung_eo, nguoi_dat: null } as any);
-  const moDong = (r: any) => r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang);
+  const moDong = (r: any) => r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Kết thúc sớm", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang);
   // quyen theo tung dong: nguoi dat = nguoi tao EO (lib/theoDoi nguoi_dat)
   const quyen = (r: any) => quyenEo({ created_by: tdBy.get(r.item_id)?.nguoi_dat ?? null, trang_thai: r.trang_thai_eo }, me.data);
   const xong = () => { setMd(null); qc.invalidateQueries(); };
@@ -90,7 +90,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
     finally { setBusy(false); }
   };
   const chonDuoc = (r: any) => moDong(r) && r.so_luong_con_thieu > 0 && quyen(r).canEditPlan;
-  const dong = d.dong.filter((r: any) => !chiMo || (r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang)));
+  const dong = d.dong.filter((r: any) => !chiMo || (r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Kết thúc sớm", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang)));
 
   return (
     <>

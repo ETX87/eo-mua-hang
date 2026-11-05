@@ -132,7 +132,7 @@ async function tinhMoc(env: Env): Promise<{ sla: Record<string, number>; dong: G
     return {
       item_id: r.item_id, gd,
       so_lan_trinh: ss.length, so_lan_tra_ve: ss.filter((s) => ["REQUEST_UPDATE", "REJECTED", "CANCELLED", "SUPERSEDED"].includes(s.status)).length,
-      ket_thuc: huy ? "HUY" : r.trang_thai_don_hang === "Kết thúc" ? "XONG" : null,
+      ket_thuc: huy ? "HUY" : ["Kết thúc", "Kết thúc sớm"].includes(r.trang_thai_don_hang) ? "XONG" : null,
     };
   });
   return { sla, dong };

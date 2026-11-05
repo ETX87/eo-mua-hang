@@ -33,7 +33,7 @@ interface CotDef { k: string; l: string; nhom: string; get: (r: Row) => string |
 const MO = ["Hàng chưa về", "Chưa đủ hàng"];
 const ngayDatCua = (r: Row) => (r.sau_ban_hanh ? r.ngay_tao : r.ngay_ban_hanh ?? r.ngay_tao);
 const TT = (r: Row) => TINH_TRANG[r.tinh_trang as Dong["tinh_trang"]];
-const TT_MAU: Record<string, string> = { "Kết thúc": "issued", "Đơn trên EO bị hủy": "nhap", "Chưa đủ hàng": "final", "Hàng chưa về": "reject", "Chưa ban hành": "nhap" };
+const TT_MAU: Record<string, string> = { "Kết thúc": "issued", "Kết thúc sớm": "issued", "Đơn trên EO bị hủy": "nhap", "Chưa đủ hàng": "final", "Hàng chưa về": "reject", "Chưa ban hành": "nhap" };
 function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Record<string, number>): CotDef[] {
   const gdCols: CotDef[] = giaiDoan.map((g) => ({
     k: `gd_${g.k}`, l: `${g.k} ${g.l} (giờ LV)`, nhom: "Giai đoạn", align: "right",
@@ -327,7 +327,7 @@ function DanhSach() {
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <input className="input" style={{ width: 300, height: 32 }} placeholder="🔍 Tìm mã EO / 3TDO / mã-tên LK / CRM / ghi chú… (không dấu)" value={loc.q} onChange={(e) => set({ q: e.target.value })} />
-          <S v={loc.tinhTrang} onChange={(v) => set({ tinhTrang: v })} w={150} title="Tình trạng đơn"><option value="">Mọi tình trạng</option><option value="__mo">Đang mở (chưa về đủ)</option>{["Hàng chưa về", "Chưa đủ hàng", "Kết thúc", "Chưa ban hành", "Đơn trên EO bị hủy"].map((x) => <option key={x}>{x}</option>)}</S>
+          <S v={loc.tinhTrang} onChange={(v) => set({ tinhTrang: v })} w={150} title="Tình trạng đơn"><option value="">Mọi tình trạng</option><option value="__mo">Đang mở (chưa về đủ)</option>{["Hàng chưa về", "Chưa đủ hàng", "Kết thúc", "Kết thúc sớm", "Chưa ban hành", "Đơn trên EO bị hủy"].map((x) => <option key={x}>{x}</option>)}</S>
           <S v={loc.gd} onChange={(v) => set({ gd: v })} w={190} title="Giai đoạn hiện tại"><option value="">Mọi giai đoạn</option>{(q.data?.giai_doan ?? []).filter((g) => !["G4", "G7"].includes(g.k)).map((g) => <option key={g.k} value={g.k}>{g.k} · {g.l}</option>)}<option value="XONG">Hoàn tất</option><option value="HUY">Đã hủy</option></S>
           <S v={loc.tre} onChange={(v) => set({ tre: v })} w={130} title="Đúng / trễ hạn ở giai đoạn hiện tại"><option value="">Đúng & trễ hạn</option><option value="tre">Trễ hạn</option><option value="dung">Đúng hạn</option></S>
           <S v={loc.kho} onChange={(v) => set({ kho: v })} w={170}><option value="">Mọi kho</option>{uniq((r) => r.kho).map((x) => <option key={x}>{x}</option>)}</S>

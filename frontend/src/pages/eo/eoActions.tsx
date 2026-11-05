@@ -788,7 +788,7 @@ export function TuChoiDongModal({ item, onClose, onDone }: { item: any; onClose:
   );
 }
 
-/** Huy 1 dong cua EO da ban hanh (vd dong them sau BH da duyet nhung khong can nua). Bat buoc ly do; SL ve 0, xoa ke hoach. */
+/** Huy 1 don dat (dong EO da ban hanh). Bat buoc ly do; SL dat 0, xoa ke hoach, SL da ve (neu co) KHONG tinh cho don nay. */
 export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: () => void; onDone: () => void }) {
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
@@ -805,15 +805,50 @@ export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: ()
     }
   };
   return (
-    <Modal title={`Hủy dòng linh kiện — ${item.part_code}`} onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Hủy dòng"}</button></>}>
+    <Modal title={`Hủy đơn đặt hàng — ${item.part_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Hủy đơn"}</button></>}>
       <div style={{ fontSize: 13, marginBottom: 10 }}>
         {item.part_name} · {item.warehouse} · SL đặt {soLuong(item.current_qty)}
-        <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Hủy = dòng không đặt hàng nữa: SL đặt về 0, các đợt kế hoạch hàng về của dòng bị xóa, hết cảnh báo theo dõi. Ghi vào lịch sử EO.</div>
-        {(item.da_dat ?? 0) > 0 && <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>Dòng đã có <b>{soLuong(item.da_dat)}</b> về theo AMIS — hủy dòng thì số này thành hàng về thừa. Cân nhắc giảm SL đặt thay vì hủy.</div>}
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Hủy = không đặt hàng này nữa: SL đặt về 0, các đợt kế hoạch hàng về bị xóa, hết cảnh báo theo dõi, trạng thái "Đơn trên EO bị hủy". Ghi vào lịch sử EO.</div>
+        {(item.da_dat ?? 0) > 0 && <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>Đơn đã có <b>{soLuong(item.da_dat)}</b> về theo AMIS — hủy thì số đã về này <b>không được tính</b> cho đơn nữa. Muốn giữ số đã về và dừng phần còn lại → dùng <b>Kết thúc sớm</b>.</div>}
       </div>
       <label className="field-label">Lý do hủy <span className="req">*</span></label>
       <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: khách hủy ca, nhà máy không sản xuất mã này…" />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+/** Ket thuc som 1 don dat da ve 1 phan: SL dat ve dung SL da ve (POST /eo/items/:id/ket-thuc-som), trang thai "Kết thúc sớm". */
+export function KetThucSomModal({ item, onClose, onDone }: { item: { id: number; part_code: string; part_name?: string; warehouse?: string; current_qty: number; da_dat: number }; onClose: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!reason.trim()) return setErr("Cần nhập lý do kết thúc sớm (ghi vào lịch sử EO).");
+    setErr(""); setBusy(true);
+    try { await api.post(`/eo/items/${item.id}/ket-thuc-som`, { reason: reason.trim() }); onDone(); }
+    catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "FORBIDDEN" ? "Bạn không có quyền (người tạo EO / KH cung ứng / người duyệt cuối / Admin)." : c === "CHUA_VE" ? "Đơn chưa về hàng nào — dùng Hủy đơn." :
+        c === "DA_VE_DU" ? "Đơn đã về đủ — tự kết thúc, không cần kết thúc sớm." : c === "NOT_ACTIVE" ? "Đơn đã hủy / đang chờ duyệt." : "Lỗi kết thúc sớm.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Kết thúc sớm đơn đặt — ${item.part_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn primary" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Kết thúc sớm"}</button></>}>
+      <div style={{ fontSize: 13, marginBottom: 10 }}>
+        {item.part_name} · {item.warehouse}
+        <div style={{ display: "flex", gap: 16, margin: "10px 0", fontSize: 14 }}>
+          <span>SL đặt <b>{soLuong(item.current_qty)}</b> → <b style={{ color: "var(--ok-ink)" }}>{soLuong(item.da_dat)}</b></span>
+          <span className="muted">bỏ phần còn thiếu {soLuong(item.current_qty - item.da_dat)}</span>
+        </div>
+        <div className="muted" style={{ fontSize: 12.5 }}>Không chờ phần hàng còn lại: SL đặt tự sửa về đúng SL đã về theo AMIS, kế hoạch hàng về vượt phần đó bị cắt,
+          trạng thái đơn = <b>"Kết thúc sớm"</b> (đóng, hết cảnh báo theo dõi). Ghi vào lịch sử EO.</div>
+      </div>
+      <label className="field-label">Lý do kết thúc sớm <span className="req">*</span></label>
+      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: NCC ngừng sản xuất, đủ dùng, chuyển mã khác…" />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );
