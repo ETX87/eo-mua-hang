@@ -270,6 +270,14 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; ngay: string }>()).results
       : [];
     const pushed = new Set(pushRs.map((p) => `${p.eo_item_id}|${p.ngay}`));
+    // R3 (2026-11-05): mail voi doi tac cua dong (tl_mail, app theodoimuahang - GUI hoac NHAN) trong ky = da push.
+    // Ky cua thu 2 / thu 4 X = sau ngay kiem tra truoc (X-5 voi thu 2, X-2 voi thu 4) den het ngay X.
+    const mailRs = rows.length
+      ? (await db.prepare("SELECT DISTINCT eo_item_id, substr(thoi_gian, 1, 10) d FROM tl_mail WHERE thoi_gian IS NOT NULL AND eo_item_id IN (SELECT value FROM json_each(?))")
+          .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; d: string }>()).results
+      : [];
+    const mailBy = new Map<number, string[]>();
+    for (const m of mailRs) mailBy.set(m.eo_item_id, [...(mailBy.get(m.eo_item_id) ?? []), m.d]);
     const loi: unknown[][] = [];
     const add = (r: DongTheoDoi, quyTac: string, khoa: string, han: string, ngayTc: string | null, loiMa: string) =>
       loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, "NGUOI_DAT", r.nguoi_dat, loiMa]);
@@ -295,7 +303,9 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           const hetNgay = `${x} 23:59:59`;
           if (r.lan_dau_co_ndk && r.lan_dau_co_ndk <= hetNgay) break; // da co ngay du kien tu truoc -> het nghia vu push
           if (veTruoc(x)) break; // hang da ve du -> het nghia vu push
-          if (!pushed.has(`${r.item_id}|${x}`)) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
+          const kyTu = fmtVN(new Date(d.getTime() - (dow === 1 ? 5 : 2) * 86400_000)).slice(0, 10);
+          const coMail = (mailBy.get(r.item_id) ?? []).some((m) => m > kyTu && m <= x);
+          if (!pushed.has(`${r.item_id}|${x}`) && !coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
         }
       }
     }

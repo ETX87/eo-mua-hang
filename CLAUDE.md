@@ -122,7 +122,8 @@ idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state
 json_each, tra mã LK- 1 lần) — không lặp truy vấn theo dòng: D1 giới hạn 1.000 truy vấn / request (1 thư KRF có thể 100+ dòng).
 Payload > 20.000 ký tự → bỏ (không cắt chuỗi JSON). Đọc mail theo EO (`xemNhanh`) gom 1 thư = 1 dòng trong SQL (`item_ids`), dùng UNION
 thay OR. Giải trình (`POST /theo-doi/giai-trinh`, `cung_loai` mặc định true) đóng MỌI lỗi cùng quy tắc đang chờ của dòng — R3 ghi mỗi
-thứ 2/4 chỉ cần giải trình 1 lần; FE hiện 1 dòng "× n lần". Hiệu năng đo bằng `npx wrangler d1 insights eo-mua-hang-db --timePeriod 7d`. Domain version `theo_doi` (DVBH tag có).
+thứ 2/4 chỉ cần giải trình 1 lần; FE hiện 1 dòng "× n lần". R3 (v0.057): có `tl_mail` của dòng (GUI/NHAN) trong kỳ (sau ngày
+kiểm tra trước → hết ngày thứ 2/4) = đã push, không ghi lỗi. Hiệu năng đo bằng `npx wrangler d1 insights eo-mua-hang-db --timePeriod 7d`. Domain version `theo_doi` (DVBH tag có).
 **Ngày KRF từ mail** (v0.047, `lib/krfGoiY.ts`): app `theodoimuahang` (`../../thu ky mua hang`, Worker cùng tên) đọc mail
 theodoimuahang@gmail.com theo **mã 3TDO + mã LK** (không dùng mẫu MH-PUSH / EO-PUSH cũ) và đẩy `tl_mail` mỗi dòng 1 bản ghi, `payload.dong` =
 {ngay_can, dap_ung, ngay_dap_ung, note, ton_kho…} (cột "KRF đáp ứng" của file/bảng KRF trả lời). `GET /theo-doi/goi-y-krf` = dòng đang
