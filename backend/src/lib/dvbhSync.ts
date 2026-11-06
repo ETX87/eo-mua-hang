@@ -13,12 +13,13 @@ import { layDongTheoDoi } from "./theoDoi";
  *
  * KHONG cron (kien truc app nay): middleware index.ts goi maybeSyncDvbh() sau moi request /api/*;
  * chi chay khi version eo/amis/settings HOAC ngay VN doi so voi lan dong bo xong (canh bao, so ngay xu
- * ly doi theo ngay), cach lan chay truoc >= 20s, khong co lan khac dang chay. Moi lan chi gui dong co
+ * ly doi theo ngay), cach lan chay truoc >= 2 phut (20s truoc 2026-11-06 - moi lan chay tinh lai bao cao 0.1 + quet item_plan/amis/dvbh_sync_item,
+ * thao tac hang loat (huy 228 dong) lam no chay lien tuc), khong co lan khac dang chay. Moi lan chi gui dong co
  * hash payload khac lan gui thanh cong truoc (bang dvbh_sync_item). Loi -> giu version cu, request sau
  * thu lai.
  */
 const PUSH_CHUNK = 1000;
-const MIN_GAP_MS = 20_000;
+const MIN_GAP_MS = 120_000;
 const LOCK_MS = 120_000;
 const APP_URL = "https://muahang.dichvu3t.workers.dev";
 
