@@ -402,7 +402,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 </tbody>
               </table>
             </div>
-            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 12 }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
               <button className="btn primary" onClick={() => setItems((rs) => [...rs, emptyItem()])}><I.plus width={14} height={14} /> Thêm dòng</button>
               <button className="btn" onClick={() => importRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
               <button className="btn ghost" onClick={downloadTemplate}><I.download width={14} height={14} /> Tải file mẫu</button>

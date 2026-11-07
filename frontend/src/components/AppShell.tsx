@@ -67,7 +67,7 @@ function NotificationBell() {
         {unread > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 800, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{unread}</span>}
       </button>
       {open && (
-        <div style={{ position: "absolute", right: 0, top: 42, width: 360, background: "#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
+        <div className="notif-pop" style={{ position: "absolute", right: 0, top: 42, width: 360, background:"#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
             <strong style={{ fontSize: 13.5 }}>Thông báo</strong>
             {unread > 0 && <button className="btn ghost sm" style={{ fontSize: 12 }} onClick={markAllRead}>Đánh dấu đã đọc hết</button>}
@@ -91,19 +91,21 @@ function NotificationBell() {
   );
 }
 
-function AccountMenu({ uName, email, sub, subColor, nameColor, dropUp }: { uName: string; email?: string | null; sub: string; subColor?: string; nameColor?: string; dropUp?: boolean }) {
+function AccountMenu({ uName, email, sub, subColor, nameColor, dropUp, compact }: { uName: string; email?: string | null; sub: string; subColor?: string; nameColor?: string; dropUp?: boolean; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside(() => setOpen(false));
   const logout = () => api.post("/auth/logout").then(() => (location.href = "/"));
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
-        <Avatar name={uName} size={34} />
-        <div style={{ lineHeight: 1.25, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: nameColor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{uName}</div>
-          <div style={{ fontSize: 11, color: subColor ?? "var(--text-faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
-        </div>
-        <I.chevronDown width={16} height={16} color={nameColor} />
+        <Avatar name={uName} size={compact ? 30 : 34} />
+        {!compact && (
+          <div style={{ lineHeight: 1.25, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: nameColor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{uName}</div>
+            <div style={{ fontSize: 11, color: subColor ?? "var(--text-faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
+          </div>
+        )}
+        {!compact && <I.chevronDown width={16} height={16} color={nameColor} />}
       </div>
       {open && (
         <div style={{
@@ -130,10 +132,34 @@ function CartLogo({ size = 34 }: { size?: number }) {
   return <img src="/icon-192.png" width={size} height={size} alt="" style={{ borderRadius: size * 0.22 }} />;
 }
 
+const MOBILE_MQ = "(max-width: 767px)";
+/** Man hinh dien thoai (< 768px): sidebar thanh ngan keo truot, thanh tren thu gon. */
+// + screen.width: dang bo cuc desktop (sidebar 246px) ma thu hep (xoay doc dien thoai) -> trang rong hon man hinh,
+// trinh duyet tu thu nho -> media query khong con khop; be ngang man hinh thiet bi thi khong doi theo noi dung.
+const laMobile = () => window.matchMedia(MOBILE_MQ).matches || window.screen.width < 768;
+export function useIsMobile() {
+  const [m, setM] = useState(() => typeof window !== "undefined" && laMobile());
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const h = () => setM(laMobile());
+    h();
+    mq.addEventListener("change", h);
+    window.addEventListener("resize", h); // du phong: xoay man hinh / trinh duyet khong ban su kien change
+    return () => { mq.removeEventListener("change", h); window.removeEventListener("resize", h); };
+  }, []);
+  return m;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [pageTitle, setPageTitle] = useState<string | null>(null);
-  const [open, setOpen] = useState(true);
+  const mobile = useIsMobile();
+  const [openDesk, setOpenDesk] = useState(true);
+  const [openMob, setOpenMob] = useState(false);
+  const open = mobile ? openMob : openDesk;
+  const setOpen = mobile ? setOpenMob : setOpenDesk;
   const loc = useLocation();
+  // dien thoai: chon muc menu -> dong ngan keo
+  useEffect(() => { setOpenMob(false); }, [loc.pathname, loc.search]);
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<Me>("/users/me") });
   // "Viec can xu ly" theo vai tro (backend routes/viecCanLam.ts) -> so do sau ten menu. Giu queryKey "inbox-count"
   // vi nhieu man da invalidate key nay sau khi duyet / sua.
@@ -159,8 +185,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
+      {mobile && open && <div className="nav-backdrop" onClick={() => setOpen(false)} />}
       {/* ---------------- Sidebar ---------------- */}
-      <aside style={{
+      <aside style={mobile ? {
+        width: "min(86vw, 300px)", background: "var(--brand-yellow)", display: "flex", flexDirection: "column",
+        position: "fixed", top: 0, left: 0, height: "100dvh", zIndex: 70, overflow: "hidden",
+        transform: open ? "none" : "translateX(-105%)", transition: "transform .2s",
+        boxShadow: open ? "0 0 40px rgba(15,23,42,.3)" : "none",
+      } : {
         width: open ? "var(--sidebar-w)" : 66, flexShrink: 0, background: "var(--brand-yellow)",
         display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh",
         transition: "width .16s", overflow: "hidden",
@@ -239,18 +271,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* ---------------- Main ---------------- */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <header style={{
+        <header className="app-top" style={{
           height: "var(--topbar-h)", background: "#fdfdfc", borderBottom: "1px solid var(--border)",
-          display: "flex", alignItems: "center", gap: 18, padding: "0 24px", position: "sticky", top: 0, zIndex: 20,
+          display: "flex", alignItems: "center", gap: mobile ? 6 : 18, padding: mobile ? "0 8px" : "0 24px", position: "sticky", top: 0, zIndex: 20,
         }}>
-          <button className="btn ghost sm" onClick={() => setOpen((o) => !o)} aria-label="Menu"><I.menu /></button>
-          <div style={{ fontSize: 19, fontWeight: 800, flex: 1 }}>{pageTitle ?? titleFor(loc.pathname)}</div>
+          <button className="btn ghost sm" onClick={() => setOpen((o) => !o)} aria-label="Menu" style={{ position: "relative" }}>
+            <I.menu />
+            {mobile && (viec.data?.tong ?? 0) > 0 && <span style={{ position: "absolute", top: 2, right: 4, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
+          </button>
+          <div style={{ fontSize: mobile ? 16 : 19, fontWeight: 800, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pageTitle ?? titleFor(loc.pathname)}</div>
           <NutGiaiThich />
           <NotificationBell />
-          <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} />
+          <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} compact={mobile} />
         </header>
 
-        <main style={{ flex: 1, padding: 24, maxWidth: 1520, width: "100%", margin: "0 auto" }}>
+        <main className="app-main" style={{ flex: 1, padding: mobile ? 10 : 24, maxWidth: 1520, width: "100%", margin: "0 auto", minWidth: 0 }}>
           <PageTitleCtx.Provider value={setPageTitle}>{children}</PageTitleCtx.Provider>
         </main>
       </div>

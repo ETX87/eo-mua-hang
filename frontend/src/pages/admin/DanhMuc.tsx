@@ -65,7 +65,7 @@ export default function DanhMuc() {
   return (
     <div>
       <PageHeader title="Danh mục" />
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
         {[["kho", "Kho"], ["loai", "Loại hình EO"], ["toc", "Ngưỡng tốc độ hàng về"]].map(([k, l]) => (
           <button key={k} className={`btn sm ${tab === k ? "primary" : ""}`} onClick={() => setTab(k as Tab)}>{l}</button>
         ))}

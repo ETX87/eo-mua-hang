@@ -214,7 +214,7 @@ function NhapAmis() {
 
       {/* Tong quan doi chieu */}
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <StatTile label="Tổng cần nhập" value={soLuong(tomtat.data?.tong)} tint="var(--brand-yellow-soft)" />
           <StatTile label="Đã nhập" value={<span style={{ color: "var(--ok)" }}>{soLuong(tomtat.data?.da_nhap)}</span>} />
           <StatTile label="Chưa nhập" value={<span style={{ color: "var(--danger)" }}>{soLuong(tomtat.data?.chua_nhap)}</span>} />

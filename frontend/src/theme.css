@@ -216,3 +216,56 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .th-loc.on { color: #fff; background: var(--link-amber, #B45309); }
 .hop-loc { position: fixed; z-index: 300; width: 280px; background: #fff; border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 16px 40px rgba(15,23,42,.22); padding: 10px 12px; font-weight: 400; text-align: left; white-space: normal; }
+
+/* ================= Mobile (< 768px) — AppShell dung useIsMobile() cung moc 767px ================= */
+.nav-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.42); z-index: 65; }
+@media (max-width: 767px) {
+  :root { --topbar-h: 56px; }
+  body { font-size: 13.5px; }
+  /* thong bao: tha xuong full be ngang man hinh thay vi 360px tran trai */
+  .notif-pop { position: fixed !important; left: 8px; right: 8px !important; top: 60px !important; width: auto !important; }
+  .card-pad { padding: 12px; }
+  /* Modal: sat le, cao hon, chan nut o day */
+  [data-modal] { padding: 8px !important; align-items: end !important; }
+  [data-modal] > .card { max-height: calc(100dvh - 16px); display: flex; flex-direction: column; }
+  [data-modal] > .card > div:nth-child(2) { max-height: none !important; flex: 1 1 auto; min-height: 0; }
+  /* Popup xem nhanh: full man hinh */
+  .qv-overlay { place-items: stretch; }
+  .qv-panel { width: 100vw; height: 100dvh; border-radius: 0; }
+  .qv-head { padding: 10px 12px; }
+  .qv-body { padding: 8px; gap: 8px; }
+  .qv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .qv-kpi .v { font-size: 16px; }
+  .qv-tim { width: 100%; margin-left: 0; }
+  /* bang: cuon ngang trong khung, cham nhe tren dien thoai */
+  .tbl-wrap { -webkit-overflow-scrolling: touch; }
+  table.tbl tbody td { padding: 6px 8px; }
+  .eo-form-info { grid-template-columns: 1fr; }
+  .hop-loc { left: 8px !important; right: 8px; width: auto; max-height: 70dvh; overflow: auto; }
+  .tt-nut { min-width: 92px; }
+  .buoc { padding-left: 46px; }
+  .ql-v { font-size: 19px; }
+  /* thanh thao tac 1 dong: cho xuong dong, o tim day du be ngang */
+  .input.tb, .select.tb { max-width: 100%; }
+}
+
+/* Mobile: luoi khai bao inline trong cac trang (style gridTemplateColumns) tu gap cot — gom 1 cho,
+   khong sua tung trang. Luoi nhieu o so (3/4/5/8 cot) -> 2 cot; luoi bo cuc (1fr 1fr, 1.4fr 1fr, 300px 1fr...) -> 1 cot. */
+@media (max-width: 767px) {
+  main [style*="grid-template-columns"], [data-modal] [style*="grid-template-columns"], .qv-panel [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  main [style*="grid-template-columns: repeat(3"], main [style*="grid-template-columns: repeat(4"],
+  main [style*="grid-template-columns: repeat(5"], main [style*="grid-template-columns: repeat(8"],
+  [data-modal] [style*="grid-template-columns: repeat(4"], [data-modal] [style*="grid-template-columns: repeat(5"],
+  .qv-panel [style*="grid-template-columns: repeat(4"], .qv-panel [style*="grid-template-columns: repeat(8"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  main [style*="grid-template-columns"] > *, [data-modal] [style*="grid-template-columns"] > * { min-width: 0; }
+  /* o nhap / o chon / khung co width co dinh inline: khong vuot be ngang man hinh */
+  main .input[style*="width"], main .select[style*="width"], [data-modal] .input[style*="width"], [data-modal] .select[style*="width"],
+  .qv-panel .input[style*="width"], .qv-panel .select[style*="width"] { max-width: 100%; }
+  main [style*="min-width: 2"], [data-modal] [style*="min-width: 2"] { min-width: 0 !important; }
+  main div[style*="width: 4"], main div[style*="width: 3"] { max-width: 100%; }
+  .card { min-width: 0; max-width: 100%; }
+}
