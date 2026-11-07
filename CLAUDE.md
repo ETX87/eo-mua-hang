@@ -199,12 +199,16 @@ G7 Nhập kho & lên hệ thống (ngày CT AMIS → `amis_receipt.created_at`, 
 đúng/trễ hạn, chưa sinh lỗi giải trình (bật sau 2–4 tuần). `layGiaiDoan(env)` cache mốc, phần "bây giờ" tính lúc request.
 Báo cáo giai đoạn = tab Báo cáo của Quản lý đơn hàng (`/don-hang?tab=bao-cao&bc=giai-doan`).
 
-## 2 màn chính (v0.050–0.051, `../UI_GOP_2_MAN_HINH.md`) — menu: Tổng quan · Quản lý EO · LK đặt · Vi phạm · Nhập AMIS · Cài đặt
+## 2 màn chính (v0.050–0.051, `../UI_GOP_2_MAN_HINH.md`) — menu: Tổng quan · Đơn PO (Quản lý EO) · LK đặt · Vi phạm · Nhập AMIS · Cài đặt
 
 **Bảng kiểu Excel (v0.062, `components/DataTable.tsx`)**: cột khai báo `loc` (`chu` tìm không dấu · `chon` tick giá trị · `ngay` từ–đến ·
 `so` từ–đến) + `gt` (giá trị thô) [+ `gtSap`, `nhanChon`] → phễu lọc + bấm tiêu đề sắp xếp, nhãn "Đang lọc n cột · x / y dòng".
 Tự quản lý state, hoặc điều khiển ngoài `loc/onLoc/sap/onSap` + `ngoai` (rows đã lọc sẵn: server, hoặc trang dùng `locVaSap`).
 Thanh trên mỗi màn chỉ còn bộ lọc **thường dùng** (ô tìm + nhóm nhanh); bộ lọc **ít dùng** ẩn sau nút "Bộ lọc khác".
+**Thanh thao tác 1 dòng (v0.063)**: nhóm nhanh = ô chọn (có số đếm), bộ lọc ít dùng / bộ lọc đã lưu / công cụ / chú giải = bảng xổ
+`Popover` + `MenuItem` (`components/ui.tsx`), Chọn cột / Xuất Excel = nút icon; ô nhập/chọn trên thanh dùng class `.tb` (cao 32px).
+Menu "Quản lý EO" đổi tên **"Đơn PO"** (đường dẫn vẫn `/eo`). "LK đặt" có 2 mục con ở sidebar (`NavItem.children` trong `lib/nav.ts`):
+Danh sách LK đặt (`/don-hang`) · Báo cáo (`/don-hang?tab=bao-cao`).
 
 - **Quản lý EO** `/eo` (`pages/eo/EoList.tsx` + `EoListInner.tsx`): chip có số đếm (`GET /eo/dem`, lọc `GET /eo?chip=`, định nghĩa
   `CHIP_EO` ở `routes/eo.ts`: **mặc định `con_ton`** = không hủy / từ chối và (chưa ban hành hoặc còn dòng chưa về đủ); cho_toi_duyet = phiếu PENDING

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { I } from "../lib/icons";
 import { STATUS_META } from "../lib/nav";
 
@@ -117,6 +117,48 @@ export function Modal({ title, onClose, children, footer, wide, width }: {
         {footer && <div style={{ padding: "14px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>{footer}</div>}
       </div>
     </div>
+  );
+}
+
+/**
+ * Nut + bang xo xuong (thanh cong cu 1 dong: bo loc it dung, cong cu, chu giai). Bam ra ngoai / Esc de dong.
+ * children nhan ham dong() de nut trong menu tu dong lai sau khi bam.
+ */
+export function Popover({ label, children, align = "left", width = 300, title, active, btnClass = "btn sm" }: {
+  label: ReactNode; children: ReactNode | ((dong: () => void) => ReactNode); align?: "left" | "right"; width?: number;
+  title?: string; active?: boolean; btnClass?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node) && !(e.target as HTMLElement).closest?.("[data-modal]")) setOpen(false); };
+    const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("mousedown", h); window.addEventListener("keydown", k);
+    return () => { window.removeEventListener("mousedown", h); window.removeEventListener("keydown", k); };
+  }, [open]);
+  const dong = () => setOpen(false);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button type="button" className={btnClass} title={title} onClick={() => setOpen((o) => !o)}
+        style={{ borderColor: active ? "var(--brand-yellow-btn)" : undefined, background: open ? "var(--panel-2)" : undefined }}>{label}</button>
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, width, maxWidth: "90vw", background: "#fff", border: "1px solid var(--border)",
+          borderRadius: 12, boxShadow: "var(--shadow-pop)", zIndex: 60, padding: 10 }}>
+          {typeof children === "function" ? children(dong) : children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Dong menu trong Popover (nut trai, rong het be ngang). */
+export function MenuItem({ icon, children, onClick, disabled, title, right }: { icon?: ReactNode; children: ReactNode; onClick: () => void; disabled?: boolean; title?: string; right?: ReactNode }) {
+  return (
+    <button type="button" className="btn ghost sm" disabled={disabled} title={title} onClick={onClick}
+      style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8 }}>
+      {icon}<span style={{ flex: 1, textAlign: "left" }}>{children}</span>{right}
+    </button>
   );
 }
 

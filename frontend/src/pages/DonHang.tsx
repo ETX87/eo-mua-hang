@@ -3,7 +3,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { PageHeader, Card, Spinner, Modal, StatusBadge } from "../components/ui";
+import { PageHeader, Card, Spinner, Modal, StatusBadge, Popover, MenuItem } from "../components/ui";
 import { DataTable, locVaSap, soCotLoc, type Col, type KieuLoc, type LocCot, type SapCot } from "../components/DataTable";
 import { EoLink, PartLink, useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
@@ -203,14 +203,10 @@ function DonHangTrang() {
   const nav = useNavigate();
   const tab = sp.get("tab") === "bao-cao" ? "bao-cao" : "ds";
   const bc = BAO_CAO.some((b) => b.k === sp.get("bc")) ? sp.get("bc")! : "giai-doan";
+  // Danh sach / Bao cao = 2 muc con duoi "LK đặt" o sidebar (lib/nav.ts) - trang khong con nut chuyen tab rieng
   return (
     <div>
-      <PageHeader title="LK đặt" actions={
-        <div style={{ display: "flex", gap: 6 }}>
-          <button className={`btn sm ${tab === "ds" ? "primary" : ""}`} onClick={() => nav("/don-hang")}><I.list width={14} height={14} /> Danh sách LK đặt</button>
-          <button className={`btn sm ${tab === "bao-cao" ? "primary" : ""}`} onClick={() => nav(`/don-hang?tab=bao-cao&bc=${bc}`)}><I.trend width={14} height={14} /> Báo cáo</button>
-        </div>
-      } />
+      <PageHeader title={tab === "ds" ? "LK đặt" : "LK đặt · Báo cáo"} />
       {tab === "ds" ? <DanhSach /> : (
         <div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
@@ -250,7 +246,6 @@ function DanhSach() {
   const [cot, setCot] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_COT) ?? "null") ?? BO_COT.co_ban.cot; } catch { return BO_COT.co_ban.cot; } });
   const [luu, setLuu] = useState<{ l: string; loc: Loc; locCot?: LocCot; sap?: SapCot }[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_LOC) ?? "[]"); } catch { return []; } });
   const [chonCot, setChonCot] = useState(false);
-  const [moRong, setMoRong] = useState(() => ["tu", "den", "tre", "apDung"].some((k) => sp.get(k)));
 
   const all = q.data?.rows ?? [];
   const defs = useMemo(() => cotDefs(q.data?.giai_doan ?? [], q.data?.sla ?? {}), [q.data]);
@@ -348,83 +343,92 @@ function DanhSach() {
   const xoaHet = () => { setLoc({ ...LOC_TRONG, nhom: NHOM_MAC_DINH }); setLocCot({}); setSap(null); };
 
   const S = ({ v, onChange, children, w = 160, title }: { v: string; onChange: (v: string) => void; children: ReactNode; w?: number; title?: string }) => (
-    <select className="select" style={{ width: w, height: 32, fontSize: 12.5, borderColor: v ? "var(--brand-yellow-btn)" : undefined }} value={v} title={title} onChange={(e) => onChange(e.target.value)}>{children}</select>
+    <select className="select tb" style={{ width: w, borderColor: v ? "var(--brand-yellow-btn)" : undefined }} value={v} title={title} onChange={(e) => onChange(e.target.value)}>{children}</select>
   );
 
+  const soKrf = krf.data?.goi_y.length ?? 0;
+  const giaiDoan = (q.data?.giai_doan ?? []).filter((g) => !["G4", "G7"].includes(g.k));
+  const iconBtn = { padding: "0 9px" };
+
+  // v0.063: thanh thao tac gon 1 dong - nhom nhanh / giai doan = o chon; bo loc it dung + bo loc da luu, cong cu, chu giai = bang xo xuong
   return (
     <div>
-      <Card style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-          <button className={`btn sm ${!loc.nhom ? "primary" : ""}`} onClick={() => set({ nhom: "" })}>Tất cả ({soLuong(base.length)})</button>
-          {NHOM.map((n) => {
-            const c = base.filter(n.f).length;
-            return <button key={n.k} className={`btn sm ${loc.nhom === n.k ? "primary" : ""}`} title={n.title} onClick={() => set({ nhom: loc.nhom === n.k ? "" : n.k })}
-              style={{ color: loc.nhom !== n.k && c && n.mau ? n.mau : undefined }}>{n.l} ({soLuong(c)})</button>;
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <input className="input" style={{ width: 320, height: 32 }} placeholder="🔍 Tìm mã EO / 3TDO / mã-tên LK / CRM / ghi chú… (không dấu)" value={loc.q} onChange={(e) => set({ q: e.target.value })} />
-          <button className={`btn sm ${soItDung ? "" : "ghost"}`} onClick={() => setMoRong((x) => !x)} title="Bộ lọc ít dùng: khoảng ngày, đúng / trễ hạn giai đoạn, EO áp dụng quy tắc, đơn của tôi">
-            <I.filter width={13} height={13} /> {moRong ? "Ẩn bộ lọc khác" : "Bộ lọc khác"}{soItDung ? ` (${soItDung})` : ""}</button>
-          <span className="muted" style={{ fontSize: 11.5 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột</span>
-          {lienKet.map((k) => (
+      <Card>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+          <S v={loc.nhom} onChange={(v) => set({ nhom: v })} w={215} title="Nhóm nhanh (số dòng mỗi nhóm theo bộ lọc hiện tại)">
+            <option value="">Tất cả ({soLuong(base.length)})</option>
+            {NHOM.map((n) => <option key={n.k} value={n.k} title={n.title}>{n.l} ({soLuong(base.filter(n.f).length)})</option>)}
+          </S>
+          <S v={loc.gd} onChange={(v) => set({ gd: v })} w={190} title="Đang ở giai đoạn">
+            <option value="">Mọi giai đoạn</option>
+            {giaiDoan.map((g) => { const n = loc.gd ? 0 : demGd(g.k); return <option key={g.k} value={g.k}>{g.k} {g.l}{n ? ` (${soLuong(n)})` : ""}</option>; })}
+          </S>
+          <input className="input tb" style={{ flex: "1 1 200px", maxWidth: 320 }} placeholder="🔍 Tìm mã EO / 3TDO / mã-tên LK / CRM / ghi chú…" value={loc.q} onChange={(e) => set({ q: e.target.value })} />
+          <Popover width={360} active={soItDung > 0} title="Bộ lọc ít dùng: khoảng ngày, đúng / trễ hạn giai đoạn, EO áp dụng quy tắc, đơn của tôi · bộ lọc đã lưu"
+            label={<><I.filter width={13} height={13} /> Lọc khác{soItDung ? ` (${soItDung})` : ""}</>}>
+            {(dong) => (
+              <div style={{ display: "grid", gap: 8, fontSize: 12.5 }}>
+                <S v={loc.ngayTheo} onChange={(v) => set({ ngayTheo: v })} w={338} title="Lọc khoảng ngày theo"><option value="ngay_ban_hanh">Khoảng ngày theo ngày ban hành</option><option value="ngay_dat">Khoảng ngày theo ngày đặt</option><option value="ngay_tao">Khoảng ngày theo ngày tạo dòng</option><option value="ngay_du_kien_gan_nhat">Khoảng ngày theo ngày dự kiến</option><option value="ngay_nhap_kho_amis_theo_eo">Khoảng ngày theo ngày hàng về</option></S>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input className="input tb" type="date" style={{ flex: 1 }} value={loc.tu} onChange={(e) => set({ tu: e.target.value })} title="Từ ngày" />
+                  <span className="muted">→</span>
+                  <input className="input tb" type="date" style={{ flex: 1 }} value={loc.den} onChange={(e) => set({ den: e.target.value })} title="Đến ngày" />
+                </div>
+                <S v={loc.tre} onChange={(v) => set({ tre: v })} w={338} title="Đúng / trễ hạn ở giai đoạn hiện tại"><option value="">Đúng & trễ hạn giai đoạn</option><option value="tre">Trễ hạn giai đoạn</option><option value="dung">Đúng hạn giai đoạn</option></S>
+                <S v={loc.apDung} onChange={(v) => set({ apDung: v })} w={338} title="EO ban hành từ ngày áp dụng quy tắc theo dõi"><option value="">Mọi EO</option><option value="1">Chỉ EO áp dụng quy tắc theo dõi</option></S>
+                {me.data?.email && <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={loc.nguoiTao === me.data.email} onChange={() => set({ nguoiTao: loc.nguoiTao === me.data.email ? "" : me.data.email })} /> Chỉ đơn tôi đặt</label>}
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                  <div className="muted" style={{ fontSize: 11.5, marginBottom: 4 }}>Bộ lọc đã lưu (trên máy này)</div>
+                  {luu.length === 0 && <div className="muted" style={{ fontSize: 12 }}>Chưa có.</div>}
+                  {luu.map((x) => (
+                    <div key={x.l} style={{ display: "flex", alignItems: "center" }}>
+                      <MenuItem onClick={() => { setLoc(x.loc); setLocCot(x.locCot ?? {}); setSap(x.sap ?? null); dong(); }}>★ {x.l}</MenuItem>
+                      <button className="btn ghost sm" title="Xóa bộ lọc đã lưu" onClick={() => xoaLuu(x.l)}><I.x width={12} height={12} /></button>
+                    </div>
+                  ))}
+                  <button className="btn sm ghost" style={{ marginTop: 4 }} onClick={luuLoc} disabled={!soLoc}>＋ Lưu bộ lọc hiện tại</button>
+                </div>
+              </div>
+            )}
+          </Popover>
+          {lienKet.filter((k) => k !== "gd").map((k) => (
             <span key={k} className="qv-chip on" style={{ display: "inline-flex", gap: 4 }} title="Bộ lọc mở từ liên kết (Tổng quan, báo cáo…)">
               {LOC_LIEN_KET[k]((loc as any)[k])}<span role="button" style={{ cursor: "pointer" }} onClick={() => set({ [k]: "" } as any)}>×</span></span>
           ))}
-        </div>
-        {moRong && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, padding: "8px 10px", background: "var(--panel-2)", borderRadius: 10 }}>
-            <S v={loc.ngayTheo} onChange={(v) => set({ ngayTheo: v })} w={170} title="Lọc khoảng ngày theo"><option value="ngay_ban_hanh">Theo ngày ban hành</option><option value="ngay_dat">Theo ngày đặt</option><option value="ngay_tao">Theo ngày tạo dòng</option><option value="ngay_du_kien_gan_nhat">Theo ngày dự kiến</option><option value="ngay_nhap_kho_amis_theo_eo">Theo ngày hàng về</option></S>
-            <input className="input" type="date" style={{ width: 140, height: 32 }} value={loc.tu} onChange={(e) => set({ tu: e.target.value })} title="Từ ngày" />
-            <span className="muted">→</span>
-            <input className="input" type="date" style={{ width: 140, height: 32 }} value={loc.den} onChange={(e) => set({ den: e.target.value })} title="Đến ngày" />
-            <S v={loc.tre} onChange={(v) => set({ tre: v })} w={150} title="Đúng / trễ hạn ở giai đoạn hiện tại"><option value="">Đúng & trễ hạn</option><option value="tre">Trễ hạn giai đoạn</option><option value="dung">Đúng hạn giai đoạn</option></S>
-            <S v={loc.apDung} onChange={(v) => set({ apDung: v })} w={180} title="EO ban hành từ ngày áp dụng quy tắc theo dõi"><option value="">Mọi EO</option><option value="1">Chỉ EO áp dụng quy tắc</option></S>
-            {me.data?.email && <button className={`btn sm ${loc.nguoiTao === me.data.email ? "primary" : ""}`} onClick={() => set({ nguoiTao: loc.nguoiTao === me.data.email ? "" : me.data.email })}>Chỉ đơn tôi đặt</button>}
-          </div>
-        )}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
-          <button className="btn sm primary" disabled={!chon.size || busy} onClick={taoPush} title="Tick các dòng còn mở rồi bấm — mỗi đối tác 1 file + tiêu đề mail chuẩn"><I.send width={14} height={14} /> Tạo file push đối tác ({chon.size})</button>
-          <button className={`btn sm ${krf.data?.goi_y.length ? "primary" : ""}`} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết" onClick={() => setHop("krf")}>
-            <I.calendar width={14} height={14} /> Ngày KRF từ mail ({soLuong(krf.data?.goi_y.length ?? 0)})</button>
-          <button className="btn sm" onClick={() => setHop("kh")} title="Tải file Excel kế hoạch hàng về, điền ngày rồi nhập lại cho nhiều dòng"><I.upload width={14} height={14} /> Kế hoạch hàng về (Excel)</button>
-          <button className="btn sm" onClick={() => nav("/don-hang/ke-hoach-tuan")} title="Đơn kế hoạch tháng KRF — nhập SL về theo từng tuần"><I.calendar width={14} height={14} /> Kế hoạch tuần KRF</button>
-          {me.data?.vai_tro === "Admin" && <button className="btn sm ghost" onClick={() => setHop("loi")}><I.tag width={14} height={14} /> Bảng lỗi</button>}
+          {soLoc > 0 && <button className="btn sm ghost" style={{ color: "var(--text-muted)" }} onClick={xoaHet} title="Xóa mọi bộ lọc (về nhóm Còn chờ hàng)"><I.refresh width={13} height={13} /> Xóa lọc</button>}
           <div style={{ flex: 1 }} />
-          <button className="btn sm" onClick={() => setChonCot(true)}><I.grid width={14} height={14} /> Chọn cột ({hien.length})</button>
-          <button className="btn sm" onClick={xuat}><I.download width={14} height={14} /> Xuất Excel ({soLuong(rows.length)})</button>
+          <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}
+            title={`SL đặt ${soLuong(tong((r) => r.so_luong_dat))} · về ${soLuong(tong((r) => Math.min(r.sl_nhap_amis_dung_eo, r.so_luong_dat)))} · thiếu ${soLuong(tong((r) => r.so_luong_con_thieu))}`}>
+            <b style={{ color: "var(--text)" }}>{soLuong(rows.length)}</b> dòng · thiếu {soLuong(tong((r) => r.so_luong_con_thieu))}</span>
+          {chon.size > 0 && <button className="btn sm primary" disabled={busy} onClick={taoPush} title="Mỗi đối tác 1 file + tiêu đề mail chuẩn"><I.send width={14} height={14} /> Push đối tác ({chon.size})</button>}
+          <Popover align="right" width={290} title="Công cụ: push đối tác, ngày KRF từ mail, kế hoạch hàng về…"
+            label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
+            {(dong) => <>
+              <MenuItem icon={<I.send width={14} height={14} />} disabled={!chon.size || busy} onClick={() => { dong(); taoPush(); }} title="Tick các dòng còn mở ở cột Thao tác rồi bấm — mỗi đối tác 1 file + tiêu đề mail chuẩn">Tạo file push đối tác ({chon.size})</MenuItem>
+              <MenuItem icon={<I.calendar width={14} height={14} />} onClick={() => { dong(); setHop("krf"); }} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết"
+                right={soKrf > 0 ? <b style={{ color: "var(--danger-ink)" }}>{soLuong(soKrf)}</b> : <span className="muted">0</span>}>Ngày KRF từ mail</MenuItem>
+              <MenuItem icon={<I.upload width={14} height={14} />} onClick={() => { dong(); setHop("kh"); }} title="Tải file Excel kế hoạch hàng về, điền ngày rồi nhập lại cho nhiều dòng">Kế hoạch hàng về (Excel)</MenuItem>
+              <MenuItem icon={<I.calendar width={14} height={14} />} onClick={() => nav("/don-hang/ke-hoach-tuan")} title="Đơn kế hoạch tháng KRF — nhập SL về theo từng tuần">Kế hoạch tuần KRF</MenuItem>
+              {me.data?.vai_tro === "Admin" && <MenuItem icon={<I.tag width={14} height={14} />} onClick={() => { dong(); setHop("loi"); }}>Bảng lỗi</MenuItem>}
+            </>}
+          </Popover>
+          <button className="btn sm" style={iconBtn} title={`Chọn cột hiển thị (${hien.length} cột)`} onClick={() => setChonCot(true)}><I.grid width={14} height={14} /></button>
+          <button className="btn sm" style={iconBtn} title={`Xuất Excel ${soLuong(rows.length)} dòng đang lọc (đúng các cột đang hiện)`} onClick={xuat}><I.download width={14} height={14} /></button>
+          <Popover align="right" width={560} btnClass="btn sm ghost" title="Chú giải 3 loại ngày + quy tắc theo dõi" label={<I.help width={15} height={15} />}>
+            <ChuGiaiNgay gon />
+            <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
+              Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 48h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
+              quá ngày DK phải nhập ngày mới trong 24h — vi phạm tự ghi lỗi, phải giải trình. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
+              {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
+              <div style={{ marginTop: 6 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột.</div>
+            </div>
+          </Popover>
         </div>
-        {(luu.length > 0 || soLoc > 0) && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, fontSize: 12 }}>
-            {luu.length > 0 && <span className="muted">Bộ lọc đã lưu:</span>}
-            {luu.map((x) => <span key={x.l} className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}><span onClick={() => { setLoc(x.loc); setLocCot(x.locCot ?? {}); setSap(x.sap ?? null); }} style={{ cursor: "pointer" }}>★ {x.l}</span><span title="Xóa bộ lọc đã lưu" style={{ cursor: "pointer" }} onClick={() => xoaLuu(x.l)}>×</span></span>)}
-            <button className="btn sm ghost" onClick={luuLoc} disabled={!soLoc}>＋ Lưu bộ lọc hiện tại</button>
-            {soLoc > 0 && <button className="btn sm ghost" onClick={xoaHet}>Xóa lọc</button>}
-          </div>
-        )}
-        <div style={{ marginTop: 8 }}><ChuGiaiNgay gon /></div>
-        <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
-          Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 48h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
-          quá ngày DK phải nhập ngày mới trong 24h — vi phạm tự ghi lỗi, phải giải trình. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
-          {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
-        </div>
-      </Card>
-
-      {q.isLoading ? <Spinner /> : (
-        <Card>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10, fontSize: 12.5 }}>
-            <b>{soLuong(rows.length)} dòng</b>
-            <span className="muted">SL đặt {soLuong(tong((r) => r.so_luong_dat))} · về {soLuong(tong((r) => Math.min(r.sl_nhap_amis_dung_eo, r.so_luong_dat)))} · thiếu {soLuong(tong((r) => r.so_luong_con_thieu))}</span>
-            <span className="muted" style={{ marginLeft: 8 }}>Đang ở giai đoạn:</span>
-            {(q.data?.giai_doan ?? []).filter((g) => !["G4", "G7"].includes(g.k)).map((g) => {
-              const n = demGd(g.k);
-              return n ? <button key={g.k} className={`qv-chip ${loc.gd === g.k ? "on" : ""}`} title={`${g.l} — ${g.vai_tro}`} onClick={() => set({ gd: loc.gd === g.k ? "" : g.k })}>{g.k} {g.l}: <b>{soLuong(n)}</b></button> : null;
-            })}
-          </div>
+        {q.isLoading ? <Spinner /> : (
           <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={50} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc"
             ngoai rowsGoc={rowsNhom} loc={locCot} onLoc={setLocCot} sap={sap} onSap={setSap} />
-        </Card>
-      )}
+        )}
+      </Card>
 
       {modal?.loai === "ndk" && <NgayHangVeModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}
       {modal?.loai === "gt" && <GiaiTrinhModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}

@@ -8,14 +8,19 @@ export interface NavItem {
   badgeKey?: "approvals";
   /** backend chan bang requireAdmin -> an voi vai tro khac */
   adminOnly?: boolean;
+  /** muc con (tab nho duoi muc cha, chi hien khi sidebar mo). to co ?query: active khi moi tham so trong to khop URL. */
+  children?: { to: string; label: string; icon: keyof typeof I }[];
 }
 
 export const NAV: NavItem[] = [
   { to: "/", label: "Tổng quan", icon: "home" },
-  // Quan ly EO gop: Danh sach EO, Viec can duyet, trang Chi tiet EO (popup)
-  { to: "/eo", label: "Quản lý EO", icon: "clipboard" },
+  // "Đơn PO" (truoc ten "Quan ly EO", doi 2026-11-07): Danh sach EO, Viec can duyet, trang Chi tiet EO (popup)
+  { to: "/eo", label: "Đơn PO", icon: "clipboard" },
   // Quan ly don hang gop: Theo doi LK dat, So don hang, Canh bao CEO, Ke hoach hang ve / tuan, 3 bao cao (../UI_GOP_2_MAN_HINH.md)
-  { to: "/don-hang", label: "LK đặt", icon: "list" },
+  { to: "/don-hang", label: "LK đặt", icon: "list", children: [
+    { to: "/don-hang", label: "Danh sách LK đặt", icon: "list" },
+    { to: "/don-hang?tab=bao-cao", label: "Báo cáo", icon: "trend" },
+  ] },
   // Vi pham & giai trinh (2026-11-04): loi R1/R3/R4/tay, muc do, lap, nhac nho, giai trinh ca PO - backend routes/viPham.ts
   { to: "/vi-pham", label: "Vi phạm & giải trình", icon: "bell" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },

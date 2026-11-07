@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { NAV } from "../lib/nav";
@@ -146,6 +146,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   // so khop theo duong dan (bo ?query): viec tro toi /don-hang?nhom=... van cong vao muc /don-hang
   const badgeOf = (to: string) => (viec.data?.items ?? []).filter((x) => x.to.split("?")[0] === to).reduce((s, x) => s + x.count, 0);
   const uName = me.data?.ho_ten && !me.data.ho_ten.includes("@") ? me.data.ho_ten : ten(me.data?.email) || "—";
+  // muc con sidebar: khop duong dan DUNG (khong prefix - /don-hang/ke-hoach-tuan khong to muc nao) + moi ?tham so cua muc;
+  // muc khong co ?query chi active khi khong muc anh em nao co query khop (Danh sach vs ?tab=bao-cao)
+  const khopCon = (to: string) => {
+    const [p, qs] = to.split("?");
+    if (loc.pathname !== p) return false;
+    const cur = new URLSearchParams(loc.search);
+    return [...new URLSearchParams(qs ?? "")].every(([k, v]) => cur.get(k) === v);
+  };
+  const conActive = (to: string, anhEm: { to: string }[]) =>
+    to.includes("?") ? khopCon(to) : khopCon(to) && !anhEm.some((x) => x.to !== to && x.to.includes("?") && khopCon(x.to));
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -192,6 +202,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                   {!open && badgeOf(n.to) > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
                 </NavLink>
+                {open && n.children && (
+                  <div style={{ margin: "0 0 4px 30px", borderLeft: "2px solid rgba(120,100,20,.25)", paddingLeft: 6 }}>
+                    {n.children.map((c) => {
+                      const CIcon = I[c.icon];
+                      const on = conActive(c.to, n.children!);
+                      return (
+                        <Link key={c.to} to={c.to} style={{
+                          display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 10, margin: "2px 0",
+                          fontSize: 12.5, fontWeight: on ? 700 : 500, color: "var(--brand-ink)",
+                          background: on ? "rgba(255,255,255,.75)" : "transparent",
+                        }}>
+                          <CIcon width={15} height={15} style={{ flexShrink: 0 }} />
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

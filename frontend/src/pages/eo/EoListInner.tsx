@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useQuickView } from "../../components/quickview/QuickView";
 import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, soCotLoc, type Col, type LocCot, type SapCot } from "../../components/DataTable";
-import { StatusBadge, TypeBadge } from "../../components/ui";
+import { StatusBadge, TypeBadge, Popover } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ten } from "../../lib/format";
 import { STATUS_META } from "../../lib/nav";
@@ -66,12 +66,11 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const [q, setQ] = useState("");
   const [loc, setLoc] = useState<LocCot>({});
   const [sap, setSap] = useState<SapCot>(null);
-  const [moRong, setMoRong] = useState(false);
   const [kho, setKho] = useState("");
   const [doiTac, setDoiTac] = useState("");
   const [lyDo, setLyDo] = useState("");
   const goiY = useGoiYDong();
-  const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: moRong });
+  const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: !compact });
   const limit = 20;
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState(false);
@@ -159,42 +158,46 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     }
   };
 
+  // v0.063: thanh thao tac gon 1 dong (uu tien man hinh cho du lieu) - nhom nhanh = o chon, bo loc it dung = bang xo xuong
+  const chipDang = CHIP.find((c) => c.k === chip);
+  const canhBao = CHIP.filter((c) => c.mau && (dem.data?.[c.k] ?? 0) > 0 && c.k !== chip);
   return (
     <div>
-      {!compact && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          {CHIP.map((c) => {
-            const n = dem.data?.[c.k] ?? 0;
-            const on = chip === c.k;
-            return <button key={c.k} className={`btn sm ${on ? "primary" : ""}`} title={c.title} style={{ color: !on && n && c.mau ? c.mau : undefined, fontWeight: !on && n && c.mau ? 800 : undefined }}
-              onClick={() => datChip(on && c.k !== CHIP_MAC_DINH ? CHIP_MAC_DINH : c.k)}>{c.l} ({soLuong(n)})</button>;
-          })}
-          <button className={`btn sm ${chip === TAT_CA ? "primary" : "ghost"}`} onClick={() => datChip(TAT_CA)}>Tất cả ({soLuong(dem.data?.tat_ca ?? 0)})</button>
-        </div>
-      )}
       <FilterBar>
-        <div style={{ position: "relative", flex: 1, minWidth: 220, maxWidth: 340 }}>
-          <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 11, color: "var(--text-faint)" }} />
-          <input className="input" style={{ paddingLeft: 32 }} placeholder="Tìm mã EO, 3TDO, tiêu đề, mã / tên linh kiện… (không dấu)" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
+        {!compact && (
+          <select className="select tb" style={{ width: 230, borderColor: chip !== CHIP_MAC_DINH ? "var(--brand-yellow-btn)" : undefined, color: chipDang?.mau }}
+            value={chip} title={chipDang?.title ?? "Nhóm nhanh"} onChange={(e) => datChip(e.target.value)}>
+            {CHIP.map((c) => <option key={c.k} value={c.k} title={c.title}>{c.l} ({soLuong(dem.data?.[c.k] ?? 0)})</option>)}
+            <option value={TAT_CA}>Tất cả ({soLuong(dem.data?.tat_ca ?? 0)})</option>
+          </select>
+        )}
+        {!compact && canhBao.map((c) => (
+          <button key={c.k} className="btn sm ghost" title={c.title} style={{ color: c.mau, fontWeight: 700, padding: "0 8px" }} onClick={() => datChip(c.k)}>{c.l} ({soLuong(dem.data?.[c.k] ?? 0)})</button>
+        ))}
+        <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 340 }}>
+          <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 9, color: "var(--text-faint)" }} />
+          <input className="input tb" style={{ paddingLeft: 32 }} placeholder="Tìm mã EO, 3TDO, tiêu đề, mã / tên linh kiện…" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
         </div>
-        {!compact && <button className={`btn sm ${soItDung ? "" : "ghost"}`} onClick={() => setMoRong((x) => !x)} title="Bộ lọc ít dùng: kho, đối tác, lý do phát sinh của dòng linh kiện">
-          <I.filter width={13} height={13} /> {moRong ? "Ẩn bộ lọc khác" : "Bộ lọc khác"}{soItDung ? ` (${soItDung})` : ""}</button>}
-        <RefreshFiltersBtn onClick={reset} />
-        <span className="muted" style={{ fontSize: 11.5 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột</span>
+        {!compact && (
+          <Popover width={300} active={soItDung > 0} title="Bộ lọc ít dùng: kho, đối tác, lý do phát sinh của dòng linh kiện"
+            label={<><I.filter width={13} height={13} /> Lọc khác{soItDung ? ` (${soItDung})` : ""}</>}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <span className="muted" style={{ fontSize: 12 }}>EO có dòng linh kiện:</span>
+              <GoiYDatalists data={goiY.data} />
+              <select className="select" style={{ borderColor: kho ? "var(--brand-yellow-btn)" : undefined }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}>
+                <option value="">ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
+              <input className="input" list={DL.doiTac} style={{ borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
+              <input className="input" list={DL.lyDo} style={{ borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
+            </div>
+          </Popover>
+        )}
+        {(q || soItDung > 0 || soCotLoc(loc) > 0 || sap) && <RefreshFiltersBtn onClick={reset} />}
         <div style={{ flex: 1 }} />
-        <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
+        {list.data && <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}><b style={{ color: "var(--text)" }}>{soLuong(list.data.total)}</b> EO</span>}
+        <button className="btn sm" style={{ padding: "0 9px" }} disabled={exporting} onClick={doExport} title="Xuất Excel các EO đang lọc (Lọc / sắp xếp từng cột: bấm phễu / tiêu đề cột)">
+          <I.download width={14} height={14} />{exporting ? " Đang xuất..." : ""}</button>
         {actions}
       </FilterBar>
-      {moRong && !compact && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "-4px 0 12px", padding: "8px 10px", background: "var(--panel-2)", borderRadius: 10 }}>
-          <span className="muted" style={{ fontSize: 12 }}>EO có dòng linh kiện:</span>
-          <GoiYDatalists data={goiY.data} />
-          <select className="select" style={{ width: 210, borderColor: kho ? "var(--brand-yellow-btn)" : undefined }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}>
-            <option value="">ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
-          <input className="input" list={DL.doiTac} style={{ width: 150, borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
-          <input className="input" list={DL.lyDo} style={{ width: 160, borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
-        </div>
-      )}
 
       <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc"
         ngoai loc={loc} onLoc={(l) => { setLoc(l); setOffset(0); }} sap={sap} onSap={(s) => { setSap(s); setOffset(0); }}
