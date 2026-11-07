@@ -20,6 +20,7 @@ export const I = {
   shield: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z" /><path d="m9 12 2 2 4-4" /></svg>),
   tag: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M3 8v4l9 9 8-8-9-9H7a4 4 0 0 0-4 4Z" /><circle cx="8" cy="9" r="1.4" /></svg>),
   gear: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="12" cy="12" r="3.2" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>),
+  filter: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z" /></svg>),
   search: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>),
   help: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01" /></svg>),
   menu: (p: SVGProps<SVGSVGElement>) => (<svg {...S(p)}><path d="M4 6h16M4 12h16M4 18h16" /></svg>),

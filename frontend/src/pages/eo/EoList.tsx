@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { I } from "../../lib/icons";
 import { useQuickView } from "../../components/quickview/QuickView";
 import EoListInner from "./EoListInner";
@@ -12,6 +12,7 @@ export default function EoList() {
   const nav = useNavigate();
   const { id } = useParams();
   const qv = useQuickView();
+  const { search } = useLocation(); // link ?chip=... (Viec can xu ly, Tong quan) -> dung lai danh sach voi nhom do
   const daMo = useRef<string | null>(null); // chan mo 2 lan (StrictMode chay effect 2 lan o dev)
   useEffect(() => {
     if (!id || !Number(id) || daMo.current === id) return;
@@ -21,7 +22,7 @@ export default function EoList() {
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="card card-pad">
-      <EoListInner actions={<button className="btn sm primary" onClick={() => nav("/eo/new")}><I.plus width={14} height={14} /> Tạo EO</button>} />
+      <EoListInner key={search} actions={<button className="btn sm primary" onClick={() => nav("/eo/new")}><I.plus width={14} height={14} /> Tạo EO</button>} />
     </div>
   );
 }

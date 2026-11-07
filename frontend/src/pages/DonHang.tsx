@@ -1,9 +1,10 @@
+import { STATUS_META } from "../lib/nav";
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner, Modal, StatusBadge } from "../components/ui";
-import { DataTable, type Col } from "../components/DataTable";
+import { DataTable, locVaSap, soCotLoc, type Col, type KieuLoc, type LocCot, type SapCot } from "../components/DataTable";
 import { EoLink, PartLink, useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../lib/format";
@@ -21,7 +22,9 @@ import ReportTuan from "./reports/ReportTuan";
 import ReportLuyKe from "./reports/ReportLuyKe";
 
 /**
- * "Quan ly don hang" (/don-hang): MOI dong linh kien tren EO (moi trang thai) - 1 man cho ca xem lan thao tac.
+ * "LK đặt" (/don-hang, truoc la "Quan ly don hang"): MOI dong linh kien tren EO (moi trang thai) - 1 man cho ca xem lan thao tac.
+ * v0.062: mac dinh nhom "Còn chờ hàng"; loc + sap xep kieu Excel tren tieu de MOI cot (LOC_COT); o tren chi con bo loc thuong dung
+ * (o tim + nhom nhanh), bo loc it dung an sau "Bộ lọc khác". Bo loc cu trung voi loc cot da bo - van nhan tu link (?gd=, ?ton=...).
  * Gop (v0.050, ../UI_GOP_2_MAN_HINH.md): So don hang + Theo doi linh kien dat + Canh bao CEO + Ke hoach hang ve
  * + Ke hoach tuan (trang con /don-hang/ke-hoach-tuan) + 3 bao cao (tab Bao cao).
  * Chon cot (bo cot mau), bo loc + nhom nhanh co so dem, luu bo loc, 8 giai doan; thao tac dong: ngay NM/DK, giai trinh,
@@ -108,6 +111,32 @@ function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Rec
   ];
 }
 
+/** Loc kieu Excel tung cot (DataTable): kieu + gia tri tho (ngay ISO, so) - mac dinh gia tri = get. Cot khong co o day: chi sap xep. */
+type LocMot = { loc: KieuLoc; gt?: (r: Row) => unknown; gtSap?: (r: Row) => unknown; nhan?: (v: string) => string };
+const ST = (v: string) => STATUS_META[v]?.label ?? v;
+const LOC_COT: Record<string, LocMot> = {
+  ma_phe_duyet: { loc: "chu", gt: (r) => `${r.ma_phe_duyet ?? ""} ${r.eo_code ?? ""}` }, tieu_de: { loc: "chu" },
+  trang_thai_eo: { loc: "chon", nhan: ST }, loai_hinh: { loc: "chon" }, phong_ban: { loc: "chon" },
+  nguoi_tao: { loc: "chon", nhan: (v) => ten(v) }, nguoi_duyet_cuoi: { loc: "chon", nhan: (v) => ten(v) },
+  ngay_ban_hanh: { loc: "ngay", gt: (r) => r.ngay_ban_hanh },
+  part_code: { loc: "chu", gt: (r) => `${r.part_code ?? ""} ${r.part_code_goc ?? ""}` }, part_name: { loc: "chu" },
+  kho: { loc: "chon" }, doi_tac: { loc: "chon" }, so_luong_dat: { loc: "so" }, don_gia: { loc: "so" },
+  ly_do_ps: { loc: "chon" }, ghi_chu: { loc: "chu" }, id_crm: { loc: "chu" }, id_dat_hang: { loc: "chu" }, id_dat_lk: { loc: "chu" },
+  phan_loai: { loc: "chon" }, ngay_tao: { loc: "ngay", gt: (r) => r.ngay_tao },
+  trang_thai_don_hang: { loc: "chon" }, canh_bao: { loc: "chon" },
+  ton: { loc: "chon", gt: (r) => (MO.includes(r.trang_thai_don_hang) ? mocCua(soNgayTon(ngayDatCua(r)))?.l ?? "" : ""),
+    gtSap: (r) => (MO.includes(r.trang_thai_don_hang) ? soNgayTon(ngayDatCua(r)) : null) },
+  ngay_nm: { loc: "ngay", gt: (r) => r.ngay_nm_cam_ket }, dk_dau: { loc: "ngay", gt: (r) => r.ngay_du_kien_lan_dau },
+  dk_gan_nhat: { loc: "ngay", gt: (r) => r.ngay_du_kien_gan_nhat }, so_lan_doi: { loc: "so" }, sl_ve: { loc: "so" }, con_thieu: { loc: "so" },
+  sai_thua: { loc: "so" }, ngay_ve_eo: { loc: "ngay", gt: (r) => r.ngay_nhap_kho_amis_theo_eo }, ngay_ve_kho: { loc: "ngay", gt: (r) => r.ngay_nhap_kho_amis },
+  ngay_ve_tq: { loc: "ngay", gt: (r) => r.ngay_nhap_toan_quoc_amis }, toc_do: { loc: "chon" }, tg_xu_ly: { loc: "so" },
+  dat_ve_thieu: { loc: "so", gt: (r) => r.so_luong_con_thieu }, so_loi: { loc: "so" },
+  td_tinh_trang: { loc: "chon" }, ba_ngay: { loc: "ngay", gt: (r) => r.ngay_du_kien_gan_nhat }, han_ndk: { loc: "ngay", gt: (r) => r.han_ngay_du_kien },
+  so_lan_lui: { loc: "so", gt: (r) => r.so_lan_lui ?? 0 }, ceo: { loc: "chu" },
+  tien_trinh: { loc: "chon" }, gd_hien_tai: { loc: "chon" }, g4_tt: { loc: "chon" }, so_lan_tra_ve: { loc: "so" },
+};
+const locCua = (k: string): LocMot | undefined => (k.startsWith("gd_G") ? { loc: "so" as KieuLoc, gt: (r: Row) => r.gd_gio_tung?.[k.slice(3)] } : LOC_COT[k]);
+
 const BO_COT: Record<string, { l: string; cot: string[] }> = {
   co_ban: { l: "Cơ bản", cot: ["ma_phe_duyet", "part_code", "part_name", "kho", "doi_tac", "so_luong_dat", "sl_ve", "con_thieu", "trang_thai_don_hang", "gd_hien_tai", "ton", "dk_gan_nhat"] },
   tien_do: { l: "Tiến độ", cot: ["ma_phe_duyet", "part_code", "kho", "so_luong_dat", "sl_ve", "con_thieu", "trang_thai_don_hang", "canh_bao", "ton", "ngay_nm", "dk_dau", "dk_gan_nhat", "so_lan_doi", "ngay_ve_eo", "toc_do", "so_loi"] },
@@ -124,15 +153,14 @@ interface Loc {
   apDung: string; // "1" = chi dong EO ap dung quy tac theo doi
 }
 const LOC_TRONG: Loc = { q: "", ngayTheo: "ngay_ban_hanh", tu: "", den: "", trangThaiEo: "", tinhTrang: "", gd: "", tre: "", ton: "", kho: "", doiTac: "", lyDo: "", maLk: "", loaiHinh: "", phongBan: "", nguoiTao: "", sauBh: "", coLoi: "", canhBao: "", g4: "", nhom: "", apDung: "" };
-const LOC_MAU: { l: string; loc: Partial<Loc> }[] = [
-  { l: "Đang mở (chưa về đủ)", loc: { tinhTrang: "__mo" } },
-  { l: "Trễ hạn ở giai đoạn hiện tại", loc: { tinhTrang: "__mo", tre: "tre" } },
-  { l: "Chưa có ngày dự kiến", loc: { canhBao: "Chưa có ngày dự kiến" } },
-  { l: "Quá ngày dự kiến", loc: { canhBao: "Quá dự kiến" } },
-  { l: "Hàng chưa về (=0)", loc: { tinhTrang: "Hàng chưa về" } },
-  { l: "Tồn trên 30 ngày", loc: { tinhTrang: "__mo", ton: "gt30" } },
-  { l: "Thêm sau ban hành", loc: { sauBh: "sau" } },
-];
+/** Loc an (nhan tu link Tong quan / bao cao / Viec can xu ly: ?gd= ?ton= ?tinhTrang=...) - hien "Lọc từ liên kết: … ×". */
+const LOC_LIEN_KET: Record<string, (v: string) => string> = {
+  tinhTrang: (v) => `Tình trạng: ${v === "__mo" ? "đang mở" : v}`, gd: (v) => `Giai đoạn ${v}`, ton: (v) => `Tồn ${MOC_TON.find((m) => m.k === v)?.l ?? v}`,
+  g4: (v) => `G4 mail: ${({ da: "đã gửi", chua: "chưa ghi nhận", tre: "trễ" } as any)[v] ?? v}`, canhBao: (v) => v, kho: (v) => `Kho ${v}`,
+  doiTac: (v) => `NCC ${v}`, lyDo: (v) => `Lý do ${v}`, maLk: (v) => `Mã LK ${v}`, loaiHinh: (v) => v, phongBan: (v) => v,
+  nguoiTao: (v) => `Người tạo ${ten(v)}`, trangThaiEo: (v) => ST(v), sauBh: (v) => (v === "sau" ? "Thêm sau BH" : "Tạo trước BH"),
+  coLoi: (v) => (v === "cho" ? "Lỗi chờ giải trình" : "Có lỗi theo dõi"),
+};
 /** Tuan Thu 2 - Chu nhat chua ngay hom nay (+lech tuan), gio VN: [tu, den] dang YYYY-MM-DD. */
 function tuan(lech: number): [string, string] {
   const d = new Date(Date.now() + 7 * 3600_000);
@@ -143,6 +171,7 @@ function tuan(lech: number): [string, string] {
 const veTrongTuan = (r: Row, lech: number) => { const [a, b] = tuan(lech); const v = String(r.ngay_du_kien_gan_nhat ?? "").slice(0, 10); return MO.includes(r.trang_thai_don_hang) && !!v && v >= a && v <= b; };
 /** Nhom nhanh co so dem (bam = loc). Nhom theo doi chi gom dong EO da ban hanh trong pham vi theo doi (r.tinh_trang != null). */
 const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?: string }[] = [
+  { k: "con_cho", l: "Còn chờ hàng", title: "Đơn đã ban hành, hàng chưa về hoặc về chưa đủ (nhóm mặc định)", f: (r) => MO.includes(r.trang_thai_don_hang) },
   { k: "can_xl", l: "Cần xử lý", mau: "#DC2626", title: "Dòng áp dụng quy tắc: cần nhập ngày dự kiến, quá ngày dự kiến hoặc có lỗi chờ giải trình (= Việc cần xử lý)",
     f: (r) => r.ap_dung && (["CHO_NDK", "TRE_NDK", "QUA_HAN_NDK"].includes(r.tinh_trang) || r.so_loi_cho_gt > 0) },
   { k: "TRE_NDK", l: "Trễ 48h chưa có ngày DK", f: (r) => r.tinh_trang === "TRE_NDK" },
@@ -155,6 +184,7 @@ const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?
   { k: "VE_TUAN_SAU", l: "Dự kiến về tuần sau", f: (r) => veTrongTuan(r, 1) },
 ];
 const KEY_COT = "sdh-cot", KEY_LOC = "sdh-loc-luu";
+const NHOM_MAC_DINH = "con_cho";
 
 /** Remount theo query string: link noi bo (Tong quan, bao cao, Viec can xu ly) doi ?nhom= / ?gd= ... -> ap bo loc moi. */
 export default function DonHang() {
@@ -175,9 +205,9 @@ function DonHangTrang() {
   const bc = BAO_CAO.some((b) => b.k === sp.get("bc")) ? sp.get("bc")! : "giai-doan";
   return (
     <div>
-      <PageHeader title="Quản lý đơn hàng" actions={
+      <PageHeader title="LK đặt" actions={
         <div style={{ display: "flex", gap: 6 }}>
-          <button className={`btn sm ${tab === "ds" ? "primary" : ""}`} onClick={() => nav("/don-hang")}><I.list width={14} height={14} /> Danh sách đơn hàng</button>
+          <button className={`btn sm ${tab === "ds" ? "primary" : ""}`} onClick={() => nav("/don-hang")}><I.list width={14} height={14} /> Danh sách LK đặt</button>
           <button className={`btn sm ${tab === "bao-cao" ? "primary" : ""}`} onClick={() => nav(`/don-hang?tab=bao-cao&bc=${bc}`)}><I.trend width={14} height={14} /> Báo cáo</button>
         </div>
       } />
@@ -202,9 +232,13 @@ function DanhSach() {
   const q = useQuery({ queryKey: ["so-don-hang"], queryFn: () => api.get<{ giai_doan: any[]; sla: Record<string, number>; rows: Row[]; danh_gia_luc: string | null }>("/so-don-hang") });
   const [loc, setLoc] = useState<Loc>(() => {
     const tuUrl: Record<string, string> = Object.fromEntries([...sp.entries()].filter(([k]) => k in LOC_TRONG));
-    if (tuUrl.nhom === "tat_ca") delete tuUrl.nhom; // link cu cua man Theo doi
-    return { ...LOC_TRONG, ...tuUrl };
+    if (tuUrl.nhom === "tat_ca") tuUrl.nhom = ""; // link cu cua man Theo doi
+    // vao man khong kem bo loc -> mac dinh nhom "Còn chờ hàng"; link co bo loc (?gd=, ?ton=...) -> giu dung bo loc do
+    return { ...LOC_TRONG, nhom: Object.keys(tuUrl).length ? "" : NHOM_MAC_DINH, ...tuUrl };
   });
+  // loc + sap xep tren tieu de cot (kieu Excel) - luu cung bo loc da luu
+  const [locCot, setLocCot] = useState<LocCot>({});
+  const [sap, setSap] = useState<SapCot>(null);
   // thao tac dong (tu man Theo doi cu)
   const [modal, setModal] = useState<{ loai: "ndk" | "gt" | "ls"; dong: Dong } | null>(null);
   const [chon, setChon] = useState<Set<number>>(new Set());
@@ -214,21 +248,14 @@ function DanhSach() {
   const krf = useGoiYKrf();
   const refresh = () => ["so-don-hang", "theo-doi", "tl-dong", "inbox-count", "dash-quan-ly"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   const [cot, setCot] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_COT) ?? "null") ?? BO_COT.co_ban.cot; } catch { return BO_COT.co_ban.cot; } });
-  const [luu, setLuu] = useState<{ l: string; loc: Loc }[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_LOC) ?? "[]"); } catch { return []; } });
+  const [luu, setLuu] = useState<{ l: string; loc: Loc; locCot?: LocCot; sap?: SapCot }[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_LOC) ?? "[]"); } catch { return []; } });
   const [chonCot, setChonCot] = useState(false);
-  const [moRong, setMoRong] = useState(() => ["g4", "ton", "tu", "den", "trangThaiEo", "canhBao", "loaiHinh", "phongBan", "nguoiTao", "sauBh", "coLoi", "apDung"].some((k) => sp.get(k)));
+  const [moRong, setMoRong] = useState(() => ["tu", "den", "tre", "apDung"].some((k) => sp.get(k)));
 
   const all = q.data?.rows ?? [];
   const defs = useMemo(() => cotDefs(q.data?.giai_doan ?? [], q.data?.sla ?? {}), [q.data]);
-  // goi y o loc ma LK: ma + ten co trong so (khong goi them API)
-  const dsLk = useMemo(() => {
-    const m = new Map<string, { ma: string; ten: string }>();
-    for (const r of all) if (r.part_code && !m.has(String(r.part_code).toUpperCase())) m.set(String(r.part_code).toUpperCase(), { ma: r.part_code, ten: r.part_name ?? "" });
-    return [...m.values()].sort((a, b) => a.ma.localeCompare(b.ma));
-  }, [all]);
   const set = (p: Partial<Loc>) => setLoc((l) => ({ ...l, ...p }));
   const datCot = (c: string[]) => { setCot(c); localStorage.setItem(KEY_COT, JSON.stringify(c)); };
-  const uniq = (f: (r: Row) => any) => [...new Set(all.map(f).filter(Boolean) as string[])].sort((a, b) => String(a).localeCompare(String(b)));
 
   // base = moi bo loc tru nhom nhanh (de dem so tren tung nhom); rows = base + nhom dang chon
   const base = useMemo(() => {
@@ -260,7 +287,15 @@ function DanhSach() {
     });
   }, [all, loc]);
   const nhomDang = NHOM.find((n) => n.k === loc.nhom);
-  const rows = useMemo(() => (nhomDang ? base.filter(nhomDang.f) : base), [base, nhomDang]);
+  const rowsNhom = useMemo(() => (nhomDang ? base.filter(nhomDang.f) : base), [base, nhomDang]);
+  const hien = cot.map((k) => defs.find((d) => d.k === k)).filter(Boolean) as CotDef[];
+  // cot du lieu (khong gom cot Thao tac) kem loc / sap kieu Excel -> rows = sau loc cot (xuat Excel, chon tat ca, tong)
+  const colsDl: Col<Row>[] = hien.map((d) => {
+    const lc = locCua(d.k);
+    return { key: d.k, header: d.l, align: d.align, maxW: d.maxW, render: d.render ?? ((r: Row) => d.get(r) ?? ""),
+      loc: lc?.loc, gt: lc?.gt ?? d.get, gtSap: lc?.gtSap, nhanChon: lc?.nhan };
+  });
+  const rows = useMemo(() => locVaSap(rowsNhom, colsDl, locCot, sap), [rowsNhom, colsDl, locCot, sap]); // eslint-disable-line react-hooks/exhaustive-deps
   const pushDuoc = (r: Row) => r.theo_doi && r.tinh_trang !== "DONG";
   const chonDuoc = rows.filter(pushDuoc);
   const tatCaChon = chonDuoc.length > 0 && chonDuoc.every((r) => chon.has(r.item_id));
@@ -277,7 +312,6 @@ function DanhSach() {
     } finally { setBusy(false); }
   };
 
-  const hien = cot.map((k) => defs.find((d) => d.k === k)).filter(Boolean) as CotDef[];
   const cols: Col<Row>[] = [
     {
       key: "act", header: <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
@@ -296,19 +330,22 @@ function DanhSach() {
         </span>
       ),
     },
-    ...hien.map((d) => ({ key: d.k, header: d.l, align: d.align, maxW: d.maxW, render: d.render ?? ((r: Row) => d.get(r) ?? "") })),
+    ...colsDl,
   ];
-  const soLoc = Object.entries(loc).filter(([k, v]) => v && k !== "ngayTheo").length;
+  const lienKet = Object.keys(LOC_LIEN_KET).filter((k) => (loc as any)[k]);
+  const soItDung = ["tu", "den", "tre", "apDung"].filter((k) => (loc as any)[k]).length;
+  const soLoc = Object.entries(loc).filter(([k, v]) => v && k !== "ngayTheo" && k !== "nhom").length + soCotLoc(locCot) + (loc.nhom && loc.nhom !== NHOM_MAC_DINH ? 1 : 0);
   const tong = (f: (r: Row) => number) => rows.reduce((s, r) => s + (f(r) || 0), 0);
   const demGd = (k: string) => rows.filter((r) => r.gd_hien_tai === k).length;
   const luuLoc = () => {
     const l = prompt("Tên bộ lọc (vd: KRF quá hạn của kho 6803):");
     if (!l?.trim()) return;
-    const moi = [...luu.filter((x) => x.l !== l.trim()), { l: l.trim(), loc }];
+    const moi = [...luu.filter((x) => x.l !== l.trim()), { l: l.trim(), loc, locCot, sap }];
     setLuu(moi); localStorage.setItem(KEY_LOC, JSON.stringify(moi));
   };
   const xoaLuu = (l: string) => { const moi = luu.filter((x) => x.l !== l); setLuu(moi); localStorage.setItem(KEY_LOC, JSON.stringify(moi)); };
-  const xuat = () => exportRowsToXlsx(rows, hien.map((d) => ({ header: d.l, get: d.get })), "Quan_ly_don_hang.xlsx", "Don hang");
+  const xuat = () => exportRowsToXlsx(rows, hien.map((d) => ({ header: d.l, get: d.get })), "LK_dat.xlsx", "LK dat");
+  const xoaHet = () => { setLoc({ ...LOC_TRONG, nhom: NHOM_MAC_DINH }); setLocCot({}); setSap(null); };
 
   const S = ({ v, onChange, children, w = 160, title }: { v: string; onChange: (v: string) => void; children: ReactNode; w?: number; title?: string }) => (
     <select className="select" style={{ width: w, height: 32, fontSize: 12.5, borderColor: v ? "var(--brand-yellow-btn)" : undefined }} value={v} title={title} onChange={(e) => onChange(e.target.value)}>{children}</select>
@@ -326,17 +363,26 @@ function DanhSach() {
           })}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <input className="input" style={{ width: 300, height: 32 }} placeholder="🔍 Tìm mã EO / 3TDO / mã-tên LK / CRM / ghi chú… (không dấu)" value={loc.q} onChange={(e) => set({ q: e.target.value })} />
-          <S v={loc.tinhTrang} onChange={(v) => set({ tinhTrang: v })} w={150} title="Tình trạng đơn"><option value="">Mọi tình trạng</option><option value="__mo">Đang mở (chưa về đủ)</option>{["Hàng chưa về", "Chưa đủ hàng", "Kết thúc", "Kết thúc sớm", "Chưa ban hành", "Đơn trên EO bị hủy"].map((x) => <option key={x}>{x}</option>)}</S>
-          <S v={loc.gd} onChange={(v) => set({ gd: v })} w={190} title="Giai đoạn hiện tại"><option value="">Mọi giai đoạn</option>{(q.data?.giai_doan ?? []).filter((g) => !["G4", "G7"].includes(g.k)).map((g) => <option key={g.k} value={g.k}>{g.k} · {g.l}</option>)}<option value="XONG">Hoàn tất</option><option value="HUY">Đã hủy</option></S>
-          <S v={loc.tre} onChange={(v) => set({ tre: v })} w={130} title="Đúng / trễ hạn ở giai đoạn hiện tại"><option value="">Đúng & trễ hạn</option><option value="tre">Trễ hạn</option><option value="dung">Đúng hạn</option></S>
-          <S v={loc.kho} onChange={(v) => set({ kho: v })} w={170}><option value="">Mọi kho</option>{uniq((r) => r.kho).map((x) => <option key={x}>{x}</option>)}</S>
-          <S v={loc.doiTac} onChange={(v) => set({ doiTac: v })} w={140}><option value="">Mọi NCC</option>{uniq((r) => r.doi_tac).map((x) => <option key={x}>{x}</option>)}</S>
-          <S v={loc.lyDo} onChange={(v) => set({ lyDo: v })} w={150} title="Lý do phát sinh"><option value="">Mọi lý do PS</option>{uniq((r) => r.ly_do_ps).map((x) => <option key={x}>{x}</option>)}</S>
-          <input className="input" list="dl-sdh-lk" style={{ width: 150, height: 32, fontSize: 12.5, borderColor: loc.maLk ? "var(--brand-yellow-btn)" : undefined }} placeholder="Mã linh kiện" title="Gõ 1 phần mã hoặc chọn (khớp cả mã gốc trước khi thay)" value={loc.maLk} onChange={(e) => set({ maLk: e.target.value })} />
-          <datalist id="dl-sdh-lk">{dsLk.map((x) => <option key={x.ma} value={x.ma} label={x.ten || undefined} />)}</datalist>
-          <button className="btn sm ghost" onClick={() => setMoRong((x) => !x)}>{moRong ? "Thu gọn bộ lọc" : "Thêm bộ lọc"}{soLoc ? ` (${soLoc} đang lọc)` : ""}</button>
+          <input className="input" style={{ width: 320, height: 32 }} placeholder="🔍 Tìm mã EO / 3TDO / mã-tên LK / CRM / ghi chú… (không dấu)" value={loc.q} onChange={(e) => set({ q: e.target.value })} />
+          <button className={`btn sm ${soItDung ? "" : "ghost"}`} onClick={() => setMoRong((x) => !x)} title="Bộ lọc ít dùng: khoảng ngày, đúng / trễ hạn giai đoạn, EO áp dụng quy tắc, đơn của tôi">
+            <I.filter width={13} height={13} /> {moRong ? "Ẩn bộ lọc khác" : "Bộ lọc khác"}{soItDung ? ` (${soItDung})` : ""}</button>
+          <span className="muted" style={{ fontSize: 11.5 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột</span>
+          {lienKet.map((k) => (
+            <span key={k} className="qv-chip on" style={{ display: "inline-flex", gap: 4 }} title="Bộ lọc mở từ liên kết (Tổng quan, báo cáo…)">
+              {LOC_LIEN_KET[k]((loc as any)[k])}<span role="button" style={{ cursor: "pointer" }} onClick={() => set({ [k]: "" } as any)}>×</span></span>
+          ))}
         </div>
+        {moRong && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, padding: "8px 10px", background: "var(--panel-2)", borderRadius: 10 }}>
+            <S v={loc.ngayTheo} onChange={(v) => set({ ngayTheo: v })} w={170} title="Lọc khoảng ngày theo"><option value="ngay_ban_hanh">Theo ngày ban hành</option><option value="ngay_dat">Theo ngày đặt</option><option value="ngay_tao">Theo ngày tạo dòng</option><option value="ngay_du_kien_gan_nhat">Theo ngày dự kiến</option><option value="ngay_nhap_kho_amis_theo_eo">Theo ngày hàng về</option></S>
+            <input className="input" type="date" style={{ width: 140, height: 32 }} value={loc.tu} onChange={(e) => set({ tu: e.target.value })} title="Từ ngày" />
+            <span className="muted">→</span>
+            <input className="input" type="date" style={{ width: 140, height: 32 }} value={loc.den} onChange={(e) => set({ den: e.target.value })} title="Đến ngày" />
+            <S v={loc.tre} onChange={(v) => set({ tre: v })} w={150} title="Đúng / trễ hạn ở giai đoạn hiện tại"><option value="">Đúng & trễ hạn</option><option value="tre">Trễ hạn giai đoạn</option><option value="dung">Đúng hạn giai đoạn</option></S>
+            <S v={loc.apDung} onChange={(v) => set({ apDung: v })} w={180} title="EO ban hành từ ngày áp dụng quy tắc theo dõi"><option value="">Mọi EO</option><option value="1">Chỉ EO áp dụng quy tắc</option></S>
+            {me.data?.email && <button className={`btn sm ${loc.nguoiTao === me.data.email ? "primary" : ""}`} onClick={() => set({ nguoiTao: loc.nguoiTao === me.data.email ? "" : me.data.email })}>Chỉ đơn tôi đặt</button>}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
           <button className="btn sm primary" disabled={!chon.size || busy} onClick={taoPush} title="Tick các dòng còn mở rồi bấm — mỗi đối tác 1 file + tiêu đề mail chuẩn"><I.send width={14} height={14} /> Tạo file push đối tác ({chon.size})</button>
           <button className={`btn sm ${krf.data?.goi_y.length ? "primary" : ""}`} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết" onClick={() => setHop("krf")}>
@@ -348,32 +394,14 @@ function DanhSach() {
           <button className="btn sm" onClick={() => setChonCot(true)}><I.grid width={14} height={14} /> Chọn cột ({hien.length})</button>
           <button className="btn sm" onClick={xuat}><I.download width={14} height={14} /> Xuất Excel ({soLuong(rows.length)})</button>
         </div>
-        {moRong && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
-            <S v={loc.ngayTheo} onChange={(v) => set({ ngayTheo: v })} w={170} title="Lọc khoảng ngày theo"><option value="ngay_ban_hanh">Theo ngày ban hành</option><option value="ngay_dat">Theo ngày đặt</option><option value="ngay_tao">Theo ngày tạo dòng</option><option value="ngay_du_kien_gan_nhat">Theo ngày dự kiến</option><option value="ngay_nhap_kho_amis_theo_eo">Theo ngày hàng về</option></S>
-            <input className="input" type="date" style={{ width: 140, height: 32 }} value={loc.tu} onChange={(e) => set({ tu: e.target.value })} title="Từ ngày" />
-            <span className="muted">→</span>
-            <input className="input" type="date" style={{ width: 140, height: 32 }} value={loc.den} onChange={(e) => set({ den: e.target.value })} title="Đến ngày" />
-            <S v={loc.ton} onChange={(v) => set({ ton: v })} w={140}><option value="">Mọi mốc tồn</option>{MOC_TON.map((m) => <option key={m.k} value={m.k}>Tồn {m.l}</option>)}</S>
-            <S v={loc.trangThaiEo} onChange={(v) => set({ trangThaiEo: v })} w={150}><option value="">Mọi trạng thái EO</option>{[["DRAFT", "Nháp"], ["IN_REVIEW", "Đang thẩm định"], ["WAITING_FINAL_APPROVAL", "Chờ duyệt cuối"], ["ISSUED", "Đã ban hành"], ["REJECTED", "Từ chối"], ["CANCELLED", "Đã hủy"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</S>
-            <S v={loc.canhBao} onChange={(v) => set({ canhBao: v })} w={160}><option value="">Mọi cảnh báo</option>{["Chưa có ngày dự kiến", "Quá dự kiến", "Chưa quá dự kiến"].map((x) => <option key={x}>{x}</option>)}</S>
-            <S v={loc.loaiHinh} onChange={(v) => set({ loaiHinh: v })} w={170}><option value="">Mọi loại hình</option>{uniq((r) => r.loai_hinh).map((x) => <option key={x}>{x}</option>)}</S>
-            <S v={loc.phongBan} onChange={(v) => set({ phongBan: v })} w={160}><option value="">Mọi phòng ban</option>{uniq((r) => r.phong_ban).map((x) => <option key={x}>{x}</option>)}</S>
-            <S v={loc.nguoiTao} onChange={(v) => set({ nguoiTao: v })} w={160}><option value="">Mọi người tạo</option>{uniq((r) => r.nguoi_tao).map((x) => <option key={x} value={x}>{ten(x)}</option>)}</S>
-            <S v={loc.sauBh} onChange={(v) => set({ sauBh: v })} w={150}><option value="">Trước & sau BH</option><option value="truoc">Tạo trước ban hành</option><option value="sau">Thêm sau ban hành</option></S>
-            <S v={loc.g4} onChange={(v) => set({ g4: v })} w={170} title="G4 Gửi đơn cho NCC (mail CC theodoimuahang)"><option value="">G4 mail NCC: mọi</option><option value="da">G4 đã gửi mail</option><option value="chua">G4 chưa ghi nhận mail</option><option value="tre">G4 chưa có mail · trễ</option></S>
-            <S v={loc.coLoi} onChange={(v) => set({ coLoi: v })} w={140}><option value="">Có / không lỗi</option><option value="co">Có lỗi theo dõi</option><option value="cho">Lỗi chờ giải trình</option></S>
-            <S v={loc.apDung} onChange={(v) => set({ apDung: v })} w={180} title="EO ban hành từ ngày áp dụng quy tắc theo dõi"><option value="">Mọi EO</option><option value="1">Chỉ EO áp dụng quy tắc</option></S>
+        {(luu.length > 0 || soLoc > 0) && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, fontSize: 12 }}>
+            {luu.length > 0 && <span className="muted">Bộ lọc đã lưu:</span>}
+            {luu.map((x) => <span key={x.l} className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}><span onClick={() => { setLoc(x.loc); setLocCot(x.locCot ?? {}); setSap(x.sap ?? null); }} style={{ cursor: "pointer" }}>★ {x.l}</span><span title="Xóa bộ lọc đã lưu" style={{ cursor: "pointer" }} onClick={() => xoaLuu(x.l)}>×</span></span>)}
+            <button className="btn sm ghost" onClick={luuLoc} disabled={!soLoc}>＋ Lưu bộ lọc hiện tại</button>
+            {soLoc > 0 && <button className="btn sm ghost" onClick={xoaHet}>Xóa lọc</button>}
           </div>
         )}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, fontSize: 12 }}>
-          <span className="muted">Bộ lọc nhanh:</span>
-          {LOC_MAU.map((m) => <button key={m.l} className="qv-chip" onClick={() => setLoc({ ...LOC_TRONG, ...m.loc })}>{m.l}</button>)}
-          {me.data?.email && <button className="qv-chip" onClick={() => setLoc({ ...LOC_TRONG, nguoiTao: me.data.email })}>EO của tôi</button>}
-          {luu.map((x) => <span key={x.l} className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}><span onClick={() => setLoc(x.loc)} style={{ cursor: "pointer" }}>★ {x.l}</span><span title="Xóa bộ lọc đã lưu" style={{ cursor: "pointer" }} onClick={() => xoaLuu(x.l)}>×</span></span>)}
-          <button className="btn sm ghost" onClick={luuLoc} disabled={!soLoc}>＋ Lưu bộ lọc hiện tại</button>
-          {soLoc > 0 && <button className="btn sm ghost" onClick={() => setLoc(LOC_TRONG)}>Xóa lọc</button>}
-        </div>
         <div style={{ marginTop: 8 }}><ChuGiaiNgay gon /></div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
           Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 48h làm việc · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
@@ -393,7 +421,8 @@ function DanhSach() {
               return n ? <button key={g.k} className={`qv-chip ${loc.gd === g.k ? "on" : ""}`} title={`${g.l} — ${g.vai_tro}`} onClick={() => set({ gd: loc.gd === g.k ? "" : g.k })}>{g.k} {g.l}: <b>{soLuong(n)}</b></button> : null;
             })}
           </div>
-          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={50} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc" />
+          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={50} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc"
+            ngoai rowsGoc={rowsNhom} loc={locCot} onLoc={setLocCot} sap={sap} onSap={setSap} />
         </Card>
       )}
 

@@ -207,3 +207,10 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .ttg-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid; display: inline-block; }
 .ttg-dot.on { width: 13px; height: 13px; box-shadow: 0 0 0 2px #fff, 0 0 0 3px currentColor; }
 .ttg-noi { width: 7px; height: 2px; display: inline-block; }
+
+/* Loc kieu Excel tren tieu de cot (components/DataTable) */
+.th-loc { border: 0; background: none; padding: 2px 3px; border-radius: 5px; cursor: pointer; color: var(--text-faint, #94A3B8); display: inline-flex; line-height: 0; }
+.th-loc:hover { background: var(--panel-2); color: var(--text); }
+.th-loc.on { color: #fff; background: var(--link-amber, #B45309); }
+.hop-loc { position: fixed; z-index: 300; width: 280px; background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(15,23,42,.22); padding: 10px 12px; font-weight: 400; text-align: left; white-space: normal; }

@@ -15,7 +15,7 @@ export const NAV: NavItem[] = [
   // Quan ly EO gop: Danh sach EO, Viec can duyet, trang Chi tiet EO (popup)
   { to: "/eo", label: "Quản lý EO", icon: "clipboard" },
   // Quan ly don hang gop: Theo doi LK dat, So don hang, Canh bao CEO, Ke hoach hang ve / tuan, 3 bao cao (../UI_GOP_2_MAN_HINH.md)
-  { to: "/don-hang", label: "Quản lý đơn hàng", icon: "list" },
+  { to: "/don-hang", label: "LK đặt", icon: "list" },
   // Vi pham & giai trinh (2026-11-04): loi R1/R3/R4/tay, muc do, lap, nhac nho, giai trinh ca PO - backend routes/viPham.ts
   { to: "/vi-pham", label: "Vi phạm & giải trình", icon: "bell" },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },

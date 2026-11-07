@@ -199,13 +199,23 @@ G7 Nhập kho & lên hệ thống (ngày CT AMIS → `amis_receipt.created_at`, 
 đúng/trễ hạn, chưa sinh lỗi giải trình (bật sau 2–4 tuần). `layGiaiDoan(env)` cache mốc, phần "bây giờ" tính lúc request.
 Báo cáo giai đoạn = tab Báo cáo của Quản lý đơn hàng (`/don-hang?tab=bao-cao&bc=giai-doan`).
 
-## 2 màn chính (v0.050–0.051, `../UI_GOP_2_MAN_HINH.md`) — menu: Tổng quan · Quản lý EO · Quản lý đơn hàng · Nhập AMIS · Cài đặt
+## 2 màn chính (v0.050–0.051, `../UI_GOP_2_MAN_HINH.md`) — menu: Tổng quan · Quản lý EO · LK đặt · Vi phạm · Nhập AMIS · Cài đặt
+
+**Bảng kiểu Excel (v0.062, `components/DataTable.tsx`)**: cột khai báo `loc` (`chu` tìm không dấu · `chon` tick giá trị · `ngay` từ–đến ·
+`so` từ–đến) + `gt` (giá trị thô) [+ `gtSap`, `nhanChon`] → phễu lọc + bấm tiêu đề sắp xếp, nhãn "Đang lọc n cột · x / y dòng".
+Tự quản lý state, hoặc điều khiển ngoài `loc/onLoc/sap/onSap` + `ngoai` (rows đã lọc sẵn: server, hoặc trang dùng `locVaSap`).
+Thanh trên mỗi màn chỉ còn bộ lọc **thường dùng** (ô tìm + nhóm nhanh); bộ lọc **ít dùng** ẩn sau nút "Bộ lọc khác".
 
 - **Quản lý EO** `/eo` (`pages/eo/EoList.tsx` + `EoListInner.tsx`): chip có số đếm (`GET /eo/dem`, lọc `GET /eo?chip=`, định nghĩa
-  `CHIP_EO` ở `routes/eo.ts`: cho_toi_duyet = phiếu PENDING của tôi ở lần trình mở + EO tôi duyệt cuối có dòng sau BH chờ duyệt, …);
+  `CHIP_EO` ở `routes/eo.ts`: **mặc định `con_ton`** = không hủy / từ chối và (chưa ban hành hoặc còn dòng chưa về đủ); cho_toi_duyet = phiếu PENDING
+  của tôi ở lần trình mở + EO tôi duyệt cuối có dòng sau BH chờ duyệt, …). `GET /eo` (v0.062): toàn bộ EO dựng 1 lần vào cache `eo:ds-v1`
+  (eo/amis) → lọc chip / `q` (không dấu) / `kho` `doi_tac` `ly_do` / `loc` (JSON lọc cột, `COT_EO`) / `sap=cot:asc|desc` + phân trang trong JS;
+  trả `tuy_chon` (giá trị lọc "chọn"), `tong_truoc_loc`;
   nút Đồng ý / Từ chối / Yêu cầu cập nhật ngay trên dòng (`phieu_cho_toi_id/buoc` trong list). **Chi tiết EO = popup** — `/eo/:id`
   mở màn này + bật popup rồi đổi URL về `/eo`. Đã bỏ trang EoDetail và Approvals (`/approvals` → `/eo?chip=cho_toi_duyet`).
-- **Quản lý đơn hàng** `/don-hang` (`pages/DonHang.tsx`, mỗi dòng = 1 dòng linh kiện mọi trạng thái): `GET /api/so-don-hang` =
+- **LK đặt** `/don-hang` (`pages/DonHang.tsx`, trước tên "Quản lý đơn hàng"; mỗi dòng = 1 dòng linh kiện mọi trạng thái; **mặc định nhóm
+  "Còn chờ hàng"** khi vào không kèm bộ lọc; lọc cột `LOC_COT`; bộ lọc cũ trùng lọc cột đã bỏ khỏi thanh trên nhưng vẫn nhận từ link
+  `?gd= ?ton= ?tinhTrang=…` — hiện nhãn "×" `LOC_LIEN_KET`): `GET /api/so-don-hang` =
   báo cáo 0.1 + EO + giai đoạn + **chỉ số theo dõi** (`layDongTheoDoi`: `theo_doi`, `tinh_trang`, `ap_dung`, `han_*`, `so_lan_lui`,
   `ceo_ly_do`…; gọi `danhGiaQuyTac` trước). Nhóm nhanh `NHOM` (Cần xử lý, Trễ 24h, Quá DK, Lỗi chờ GT, Cấp CEO, Về tuần này…), cột
   Thao tác (ngày NM/DK, giải trình, lịch sử), tick → push đối tác, Ngày KRF từ mail, KH hàng về Excel (`donhang/KeHoachExcelModal`),

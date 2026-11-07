@@ -3,11 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useQuickView } from "../../components/quickview/QuickView";
-import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, type Col } from "../../components/DataTable";
+import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, soCotLoc, type Col, type LocCot, type SapCot } from "../../components/DataTable";
 import { StatusBadge, TypeBadge } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ten } from "../../lib/format";
-import { STATUS_META, PHONG_BAN } from "../../lib/nav";
+import { STATUS_META } from "../../lib/nav";
 import { MocTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 import { DL, GoiYDatalists, useGoiYDong } from "../../lib/goiY";
@@ -20,9 +20,14 @@ interface EoRow {
   issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number; sl_ve: number;
   so_dong_cho_duyet: number; phieu_cho_toi_id: number | null; phieu_cho_toi_buoc: string | null;
 }
+interface DsEo { rows: EoRow[]; total: number; tong_truoc_loc: number; tuy_chon: Record<string, string[]>; limit: number; offset: number }
 
-/** Nhom nhanh man Quan ly EO (backend routes/eo.ts CHIP_EO) - thay man "Viec can duyet" + KPI trang thai o Tong quan. */
+/**
+ * Nhom nhanh man Quan ly EO (backend routes/eo.ts CHIP_EO). Mac dinh "EO con ton" = chua ket thuc
+ * (khong huy / tu choi, chua ban hanh hoac con dong chua ve du) - yeu cau 2026-11-07.
+ */
 const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
+  { k: "con_ton", l: "EO còn tồn", title: "EO chưa kết thúc: chưa đóng / chưa hủy / chưa từ chối, đang trình duyệt hoặc đã ban hành nhưng hàng chưa về đủ" },
   { k: "cho_toi_duyet", l: "Chờ tôi duyệt", mau: "#DC2626", title: "Phiếu thẩm định / duyệt cuối đang chờ bạn + EO bạn là người duyệt cuối có dòng thêm sau ban hành chờ duyệt" },
   { k: "nhap_cua_toi", l: "Nháp / bị trả về của tôi", mau: "#C2410C" },
   { k: "dang_tham_dinh", l: "Đang thẩm định" },
@@ -31,6 +36,8 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
+const CHIP_MAC_DINH = "con_ton";
+const TAT_CA = "tat_ca";
 
 const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Mã EO", get: (r) => r.eo_code },
@@ -43,6 +50,7 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Ngày tạo", get: (r) => ngay(r.created_at) },
   { header: "Số dòng LK", get: (r) => r.so_dong },
   { header: "Tổng SL đặt", get: (r) => r.tong_sl },
+  { header: "Ngày ban hành", get: (r) => ngay(r.issued_at) },
   { header: "Người duyệt cuối", get: (r) => ten(r.final_approver_email) },
 ];
 
@@ -51,84 +59,69 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const nav = useNavigate();
   const qc = useQueryClient();
   const [sp] = useSearchParams();
-  const [chip, setChip] = useState(sp.get("chip") ?? "");
+  const [chip, setChip] = useState(sp.get("chip") ?? (compact ? TAT_CA : CHIP_MAC_DINH));
   const [duyet, setDuyet] = useState<{ row: any; action: string } | null>(null);
   const dem = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, number>>("/eo/dem"), enabled: !compact });
+  // thuong dung: o tim + nhom nhanh + loc / sap tren tieu de cot. It dung (an, bam "Bộ lọc khác"): kho, doi tac, ly do PS cua dong LK.
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
-  const [createdBy, setCreatedBy] = useState("");
-  const [loaiHinh, setLoaiHinh] = useState("");
-  const [phongBan, setPhongBan] = useState("");
-  // bo loc mo rong (server): khoang ngay tao / ban hanh, kho, doi tac
+  const [loc, setLoc] = useState<LocCot>({});
+  const [sap, setSap] = useState<SapCot>(null);
   const [moRong, setMoRong] = useState(false);
-  const [ngayTheo, setNgayTheo] = useState<"created" | "issued">("created");
-  const [tu, setTu] = useState("");
-  const [den, setDen] = useState("");
   const [kho, setKho] = useState("");
-  // loc theo dong linh kien: doi tac, ly do PS (khop dung), ma LK (khop 1 phan, ca ma goc truoc khi thay)
   const [doiTac, setDoiTac] = useState("");
   const [lyDo, setLyDo] = useState("");
-  const [maLk, setMaLk] = useState("");
   const goiY = useGoiYDong();
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: moRong });
   const limit = 20;
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const soItDung = [kho, doiTac, lyDo].filter((x) => x.trim()).length;
 
   const filterParams = () => {
     const p = new URLSearchParams();
-    if (chip) p.set("chip", chip);
-    if (q) p.set("q", q);
-    if (status) p.set("trang_thai", status);
-    if (createdBy) p.set("created_by", createdBy);
-    if (loaiHinh) p.set("loai_hinh", loaiHinh);
-    if (phongBan) p.set("phong_ban", phongBan);
-    if (tu || den) { p.set("ngay_theo", ngayTheo); if (tu) p.set("tu", tu); if (den) p.set("den", den); }
+    if (chip && chip !== TAT_CA) p.set("chip", chip);
+    if (q.trim()) p.set("q", q.trim());
     if (kho) p.set("kho", kho);
     if (doiTac.trim()) p.set("doi_tac", doiTac.trim());
     if (lyDo.trim()) p.set("ly_do", lyDo.trim());
-    if (maLk.trim()) p.set("ma_lk", maLk.trim());
+    if (soCotLoc(loc)) p.set("loc", JSON.stringify(loc));
+    if (sap) p.set("sap", `${sap.k}:${sap.tang ? "asc" : "desc"}`);
     return p;
   };
   const params = filterParams();
   params.set("limit", String(limit));
   params.set("offset", String(offset));
 
-  const list = useQuery({
-    queryKey: ["eo-list", params.toString()],
-    queryFn: () => api.get<{ rows: EoRow[]; total: number; limit: number; offset: number }>("/eo?" + params.toString()),
-  });
-  const cats = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh") });
-  const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
+  const list = useQuery({ queryKey: ["eo-list", params.toString()], queryFn: () => api.get<DsEo>("/eo?" + params.toString()) });
 
   const qv = useQuickView();
   const rows = list.data?.rows ?? [];
-  const creatorOpts = (users.data ?? []).map((u: any) => u.email as string);
 
   const cols: Col<EoRow>[] = [
-    { key: "eo_code", header: "Mã EO · 3TDO", render: (r) => <><span className="cell-link">{r.eo_code}</span><div className="muted" style={{ fontSize: 11 }}>{r.approval_code || "chưa ban hành"}</div></> },
-    { key: "tieu_de", header: "Tiêu đề", maxW: 190, render: (r) => r.tieu_de || "—" },
-    { key: "loai_hinh", header: "Loại hình", render: (r) => <TypeBadge loai={r.loai_hinh} /> },
-    { key: "phong_ban", header: "Phòng ban", maxW: 115, render: (r) => r.phong_ban || "" },
-    { key: "ma_lk", header: "Mã linh kiện", maxW: 150, render: (r) => r.ma_lk ? <span title={r.ma_lk}>{r.ma_lk}{r.so_dong > 4 ? ", …" : ""}</span> : <span className="muted">—</span> },
-    { key: "trang_thai", header: "Trạng thái", render: (r) => <StatusBadge status={r.trang_thai} /> },
+    { key: "eo_code", header: "Mã EO · 3TDO", loc: "chu", render: (r) => <><span className="cell-link">{r.eo_code}</span><div className="muted" style={{ fontSize: 11 }}>{r.approval_code || "chưa ban hành"}</div></> },
+    { key: "tieu_de", header: "Tiêu đề", loc: "chu", maxW: 190, render: (r) => r.tieu_de || "—" },
+    { key: "loai_hinh", header: "Loại hình", loc: "chon", render: (r) => <TypeBadge loai={r.loai_hinh} /> },
+    { key: "phong_ban", header: "Phòng ban", loc: "chon", maxW: 115, render: (r) => r.phong_ban || "" },
+    { key: "ma_lk", header: "Mã linh kiện", loc: "chu", maxW: 150, render: (r) => r.ma_lk ? <span title={r.ma_lk}>{r.ma_lk}{r.so_dong > 4 ? ", …" : ""}</span> : <span className="muted">—</span> },
+    { key: "trang_thai", header: "Trạng thái", loc: "chon", nhanChon: (v) => STATUS_META[v]?.label ?? v, render: (r) => <StatusBadge status={r.trang_thai} /> },
     {
       // ton: EO da ban hanh con dong chua ve du -> tinh tu ngay ban hanh; EO dang cho duyet -> tinh tu ngay tao
-      key: "ton", header: "Tồn", render: (r) => r.trang_thai === "ISSUED"
+      key: "ton", header: "Tồn", loc: "chon", render: (r) => r.trang_thai === "ISSUED"
         ? (r.so_dong_chua_du > 0 ? <><MocTon tu={r.issued_at} nho /><div className="muted" style={{ fontSize: 11 }}>{r.so_dong_chua_du} dòng chưa đủ</div></> : <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ về đủ</span>)
         : ["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(r.trang_thai) ? <><MocTon tu={r.created_at} nho /><div className="muted" style={{ fontSize: 11 }}>chờ duyệt</div></> : <span className="muted">—</span>,
     },
-    { key: "created_by", header: "Người tạo · ngày", maxW: 110, render: (r) => <>{ten(r.created_by)}<div className="muted" style={{ fontSize: 11 }}>{ngay(r.created_at)}</div></> },
-    { key: "so_dong", header: "Dòng · SL", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
-    { key: "issued", header: "Ban hành", render: (r) => r.issued_at ? ngay(r.issued_at) : <span className="muted">—</span> },
+    { key: "created_by", header: "Người tạo", loc: "chon", nhanChon: (v) => ten(v), maxW: 110, render: (r) => ten(r.created_by) },
+    { key: "created_at", header: "Ngày tạo", loc: "ngay", render: (r) => ngay(r.created_at) },
+    { key: "so_dong", header: "Dòng · SL", loc: "so", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
+    { key: "issued", header: "Ban hành", loc: "ngay", render: (r) => r.issued_at ? ngay(r.issued_at) : <span className="muted">—</span> },
     {
-      key: "pct", header: "% về", align: "right", render: (r) => {
+      key: "pct", header: "% về", loc: "so", align: "right", render: (r) => {
         if (r.trang_thai !== "ISSUED" || !r.tong_sl) return <span className="muted">—</span>;
         const p = Math.round((r.sl_ve / r.tong_sl) * 100);
         return <span title={`Về ${soLuong(r.sl_ve)} / đặt ${soLuong(r.tong_sl)}`} style={{ fontWeight: 700, color: p >= 100 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--danger-ink)" }}>{p}%</span>;
       },
     },
-    { key: "final", header: "Người duyệt cuối", maxW: 100, render: (r) => ten(r.final_approver_email) },
+    { key: "final", header: "Người duyệt cuối", loc: "chon", nhanChon: (v) => ten(v), maxW: 100, render: (r) => ten(r.final_approver_email) },
     {
       key: "act", header: "", align: "center", render: (r) => (
         <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
@@ -143,21 +136,22 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     },
   ];
 
-  const reset = () => { setChip(""); setQ(""); setStatus(""); setCreatedBy(""); setLoaiHinh(""); setPhongBan(""); setTu(""); setDen(""); setKho(""); setDoiTac(""); setLyDo(""); setMaLk(""); setOffset(0); };
+  const datChip = (k: string) => { setChip(k); setOffset(0); };
+  const reset = () => { setQ(""); setLoc({}); setSap(null); setKho(""); setDoiTac(""); setLyDo(""); setOffset(0); };
 
   const doExport = async () => {
     setExporting(true);
     try {
       const exportParams = filterParams();
-      exportParams.set("limit", "200");
+      exportParams.set("limit", "500");
       const all: EoRow[] = [];
       let off = 0;
       while (true) {
         exportParams.set("offset", String(off));
-        const page = await api.get<{ rows: EoRow[]; total: number }>("/eo?" + exportParams.toString());
+        const page = await api.get<DsEo>("/eo?" + exportParams.toString());
         all.push(...page.rows);
         if (all.length >= page.total || page.rows.length === 0) break;
-        off += 200;
+        off += 500;
       }
       exportRowsToXlsx(all, EXPORT_COLS, "danh-sach-eo.xlsx");
     } finally {
@@ -165,64 +159,46 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     }
   };
 
-  const phongBanOpts = [...new Set([...PHONG_BAN, ...rows.map((r) => r.phong_ban).filter(Boolean)])] as string[];
-
   return (
     <div>
       {!compact && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          <button className={`btn sm ${!chip ? "primary" : ""}`} onClick={() => { setChip(""); setOffset(0); }}>Tất cả ({soLuong(dem.data?.tat_ca ?? 0)})</button>
           {CHIP.map((c) => {
             const n = dem.data?.[c.k] ?? 0;
-            return <button key={c.k} className={`btn sm ${chip === c.k ? "primary" : ""}`} title={c.title} style={{ color: chip !== c.k && n && c.mau ? c.mau : undefined, fontWeight: chip !== c.k && n && c.mau ? 800 : undefined }}
-              onClick={() => { setChip(chip === c.k ? "" : c.k); setOffset(0); }}>{c.l} ({soLuong(n)})</button>;
+            const on = chip === c.k;
+            return <button key={c.k} className={`btn sm ${on ? "primary" : ""}`} title={c.title} style={{ color: !on && n && c.mau ? c.mau : undefined, fontWeight: !on && n && c.mau ? 800 : undefined }}
+              onClick={() => datChip(on && c.k !== CHIP_MAC_DINH ? CHIP_MAC_DINH : c.k)}>{c.l} ({soLuong(n)})</button>;
           })}
+          <button className={`btn sm ${chip === TAT_CA ? "primary" : "ghost"}`} onClick={() => datChip(TAT_CA)}>Tất cả ({soLuong(dem.data?.tat_ca ?? 0)})</button>
         </div>
       )}
       <FilterBar>
-        <div style={{ position: "relative", flex: 1, minWidth: 220, maxWidth: 320 }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 220, maxWidth: 340 }}>
           <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 11, color: "var(--text-faint)" }} />
-          <input className="input" style={{ paddingLeft: 32 }} placeholder="Tìm mã EO, 3TDO, tiêu đề, mã / tên linh kiện…" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
+          <input className="input" style={{ paddingLeft: 32 }} placeholder="Tìm mã EO, 3TDO, tiêu đề, mã / tên linh kiện… (không dấu)" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
         </div>
-        <select className="select" style={{ width: 128 }} value={status} onChange={(e) => { setStatus(e.target.value); setOffset(0); }}>
-          <option value="">Trạng thái</option>
-          {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-        <select className="select" style={{ width: 128 }} value={createdBy} onChange={(e) => { setCreatedBy(e.target.value); setOffset(0); }}>
-          <option value="">Người tạo</option>
-          {creatorOpts.map((u) => <option key={u} value={u}>{ten(u)}</option>)}
-        </select>
-        <select className="select" style={{ width: 128 }} value={loaiHinh} onChange={(e) => { setLoaiHinh(e.target.value); setOffset(0); }}>
-          <option value="">Loại hình</option>
-          {(cats.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
-        </select>
-        <select className="select" style={{ width: 128 }} value={phongBan} onChange={(e) => { setPhongBan(e.target.value); setOffset(0); }}>
-          <option value="">Phòng ban</option>
-          {phongBanOpts.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        {!compact && <>
-          <GoiYDatalists data={goiY.data} />
-          <input className="input" list={DL.lk} style={{ width: 140, borderColor: maLk ? "var(--brand-yellow-btn)" : undefined }} placeholder="Mã linh kiện" title="EO có dòng mang mã linh kiện này (gõ 1 phần mã hoặc chọn)" value={maLk} onChange={(e) => { setMaLk(e.target.value); setOffset(0); }} />
-          <input className="input" list={DL.doiTac} style={{ width: 130, borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" title="EO có dòng đặt đối tác này" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
-          <input className="input" list={DL.lyDo} style={{ width: 140, borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" title="EO có dòng mang lý do phát sinh này" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
-          <button className="btn sm ghost" onClick={() => setMoRong((x) => !x)}>{moRong ? "Thu gọn" : "Thêm bộ lọc"}{tu || den || kho ? " •" : ""}</button>
-        </>}
+        {!compact && <button className={`btn sm ${soItDung ? "" : "ghost"}`} onClick={() => setMoRong((x) => !x)} title="Bộ lọc ít dùng: kho, đối tác, lý do phát sinh của dòng linh kiện">
+          <I.filter width={13} height={13} /> {moRong ? "Ẩn bộ lọc khác" : "Bộ lọc khác"}{soItDung ? ` (${soItDung})` : ""}</button>}
         <RefreshFiltersBtn onClick={reset} />
+        <span className="muted" style={{ fontSize: 11.5 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột</span>
         <div style={{ flex: 1 }} />
         <button className="btn sm" disabled={exporting} onClick={doExport}><I.download width={14} height={14} /> {exporting ? "Đang xuất..." : "Xuất Excel"}</button>
         {actions}
       </FilterBar>
       {moRong && !compact && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "-4px 0 12px" }}>
-          <select className="select" style={{ width: 160 }} value={ngayTheo} onChange={(e) => { setNgayTheo(e.target.value as any); setOffset(0); }}><option value="created">Theo ngày tạo EO</option><option value="issued">Theo ngày ban hành</option></select>
-          <input className="input" type="date" style={{ width: 150 }} value={tu} title="Từ ngày" onChange={(e) => { setTu(e.target.value); setOffset(0); }} />
-          <span className="muted">→</span>
-          <input className="input" type="date" style={{ width: 150 }} value={den} title="Đến ngày" onChange={(e) => { setDen(e.target.value); setOffset(0); }} />
-          <select className="select" style={{ width: 210 }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}><option value="">EO có dòng ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "-4px 0 12px", padding: "8px 10px", background: "var(--panel-2)", borderRadius: 10 }}>
+          <span className="muted" style={{ fontSize: 12 }}>EO có dòng linh kiện:</span>
+          <GoiYDatalists data={goiY.data} />
+          <select className="select" style={{ width: 210, borderColor: kho ? "var(--brand-yellow-btn)" : undefined }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}>
+            <option value="">ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
+          <input className="input" list={DL.doiTac} style={{ width: 150, borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
+          <input className="input" list={DL.lyDo} style={{ width: 160, borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
         </div>
       )}
 
-      <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc" />
+      <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc"
+        ngoai loc={loc} onLoc={(l) => { setLoc(l); setOffset(0); }} sap={sap} onSap={(s) => { setSap(s); setOffset(0); }}
+        tuyChon={list.data?.tuy_chon} tongGoc={list.data?.tong_truoc_loc} tongSauLoc={list.data?.total} />
       {duyet && <ApprovalActionModal act={duyet} onClose={() => setDuyet(null)} onDone={() => { setDuyet(null); ["eo-list", "eo-dem", "inbox-count", "inbox"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); }} />}
 
       {list.data && (

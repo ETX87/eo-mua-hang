@@ -58,7 +58,7 @@ export default function KeHoachTuan() {
 
   return (
     <div>
-      <PageHeader title="Kế hoạch tuần (đơn KH tháng KRF)" back={() => nav("/don-hang")} breadcrumb={["Quản lý đơn hàng", "Kế hoạch tuần KRF"]}
+      <PageHeader title="Kế hoạch tuần (đơn KH tháng KRF)" back={() => nav("/don-hang")} breadcrumb={["LK đặt", "Kế hoạch tuần KRF"]}
         actions={<>
           <button className="btn primary" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Import Excel</button>
           <button className="btn" disabled={busyTpl} onClick={downloadTemplate}>

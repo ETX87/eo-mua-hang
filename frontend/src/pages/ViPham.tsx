@@ -32,7 +32,7 @@ export const MUC: Record<string, { l: string; c: string; mau: string; thu: numbe
 /** Lam gi de het loi / khong bi lap lai - theo quy tac. */
 const CACH_XU_LY: Record<string, string> = {
   R1: "Nhập ngày dự kiến cho dòng (nút “Ngày DK”), rồi giải trình kèm ảnh bằng chứng (mail / tin nhắn với NCC).",
-  R3: "Thứ 2 / thứ 4: tạo push đối tác cho dòng chưa có ngày dự kiến (Quản lý đơn hàng › tick › Push). Có ngày dự kiến là hết lỗi lặp lại.",
+  R3: "Thứ 2 / thứ 4: tạo push đối tác cho dòng chưa có ngày dự kiến (LK đặt › tick › Push). Có ngày dự kiến là hết lỗi lặp lại.",
   R4: "Đã quá ngày dự kiến mà chưa đủ hàng: nhập ngày dự kiến MỚI (nút “Ngày DK”), rồi giải trình kèm ảnh. Không nhập → mỗi mốc quá hạn ghi thêm 1 lỗi.",
   TAY: "Lỗi ghi tay lúc giải trình (NCC trễ, hết hàng…) — đã có giải trình, chỉ để thống kê.",
 };

@@ -7,6 +7,7 @@ import { canCreateEo, canManageEo } from "../lib/eoAccess";
 import { uploadPublicFile } from "../lib/googleDrive";
 import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
+import { cachedReport } from "../lib/reportCache";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -15,100 +16,152 @@ const validQty = (v: unknown): v is number => typeof v === "number" && Number.is
 /** Chi sua dong khi EO dang DRAFT (soan / bi yeu cau cap nhat) hoac ISSUED (sua SL sau ban hanh) - WORKFLOW_SPEC §6, §8. */
 const ITEM_EDITABLE_STATES = ["DRAFT", "ISSUED"];
 
-// Nhom nhanh (chip) cua man Quan ly EO - dung chung cho GET / (loc) va GET /dem (so dem). email = nguoi dang xem.
-// cho_toi_duyet = phieu tham dinh / duyet cuoi PENDING cua toi o lan trinh dang mo (= /approvals/inbox)
-//   + EO toi la nguoi duyet cuoi co dong them sau ban hanh cho duyet (= /approvals/post-issue).
-const CHIP_EO: Record<string, (email: string) => { sql: string; bind: unknown[] }> = {
-  cho_toi_duyet: (email) => ({
-    sql: `(EXISTS (SELECT 1 FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
-                   WHERE s.eo_id = e.id AND a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING')
-           OR (e.trang_thai = 'ISSUED' AND e.final_approver_email = ?
-               AND EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.post_issue_status = 'PENDING')))`,
-    bind: [email, email],
-  }),
-  nhap_cua_toi: (email) => ({ sql: "(e.trang_thai = 'DRAFT' AND e.created_by = ?)", bind: [email] }),
-  dang_tham_dinh: () => ({ sql: "e.trang_thai = 'IN_REVIEW'", bind: [] }),
-  cho_duyet_cuoi: () => ({ sql: "e.trang_thai = 'WAITING_FINAL_APPROVAL'", bind: [] }),
-  da_ban_hanh: () => ({ sql: "e.trang_thai = 'ISSUED'", bind: [] }),
-  sau_bh_cho: () => ({ sql: "(e.trang_thai = 'ISSUED' AND EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.post_issue_status = 'PENDING'))", bind: [] }),
-  tu_choi_huy: () => ({ sql: "e.trang_thai IN ('REJECTED', 'CANCELLED')", bind: [] }),
+// ------------------------------------------------------------------ Danh sach EO (man Quan ly EO)
+// v0.062 (2026-11-07): bang kieu Excel - loc tung cot + sap xep phia SERVER. Toan bo EO (it cot, gom san ma LK / kho / NCC / ly do)
+// dung 1 lan vao cache theo version eo/amis; moi request loc / sap / phan trang trong JS (tim KHONG DAU duoc - SQLite LIKE khong bo dau).
+// Phan rieng tung nguoi (phieu cho toi duyet) doc truc tiep (chi muc idx_approval_user_pending).
+interface DongEo {
+  id: number; eo_code: string; approval_code: string | null; tieu_de: string | null; loai_hinh: string | null; phong_ban: string | null;
+  trang_thai: string; final_approver_email: string | null; created_by: string; created_at: string; issued_at: string | null;
+  so_dong: number; tong_sl: number; so_dong_sau_bh: number; so_dong_cho_duyet: number; sl_ve: number; so_dong_chua_du: number;
+  ma_lk: string | null; lk: string; kho: string[]; ncc: string[]; ly_do: string[];
+}
+const boDau = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase();
+const tachDs = (s: string | null) => [...new Set(String(s ?? "").split("\u001f").map((x) => x.trim()).filter(Boolean))];
+
+async function dsEo(env: Env): Promise<DongEo[]> {
+  const rs = await env.DB.prepare(
+    `WITH ve AS (SELECT matched_eo_item_id id, SUM(qty_in) q FROM amis_receipt WHERE match_status = 'MATCHED_EO' AND matched_eo_item_id IS NOT NULL GROUP BY matched_eo_item_id),
+     it AS (
+       SELECT i.eo_id, COUNT(*) so_dong, COALESCE(SUM(i.current_qty), 0) tong_sl,
+              SUM(i.created_after_issue = 1) so_dong_sau_bh, SUM(i.post_issue_status = 'PENDING') so_dong_cho_duyet,
+              SUM(CASE WHEN i.line_status = 'ACTIVE' THEN MIN(i.current_qty, COALESCE(ve.q, 0)) ELSE 0 END) sl_ve,
+              SUM(CASE WHEN i.line_status = 'ACTIVE' AND i.current_qty > COALESCE(ve.q, 0) THEN 1 ELSE 0 END) so_dong_chua_du,
+              GROUP_CONCAT(CASE WHEN i.line_status = 'ACTIVE' THEN i.part_code END, char(31)) lk_song,
+              GROUP_CONCAT(i.part_code || ' ' || COALESCE(i.part_code_goc, '') || ' ' || COALESCE(i.part_name, ''), char(31)) lk,
+              GROUP_CONCAT(i.warehouse, char(31)) kho, GROUP_CONCAT(i.supplier, char(31)) ncc, GROUP_CONCAT(i.reason, char(31)) ly_do
+       FROM eo_item i LEFT JOIN ve ON ve.id = i.id GROUP BY i.eo_id)
+     SELECT e.id, e.eo_code, e.approval_code, e.tieu_de, e.loai_hinh, e.phong_ban, e.trang_thai, e.final_approver_email,
+            e.created_by, e.created_at, e.issued_at, it.*
+     FROM eo e LEFT JOIN it ON it.eo_id = e.id ORDER BY e.created_at DESC, e.id DESC`,
+  ).all<any>();
+  return rs.results.map((r) => {
+    const song = tachDs(r.lk_song);
+    return {
+      id: r.id, eo_code: r.eo_code, approval_code: r.approval_code, tieu_de: r.tieu_de, loai_hinh: r.loai_hinh, phong_ban: r.phong_ban,
+      trang_thai: r.trang_thai, final_approver_email: r.final_approver_email, created_by: r.created_by, created_at: r.created_at, issued_at: r.issued_at,
+      so_dong: r.so_dong ?? 0, tong_sl: r.tong_sl ?? 0, so_dong_sau_bh: r.so_dong_sau_bh ?? 0, so_dong_cho_duyet: r.so_dong_cho_duyet ?? 0,
+      sl_ve: r.sl_ve ?? 0, so_dong_chua_du: r.so_dong_chua_du ?? 0,
+      ma_lk: song.length ? song.slice(0, 4).join(", ") : null, lk: tachDs(r.lk).join(" "),
+      kho: tachDs(r.kho), ncc: tachDs(r.ncc), ly_do: tachDs(r.ly_do),
+    };
+  });
+}
+
+/** EO con ton = chua ket thuc: khong huy / tu choi, va (chua ban hanh hoac con dong chua ve du). Nhom mac dinh khi vao man. */
+const conTon = (r: DongEo) => !["CANCELLED", "REJECTED"].includes(r.trang_thai) && (r.trang_thai !== "ISSUED" || r.so_dong_chua_du > 0);
+type NguCanh = { email: string; phieu: Map<number, { id: number; buoc: string }> };
+const CHIP_EO: Record<string, (r: DongEo, n: NguCanh) => boolean> = {
+  con_ton: (r) => conTon(r),
+  cho_toi_duyet: (r, n) => n.phieu.has(r.id) || (r.trang_thai === "ISSUED" && r.final_approver_email === n.email && r.so_dong_cho_duyet > 0),
+  nhap_cua_toi: (r, n) => r.trang_thai === "DRAFT" && r.created_by === n.email,
+  dang_tham_dinh: (r) => r.trang_thai === "IN_REVIEW",
+  cho_duyet_cuoi: (r) => r.trang_thai === "WAITING_FINAL_APPROVAL",
+  da_ban_hanh: (r) => r.trang_thai === "ISSUED",
+  sau_bh_cho: (r) => r.trang_thai === "ISSUED" && r.so_dong_cho_duyet > 0,
+  tu_choi_huy: (r) => ["REJECTED", "CANCELLED"].includes(r.trang_thai),
 };
+const pct = (r: DongEo) => (r.trang_thai === "ISSUED" && r.tong_sl ? Math.round((r.sl_ve / r.tong_sl) * 100) : null);
+const tonTt = (r: DongEo) => r.trang_thai === "ISSUED" ? (r.so_dong_chua_du > 0 ? "Còn dòng chưa về đủ" : "Đã về đủ")
+  : ["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(r.trang_thai) ? "Chờ duyệt" : "";
+/** Cot loc / sap cua bang (key khop FE pages/eo/EoListInner): kieu + gia tri tho. */
+const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: DongEo) => unknown; sap?: (r: DongEo) => unknown }> = {
+  eo_code: { kieu: "chu", gt: (r) => `${r.eo_code} ${r.approval_code ?? ""}`, sap: (r) => r.eo_code },
+  tieu_de: { kieu: "chu", gt: (r) => r.tieu_de },
+  loai_hinh: { kieu: "chon", gt: (r) => r.loai_hinh },
+  phong_ban: { kieu: "chon", gt: (r) => r.phong_ban },
+  ma_lk: { kieu: "chu", gt: (r) => r.lk, sap: (r) => r.ma_lk },
+  trang_thai: { kieu: "chon", gt: (r) => r.trang_thai },
+  ton: { kieu: "chon", gt: tonTt, sap: (r) => (tonTt(r) === "Còn dòng chưa về đủ" ? r.issued_at : tonTt(r) === "Chờ duyệt" ? r.created_at : null) },
+  created_by: { kieu: "chon", gt: (r) => r.created_by },
+  created_at: { kieu: "ngay", gt: (r) => r.created_at },
+  so_dong: { kieu: "so", gt: (r) => r.so_dong },
+  issued: { kieu: "ngay", gt: (r) => r.issued_at },
+  pct: { kieu: "so", gt: pct },
+  final: { kieu: "chon", gt: (r) => r.final_approver_email },
+};
+interface GtLoc { q?: string; chon?: string[]; tu?: string; den?: string }
+function khop(kieu: string, v: unknown, g: GtLoc): boolean {
+  if (kieu === "chu") { const h = boDau(v); return boDau(g.q).split(/\s+/).filter(Boolean).every((t) => h.includes(t)); }
+  if (kieu === "chon") return !g.chon?.length || g.chon.includes(String(v ?? ""));
+  if (kieu === "ngay") { const d = String(v ?? "").slice(0, 10); return !!d && (!g.tu || d >= g.tu) && (!g.den || d <= g.den); }
+  const n = v == null ? NaN : Number(v);
+  return !Number.isNaN(n) && (!g.tu || n >= Number(g.tu)) && (!g.den || n <= Number(g.den));
+}
+const coLoc = (g?: GtLoc) => !!g && (!!g.q?.trim() || (g.chon?.length ?? 0) > 0 || !!g.tu || !!g.den);
+
+async function nguCanh(c: any): Promise<NguCanh> {
+  const email = c.get("user").email as string;
+  const rs = await c.env.DB.prepare(
+    `SELECT s.eo_id, a.id, a.step_type FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
+     WHERE a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING'`,
+  ).bind(email).all();
+  return { email, phieu: new Map(rs.results.map((r: any) => [r.eo_id, { id: r.id, buoc: r.step_type }])) };
+}
 
 // ------------------------------------------------------------------ GET /dem (so dem tren tung chip)
 app.get("/dem", async (c) => {
-  const email = c.get("user").email;
-  const keys = Object.keys(CHIP_EO);
-  const res = await c.env.DB.batch([
-    c.env.DB.prepare("SELECT COUNT(*) n FROM eo e"),
-    ...keys.map((k) => { const w = CHIP_EO[k](email); return c.env.DB.prepare(`SELECT COUNT(*) n FROM eo e WHERE ${w.sql}`).bind(...w.bind); }),
-  ]);
-  const out: Record<string, number> = { tat_ca: (res[0].results[0] as any)?.n ?? 0 };
-  keys.forEach((k, i) => { out[k] = (res[i + 1].results[0] as any)?.n ?? 0; });
+  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v1", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
+  const out: Record<string, number> = { tat_ca: ds.length };
+  for (const [k, f] of Object.entries(CHIP_EO)) out[k] = ds.filter((r) => f(r, n)).length;
   return c.json(out);
 });
 
 // ------------------------------------------------------------------ GET / (list)
+// ?chip= &q= (tim khong dau: ma EO / 3TDO / tieu de / ma - ten LK) &kho= &doi_tac= &ly_do= (bo loc it dung)
+// &loc={"cot":{q|chon|tu|den}} (loc tung cot) &sap=cot:asc|desc &limit &offset
 app.get("/", async (c) => {
   const url = new URL(c.req.url);
-  const status = url.searchParams.get("trang_thai");
-  const q = url.searchParams.get("q");
-  const createdBy = url.searchParams.get("created_by");
-  const loaiHinh = url.searchParams.get("loai_hinh");
-  const phongBan = url.searchParams.get("phong_ban");
-  // loc them: khoang ngay (tao | ban hanh), kho, doi tac cua dong linh kien
-  const tu = url.searchParams.get("tu"), den = url.searchParams.get("den");
-  const cotNgay = url.searchParams.get("ngay_theo") === "issued" ? "e.issued_at" : "e.created_at";
-  const kho = url.searchParams.get("kho"), doiTac = url.searchParams.get("doi_tac");
-  const lyDo = url.searchParams.get("ly_do"), maLk = url.searchParams.get("ma_lk");
-  const chip = url.searchParams.get("chip");
-  const email = c.get("user").email;
-  const limit = Math.min(Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50), 200);
-  const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
+  const g = (k: string) => (url.searchParams.get(k) ?? "").trim();
+  const limit = Math.min(Math.max(1, Number(g("limit") || 50) || 50), 500);
+  const offset = Math.max(0, Number(g("offset") || 0) || 0);
+  let loc: Record<string, GtLoc> = {};
+  try { loc = JSON.parse(g("loc") || "{}"); } catch { /* bo qua */ }
+  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v1", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
 
-  const where: string[] = [];
-  const bind: unknown[] = [];
-  if (chip && CHIP_EO[chip]) { const w = CHIP_EO[chip](email); where.push(w.sql); bind.push(...w.bind); }
-  if (status) { where.push("e.trang_thai = ?"); bind.push(status); }
-  if (createdBy) { where.push("e.created_by = ?"); bind.push(createdBy); }
-  if (loaiHinh) { where.push("e.loai_hinh = ?"); bind.push(loaiHinh); }
-  if (phongBan) { where.push("e.phong_ban = ?"); bind.push(phongBan); }
-  if (tu) { where.push(`substr(${cotNgay}, 1, 10) >= ?`); bind.push(tu); }
-  if (den) { where.push(`substr(${cotNgay}, 1, 10) <= ?`); bind.push(den); }
-  if (kho) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND i.warehouse = ?)"); bind.push(kho); }
-  if (doiTac) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND UPPER(TRIM(i.supplier)) = UPPER(TRIM(?)))"); bind.push(doiTac); }
-  if (lyDo) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND UPPER(TRIM(i.reason)) = UPPER(TRIM(?)))"); bind.push(lyDo); }
-  // ma LK: khop ca ma dang dung lan ma goc (truoc khi thay ma tuong duong); go 1 phan ma cung loc duoc
-  if (maLk) { where.push("EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND (i.part_code LIKE ? OR i.part_code_goc LIKE ?))"); bind.push(`%${maLk.trim()}%`, `%${maLk.trim()}%`); }
-  // tim ca theo ma / ten linh kien trong EO
-  if (q) {
-    where.push("(e.eo_code LIKE ? OR e.approval_code LIKE ? OR e.tieu_de LIKE ? OR EXISTS (SELECT 1 FROM eo_item i WHERE i.eo_id = e.id AND (i.part_code LIKE ? OR i.part_name LIKE ?)))");
-    bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+  const chip = CHIP_EO[g("chip")];
+  const tu = boDau(g("q")).split(/\s+/).filter(Boolean);
+  const kho = g("kho"), doiTac = boDau(g("doi_tac")), lyDo = boDau(g("ly_do"));
+  // tap truoc loc cot (dem "x / y", gia tri cho bo loc "chon")
+  const goc = ds.filter((r) => (!chip || chip(r, n))
+    && (!tu.length || ((h) => tu.every((t) => h.includes(t)))(boDau(`${r.eo_code} ${r.approval_code ?? ""} ${r.tieu_de ?? ""} ${r.lk}`)))
+    && (!kho || r.kho.includes(kho))
+    && (!doiTac || r.ncc.some((x) => boDau(x) === doiTac))
+    && (!lyDo || r.ly_do.some((x) => boDau(x) === lyDo)));
+  const cotLoc = Object.entries(loc).filter(([k, v]) => COT_EO[k] && coLoc(v));
+  let rows = cotLoc.length ? goc.filter((r) => cotLoc.every(([k, v]) => khop(COT_EO[k].kieu, COT_EO[k].gt(r), v))) : goc;
+  const [sk, sh] = g("sap").split(":");
+  const cs = COT_EO[sk];
+  if (cs) {
+    const f = cs.sap ?? cs.gt;
+    rows = [...rows].sort((a, b) => {
+      const x = f(a), y = f(b);
+      if (x == null || x === "" || y == null || y === "") return (x == null || x === "" ? 1 : 0) - (y == null || y === "" ? 1 : 0);
+      const d = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "vi", { numeric: true });
+      return sh === "desc" ? -d : d;
+    });
   }
-  const wsql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-
-  const rows = await c.env.DB.prepare(
-    `SELECT e.id, e.eo_code, e.approval_code, e.tieu_de, e.loai_hinh, e.phong_ban, e.trang_thai,
-            e.final_approver_email, e.created_by, e.created_at, e.issued_at,
-            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id) so_dong,
-            (SELECT COALESCE(SUM(i.current_qty),0) FROM eo_item i WHERE i.eo_id = e.id) tong_sl,
-            (SELECT GROUP_CONCAT(part_code, ', ') FROM (SELECT DISTINCT i.part_code FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' LIMIT 4)) ma_lk,
-            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.created_after_issue = 1) so_dong_sau_bh,
-            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.post_issue_status = 'PENDING') so_dong_cho_duyet,
-            -- phieu duyet dang cho CHINH nguoi xem (lan trinh dang mo) -> nut Duyet / Tra ve / Tu choi ngay tren dong
-            (SELECT a.id FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
-              WHERE s.eo_id = e.id AND a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING' LIMIT 1) phieu_cho_toi_id,
-            (SELECT a.step_type FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
-              WHERE s.eo_id = e.id AND a.approver_email = ? AND a.status = 'PENDING' AND s.status = 'PENDING' LIMIT 1) phieu_cho_toi_buoc,
-            (SELECT COALESCE(SUM(MIN(i.current_qty, COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0))), 0)
-               FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE') sl_ve,
-            (SELECT COUNT(*) FROM eo_item i WHERE i.eo_id = e.id AND i.line_status = 'ACTIVE' AND i.current_qty >
-               COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id), 0)) so_dong_chua_du
-     FROM eo e ${wsql}
-     ORDER BY e.created_at DESC LIMIT ? OFFSET ?`,
-  ).bind(email, email, ...bind, limit, offset).all();
-
-  const total = await c.env.DB.prepare(`SELECT COUNT(*) n FROM eo e ${wsql}`).bind(...bind).first<{ n: number }>();
-  return c.json({ rows: rows.results, total: total?.n ?? 0, limit, offset });
+  // gia tri cho bo loc "chon" (tu tap truoc loc cot)
+  const tuyChon: Record<string, string[]> = {};
+  for (const [k, cot] of Object.entries(COT_EO)) {
+    if (cot.kieu !== "chon") continue;
+    tuyChon[k] = [...new Set(goc.map((r) => String(cot.gt(r) ?? "")))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, "vi")));
+  }
+  const trang = rows.slice(offset, offset + limit).map(({ lk, kho: _k, ncc: _n, ly_do: _l, ...r }) => {
+    const p = n.phieu.get(r.id);
+    return { ...r, phieu_cho_toi_id: p?.id ?? null, phieu_cho_toi_buoc: p?.buoc ?? null };
+  });
+  return c.json({ rows: trang, total: rows.length, tong_truoc_loc: goc.length, tuy_chon: tuyChon, limit, offset });
 });
 
 // ------------------------------------------------------------------ GET /:id (detail)
