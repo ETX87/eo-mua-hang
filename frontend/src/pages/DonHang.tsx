@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner, Modal, StatusBadge, Popover, MenuItem } from "../components/ui";
 import { DataTable, locVaSap, soCotLoc, type Col, type KieuLoc, type LocCot, type SapCot } from "../components/DataTable";
-import { EoLink, PartLink, useQuickView } from "../components/quickview/QuickView";
+import { EoLink, PartLink, DongLink, useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
@@ -62,7 +62,7 @@ function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Rec
     { k: "nguoi_duyet_cuoi", l: "Người duyệt mua", nhom: "EO", get: (r) => r.nguoi_duyet_cuoi, render: (r) => ten(r.nguoi_duyet_cuoi) },
     { k: "ngay_ban_hanh", l: "Ngày ban hành", nhom: "EO", get: (r) => ngay(r.ngay_ban_hanh) },
     // ---- dong linh kien
-    { k: "part_code", l: "Mã linh kiện", nhom: "Linh kiện", get: (r) => r.part_code, render: (r) => <><PartLink ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}</> },
+    { k: "part_code", l: "Mã linh kiện", nhom: "Linh kiện", get: (r) => r.part_code, render: (r) => <><DongLink id={r.item_id} ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}</> },
     { k: "part_name", l: "Tên linh kiện", nhom: "Linh kiện", get: (r) => r.part_name, maxW: 200 },
     { k: "kho", l: "Kho", nhom: "Linh kiện", get: (r) => r.kho, render: (r) => <Kho t={r.kho} />, maxW: 150 },
     { k: "doi_tac", l: "Đối tác (NCC)", nhom: "Linh kiện", get: (r) => r.doi_tac, maxW: 120 },

@@ -323,6 +323,13 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
 
+## 2 giao diện theo mã linh kiện (v0.072, `components/quickview/QuickView.tsx`)
+
+- `PartLink` → UI CHUNG (popup mã LK: mọi đơn đặt / PO của mã) — dùng ở dòng NHÓM (LK đặt nhóm theo LK), ô tra mã, chứng từ không có dòng.
+- `DongLink id ma` → UI LẺ (popup đơn hàng = mã LK trong 1 PO) — dùng ở dòng LẺ (LK đặt, bảng linh kiện popup EO, Vi phạm, KRF, AMIS);
+  không có `id` → tự rơi về `PartLink`; Shift/Ctrl + bấm → UI chung.
+- Chuyển qua lại: popup đơn hàng có nút "⇄ Tất cả đơn của mã này" (`openPart`); popup mã LK, tab Lịch sử EO / đặt hàng, nút 👁 từng dòng (`openDong`).
+
 ## ETX nhân sự
 
 Danh bạ nhân sự kéo từ ETX (`lib/etxNhanSu.ts`, `routes/etxNhanSu.ts`, tab "ETX nhân sự" ở Cài đặt › Người dùng),

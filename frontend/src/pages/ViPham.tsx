@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner, Modal } from "../components/ui";
 import { DataTable, type Col } from "../components/DataTable";
-import { EoLink, PartLink, useQuickView } from "../components/quickview/QuickView";
+import { EoLink, DongLink, useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
@@ -155,7 +155,7 @@ export default function ViPham() {
     { key: "lan", header: "Số lần", align: "center", render: (n) => n.ds.length > 1 || n.x.so_lan > 1
       ? <span className="badge final" title={`Lỗi này lặp ${n.x.so_lan} lần trên dòng (mỗi lần vi phạm ghi 1 lỗi): ${lietKe(n.ds.map((y) => ngay(y.ngay_tham_chieu ?? y.han)), 8)}`}>× {n.ds.length}{n.x.so_lan > n.ds.length ? ` / ${n.x.so_lan}` : ""}</span> : <span className="muted">1</span> },
     { key: "po", header: "PO (mã phê duyệt)", render: (n) => <EoLink id={n.x.eo_id}>{maPo(n.x)}</EoLink> },
-    { key: "lk", header: "Linh kiện", maxW: 220, render: (n) => <><PartLink ma={n.x.part_code} /> <span className="muted" style={{ fontSize: 11.5 }}>{n.x.part_name}</span></> },
+    { key: "lk", header: "Linh kiện", maxW: 220, render: (n) => <><DongLink id={n.x.eo_item_id} ma={n.x.part_code} /> <span className="muted" style={{ fontSize: 11.5 }}>{n.x.part_name}</span></> },
     { key: "nguoi", header: "Người vi phạm", render: (n) => <span title={n.x.nguoi_vp ?? ""}><b>{ten(n.x.nguoi_vp)}</b>{n.x.ai_ma && n.x.ai_ma !== "NGUOI_DAT" ? <div className="muted" style={{ fontSize: 11 }}>{tenDm("AI", n.x.ai_ma)}</div> : null}</span> },
     { key: "han", header: "Vi phạm lúc", render: (n) => <span title={`Hạn: ${ngayGio(n.x.han)}`}>{ngay(n.x.ngay_tham_chieu ?? n.x.han)}</span> },
     { key: "cho", header: "Chờ / phản hồi", align: "right", render: (n) => cho(n.x)
@@ -388,7 +388,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 10, marginTop: 12, padding: 10, background: "var(--panel-2)", borderRadius: 10 }}>
           <Tt k="PO (mã phê duyệt / EO)" v={<EoLink id={x.eo_id}>{maPo(x)}</EoLink>} />
-          <Tt k="Linh kiện" v={<><PartLink ma={x.part_code} /> <span className="muted" style={{ fontWeight: 400 }}>{x.part_name}</span></>} />
+          <Tt k="Linh kiện" v={<><DongLink id={x.eo_item_id} ma={x.part_code} /> <span className="muted" style={{ fontWeight: 400 }}>{x.part_name}</span></>} />
           <Tt k="Kho · Đối tác" v={`${khoGon(x.kho)} · ${x.doi_tac || "—"}`} />
           <Tt k="Tình trạng dòng" v={x.tinh_trang ? TINH_TRANG[x.tinh_trang as Dong["tinh_trang"]]?.l : ""} />
           <Tt k="Người vi phạm" v={`${ten(x.nguoi_vp)}${x.ai_ma ? ` (${tenDm("AI", x.ai_ma)})` : ""}`} />

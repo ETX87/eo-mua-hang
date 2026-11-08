@@ -90,3 +90,17 @@ export function Kpi({ l, v, tone }: { l: string; v: ReactNode; tone?: "danger" |
   const color = tone === "danger" ? "var(--danger-ink)" : tone === "ok" ? "var(--ok-ink)" : tone === "warn" ? "var(--warn-ink)" : undefined;
   return <div className="qv-kpi"><div className="l" title={l}>{l}</div><div className="v" style={{ color }}>{v}</div></div>;
 }
+
+/**
+ * 2 giao dien theo ma linh kien (2026-11-08, yeu cau #23):
+ *  - PartLink  -> UI CHUNG: moi don dat / PO lien quan ma LK (dung o dong NHOM / o tra ma).
+ *  - DongLink  -> UI LE: ma LK trong 1 PO (= 1 dong dat, popup don hang) - dung o dong LE. Shift / Ctrl + bam -> UI chung.
+ * Hai popup co nut chuyen qua lai (popup don hang: "⇄ Tất cả đơn của mã này"; popup ma LK: nut mo don tren tung dong).
+ */
+export function DongLink({ id, ma, children }: { id?: number | null; ma: string | null | undefined; children?: ReactNode }) {
+  const qv = useContext(Ctx);
+  if (!qv || !ma) return <>{children ?? ma}</>;
+  if (!id) return <PartLink ma={ma}>{children}</PartLink>;
+  return <button type="button" className="qv-link" title={`Xem ${ma} trong PO này (đơn hàng) — Shift + bấm: tất cả đơn của mã`}
+    onClick={(e) => { e.stopPropagation(); if (e.shiftKey || e.ctrlKey || e.metaKey) qv.openPart(ma); else qv.openDong(id); }}>{children ?? ma}</button>;
+}

@@ -171,6 +171,8 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                     const t = tdBy.get(r.item_id);
                     return (
                     <tr key={r.item_id}><td className="qv-act">
+                        {/* chuyen sang UI le: ma LK nay trong PO nay (popup don hang) */}
+                        <button className="btn ghost sm" title="Xem đơn hàng: mã này trong PO này (tiến trình, kế hoạch, lỗi)" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
                         {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
                         {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
                         {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}

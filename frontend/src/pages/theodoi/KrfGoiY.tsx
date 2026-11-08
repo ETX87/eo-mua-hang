@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { EoLink, PartLink } from "../../components/quickview/QuickView";
+import { EoLink, DongLink } from "../../components/quickview/QuickView";
 import { Modal, Spinner } from "../../components/ui";
 import { soLuong, ngay, ngayGio } from "../../lib/format";
 import { NGAY, NhanNgay } from "../../lib/ngay";
@@ -89,7 +89,7 @@ export function KrfGoiYModal({ onClose, onSaved, onMoDong }: { onClose: () => vo
                     <tr key={r.item_id} style={{ opacity: r.cach === "SUA_TAY" ? 0.75 : 1 }}>
                       <td style={td}><input type="checkbox" disabled={r.cach === "SUA_TAY"} checked={daChon.has(r.item_id)} onChange={() => bat(r.item_id)} /></td>
                       <td style={td}><EoLink id={r.eo_id}>{r.ma_phe_duyet || r.eo_code}</EoLink><div className="muted" style={{ fontSize: 11 }}>{r.kho}</div></td>
-                      <td style={{ ...td, maxWidth: 240 }}><b><PartLink ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></td>
+                      <td style={{ ...td, maxWidth: 240 }}><b><DongLink id={r.item_id} ma={r.part_code} /></b><div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></td>
                       <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>{soLuong(r.so_luong_dat)} / {soLuong(r.sl_nhap_amis)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
                       <td style={{ ...td, color: NGAY.NM.mau }}>{ngay(r.ngay_nm_cam_ket) || "—"}</td>
                       <td style={{ ...td, color: NGAY.DK.mau }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}{r.so_lan_lui ? <div className="muted" style={{ fontSize: 11 }}>lùi {r.so_lan_lui} lần</div> : null}</td>

@@ -1,14 +1,8 @@
 import type { Col } from "../../components/DataTable";
-import { EoLink, useQuickView } from "../../components/quickview/QuickView";
+import { EoLink, DongLink } from "../../components/quickview/QuickView";
 import { soLuong, ngay } from "../../lib/format";
 import { Kho, khoGon } from "../../lib/kho";
 
-/** Ma hang -> popup DON HANG (dong linh kien dat) - CUNG giao dien voi LK dat, khong dung popup rieng (2026-11-08). */
-function DongLink({ id, ma }: { id?: number | null; ma: string }) {
-  const qv = useQuickView();
-  if (!id) return <span title="Không có dòng đặt mang mã này trong PO">{ma}</span>;
-  return <button type="button" className="qv-link" title="Mở đơn hàng (dòng linh kiện đặt)" onClick={(e) => { e.stopPropagation(); qv.openDong(id); }}>{ma}</button>;
-}
 
 /** Cot chung bang chung tu AMIS: Ma phe duyet -> popup PO, Ma hang -> popup don hang (dong dat); loc + sap xep kieu Excel tren tieu de. */
 export const cotChungTuAmis = (): Col<any>[] => [

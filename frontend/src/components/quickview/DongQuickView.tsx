@@ -7,7 +7,7 @@ import { I } from "../../lib/icons";
 import { gioTxt } from "../../lib/giaiDoan";
 import { MocTon } from "../../lib/tonDong";
 import { NhanNgay } from "../../lib/ngay";
-import { QvHeader, Kpi, EoLink, PartLink } from "./QuickView";
+import { QvHeader, Kpi, EoLink, useQuickView } from "./QuickView";
 import { QuyTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong } from "../../pages/theodoi/shared";
 import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
@@ -29,6 +29,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
     queryFn: () => api.get<{ giai_doan: GdDef[]; sla: Record<string, number>; rows: any[] }>(`/so-don-hang?eo_id=${eoId}`),
   });
   const [tab, setTab] = useState<Tab>("gd");
+  const qv = useQuickView();
   const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | null>(null);
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
 
@@ -64,7 +65,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
             <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>Đơn hàng</span>
-            <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}><PartLink ma={it.part_code} /></span>
+            <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}>{it.part_code}</span>
+            <button type="button" className="btn ghost sm" style={{ flexShrink: 0 }} title="Mở UI chung: mọi đơn đặt / PO của mã linh kiện này" onClick={() => qv.openPart(it.part_code)}>⇄ Tất cả đơn của mã này</button>
             <span style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", minWidth: 60 }} title={it.part_name}>{it.part_name}</span>
             {r.trang_thai_don_hang && <span className="badge nhap">{r.trang_thai_don_hang}</span>}
             {tt && <span className={`badge ${tt.c}`}>{tt.l}</span>}

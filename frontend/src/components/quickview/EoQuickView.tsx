@@ -10,7 +10,7 @@ import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, PartLink, useQuickView } from "./QuickView";
+import { QvHeader, Kpi, DongLink, PartLink, useQuickView } from "./QuickView";
 import { QuyTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
 import {
@@ -261,7 +261,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                         </td>
                         {coChon && <td>{active && r.chua_dat > 0 && <input type="checkbox" checked={chon.has(r.id)} onChange={() => doiChon(r.id)} />}</td>}
                         <td className="muted">{i + 1}</td>
-                        <td style={{ whiteSpace: "nowrap" }}><PartLink ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}<div style={{ marginLeft: -6 }}><NhanSauBH r={r} nguoiDuyet={eo.final_approver_email} /></div></td>
+                        <td style={{ whiteSpace: "nowrap" }}><DongLink id={r.id} ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}<div style={{ marginLeft: -6 }}><NhanSauBH r={r} nguoiDuyet={eo.final_approver_email} /></div></td>
                         <td><Clip w={170}>{r.part_name}</Clip></td>
                         <td><Clip w={140}><Kho t={r.warehouse} /></Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.supplier || "—"}</Clip></td>
                         <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td>
