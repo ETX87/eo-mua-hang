@@ -93,7 +93,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -116,6 +116,11 @@ export function DataTable<T>({
   rowsGoc?: T[];
   /** Tong truoc / sau loc cot khi phan trang server (hien "x / y"). */
   tongGoc?: number; tongSauLoc?: number;
+  /**
+   * Xem theo nhom (vd theo PO / theo ma linh kien): dong tieu de nhom (bam = thu gon / mo) roi cac dong cua nhom. Thu tu nhom = thu tu
+   * dong dau tien sau loc / sap. Phan trang theo NHOM: moi trang gom nhom tron ven toi ~pageSize dong (nhom thu gon = 1 dong).
+   */
+  nhom?: { khoa: (row: T) => string; dau: (khoa: string, rows: T[], mo: boolean) => ReactNode };
 }) {
   const [q, setQ] = useState("");
   const [locTrong, setLocTrong] = useState<LocCot>({});
@@ -139,8 +144,27 @@ export function DataTable<T>({
   const total = rows.length;
   const start = size > 0 ? page * size : 0;
   const shown = size > 0 ? rows.slice(start, start + size) : rows;
+  // xem theo nhom: gom nhom + chia trang theo nhom (nhom khong bi cat giua 2 trang)
+  const [thuGon, setThuGon] = useState<Set<string>>(new Set());
+  const [thuGonHet, setThuGonHet] = useState(false);
+  const daThuGon = (k: string) => thuGonHet !== thuGon.has(k); // thuGon = cac nhom KHAC trang thai chung
+  const nhomDs: [string, T[]][] = [];
+  const trangNhom: [number, number][] = [];
+  if (nhom) {
+    const m = new Map<string, T[]>();
+    for (const r of rows) { const k = nhom.khoa(r); const a = m.get(k); if (a) a.push(r); else { const b: T[] = [r]; m.set(k, b); nhomDs.push([k, b]); } }
+    let s0 = 0, n = 0;
+    nhomDs.forEach(([k, ds], i) => {
+      const h = 1 + (daThuGon(k) ? 0 : ds.length);
+      if (size > 0 && n > 0 && n + h > size) { trangNhom.push([s0, i]); s0 = i; n = 0; }
+      n += h;
+    });
+    if (nhomDs.length) trangNhom.push([s0, nhomDs.length]);
+  }
   // clamp khi rows doi (vd sau khi loc)
-  if (size > 0 && page > 0 && start >= total) setPage(0);
+  if (page > 0 && (nhom ? page >= trangNhom.length : size > 0 && start >= total)) setPage(0);
+  const nhomTrang = nhom ? nhomDs.slice(...(trangNhom[page] ?? [0, 0])) : [];
+  const doiNhom = (k: string) => setThuGon((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
 
   const soLoc = soCotLoc(loc);
   const goc = rowsGoc ?? rowsIn;
@@ -154,10 +178,22 @@ export function DataTable<T>({
     return [...s].sort((a, b) => soSanh(a || null, b || null));
   };
   const cotMo = moLoc ? colsIn.find((c) => c.key === moLoc.k) : null;
+  const dongBang = (row: T, i: number, tienTo = "") => (
+    <tr key={tienTo + keyOf(row, i)} onClick={onRowClick ? () => onRowClick(row) : undefined} style={{ cursor: onRowClick ? "pointer" : undefined }}>
+      {cols.map((c) => (
+        <td key={c.key} style={{ textAlign: c.align ?? "left",
+          position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined, zIndex: c.sticky ? 1 : undefined,
+          whiteSpace: c.key === "act" ? "nowrap" : undefined, boxShadow: c.key === "act" ? "6px 0 6px -6px rgba(15,23,42,.18)" : undefined,
+          paddingLeft: nhom && c.sticky ? 28 : undefined }}>
+          {c.wrap || c.align === "right" || c.align === "center" ? c.render(row) : <Clip w={c.maxW ?? c.width ?? 240}>{c.render(row)}</Clip>}
+        </td>
+      ))}
+    </tr>
+  );
 
   return (
     <>
-      {(coTim || soLoc > 0) && (
+      {(coTim || soLoc > 0 || nhom) && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
           {soLoc > 0 && (
             <span style={{ fontSize: 12, display: "inline-flex", gap: 6, alignItems: "center", marginRight: "auto" }}>
@@ -168,6 +204,12 @@ export function DataTable<T>({
                   <span role="button" title="Bỏ lọc cột này" style={{ cursor: "pointer" }} onClick={() => { const n = { ...loc }; delete n[c.key]; datLoc(n); }}>×</span></span>
               ))}
               <button className="btn ghost sm" onClick={() => datLoc({})}>Xóa lọc cột</button>
+            </span>
+          )}
+          {nhom && (
+            <span style={{ fontSize: 12, display: "inline-flex", gap: 6, alignItems: "center", marginRight: soLoc > 0 ? undefined : "auto" }}>
+              <b>{nhomDs.length.toLocaleString("vi-VN")}</b> nhóm · {total.toLocaleString("vi-VN")} dòng
+              <button className="btn ghost sm" onClick={() => { setThuGonHet((x) => !x); setThuGon(new Set()); setPage(0); }}>{thuGonHet ? "▾ Mở tất cả nhóm" : "▸ Thu gọn tất cả nhóm"}</button>
             </span>
           )}
           {coTim && <>
@@ -214,25 +256,32 @@ export function DataTable<T>({
                 ))}
               </tr>
             )}
-            {shown.length === 0 && (
+            {(nhom ? nhomDs.length === 0 : shown.length === 0) && (
               <tr><td colSpan={cols.length} className="muted" style={{ textAlign: "center", padding: "40px 12px" }}>{empty}</td></tr>
             )}
-            {shown.map((row, i) => (
-              <tr key={keyOf(row, start + i)} onClick={onRowClick ? () => onRowClick(row) : undefined} style={{ cursor: onRowClick ? "pointer" : undefined }}>
-                {cols.map((c) => (
-                  <td key={c.key} style={{ textAlign: c.align ?? "left",
-                    position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined, zIndex: c.sticky ? 1 : undefined,
-                    whiteSpace: c.key === "act" ? "nowrap" : undefined, boxShadow: c.key === "act" ? "6px 0 6px -6px rgba(15,23,42,.18)" : undefined }}>
-                    {c.wrap || c.align === "right" || c.align === "center" ? c.render(row) : <Clip w={c.maxW ?? c.width ?? 240}>{c.render(row)}</Clip>}
+            {!nhom && shown.map((row, i) => dongBang(row, start + i))}
+            {nhom && nhomTrang.map(([k, ds]) => {
+              const mo = !daThuGon(k);
+              return [
+                <tr key={`g:${k}`} className="grp-row" onClick={() => doiNhom(k)} title={mo ? "Bấm để thu gọn nhóm" : "Bấm để mở nhóm"}>
+                  <td colSpan={cols.length}>
+                    <div style={{ position: "sticky", left: 10, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 12, color: "var(--text-muted)" }}>{mo ? "▾" : "▸"}</span>{nhom.dau(k, ds, mo)}
+                    </div>
                   </td>
-                ))}
-              </tr>
-            ))}
+                </tr>,
+                ...(mo ? ds.map((row, i) => dongBang(row, i, `${k}:`)) : []),
+              ];
+            })}
           </tbody>
         </table>
       </div>
-      {size > 0 && total > size && (
+      {size > 0 && !nhom && total > size && (
         <SimplePager total={total} size={size} page={page} onPage={setPage} />
+      )}
+      {nhom && trangNhom.length > 1 && (
+        <SimplePager total={nhomDs.length} size={size} page={page} onPage={setPage} soTrang={trangNhom.length}
+          nhan={`Nhóm ${(trangNhom[page]?.[0] ?? 0) + 1}–${trangNhom[page]?.[1] ?? 0} / ${nhomDs.length.toLocaleString("vi-VN")} nhóm`} />
       )}
       {moLoc && cotMo && (
         <HopLoc neo={moLoc.el} tieuDe={typeof cotMo.header === "string" ? cotMo.header : cotMo.key} kieu={cotMo.loc!}
@@ -310,8 +359,8 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
   );
 }
 
-function SimplePager({ total, size, page, onPage }: { total: number; size: number; page: number; onPage: (p: number) => void }) {
-  const pages = Math.max(1, Math.ceil(total / size));
+function SimplePager({ total, size, page, onPage, soTrang, nhan }: { total: number; size: number; page: number; onPage: (p: number) => void; soTrang?: number; nhan?: string }) {
+  const pages = soTrang ?? Math.max(1, Math.ceil(total / size));
   const cur = page + 1;
   const nums: (number | "...")[] = [];
   for (let p = 1; p <= pages; p++) {
@@ -321,7 +370,7 @@ function SimplePager({ total, size, page, onPage }: { total: number; size: numbe
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
       <div className="muted" style={{ fontSize: 12.5 }}>
-        Hiển thị {page * size + 1}–{Math.min((page + 1) * size, total)} / {total.toLocaleString("vi-VN")}
+        {nhan ?? <>Hiển thị {page * size + 1}–{Math.min((page + 1) * size, total)} / {total.toLocaleString("vi-VN")}</>}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <button className="btn ghost sm" disabled={cur === 1} onClick={() => onPage(0)}>«</button>

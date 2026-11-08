@@ -16,6 +16,7 @@ import { BaNgay, ChuGiaiNgay } from "../lib/ngay";
 import { TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, type Dong } from "./theodoi/shared";
 import { KrfGoiYModal, useGoiYKrf } from "./theodoi/KrfGoiY";
 import { BangLoiModal } from "./theodoi/BangLoi";
+import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
 import { KeHoachExcelModal } from "./donhang/KeHoachExcelModal";
 import BaoCaoGiaiDoan from "./reports/BaoCaoGiaiDoan";
 import ReportTuan from "./reports/ReportTuan";
@@ -183,7 +184,12 @@ const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?
   { k: "VE_TUAN", l: "Dự kiến về tuần này", title: "Đơn còn thiếu có ngày dự kiến gần nhất trong tuần này (Thứ 2 – Chủ nhật)", f: (r) => veTrongTuan(r, 0) },
   { k: "VE_TUAN_SAU", l: "Dự kiến về tuần sau", f: (r) => veTrongTuan(r, 1) },
 ];
-const KEY_COT = "sdh-cot", KEY_LOC = "sdh-loc-luu";
+const KEY_COT = "sdh-cot", KEY_LOC = "sdh-loc-luu", KEY_XEM = "sdh-xem";
+/** 3 che do xem (2026-11-08): tung dong · nhom theo PO (EO) · nhom theo ma linh kien. Luu localStorage. */
+type CheDoXem = "" | "po" | "lk";
+const COT_AN_KHI_NHOM: Record<string, string[]> = { po: ["ma_phe_duyet", "tieu_de"], lk: ["part_code", "part_name"] };
+const maPo = (r: Row) => r.ma_phe_duyet || r.eo_code;
+const TRANG = 20; // so dong / trang (xem theo nhom: nhom tron ven ~20 dong)
 const NHOM_MAC_DINH = "con_cho";
 
 /** Remount theo query string: link noi bo (Tong quan, bao cao, Viec can xu ly) doi ?nhom= / ?gd= ... -> ap bo loc moi. */
@@ -246,6 +252,9 @@ function DanhSach() {
   const [cot, setCot] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_COT) ?? "null") ?? BO_COT.co_ban.cot; } catch { return BO_COT.co_ban.cot; } });
   const [luu, setLuu] = useState<{ l: string; loc: Loc; locCot?: LocCot; sap?: SapCot }[]>(() => { try { return JSON.parse(localStorage.getItem(KEY_LOC) ?? "[]"); } catch { return []; } });
   const [chonCot, setChonCot] = useState(false);
+  const [xem, setXemS] = useState<CheDoXem>(() => (["po", "lk"].includes(localStorage.getItem(KEY_XEM) ?? "") ? localStorage.getItem(KEY_XEM) as CheDoXem : ""));
+  const setXem = (v: CheDoXem) => { setXemS(v); localStorage.setItem(KEY_XEM, v); };
+  const [gtChung, setGtChung] = useState(false);
 
   const all = q.data?.rows ?? [];
   const defs = useMemo(() => cotDefs(q.data?.giai_doan ?? [], q.data?.sla ?? {}), [q.data]);
@@ -291,15 +300,20 @@ function DanhSach() {
       loc: lc?.loc, gt: lc?.gt ?? d.get, gtSap: lc?.gtSap, nhanChon: lc?.nhan };
   });
   const rows = useMemo(() => locVaSap(rowsNhom, colsDl, locCot, sap), [rowsNhom, colsDl, locCot, sap]); // eslint-disable-line react-hooks/exhaustive-deps
+  // tick dong: dong trong pham vi theo doi -> push doi tac (chi dong con mo) + giai trinh chung (1 / nhieu dong / ca nhom)
   const pushDuoc = (r: Row) => r.theo_doi && r.tinh_trang !== "DONG";
-  const chonDuoc = rows.filter(pushDuoc);
+  const chonDuocF = (r: Row) => !!r.theo_doi;
+  const chonDuoc = rows.filter(chonDuocF);
   const tatCaChon = chonDuoc.length > 0 && chonDuoc.every((r) => chon.has(r.item_id));
+  const dongChon = useMemo(() => all.filter((r) => chon.has(r.item_id)), [all, chon]);
+  const idPush = dongChon.filter(pushDuoc).map((r) => r.item_id);
+  const doiChon = (ids: number[], bat: boolean) => setChon((s) => { const n = new Set(s); ids.forEach((id) => (bat ? n.add(id) : n.delete(id))); return n; });
   const taoPush = async () => {
-    if (!chon.size) return;
-    if (!confirm(`Tạo file push đối tác cho ${chon.size} dòng? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
+    if (!idPush.length) return alert("Các dòng đã chọn đều đã đóng — không còn gì để push.");
+    if (!confirm(`Tạo file push đối tác cho ${idPush.length} dòng còn mở? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
     setBusy(true);
     try {
-      setPushKq(await taoPushDoiTac([...chon]));
+      setPushKq(await taoPushDoiTac(idPush));
       setChon(new Set());
       refresh();
     } catch (e: any) {
@@ -310,11 +324,11 @@ function DanhSach() {
   const cols: Col<Row>[] = [
     {
       key: "act", header: <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-        <input type="checkbox" title="Chọn mọi dòng đang lọc còn mở (để push đối tác)" checked={tatCaChon} disabled={!chonDuoc.length}
+        <input type="checkbox" title="Chọn mọi dòng đang lọc (push đối tác / giải trình chung)" checked={tatCaChon} disabled={!chonDuoc.length}
           onChange={() => setChon(tatCaChon ? new Set() : new Set(chonDuoc.map((r) => r.item_id)))} /> Thao tác</span>,
       render: (r) => (
         <span style={{ display: "inline-flex", gap: 2, alignItems: "center", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
-          <input type="checkbox" disabled={!pushDuoc(r)} title={pushDuoc(r) ? "Chọn để push đối tác" : "Chỉ dòng EO đã ban hành, còn mở"} checked={chon.has(r.item_id)}
+          <input type="checkbox" disabled={!chonDuocF(r)} title={chonDuocF(r) ? "Chọn để push đối tác / giải trình chung" : "Chỉ dòng EO đã ban hành trong phạm vi theo dõi"} checked={chon.has(r.item_id)}
             onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />
           <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi, kế hoạch, lịch sử" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
           {r.trang_thai_eo === "ISSUED" && <>
@@ -325,7 +339,8 @@ function DanhSach() {
         </span>
       ),
     },
-    ...colsDl,
+    // xem theo nhom: an cot da nam o tieu de nhom (van loc theo cot do neu dang loc)
+    ...colsDl.filter((c) => !(COT_AN_KHI_NHOM[xem] ?? []).includes(c.key)),
   ];
   const lienKet = Object.keys(LOC_LIEN_KET).filter((k) => (loc as any)[k]);
   const soItDung = ["tu", "den", "tre", "apDung"].filter((k) => (loc as any)[k]).length;
@@ -346,6 +361,31 @@ function DanhSach() {
     <select className="select tb" style={{ width: w, borderColor: v ? "var(--brand-yellow-btn)" : undefined }} value={v} title={title} onChange={(e) => onChange(e.target.value)}>{children}</select>
   );
 
+  // tieu de nhom: o tick ca nhom (giai trinh chung / push) + ma + so dong + tong Dat / Ve / Thieu + canh bao
+  const dauNhom = (k: string, ds: Row[]) => {
+    const r0 = ds[0];
+    const duoc = ds.filter(chonDuocF).map((r) => r.item_id);
+    const soChon = duoc.filter((id) => chon.has(id)).length;
+    const sum = (f: (r: Row) => number) => ds.reduce((s, r) => s + (f(r) || 0), 0);
+    const loiCho = sum((r) => r.so_loi_cho_gt), ceo = ds.filter((r) => (r.ceo_ly_do ?? []).length > 0).length;
+    const quaDk = ds.filter((r) => r.tinh_trang === "QUA_HAN_NDK" || r.tinh_trang === "TRE_NDK").length;
+    return <>
+      <input type="checkbox" disabled={!duoc.length} checked={duoc.length > 0 && soChon === duoc.length} title="Chọn cả nhóm (push đối tác / giải trình chung)"
+        ref={(el) => { if (el) el.indeterminate = soChon > 0 && soChon < duoc.length; }}
+        onClick={(e) => e.stopPropagation()} onChange={() => doiChon(duoc, soChon < duoc.length)} />
+      {xem === "po"
+        ? <><b onClick={(e) => e.stopPropagation()}><EoLink id={r0.eo_id}>{maPo(r0)}</EoLink></b>{r0.ma_phe_duyet && <span className="muted" style={{ fontSize: 11 }}>{r0.eo_code}</span>}
+            <span className="muted">(×{ds.length})</span><span style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r0.tieu_de}>{r0.tieu_de}</span></>
+        : <><b onClick={(e) => e.stopPropagation()}><PartLink ma={k} /></b><span style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r0.part_name}>{r0.part_name}</span>
+            <span className="muted">(×{ds.length} · {new Set(ds.map((r) => r.eo_id)).size} PO)</span></>}
+      <span className="muted" style={{ whiteSpace: "nowrap" }}>· Đặt <b style={{ color: "var(--text)" }}>{soLuong(sum((r) => r.so_luong_dat))}</b> · về {soLuong(sum((r) => Math.min(r.sl_nhap_amis_dung_eo, r.so_luong_dat)))} · thiếu <b style={{ color: "var(--text)" }}>{soLuong(sum((r) => r.so_luong_con_thieu))}</b></span>
+      {quaDk > 0 && <span className="badge reject" title="Dòng trễ 48h chưa có ngày DK / quá ngày dự kiến">{quaDk} trễ / quá DK</span>}
+      {loiCho > 0 && <span className="badge reject" title="Lỗi chờ giải trình">{loiCho} lỗi chờ GT</span>}
+      {ceo > 0 && <span className="badge reject" title="Dòng cấp CEO">{ceo} cấp CEO</span>}
+      {soChon > 0 && <span className="badge issued">đã chọn {soChon}</span>}
+    </>;
+  };
+  const nhomCfg = xem ? { khoa: (r: Row) => (xem === "po" ? String(r.eo_id) : String(r.part_code)), dau: dauNhom } : undefined;
   const soKrf = krf.data?.goi_y.length ?? 0;
   const giaiDoan = (q.data?.giai_doan ?? []).filter((g) => !["G4", "G7"].includes(g.k));
   const iconBtn = { padding: "0 9px" };
@@ -358,6 +398,9 @@ function DanhSach() {
           <S v={loc.nhom} onChange={(v) => set({ nhom: v })} w={215} title="Nhóm nhanh (số dòng mỗi nhóm theo bộ lọc hiện tại)">
             <option value="">Tất cả ({soLuong(base.length)})</option>
             {NHOM.map((n) => <option key={n.k} value={n.k} title={n.title}>{n.l} ({soLuong(base.filter(n.f).length)})</option>)}
+          </S>
+          <S v={xem} onChange={(v) => setXem(v as CheDoXem)} w={150} title="Cách xem: từng dòng linh kiện / nhóm theo PO (EO) / nhóm theo mã linh kiện">
+            <option value="">Xem: từng dòng</option><option value="po">Xem: nhóm theo PO</option><option value="lk">Xem: nhóm theo LK</option>
           </S>
           <S v={loc.gd} onChange={(v) => set({ gd: v })} w={190} title="Đang ở giai đoạn">
             <option value="">Mọi giai đoạn</option>
@@ -400,11 +443,15 @@ function DanhSach() {
           <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}
             title={`SL đặt ${soLuong(tong((r) => r.so_luong_dat))} · về ${soLuong(tong((r) => Math.min(r.sl_nhap_amis_dung_eo, r.so_luong_dat)))} · thiếu ${soLuong(tong((r) => r.so_luong_con_thieu))}`}>
             <b style={{ color: "var(--text)" }}>{soLuong(rows.length)}</b> dòng · thiếu {soLuong(tong((r) => r.so_luong_con_thieu))}</span>
-          {chon.size > 0 && <button className="btn sm primary" disabled={busy} onClick={taoPush} title="Mỗi đối tác 1 file + tiêu đề mail chuẩn"><I.send width={14} height={14} /> Push đối tác ({chon.size})</button>}
+          {chon.size > 0 && <>
+            <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}>Đã chọn {soLuong(chon.size)}<span role="button" title="Bỏ chọn tất cả" style={{ cursor: "pointer" }} onClick={() => setChon(new Set())}>×</span></span>
+            <button className="btn sm primary" onClick={() => setGtChung(true)} title="1 nội dung giải trình cho mọi dòng đã chọn (cùng nguyên nhân)"><I.edit width={14} height={14} /> Giải trình chung</button>
+            <button className="btn sm" disabled={busy || !idPush.length} onClick={taoPush} title="Mỗi đối tác 1 file + tiêu đề mail chuẩn (chỉ dòng còn mở)"><I.send width={14} height={14} /> Push ({idPush.length})</button>
+          </>}
           <Popover align="right" width={290} title="Công cụ: push đối tác, ngày KRF từ mail, kế hoạch hàng về…"
             label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
             {(dong) => <>
-              <MenuItem icon={<I.send width={14} height={14} />} disabled={!chon.size || busy} onClick={() => { dong(); taoPush(); }} title="Tick các dòng còn mở ở cột Thao tác rồi bấm — mỗi đối tác 1 file + tiêu đề mail chuẩn">Tạo file push đối tác ({chon.size})</MenuItem>
+              <MenuItem icon={<I.send width={14} height={14} />} disabled={!idPush.length || busy} onClick={() => { dong(); taoPush(); }} title="Tick các dòng còn mở ở cột Thao tác rồi bấm — mỗi đối tác 1 file + tiêu đề mail chuẩn">Tạo file push đối tác ({idPush.length})</MenuItem>
               <MenuItem icon={<I.calendar width={14} height={14} />} onClick={() => { dong(); setHop("krf"); }} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết"
                 right={soKrf > 0 ? <b style={{ color: "var(--danger-ink)" }}>{soLuong(soKrf)}</b> : <span className="muted">0</span>}>Ngày KRF từ mail</MenuItem>
               <MenuItem icon={<I.upload width={14} height={14} />} onClick={() => { dong(); setHop("kh"); }} title="Tải file Excel kế hoạch hàng về, điền ngày rồi nhập lại cho nhiều dòng">Kế hoạch hàng về (Excel)</MenuItem>
@@ -425,7 +472,7 @@ function DanhSach() {
           </Popover>
         </div>
         {q.isLoading ? <Spinner /> : (
-          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={50} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc"
+          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={TRANG} nhom={nhomCfg} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc"
             ngoai rowsGoc={rowsNhom} loc={locCot} onLoc={setLocCot} sap={sap} onSap={setSap} />
         )}
       </Card>
@@ -433,6 +480,9 @@ function DanhSach() {
       {modal?.loai === "ndk" && <NgayHangVeModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}
       {modal?.loai === "gt" && <GiaiTrinhModal dong={modal.dong} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} />}
       {modal?.loai === "ls" && <LichSuModal dong={modal.dong} onClose={() => setModal(null)} />}
+      {gtChung && <GiaiTrinhDongModal dongs={dongChon.map((r) => ({ item_id: r.item_id, eo_id: r.eo_id, ma_po: maPo(r), part_code: r.part_code, part_name: r.part_name }))}
+        onClose={() => setGtChung(false)}
+        onSaved={(kq) => { setGtChung(false); setChon(new Set()); refresh(); alert(`Đã giải trình chung: ${kq.so_loi} lỗi trên ${kq.so_dong} dòng (${kq.so_po} PO).`); }} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
       {hop === "krf" && <KrfGoiYModal onClose={() => setHop("")} onSaved={refresh} onMoDong={(d) => { setHop(""); setModal({ loai: "ndk", dong: d }); }} />}
       {hop === "kh" && <KeHoachExcelModal onClose={() => setHop("")} onDone={refresh} />}

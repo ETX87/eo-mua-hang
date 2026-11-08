@@ -243,3 +243,107 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
     </Modal>
   );
 }
+
+/**
+ * Giai trinh CHUNG cho cac dong linh kien tick o man LK dat (1 dong / nhieu dong / ca nhom theo PO hoac theo ma LK, nhieu PO) -
+ * POST /vi-pham/giai-trinh-dong. Che do: dong moi loi dang cho cua cac dong / ghi loi moi (van de chung) cho dong dang mo.
+ */
+export function GiaiTrinhDongModal({ dongs, onClose, onSaved }: {
+  dongs: { item_id: number; eo_id: number; ma_po: string; part_code: string; part_name: string }[];
+  onClose: () => void; onSaved: (kq: { so_dong: number; so_loi: number; so_po: number }) => void;
+}) {
+  const ids = dongs.map((d) => d.item_id);
+  const xem = useQuery({ queryKey: ["gt-dong-xem", ids.join(",")], queryFn: () => api.post<{ loi: { eo_item_id: number; quy_tac: string; n: number }[]; dong_mo: number[] }>("/vi-pham/giai-trinh-dong", { eo_item_ids: ids, xem: true }) });
+  const dm = useDanhMuc();
+  const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
+  const loi = xem.data?.loi ?? [];
+  const dongMo = new Set(xem.data?.dong_mo ?? []);
+  const loiCua = (id: number) => loi.filter((l) => l.eo_item_id === id);
+  const coLoi = loi.length > 0;
+  const [cheDo, setCheDo] = useState<"cho" | "moi" | null>(null);
+  const moi = cheDo ? cheDo === "moi" : !coLoi;
+  const ap = dongs.filter((d) => (moi ? dongMo.has(d.item_id) : loiCua(d.item_id).length > 0));
+  const soLoi = moi ? ap.length : loi.reduce((s, l) => s + l.n, 0);
+  const soPo = new Set(ap.map((d) => d.eo_id)).size;
+  const canAnh = !moi && loi.some((l) => l.quy_tac === "R1" || l.quy_tac === "R4");
+  const [aiMa, setAiMa] = useState("NGUOI_DAT");
+  const [aiEmail, setAiEmail] = useState("");
+  const [loiMa, setLoiMa] = useState("");
+  const [noiDung, setNoiDung] = useState("");
+  const [anh, setAnh] = useState<Anh[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const save = async () => {
+    setErr("");
+    if (!ap.length) return setErr(moi ? "Không có dòng nào đang theo dõi." : "Các dòng đã chọn không có lỗi chờ giải trình.");
+    if (!loiMa) return setErr("Chọn Lỗi gì.");
+    if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
+    if (canAnh && !anh.length) return setErr("Có lỗi R1/R4 — bắt buộc ảnh bằng chứng.");
+    setBusy(true);
+    try {
+      onSaved(await api.post("/vi-pham/giai-trinh-dong", { eo_item_ids: ap.map((d) => d.item_id), moi, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh }));
+    } catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các dòng đã chọn không còn lỗi chờ (có thể vừa được giải trình)." : c === "KHONG_CO_DONG" ? "Không còn dòng đang theo dõi." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
+      setBusy(false);
+    }
+  };
+  const ai = (dm.data ?? []).filter((x) => x.loai === "AI" && x.active);
+  const dmLoi = (dm.data ?? []).filter((x) => x.loai === "LOI" && x.active);
+  return (
+    <Modal title={`Giải trình chung ${dongs.length} dòng linh kiện`} onClose={onClose} width={900}
+      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy || !ap.length || xem.isLoading} onClick={save}>{busy ? "Đang lưu..." : `Gửi giải trình (${ap.length} dòng · ${soLoi} lỗi · ${soPo} PO)`}</button></>}>
+      {xem.isLoading ? <Spinner /> : (
+        <div style={{ fontSize: 13 }}>
+          <div className="qv-alert warn" style={{ display: "block", marginBottom: 10 }}>
+            1 nội dung giải trình cho <b>mọi dòng đã tick</b> có <b>cùng nguyên nhân</b> (vd NCC báo trễ chung). Mỗi dòng vẫn lưu 1 giải trình riêng, đánh dấu "giải trình chung".
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+            <button className={`qv-chip ${!moi ? "on" : ""}`} disabled={!coLoi} onClick={() => setCheDo("cho")}>Đóng lỗi đang chờ ({loi.reduce((s, l) => s + l.n, 0)} lỗi)</button>
+            <button className={`qv-chip ${moi ? "on" : ""}`} onClick={() => setCheDo("moi")}>Ghi lỗi mới — vấn đề chung ({dongMo.size} dòng đang theo dõi)</button>
+          </div>
+          <div className="tbl-wrap" style={{ maxHeight: 240, overflow: "auto" }}>
+            <table className="tbl tbl-dense">
+              <thead><tr><th>PO</th><th>Mã linh kiện</th><th>Tên</th><th>{moi ? "Sẽ ghi" : "Lỗi sẽ đóng"}</th></tr></thead>
+              <tbody>{dongs.map((d) => {
+                const l = loiCua(d.item_id);
+                const duoc = moi ? dongMo.has(d.item_id) : l.length > 0;
+                return (
+                  <tr key={d.item_id} style={{ opacity: duoc ? 1 : 0.45 }}>
+                    <td>{d.ma_po}</td><td><b>{d.part_code}</b></td><td>{d.part_name}</td>
+                    <td style={{ fontSize: 12 }}>{moi ? (duoc ? "1 lỗi mới (đã giải trình)" : <span className="muted">dòng đã đóng — bỏ qua</span>)
+                      : duoc ? l.map((x) => `${QUY_TAC[x.quy_tac] ?? x.quy_tac}${x.n > 1 ? ` × ${x.n}` : ""}`).join(" · ") : <span className="muted">không có lỗi chờ — bỏ qua</span>}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
+            <div>
+              <label className="field-label">Ai chịu trách nhiệm <span className="req">*</span></label>
+              <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
+            </div>
+            <div>
+              <label className="field-label">Người cụ thể</label>
+              <select className="select" value={aiEmail} onChange={(e) => setAiEmail(e.target.value)}>
+                <option value="">— Không chọn —</option>
+                {(users.data ?? []).map((u: any) => <option key={u.email} value={u.email}>{u.ho_ten ? `${u.ho_ten} (${u.email})` : u.email}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label">Lỗi gì <span className="req">*</span></label>
+              <select className="select" value={loiMa} onChange={(e) => setLoiMa(e.target.value)}>
+                <option value="">Chọn lỗi</option>
+                {dmLoi.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}
+              </select>
+            </div>
+          </div>
+          <label className="field-label" style={{ marginTop: 12 }}>Nội dung giải trình chung <span className="req">*</span></label>
+          <textarea className="textarea" value={noiDung} onChange={(e) => setNoiDung(e.target.value)} placeholder="Nguyên nhân chung, đã làm gì, khi nào có ngày dự kiến…" />
+          <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} />
+          {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+        </div>
+      )}
+    </Modal>
+  );
+}

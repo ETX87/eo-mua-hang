@@ -117,6 +117,9 @@ table.tbl tbody tr { height: 48px; }
 table.tbl tbody tr:last-child td { border-bottom: 0; }
 table.tbl tbody tr:hover { background: #FCFCFB; }
 table.tbl tr.total-row td { background: var(--panel-2); font-weight: 700; }
+/* dong tieu de nhom (DataTable nhom theo PO / ma LK) */
+table.tbl tr.grp-row td { background: #FFF8DB; border-top: 2px solid #F5E7A8; padding: 7px 10px; font-size: 12.5px; cursor: pointer; }
+table.tbl tr.grp-row:hover td { background: #FFF1B8; }
 .cell-link { color: var(--link-amber); font-weight: 600; }
 
 /* ---------- 2026-10: bang gon + cat chu + popup xem nhanh ---------- */
