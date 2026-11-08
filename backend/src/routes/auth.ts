@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { signSession } from "../lib/jwt";
+import { emailChinh } from "../lib/tenNguoiDung";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS } from "../middleware/session";
 import type { Env, AppVariables } from "../types";
 
@@ -53,7 +54,8 @@ app.get("/callback", async (c) => {
   if (!infoRes.ok) return c.json({ error: "OAUTH_USERINFO_FAILED" }, 502);
   const info = (await infoRes.json()) as { email: string; name?: string; verified_email?: boolean };
   if (!info.email || info.verified_email === false) return c.json({ error: "EMAIL_NOT_VERIFIED" }, 403);
-  const email = info.email.toLowerCase();
+  // Gmail phu (user_alias) -> phien dang nhap cua tai khoan chinh, khong tao dong users moi
+  const email = await emailChinh(c.env.DB, info.email.toLowerCase());
 
   await c.env.DB.prepare(
     `INSERT INTO users (email, ho_ten) VALUES (?, ?) ON CONFLICT(email) DO NOTHING`,

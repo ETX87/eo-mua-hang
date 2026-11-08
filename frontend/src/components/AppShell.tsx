@@ -171,7 +171,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   // so khop theo duong dan (bo ?query): viec tro toi /don-hang?nhom=... van cong vao muc /don-hang
   const badgeOf = (to: string) => (viec.data?.items ?? []).filter((x) => x.to.split("?")[0] === to).reduce((s, x) => s + x.count, 0);
-  const uName = me.data?.ho_ten && !me.data.ho_ten.includes("@") ? me.data.ho_ten : ten(me.data?.email) || "—";
+  // uu tien ten ETX (lib/format ten), khong co moi dung ho ten tai khoan / Gmail
+  const uName = (me.data?.email && ten(me.data.email) !== me.data.email.split("@")[0] ? ten(me.data.email) : null)
+    ?? (me.data?.ho_ten && !me.data.ho_ten.includes("@") ? me.data.ho_ten : ten(me.data?.email)) ?? "—";
   // muc con sidebar: khop duong dan DUNG (khong prefix - /don-hang/ke-hoach-tuan khong to muc nao) + moi ?tham so cua muc;
   // muc khong co ?query chi active khi khong muc anh em nao co query khop (Danh sach vs ?tab=bao-cao)
   const khopCon = (to: string) => {

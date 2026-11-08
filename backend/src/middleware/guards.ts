@@ -10,8 +10,12 @@ type Ctx = Context<{ Bindings: Env; Variables: AppVariables }>;
  * duyet / bi khoa -> 403 (tru chinh route /api/users/me de FE biet trang thai).
  */
 export async function loadUser(c: Ctx, next: Next) {
-  const email = c.get("email");
-  let user = await c.env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first<AppUser>();
+  // Gmail phu (user_alias, 2026-11-08) -> dang nhap nhu tai khoan chinh
+  let email = c.get("email");
+  let user = await c.env.DB.prepare(
+    "SELECT * FROM users WHERE email = COALESCE((SELECT user_email FROM user_alias WHERE email = ?1), ?1)",
+  ).bind(email).first<AppUser>();
+  if (user && user.email !== email) { email = user.email; c.set("email", email); }
 
   if (!user && email && email === c.env.BOOTSTRAP_ADMIN_EMAIL) {
     await c.env.DB.prepare(

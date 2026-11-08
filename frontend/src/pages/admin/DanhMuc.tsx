@@ -6,8 +6,9 @@ import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong } from "../../lib/format";
 import { PHONG_BAN } from "../../lib/nav";
+import DoiTacLyDo from "./DoiTacLyDo";
 
-type Tab = "kho" | "loai" | "toc";
+type Tab = "kho" | "loai" | "toc" | "chuan";
 
 export default function DanhMuc() {
   const [tab, setTab] = useState<Tab>("kho");
@@ -60,19 +61,20 @@ export default function DanhMuc() {
     },
   ];
 
-  const addLabel = { kho: "Thêm kho", loai: "Thêm loại hình", toc: "Thêm ngưỡng" }[tab];
+  const addLabel = { kho: "Thêm kho", loai: "Thêm loại hình", toc: "Thêm ngưỡng", chuan: "" }[tab];
 
   return (
     <div>
       <PageHeader title="Danh mục" />
       <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
-        {[["kho", "Kho"], ["loai", "Loại hình EO"], ["toc", "Ngưỡng tốc độ hàng về"]].map(([k, l]) => (
+        {[["kho", "Kho"], ["loai", "Loại hình EO"], ["toc", "Ngưỡng tốc độ hàng về"], ["chuan", "Đối tác & lý do PS"]].map(([k, l]) => (
           <button key={k} className={`btn sm ${tab === k ? "primary" : ""}`} onClick={() => setTab(k as Tab)}>{l}</button>
         ))}
         <div style={{ flex: 1 }} />
-        <button className="btn sm primary" onClick={() => setEdit({ tab, row: null })}><I.plus width={14} height={14} /> {addLabel}</button>
+        {addLabel && <button className="btn sm primary" onClick={() => setEdit({ tab, row: null })}><I.plus width={14} height={14} /> {addLabel}</button>}
       </div>
       <Card>
+        {tab === "chuan" && <DoiTacLyDo />}
         {tab === "kho" && (kho.isLoading ? <Spinner /> : <DataTable cols={khoCols} rows={kho.data ?? []} keyOf={(r) => r.ten_kho} pageSize={PAGE_SIZE} />)}
         {tab === "loai" && (loai.isLoading ? <Spinner /> : <DataTable cols={loaiCols} rows={loai.data ?? []} keyOf={(r) => r.code} pageSize={PAGE_SIZE} />)}
         {tab === "toc" && (toc.isLoading ? <Spinner /> : (
@@ -87,7 +89,7 @@ export default function DanhMuc() {
 
       {edit && (
         <EditModal edit={edit} onClose={() => setEdit(null)} onSaved={() => {
-          const key = { kho: "dm-kho", loai: "dm-loaihinh", toc: "dm-tocdo" }[edit.tab];
+          const key = { kho: "dm-kho", loai: "dm-loaihinh", toc: "dm-tocdo", chuan: "dm-chuan" }[edit.tab];
           qc.invalidateQueries({ queryKey: [key] });
           setEdit(null);
         }} />
@@ -130,7 +132,7 @@ function EditModal({ edit, onClose, onSaved }: { edit: { tab: Tab; row: any }; o
     }
   };
 
-  const title = { kho: "kho", loai: "loại hình EO", toc: "ngưỡng tốc độ" }[tab];
+  const title = { kho: "kho", loai: "loại hình EO", toc: "ngưỡng tốc độ", chuan: "" }[tab];
   return (
     <Modal title={`${isNew ? "Thêm" : "Sửa"} ${title}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>

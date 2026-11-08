@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -270,6 +270,24 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - `lib/nav.ts` (FE) ↔ quyền ở BE đồng bộ tay khi thêm.
 - **Luôn commit trước khi deploy.** Không chạy `npm run deploy` khi cây làm việc còn thay đổi
   chưa commit — commit (hoặc stash) hết, rồi mới deploy, để mỗi bản deploy khớp đúng 1 commit.
+
+## Chuẩn hoá Đối tác / Lý do PS, tên hiển thị, Gmail phụ, R1 24h (v0.066, migration 0020)
+
+- **Đối tác / Lý do PS chuẩn** `lib/chuanHoa.ts`: danh mục `dm_chuan` + bí danh `dm_bi_danh` (khoá = chữ thường không dấu, bỏ ký tự
+  khác a-z0-9 — `khoa()` phải khớp `scripts/gen_0020_chuan_hoa.py`). Mọi đường ghi `eo_item` (tạo EO, thêm dòng, sửa dòng) gọi
+  `chuanHoaDong`: bí danh tự quy đổi (KRF/KAROFI → Karofi), giá trị lạ → 400 `GIA_TRI_KHONG_CHUAN` (FE `loiChuanTxt`). Lý do PS chỉ 4 giá
+  trị: Ký gửi · Đặt lần đầu · Kế hoạch tháng · Phát sinh (FE `ChonLyDo`). PATCH dòng: `b.reason` là lý do đổi SL — chỉ chuẩn hoá supplier.
+  Dữ liệu cũ chuyển 1 lần bằng `scripts/_data/0020_chuyen_du_lieu.sql` (sinh bởi `scripts/gen_0020_chuan_hoa.py`, chứa giá trị thật — gitignore, repo công khai) (chốt với người dùng 2026-11-08: cảnh báo hết hàng → Phát sinh; lý do lạ → Phát sinh + chép
+  "Lý do cũ: …" vào ghi chú; Media/MM → Media Mart; LKDH, NCC, Lọc tổng giữ riêng), bản gốc ở `supplier_goc` / `reason_goc`.
+  Admin: Danh mục › "Đối tác & lý do PS" (`GET/PUT /danh-muc/chuan`, `POST /danh-muc/chuan/chuyen` chuyển giá trị chưa chuẩn còn sót).
+- **Tên hiển thị** `lib/tenNguoiDung.ts` → `GET /users/ten` (cache version `users`): ưu tiên họ tên ETX (tài khoản liên kết, hoặc Gmail
+  chính / Gmail phụ trùng Gmail hiệu lực ETX, hoặc Gmail ETX không có tài khoản); không có → FE `ten()` cắt Gmail. App nạp 1 lần
+  trước khi vẽ (`datTenHienThi`).
+- **Gmail phụ** `user_alias`: 1 tài khoản đăng nhập nhiều Gmail (`loadUser` + `/auth/callback` quy về email chính). Admin: Người dùng ›
+  cột Gmail đăng nhập (`POST/DELETE /users/:email/gmail-phu`); Gmail phụ không được là tài khoản đã duyệt riêng. `relinkUsers` /
+  `linkOneUser` khớp ETX theo Gmail chính rồi Gmail phụ.
+- **R1 24h**: đối tác nhóm Karofi/KRF, Livotec/LVT, Korihome/KRH (`laNhomR1_24h`) hạn ngày dự kiến 24h làm việc, hãng khác 48h — chỉ dòng bắt
+  đầu từ `app_settings.r1_24h_tu` (2026-11-08), dòng cũ giữ 48h (không ghi lỗi hồi tố). `DongTheoDoi.gio_r1`; cache `tl:goc-theo-doi:v5`.
 
 ## ETX nhân sự
 

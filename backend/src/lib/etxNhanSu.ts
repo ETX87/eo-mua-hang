@@ -68,6 +68,11 @@ export async function relinkUsers(db: D1Database): Promise<number> {
     ).all<{ ma_nhan_su: string; ho_ten: string; chuc_danh: string | null; trang_thai_lam_viec: string; gmail_gan_tay: string | null; eff: string }>(),
     db.prepare("SELECT email, ho_ten, ma_nhan_su, chuc_danh FROM users").all<{ email: string; ho_ten: string; ma_nhan_su: string | null; chuc_danh: string | null }>(),
   ]);
+  // Gmail phu (user_alias): tai khoan khop ETX theo Gmail chinh, khong co thi theo Gmail phu
+  const phu = new Map<string, string[]>();
+  for (const a of (await db.prepare("SELECT LOWER(email) email, LOWER(user_email) u FROM user_alias").all<{ email: string; u: string }>()).results) {
+    phu.set(a.u, [...(phu.get(a.u) ?? []), a.email]);
+  }
 
   const rank = (r: { gmail_gan_tay: string | null; trang_thai_lam_viec: string }) =>
     (r.gmail_gan_tay ? 2 : 0) + (r.trang_thai_lam_viec === "on" ? 1 : 0);
@@ -80,7 +85,7 @@ export async function relinkUsers(db: D1Database): Promise<number> {
   const stmts: D1PreparedStatement[] = [];
   let linked = 0;
   for (const u of users) {
-    const m = byEmail.get(u.email.toLowerCase());
+    const m = byEmail.get(u.email.toLowerCase()) ?? (phu.get(u.email.toLowerCase()) ?? []).map((x) => byEmail.get(x)).find(Boolean);
     if (m) {
       linked++;
       const hoTen = m.ho_ten?.trim() || u.ho_ten;
@@ -99,11 +104,14 @@ export async function relinkUsers(db: D1Database): Promise<number> {
 }
 
 /** Lien ket ngay 1 tai khoan (vua tao / vua doi Gmail) voi danh ba ETX da co, khong goi ETX. */
-export async function linkOneUser(db: D1Database, email: string): Promise<void> {
+export async function linkOneUser(db: D1Database, emailVao: string): Promise<void> {
+  // Gmail phu -> tai khoan chinh; khop ETX theo Gmail chinh truoc, roi cac Gmail phu
+  const email = (await db.prepare("SELECT user_email FROM user_alias WHERE email = ?").bind(emailVao.toLowerCase()).first<{ user_email: string }>())?.user_email ?? emailVao;
   const m = await db.prepare(
-    `SELECT e.ma_nhan_su, e.ho_ten, e.chuc_danh FROM etx_nhan_su e WHERE ${EFFECTIVE_GMAIL_SQL} = ?
-     ORDER BY (e.gmail_gan_tay IS NOT NULL) DESC, (e.trang_thai_lam_viec = 'on') DESC LIMIT 1`,
-  ).bind(email.toLowerCase()).first<{ ma_nhan_su: string; ho_ten: string; chuc_danh: string | null }>();
+    `SELECT e.ma_nhan_su, e.ho_ten, e.chuc_danh FROM etx_nhan_su e
+     WHERE ${EFFECTIVE_GMAIL_SQL} IN (SELECT ?1 UNION ALL SELECT LOWER(email) FROM user_alias WHERE user_email = ?2)
+     ORDER BY (${EFFECTIVE_GMAIL_SQL} = ?1) DESC, (e.gmail_gan_tay IS NOT NULL) DESC, (e.trang_thai_lam_viec = 'on') DESC LIMIT 1`,
+  ).bind(email.toLowerCase(), email).first<{ ma_nhan_su: string; ho_ten: string; chuc_danh: string | null }>();
   if (m) {
     await db.prepare("UPDATE users SET ma_nhan_su = ?, ho_ten = CASE WHEN ? <> '' THEN ? ELSE ho_ten END, chuc_danh = ? WHERE email = ?")
       .bind(m.ma_nhan_su, m.ho_ten ?? "", m.ho_ten ?? "", m.chuc_danh, email).run();

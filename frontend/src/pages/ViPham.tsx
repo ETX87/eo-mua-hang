@@ -37,7 +37,7 @@ const CACH_XU_LY: Record<string, string> = {
   TAY: "Lỗi ghi tay lúc giải trình (NCC trễ, hết hàng…) — đã có giải trình, chỉ để thống kê.",
 };
 const QT_DAI: Record<string, string> = {
-  R1: "Sau khi EO ban hành (hoặc dòng thêm sau ban hành được duyệt) phải có ngày dự kiến trong 48 giờ làm việc (bỏ Chủ nhật).",
+  R1: "Sau khi EO ban hành (hoặc dòng thêm sau ban hành được duyệt) phải có ngày dự kiến trong 24 giờ làm việc với đối tác Karofi / Livotec / Korihome (dòng bắt đầu từ 08/11/2026), 48 giờ với hãng khác (bỏ Chủ nhật).",
   R3: "Mỗi thứ 2 / thứ 4, dòng chưa từng có ngày dự kiến phải được push đối tác trong ngày (có mail với đối tác qua theodoimuahang@gmail.com trong kỳ cũng tính là đã push).",
   R4: "Quá ngày dự kiến mà hàng chưa về đủ → phải nhập ngày dự kiến mới trong 24 giờ làm việc.",
   TAY: "Lỗi do người giải trình tự xác định.",

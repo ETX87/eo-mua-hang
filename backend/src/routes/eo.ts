@@ -8,6 +8,10 @@ import { uploadPublicFile } from "../lib/googleDrive";
 import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
 import { cachedReport } from "../lib/reportCache";
+import { layBoChuan, chuanHoaDong } from "../lib/chuanHoa";
+
+/** Doi tac / ly do PS khong nam trong danh muc chuan (migration 0020) -> 400 kem gia tri sai de FE bao ro. */
+const loiChuan = (loi: { loai: string; gia_tri: string }[]) => ({ error: "GIA_TRI_KHONG_CHUAN", loi });
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -242,6 +246,7 @@ app.post("/", async (c) => {
   if (b.items.some((it) => !it.part_code?.trim() || !it.warehouse || !validQty(it.current_qty))) {
     return c.json({ error: "BAD_ITEM" }, 400);
   }
+  { const loi = chuanHoaDong(await layBoChuan(c.env.DB), b.items); if (loi.length) return c.json(loiChuan(loi), 400); }
 
   const copyTu = Number(b.copy_tu_eo_id) > 0
     ? await c.env.DB.prepare("SELECT id, eo_code, approval_code FROM eo WHERE id = ?").bind(Number(b.copy_tu_eo_id))
@@ -321,6 +326,7 @@ app.post("/:id/items", async (c) => {
     const list = body.items as CreateBody["items"];
     if (!list.length || list.length > 2000) return c.json({ error: "BAD_ITEMS" }, 400);
     if (list.some((x) => !x.part_code?.trim() || !x.warehouse || !validQty(x.current_qty))) return c.json({ error: "BAD_ITEM" }, 400);
+    { const loi = chuanHoaDong(await layBoChuan(c.env.DB), list); if (loi.length) return c.json(loiChuan(loi), 400); }
     const now = nowVN();
     const email = c.get("user").email;
     const stmts = list.map((x) =>
@@ -345,6 +351,7 @@ app.post("/:id/items", async (c) => {
   };
   if (!it.part_code?.trim() || !it.warehouse) return c.json({ error: "PART_AND_WAREHOUSE_REQUIRED" }, 400);
   if (!validQty(it.current_qty)) return c.json({ error: "BAD_QTY" }, 400);
+  { const loi = chuanHoaDong(await layBoChuan(c.env.DB), [it]); if (loi.length) return c.json(loiChuan(loi), 400); }
   const now = nowVN();
   const afterIssue = eo.trang_thai === "ISSUED";
   // nguoi them chinh la nguoi duyet cuoi cua EO -> tu duyet luon (khong can cho chinh minh duyet)
@@ -439,6 +446,13 @@ app.patch("/items/:itemId", async (c) => {
     );
   }
 
+  // chi chuan hoa supplier - b.reason o day la ly do doi SL, khong phai ly do PS
+  if ("supplier" in b) {
+    const x: { supplier?: string | null } = { supplier: b.supplier ?? null };
+    const loi = chuanHoaDong(await layBoChuan(c.env.DB), [x]);
+    if (loi.length) return c.json(loiChuan(loi), 400);
+    (b as any).supplier = x.supplier ?? null;
+  }
   const misc = ["part_name", "supplier", "ghi_chu", "crm_id", "order_id", "don_gia_du_kien"] as const;
   const sets: string[] = [];
   const vals: unknown[] = [];

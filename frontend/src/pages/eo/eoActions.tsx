@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import { Modal, Card } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
-import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
+import { soLuong, ngay, ngayGio, ten, loiChuanTxt } from "../../lib/format";
 import { KHO_THEO_PHONG_BAN, STATUS_META } from "../../lib/nav";
 import { FILE_ACCEPT, checkFile, driveThumb, fileSize, isExcel, isImage, uploadEoFiles } from "../../lib/files";
 import { dailyTemplate, parseDailyFile, type Parsed } from "../../lib/planExcel";
@@ -13,7 +13,7 @@ import { exportRowsToXlsx } from "../../lib/exportXlsx";
 import { NGAY, NhanNgay, ChuGiaiNgay } from "../../lib/ngay";
 import { TN, Hoi, type KhoaTN } from "../../lib/thuatNgu";
 import { NgayHangVeModal } from "../theodoi/shared";
-import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa } from "../../lib/goiY";
+import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa, ChonLyDo } from "../../lib/goiY";
 
 /**
  * Cac thao tac xu ly EO dung chung cho trang Chi tiet EO va popup xem nhanh (components/quickview):
@@ -127,7 +127,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
       {issued && (
         <details style={{ background: "var(--panel-2)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, lineHeight: 1.55 }}>
           <summary style={{ cursor: "pointer" }}>
-            Mỗi dòng phải có <b>ngày dự kiến</b> trong 48 giờ làm việc sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
+            Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ (Karofi / Livotec / Korihome) hoặc 48 giờ làm việc (hãng khác) sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
             <a href={`/don-hang/ke-hoach-tuan?eo=${eo.id}`} onClick={(e) => e.stopPropagation()}>nhập theo tuần</a> <span className="muted">(bấm để xem vì sao)</span>
           </summary>
           Không nhập / quá ngày dự kiến mà chưa cập nhật → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng.
@@ -632,8 +632,8 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
         ghi_chu: note.trim() || undefined, crm_id: crm.trim() || undefined, order_id: order.trim() || undefined,
       });
       onSaved();
-    } catch {
-      setErr("Lỗi lưu dòng linh kiện.");
+    } catch (e: any) {
+      setErr(loiChuanTxt(e?.body) ?? "Lỗi lưu dòng linh kiện.");
       setBusy(false);
     }
   };
@@ -659,7 +659,7 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="SL_DAT" req /></label>
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="LY_DO_PS" /></label>
-      <input className="input" list={DL.lyDo} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập / chọn lý do" />
+      <ChonLyDo data={goiY.data} value={reason} onChange={setReason} />
       <label className="field-label" style={{ marginTop: 12 }}>Ghi chú</label>
       <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú..." />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
@@ -855,7 +855,7 @@ export function KetThucSomModal({ item, onClose, onDone }: { item: { id: number;
 }
 
 // ---------------------------------------------------------------- xuat Excel danh sach linh kien cua 1 EO
-const TT_THEO_DOI: Record<string, string> = { CHO_NDK: "Chờ ngày dự kiến", TRE_NDK: "Trễ 48h chưa có ngày DK", QUA_HAN_NDK: "Quá ngày dự kiến", CHO_HANG: "Chờ hàng", DONG: "Đã đóng" };
+const TT_THEO_DOI: Record<string, string> = { CHO_NDK: "Chờ ngày dự kiến", TRE_NDK: "Trễ hạn chưa có ngày DK", QUA_HAN_NDK: "Quá ngày dự kiến", CHO_HANG: "Chờ hàng", DONG: "Đã đóng" };
 /**
  * Tai file Excel: moi dong linh kien cua EO + thong tin EO + ke hoach (cac dot, ngay NM / du kien) + hang ve AMIS
  * + theo doi. Lay them /xem/eo/:id/bo-sung (phieu AMIS, theo doi) neu chua truyen vao.

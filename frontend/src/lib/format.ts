@@ -44,8 +44,28 @@ export function pct(v: number | string | null | undefined, digits = 1): string {
   return (n <= 1 && n >= -1 ? n * 100 : n).toFixed(digits) + "%";
 }
 
+/**
+ * Ten hien thi theo Gmail (2026-11-08): UU TIEN ho ten tren ETX nhan su (GET /users/ten, nap 1 lan o App truoc khi ve man),
+ * khong co moi hien Gmail (phan truoc @). Gmail phu cua 1 tai khoan hien ten tai khoan chinh.
+ */
+let TEN: Record<string, string> = {};
+export function datTenHienThi(m: Record<string, string>) { TEN = m; }
 export function ten(email: string | null | undefined): string {
   if (!email) return "";
-  const s = String(email);
+  const s = String(email).trim();
+  const t = TEN[s.toLowerCase()];
+  if (t) return t;
   return s.includes("@") ? s.split("@")[0] : s;
+}
+
+/** Thong bao loi 400 GIA_TRI_KHONG_CHUAN (doi tac / ly do PS ngoai danh muc chuan - backend lib/chuanHoa.ts). */
+export function loiChuanTxt(body: any): string | null {
+  if (body?.error !== "GIA_TRI_KHONG_CHUAN") return null;
+  const ds = (body.loi ?? []) as { loai: string; gia_tri: string }[];
+  const dt = ds.filter((x) => x.loai === "DOI_TAC").map((x) => `"${x.gia_tri}"`);
+  const ld = ds.filter((x) => x.loai === "LY_DO").map((x) => `"${x.gia_tri}"`);
+  return [
+    dt.length ? `Đối tác không có trong danh mục: ${dt.join(", ")} — chọn đối tác từ danh sách gợi ý (đối tác mới: nhờ Admin thêm ở Cài đặt › Danh mục).` : "",
+    ld.length ? `Lý do phát sinh không hợp lệ: ${ld.join(", ")} — chỉ chọn: Ký gửi, Đặt lần đầu, Kế hoạch tháng, Phát sinh.` : "",
+  ].filter(Boolean).join(" ");
 }

@@ -6,11 +6,11 @@ import { api } from "../../api/client";
 import { PageHeader, Spinner } from "../../components/ui";
 import { type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
-import { soLuong, ten } from "../../lib/format";
+import { soLuong, ten, loiChuanTxt } from "../../lib/format";
 import { PHONG_BAN, KHO_THEO_PHONG_BAN } from "../../lib/nav";
 import { readSheet, pick, str, parseNum, normKey, writeBook } from "../../lib/excel";
 import { FILE_ACCEPT, checkFile, fileSize, uploadEoFiles } from "../../lib/files";
-import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa } from "../../lib/goiY";
+import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa, ChonLyDo } from "../../lib/goiY";
 
 interface ItemRow {
   id?: number; part_code: string; part_name: string; warehouse: string; supplier: string;
@@ -213,7 +213,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         name: "Linh kien",
         rows: [
           ["Mã linh kiện", "Tên linh kiện", "Kho cần đặt", "Đối tác", "Số lượng", "Lý do PS", "Ghi chú", "ID CRM (mã ca)", "ID đặt hàng"],
-          ["VD-LK-001", "Dòng ví dụ - mã bắt đầu bằng VD- sẽ được bỏ qua", kho[0]?.ten_kho ?? "", "KRF", 10, "Bảo hành", "Giao trước 25/10", "T21689", ""],
+          ["VD-LK-001", "Dòng ví dụ - mã bắt đầu bằng VD- sẽ được bỏ qua", kho[0]?.ten_kho ?? "", "Karofi", 10, "Phát sinh", "Giao trước 25/10", "T21689", ""],
         ],
         widths: [18, 40, 24, 16, 10, 26, 30, 16, 16],
       },
@@ -271,7 +271,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       else await submitEdit(send);
     } catch (e: any) {
       const code = e?.body?.error;
-      setErr(code === "MISSING_REQUIRED_FIELDS" ? "Thiếu Loại hình / Phòng ban / Nội dung — bổ sung rồi gửi lại." : code || "Lỗi lưu EO.");
+      setErr(loiChuanTxt(e?.body) ?? (code === "MISSING_REQUIRED_FIELDS" ? "Thiếu Loại hình / Phòng ban / Nội dung — bổ sung rồi gửi lại." : code || "Lỗi lưu EO."));
       setBusy(false);
     }
   };
@@ -388,7 +388,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                         <td><input className="input" list={DL.doiTac} placeholder="Nhập / chọn đối tác" value={r.supplier} onChange={(e) => setItem(i, "supplier", e.target.value)} /></td>
                         <td><input className="input right" placeholder="Nhập SL" value={r.current_qty} onChange={(e) => setItem(i, "current_qty", e.target.value)} /></td>
                         <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.reason}>{r.reason || "—"}</span> : (
-                          <input className="input" list={DL.lyDo} placeholder="Nhập / chọn lý do" value={r.reason} onChange={(e) => setItem(i, "reason", e.target.value)} />
+                          <ChonLyDo data={goiY.data} value={r.reason} onChange={(v) => setItem(i, "reason", v)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập ghi chú..." value={r.ghi_chu} onChange={(e) => setItem(i, "ghi_chu", e.target.value)} /></td>
                         <td><input className="input" placeholder="Mã ca" value={r.crm_id} onChange={(e) => setItem(i, "crm_id", e.target.value)} /></td>

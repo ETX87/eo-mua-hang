@@ -76,7 +76,7 @@ export default function KeHoachTuan() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, fontSize: 12.5, lineHeight: 1.55, marginTop: 8 }}>
             <div><b>Khi nào dùng</b><br />Đơn <b>kế hoạch tháng</b> (vd KRF): nhà máy không báo ngày giao cụ thể, chỉ báo <b>mỗi tuần giao bao nhiêu</b>.
               Đơn thường (nhà máy báo ngày từng đợt) thì nhập <b>theo ngày</b> ở nút 📅 của từng dòng — không cần màn này.</div>
-            <div><b>Vì sao phải nhập</b><br />Sau ban hành mỗi dòng phải có ngày dự kiến trong 48 giờ làm việc; ô tuần được tính là ngày dự kiến = <b>Thứ Bảy</b> cuối tuần đó.
+            <div><b>Vì sao phải nhập</b><br />Sau ban hành mỗi dòng phải có ngày dự kiến trong 24 giờ (Karofi / Livotec / Korihome) hoặc 48 giờ làm việc (hãng khác); ô tuần được tính là ngày dự kiến = <b>Thứ Bảy</b> cuối tuần đó.
               Không nhập → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem để biết tuần nào có hàng.</div>
             <div><b>Nhập thế nào</b>
               <ol style={{ margin: "2px 0 0", paddingLeft: 18 }}>

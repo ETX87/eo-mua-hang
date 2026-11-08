@@ -39,3 +39,18 @@ export function GoiYDatalists({ data }: { data?: GoiYDong }) {
     </>
   );
 }
+
+/** 4 ly do phat sinh chuan (chot 2026-11-08, backend lib/chuanHoa + dm_chuan) - du phong khi chua tai danh muc. */
+export const LY_DO_CHUAN = ["Ký gửi", "Đặt lần đầu", "Kế hoạch tháng", "Phát sinh"];
+
+/** O chon Ly do PS: chi 4 gia tri chuan (khong go tu do). Gia tri cu ngoai danh sach (vd nhap tu Excel) hien kem "(chưa chuẩn)". */
+export function ChonLyDo({ value, onChange, data, className = "select", style }: { value: string; onChange: (v: string) => void; data?: GoiYDong; className?: string; style?: React.CSSProperties }) {
+  const ds = data?.ly_do?.length ? data.ly_do : LY_DO_CHUAN;
+  return (
+    <select className={className} style={style} value={value} onChange={(e) => onChange(e.target.value)} title="Lý do phát sinh: chỉ 4 giá trị chuẩn">
+      <option value="">Chọn lý do</option>
+      {ds.map((x) => <option key={x} value={x}>{x}</option>)}
+      {value && !ds.includes(value) && <option value={value}>{value} (chưa chuẩn — hệ thống tự quy đổi nếu nhận ra)</option>}
+    </select>
+  );
+}

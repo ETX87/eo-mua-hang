@@ -16,6 +16,7 @@ import Roles from "./pages/admin/Roles";
 import DanhMuc from "./pages/admin/DanhMuc";
 import SysConfig from "./pages/admin/SysConfig";
 import Pending from "./pages/Pending";
+import { datTenHienThi } from "./lib/format";
 
 /** Duong dan cu -> man moi, giu query string (link da gui / danh dau / Viec can xu ly cu khong chet). */
 function ChuyenHuong({ to, them }: { to: string; them?: string }) {
@@ -28,8 +29,12 @@ interface Me { email: string; ho_ten: string; vai_tro: string | null; trang_thai
 
 export default function App() {
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<Me>("/users/me") });
+  // ten hien thi (uu tien ten ETX) cho moi Gmail - lib/format ten(); nap truoc khi ve man de khong nhay Gmail -> ten
+  const daDuyet = me.data?.trang_thai_duyet === "Da duyet";
+  const tenQ = useQuery({ queryKey: ["users-ten"], queryFn: () => api.get<Record<string, string>>("/users/ten"), enabled: daDuyet, staleTime: 5 * 60_000 });
+  if (tenQ.data) datTenHienThi(tenQ.data);
 
-  if (me.isLoading) return <Spinner text="Đang tải hệ thống…" />;
+  if (me.isLoading || (daDuyet && tenQ.isLoading)) return <Spinner text="Đang tải hệ thống…" />;
   if (me.data && me.data.trang_thai_duyet !== "Da duyet") return <Pending me={me.data} />;
 
   return (
