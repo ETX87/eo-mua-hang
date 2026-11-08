@@ -20,6 +20,7 @@ import {
 import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
+import { Kho } from "../../lib/kho";
 
 /**
  * Popup xem nhanh 1 EO (95% man hinh). Du lieu: GET /eo/:id (goc) + GET /xem/eo/:id/bo-sung (theo doi, loi, giai trinh,
@@ -132,7 +133,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     if (!confirm(`Duyệt dòng ${r.part_code} (SL ${soLuong(r.current_qty)}) thêm sau ban hành?`)) return;
     setErr("");
     try { await api.post(`/eo/items/${r.id}/approve-post-issue`); qc.invalidateQueries(); }
-    catch (e: any) { setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt cuối của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
+    catch (e: any) { setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt mua của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
   };
   const loiCho = (b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").length;
   const k = khopTim(tim);
@@ -180,7 +181,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             <span>Người tạo <b>{ten(eo.created_by)}</b> · {ngayGio(eo.created_at)}</span>
             <span>Phòng ban <b>{eo.phong_ban || "—"}</b></span>
             <span>Loại hình <b>{eo.loai_hinh || "—"}</b></span>
-            <span>Duyệt cuối <b>{ten(eo.final_approver_email)}</b></span>
+            <span>Duyệt mua <b>{ten(eo.final_approver_email)}</b></span>
             {eo.issued_at && <span>Ban hành <b>{ngayGio(eo.issued_at)}</b></span>}
             {eo.cancelled_at && <span style={{ color: "var(--danger-ink)" }}>Hủy {ngayGio(eo.cancelled_at)}{eo.cancel_reason ? ` — ${eo.cancel_reason}` : ""}</span>}
           </div>
@@ -244,7 +245,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                         <td className="muted">{i + 1}</td>
                         <td style={{ whiteSpace: "nowrap" }}><PartLink ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}<div style={{ marginLeft: -6 }}><NhanSauBH r={r} nguoiDuyet={eo.final_approver_email} /></div></td>
                         <td><Clip w={170}>{r.part_name}</Clip></td>
-                        <td><Clip w={140}>{r.warehouse}</Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.supplier || "—"}</Clip></td>
+                        <td><Clip w={140}><Kho t={r.warehouse} /></Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.supplier || "—"}</Clip></td>
                         <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td>
                         <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</td>
                         <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.chua_dat)}</td>
@@ -284,7 +285,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                     {s.note && <div className="muted" style={{ fontSize: 12 }}>{s.note}</div>}
                     {d.approvals.filter((a: any) => a.submission_id === s.id).map((a: any) => (
                       <div key={a.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, marginTop: 6 }}>
-                        <span className="badge nhap">{a.step_type === "FINAL" ? "Duyệt cuối" : "Thẩm định"}</span>
+                        <span className="badge nhap">{a.step_type === "FINAL" ? "Duyệt mua trên hệ thống" : "Thẩm định"}</span>
                         <b>{ten(a.approver_email)}</b>
                         <span className={`badge ${APR[a.status]?.c ?? "nhap"}`}>{APR[a.status]?.l ?? a.status}</span>
                         <span className="muted">{a.action_at ? ngayGio(a.action_at) : `giao ${ngayGio(a.assigned_at)}`}</span>

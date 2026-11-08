@@ -123,7 +123,7 @@ export default function SysConfig() {
 
 /** Han xu ly (gio LAM VIEC, bo Chu nhat) cua 8 giai doan don hang - backend lib/giaiDoan.ts doc app_settings 'giai_doan_sla'. */
 const GD_SLA: { k: string; l: string; md: number }[] = [
-  { k: "G1", l: "G1 Lập & trình EO", md: 24 }, { k: "G2", l: "G2 Thẩm định", md: 24 }, { k: "G3", l: "G3 Duyệt cuối & ban hành", md: 24 },
+  { k: "G1", l: "G1 Lập & trình EO", md: 24 }, { k: "G2", l: "G2 Thẩm định", md: 24 }, { k: "G3", l: "G3 Duyệt mua & ban hành", md: 24 },
   { k: "G4", l: "G4 Gửi đơn NCC (mail)", md: 24 }, { k: "G5", l: "G5 Có ngày dự kiến", md: 24 }, { k: "G7", l: "G7 Nhập kho & lên hệ thống", md: 24 },
   { k: "G8", l: "G8 Giao bù đến đủ", md: 168 },
 ];

@@ -13,6 +13,7 @@ import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, EoLink, useQuickView } from "./QuickView";
 import { quyenEo, QtyModal } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
+import { Kho } from "../../lib/kho";
 
 /**
  * Popup xem nhanh theo MA LINH KIEN (95% man hinh): moi dong EO dat ma nay (ke ca ma goc truoc khi thay ma), phieu nhap
@@ -145,7 +146,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                   {tk.theoKho.length === 0 && <tr><td colSpan={9} className="muted">Chưa có đơn đặt / phiếu nhập cho mã này.</td></tr>}
                   {tk.theoKho.filter(khopTim(tim)).map((k) => (
                     <tr key={k.kho}>
-                      <td><Clip w={200}>{k.kho}</Clip></td>
+                      <td><Clip w={200}><Kho t={k.kho} /></Clip></td>
                       <td style={{ textAlign: "right" }}>{soLuong(k.so_dong)}</td>
                       <td style={{ textAlign: "right" }}>{soLuong(k.sl_dat)}</td>
                       <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(k.sl_ve)}</td>
@@ -179,7 +180,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                       <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_tao)}</td>
                       <td style={{ whiteSpace: "nowrap" }}><EoLink id={r.eo_id}>{r.eo_code}</EoLink><div className="muted" style={{ fontSize: 10.5 }}>{r.ma_phe_duyet || "chưa ban hành"}{r.part_code_goc ? ` · ${r.part_code_goc} → ${r.part_code}` : ""}</div></td>
                       <td><StatusBadge status={r.trang_thai_eo} /></td>
-                      <td><Clip w={140}>{r.kho}</Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.doi_tac || "—"}</Clip></td>
+                      <td><Clip w={140}><Kho t={r.kho} /></Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.doi_tac || "—"}</Clip></td>
                       <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)}</td>
                       <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo)}</td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.so_luong_con_thieu)}</td>
@@ -200,7 +201,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                   {d.phieu_nhap.length === 0 && <tr><td colSpan={6} className="muted">Chưa có phiếu nhập AMIS cho mã này.</td></tr>}
                   {d.phieu_nhap.filter(khopTim(tim)).map((r: any) => (
                     <tr key={r.id} style={{ opacity: r.voided_at ? 0.45 : 1 }}>
-                      <td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={200}>{r.warehouse_name}</Clip></td>
+                      <td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={200}><Kho t={r.warehouse_name} /></Clip></td>
                       <td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td><td>{r.approval_code_raw}</td>
                       <td>{r.voided_at ? <span className="badge nhap">Đã hủy</span> : r.eo_id ? <EoLink id={r.eo_id}>{r.eo_code}</EoLink>
                         : <span className={`badge ${r.match_status === "CODE_ONLY_NO_LINE" ? "final" : "nhap"}`}>{r.match_status === "CODE_ONLY_NO_LINE" ? "Có mã, không khớp dòng" : "Không khớp"}</span>}</td>

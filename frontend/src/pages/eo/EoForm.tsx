@@ -10,7 +10,8 @@ import { soLuong, ten, loiChuanTxt } from "../../lib/format";
 import { PHONG_BAN, KHO_THEO_PHONG_BAN } from "../../lib/nav";
 import { readSheet, pick, str, parseNum, normKey, writeBook } from "../../lib/excel";
 import { FILE_ACCEPT, checkFile, fileSize, uploadEoFiles } from "../../lib/files";
-import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa, ChonLyDo } from "../../lib/goiY";
+import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa, ChonLyDo, LY_DO_CHUAN } from "../../lib/goiY";
+import { khoGon } from "../../lib/kho";
 
 interface ItemRow {
   id?: number; part_code: string; part_name: string; warehouse: string; supplier: string;
@@ -52,7 +53,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
   const [finalApprover, setFinalApprover] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [importMsg, setImportMsg] = useState<{ ok: number; errs: string[] } | null>(null);
+  const [importMsg, setImportMsg] = useState<{ ok: number; errs: string[]; canhBao?: string[] } | null>(null);
   const [importedFromExcel, setImportedFromExcel] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileErrs, setFileErrs] = useState<string[]>([]);
@@ -218,6 +219,30 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         widths: [18, 40, 24, 16, 10, 26, 30, 16, 16],
       },
       { name: "Danh sach kho", rows: [["Tên kho (ghi đúng vào cột Kho cần đặt)", "Mã kho"], ...kho.map((k: any) => [k.ten_kho, k.ma_kho ?? ""])], widths: [40, 12] },
+      {
+        // 2026-11-08: lua chon co dinh + nhac chon dung loai hinh; nhap sai -> man hinh canh bao khi import
+        name: "Huong dan",
+        rows: [
+          ["HƯỚNG DẪN NHẬP FILE LINH KIỆN EO", ""],
+          ["", ""],
+          ["Cột", "Cách nhập"],
+          ["Mã linh kiện *", "Bắt buộc. Dòng có mã bắt đầu bằng VD- (dòng ví dụ) được bỏ qua."],
+          ["Kho cần đặt *", "Ghi đúng tên kho hoặc mã kho ở sheet \"Danh sach kho\" (phòng ban kho vận tự gán kho)."],
+          ["Đối tác", "CHỌN trong danh sách đối tác chuẩn bên dưới. Viết tắt quen thuộc (KRF, LVT…) hệ thống tự đổi về tên chuẩn. Đối tác chưa có → khi nhập file sẽ hỏi lại có chắc thêm đối tác mới không."],
+          ["Số lượng *", "Số > 0."],
+          ["Lý do PS", "CHỈ 1 trong 4 giá trị bên dưới. Giá trị khác sẽ bị để trống và nhắc chọn lại."],
+          ["", ""],
+          ["LÝ DO PHÁT SINH (chỉ 4 giá trị)", ""],
+          ...LY_DO_CHUAN.map((x) => [x, ""]),
+          ["", ""],
+          ["ĐỐI TÁC CHUẨN", ""],
+          ...(goiY.data?.doi_tac ?? []).map((x) => [x, ""]),
+          ["", ""],
+          ["LOẠI HÌNH EO (chọn ở form EO — chọn ĐÚNG loại hình theo ý nghĩa)", "Ý nghĩa (loại hình cấp 2)"],
+          ...(cats.data ?? []).map((c: any) => [c.code, c.cap2 ?? ""]),
+        ],
+        widths: [46, 90],
+      },
     ]);
   };
   const onImportFile = async (file: File) => {
@@ -231,6 +256,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     }
     const ok: ItemRow[] = [];
     const errs: string[] = [];
+    const canhBao: string[] = []; // nhac nho doi tac / ly do (dong van duoc them)
     for (const r of rows) {
       const pc = str(pick(r, "Mã linh kiện", "Mã LK", "Mã hàng", "Part code"));
       const khoRaw = str(pick(r, "Kho cần đặt", "Kho"));
@@ -247,11 +273,40 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         crm_id: str(pick(r, "ID CRM (mã ca)", "ID CRM", "Mã ca")), order_id: str(pick(r, "ID đặt hàng", "Mã đơn đặt hàng")),
       });
     }
+    // Doi tac / ly do PS: quy ve gia tri chuan (POST /danh-muc/chuan/kiem-tra). Ly do sai -> de trong + nhac; doi tac moi -> hoi them.
     if (ok.length) {
+      try {
+        const kt = await api.post<{ doi_tac: Record<string, string | null>; ly_do: Record<string, string | null> }>("/danh-muc/chuan/kiem-tra", {
+          doi_tac: ok.map((x) => x.supplier), ly_do: ok.map((x) => x.reason),
+        });
+        const ldSai = new Set<string>();
+        for (const x of ok) {
+          if (x.reason.trim()) {
+            const v = kt.ly_do[x.reason.trim()];
+            if (v) x.reason = v; else { ldSai.add(x.reason.trim()); x.reason = ""; }
+          }
+          if (x.supplier.trim() && kt.doi_tac[x.supplier.trim()]) x.supplier = kt.doi_tac[x.supplier.trim()]!;
+        }
+        if (ldSai.size) canhBao.push(`⚠ Lý do PS không hợp lệ: ${[...ldSai].map((v) => `"${v}"`).join(", ")} — đã để trống, chọn lại 1 trong 4: ${LY_DO_CHUAN.join(" / ")}.`);
+        const moi = [...new Set(ok.map((x) => x.supplier.trim()).filter((v) => v && kt.doi_tac[v] === null))];
+        if (moi.length) {
+          const dong = (v: string) => ok.filter((x) => x.supplier.trim() === v).length;
+          if (confirm(`Đối tác CHƯA CÓ trong hệ thống:\n${moi.map((v) => `• ${v} (${dong(v)} dòng)`).join("\n")}\n\nBạn có chắc chắn muốn THÊM đối tác mới?\n(Kiểm tra kỹ có phải viết sai tên đối tác đã có không — vd KRF = Karofi.)\nOK = thêm mới · Hủy = để trống cột đối tác các dòng này để chọn lại`)) {
+            for (const v of moi) {
+              const r = await api.post<{ ten: string }>("/danh-muc/chuan/doi-tac-moi", { ten: v });
+              ok.forEach((x) => { if (x.supplier.trim() === v) x.supplier = r.ten; });
+            }
+            canhBao.push(`Đã thêm đối tác mới: ${moi.join(", ")}.`);
+          } else {
+            ok.forEach((x) => { if (moi.includes(x.supplier.trim())) x.supplier = ""; });
+            canhBao.push(`⚠ Đối tác chưa có (${moi.join(", ")}) — đã để trống, chọn lại từ danh sách.`);
+          }
+        }
+      } catch { canhBao.push("⚠ Không kiểm tra được đối tác / lý do theo danh mục — kiểm tra lại trước khi lưu."); }
       setItems((rs) => [...rs.filter((x) => x.id != null || x.part_code.trim() || x.current_qty.trim()), ...ok]);
       setImportedFromExcel(true);
     }
-    setImportMsg({ ok: ok.length, errs });
+    setImportMsg({ ok: ok.length, errs, canhBao });
   };
 
   const submit = async (send: boolean) => {
@@ -259,7 +314,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     const its = payloadItems();
     if (!tieuDe.trim()) return setErr("Nhập tiêu đề.");
     if (its.length === 0) return setErr("EO phải có ít nhất 1 dòng linh kiện.");
-    if (!finalApprover) return setErr("Chọn người duyệt cuối.");
+    if (!finalApprover) return setErr("Chọn người duyệt mua.");
     if (send) {
       if (!loaiHinh) return setErr(cats.data?.length ? "Chọn loại hình." : "Chưa có danh mục Loại hình EO — Admin cần thêm ở Cài đặt › Danh mục.");
       if (!phongBan) return setErr("Chọn phòng ban.");
@@ -267,8 +322,19 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     }
     setBusy(true);
     try {
-      if (mode === "create") await submitCreate(send);
-      else await submitEdit(send);
+      try {
+        if (mode === "create") await submitCreate(send);
+        else await submitEdit(send);
+      } catch (e: any) {
+        // doi tac moi go tay (chua co trong danh muc chuan) -> xac nhan them roi luu lai; ly do sai van bao loi
+        const loi = (e?.body?.error === "GIA_TRI_KHONG_CHUAN" ? e.body.loi : []) as { loai: string; gia_tri: string }[];
+        const moi = loi.filter((x) => x.loai === "DOI_TAC").map((x) => x.gia_tri);
+        if (!moi.length || loi.some((x) => x.loai === "LY_DO")) throw e;
+        if (!confirm(`Đối tác CHƯA CÓ trong hệ thống: ${moi.join(", ")}.\nBạn có chắc chắn muốn THÊM đối tác mới? (kiểm tra có phải viết sai tên đối tác đã có không)`)) throw e;
+        for (const v of moi) await api.post("/danh-muc/chuan/doi-tac-moi", { ten: v });
+        if (mode === "create") await submitCreate(send);
+        else await submitEdit(send);
+      }
     } catch (e: any) {
       const code = e?.body?.error;
       setErr(loiChuanTxt(e?.body) ?? (code === "MISSING_REQUIRED_FIELDS" ? "Thiếu Loại hình / Phòng ban / Nội dung — bổ sung rồi gửi lại." : code || "Lỗi lưu EO."));
@@ -308,14 +374,14 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       {copyId && (
         <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12, color: "#1E3A8A" }}>
           {copyQ.isLoading ? "Đang lấy thông tin EO nguồn…" : copyQ.isError ? "Không lấy được EO nguồn — nhập thông tin như tạo mới." : <>
-            Copy từ <b>{copyQ.data?.eo?.approval_code || copyQ.data?.eo?.eo_code}</b>: đã điền sẵn tiêu đề, nội dung, loại hình, phòng ban, người thẩm định &amp; người duyệt cuối — sửa lại nếu cần.
+            Copy từ <b>{copyQ.data?.eo?.approval_code || copyQ.data?.eo?.eo_code}</b>: đã điền sẵn tiêu đề, nội dung, loại hình, phòng ban, người thẩm định &amp; người duyệt mua — sửa lại nếu cần.
             Danh sách linh kiện <b>không được chép</b>: nhập hoặc import Excel ở mục 2.
           </>}
         </div>
       )}
       {noReviewer && (
         <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, color: "#92400E" }}>
-          Không chọn thẩm định → gửi thẳng người duyệt cuối.
+          Không chọn thẩm định → gửi thẳng người duyệt mua.
         </div>
       )}
       {err && <div style={{ color: "var(--danger)", marginBottom: 12, fontSize: 13 }}>{err}</div>}
@@ -333,8 +399,10 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           <select className="select" value={loaiHinh} onChange={(e) => setLoaiHinh(e.target.value)}>
             <option value="">Chọn loại hình</option>
             {loaiHinh && !(cats.data ?? []).some((c) => c.code === loaiHinh) && <option value={loaiHinh}>{loaiHinh}</option>}
-            {(cats.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.ten && c.ten !== c.code ? `${c.code} — ${c.ten}` : c.code}</option>)}
+            {(cats.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.ten && c.ten !== c.code ? `${c.code} — ${c.ten}` : c.code}{c.cap2 ? ` · ${c.cap2}` : ""}</option>)}
           </select>
+          {/* y nghia loai hinh = loai hinh cap 2 trong Cai dat - nhac chon dung loai hinh */}
+          {(() => { const c = (cats.data ?? []).find((x) => x.code === loaiHinh); return c?.cap2 ? <div style={{ fontSize: 12, marginTop: 4, color: "var(--link-amber)" }}>Ý nghĩa: <b>{c.cap2}</b></div> : null; })()}
           {cats.data && cats.data.length === 0 && (
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Chưa có danh mục Loại hình — Admin thêm ở Cài đặt › Danh mục.</div>
           )}
@@ -377,7 +445,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                           <input className="input" list={DL.lk} placeholder="Nhập / chọn mã LK" value={r.part_code} onChange={(e) => setPartCode(i, e.target.value)} />
                         )}</td>
                         <td><input className="input" placeholder="Nhập tên linh kiện" value={r.part_name} onChange={(e) => setItem(i, "part_name", e.target.value)} /></td>
-                        <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.warehouse}>{r.warehouse}</span> : khoMacDinh ? (
+                        <td>{existing ? <span className="clip" style={{ display: "block" }} title={r.warehouse}>{khoGon(r.warehouse)}</span> : khoMacDinh ? (
                           <span className="clip" style={{ display: "block", fontSize: 12.5 }} title={`Theo phòng ban ${phongBan}: ${khoMacDinh}`}>{khoMacDinh}</span>
                         ) : (
                           <select className="select" title={r.warehouse} value={r.warehouse} onChange={(e) => setItem(i, "warehouse", e.target.value)}>
@@ -410,7 +478,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
               <span className="badge nhap" style={{ fontSize: 13, marginLeft: "auto" }}>{items.filter((r) => r.part_code.trim()).length} dòng · Tổng SL: {soLuong(tongSL)}</span>
             </div>
             {importMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 8, background: importMsg.errs.length ? "#FEF3C7" : "#DCFCE7" }}>
+              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 8, background: importMsg.errs.length || importMsg.canhBao?.length ? "#FEF3C7" : "#DCFCE7" }}>
                 Đã thêm <b>{importMsg.ok}</b> dòng từ Excel{importMsg.errs.length ? `, bỏ qua ${importMsg.errs.length} dòng lỗi:` : "."}
                 {importMsg.errs.length > 0 && (
                   <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
@@ -418,6 +486,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                     {importMsg.errs.length > 15 && <li>… và {importMsg.errs.length - 15} dòng khác</li>}
                   </ul>
                 )}
+                {(importMsg.canhBao ?? []).map((x) => <div key={x} style={{ marginTop: 6, fontWeight: 600, color: x.startsWith("⚠") ? "var(--danger-ink)" : undefined }}>{x}</div>)}
               </div>
             )}
           </div>
@@ -445,9 +514,9 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 )}
               </div>
               <div>
-                <label className="field-label">Người duyệt cuối <span className="req">*</span></label>
+                <label className="field-label" title="Bước duyệt mua trên hệ thống (trước đây gọi là duyệt cuối)">Người duyệt mua <span className="req">*</span></label>
                 <select className="select" value={finalApprover} onChange={(e) => setFinalApprover(e.target.value)}>
-                  <option value="">Chọn người duyệt cuối</option>
+                  <option value="">Chọn người duyệt mua</option>
                   {userOpts.map((u) => <option key={u} value={u}>{tenNguoi(u)}</option>)}
                 </select>
               </div>
@@ -481,7 +550,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
             <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Chọn tệp đính kèm</button>
             <input ref={fileRef} type="file" multiple accept={FILE_ACCEPT} hidden onChange={(e) => { onPickFiles(e.target.files); e.target.value = ""; }} />
             <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              Tệp được tải lên khi bấm Lưu nháp / Gửi trình duyệt và ghi vào lịch sử EO. Người thẩm định, duyệt cuối xem ở tab "Tài liệu đính kèm".
+              Tệp được tải lên khi bấm Lưu nháp / Gửi trình duyệt và ghi vào lịch sử EO. Người thẩm định, duyệt mua xem ở tab "Tài liệu đính kèm".
             </div>
             {fileErrs.length > 0 && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 6 }}>{fileErrs.join(" · ")}</div>}
           </div>

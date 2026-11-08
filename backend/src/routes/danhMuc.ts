@@ -8,6 +8,7 @@ import { nowVN } from "../lib/vnTime";
 import { cachedReport } from "../lib/reportCache";
 import { khoa, layBoChuan, chuan, type LoaiChuan } from "../lib/chuanHoa";
 import { eventStmt } from "../lib/audit";
+import { canCreateEo } from "../lib/eoAccess";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -62,6 +63,34 @@ app.get("/chuan", requireAdmin, async (c) => {
     return { dung, chua: chua.sort((a, b) => b.so_dong - a.so_dong) };
   };
   return c.json({ danh_muc: ds.results, bi_danh: bd.results, DOI_TAC: dem("DOI_TAC", dt.results), LY_DO: dem("LY_DO", ld.results) });
+});
+
+// POST /chuan/kiem-tra { doi_tac?: string[], ly_do?: string[] } -> { doi_tac: {gia_tri: ten_chuan|null}, ly_do: {...} }
+// Kiem tra truoc khi import Excel dong linh kien (FE EoForm): bi danh -> ten chuan, null = khong nhan ra (moi ai dung form EO).
+app.post("/chuan/kiem-tra", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { doi_tac?: string[]; ly_do?: string[] };
+  const bo = await layBoChuan(c.env.DB);
+  const kt = (loai: LoaiChuan, ds?: string[]) =>
+    Object.fromEntries([...new Set((ds ?? []).map((x) => String(x ?? "").trim()).filter(Boolean))].slice(0, 500).map((v) => [v, chuan(bo, loai, v) ?? null]));
+  return c.json({ doi_tac: kt("DOI_TAC", b.doi_tac), ly_do: kt("LY_DO", b.ly_do) });
+});
+
+// POST /chuan/doi-tac-moi { ten } - nguoi tao EO xac nhan "them doi tac moi" khi nhap / import (2026-11-08). Trung ten / bi danh
+// -> tra ten chuan san co (khong them). Ly do PS co dinh 4 gia tri - khong co duong them.
+app.post("/chuan/doi-tac-moi", async (c) => {
+  const u = c.get("user");
+  if (!canCreateEo(u) && u.vai_tro !== "Admin") return c.json({ error: "FORBIDDEN" }, 403);
+  const ten = String(((await c.req.json().catch(() => ({}))) as { ten?: string }).ten ?? "").trim().replace(/\s+/g, " ");
+  if (!ten || ten.length > 80 || !khoa(ten)) return c.json({ error: "BAD_INPUT" }, 400);
+  const db = c.env.DB;
+  const co = chuan(await layBoChuan(db), "DOI_TAC", ten);
+  if (co) return c.json({ ok: true, ten: co, da_co: true });
+  await db.batch([
+    db.prepare("INSERT INTO dm_chuan (loai, ten, thu_tu) VALUES ('DOI_TAC', ?, (SELECT COALESCE(MAX(thu_tu), 0) + 1 FROM dm_chuan WHERE loai = 'DOI_TAC')) ON CONFLICT(loai, ten) DO UPDATE SET active = 1").bind(ten),
+    eventStmt(db, { entity_type: "danh_muc", entity_id: 0, eo_id: null, event_type: "THEM_DOI_TAC", user_email: u.email, after: { ten } }),
+  ]);
+  await bumpVersions(db, ["settings"]);
+  return c.json({ ok: true, ten, da_co: false });
 });
 
 // ---- ghi: Admin ----

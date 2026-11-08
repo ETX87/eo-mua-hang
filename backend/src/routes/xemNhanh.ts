@@ -76,9 +76,9 @@ app.get("/eo/:id/bo-sung", async (c) => {
   }
   for (const a of choDuyet.results) {
     const d = ngayGiua(a.assigned_at, now);
-    cb.push({ muc: d >= 2 ? "warn" : "info", text: `Chờ ${a.step_type === "FINAL" ? "duyệt cuối" : "thẩm định"}: ${a.approver_email} (${d > 0 ? `${d} ngày` : "hôm nay"})` });
+    cb.push({ muc: d >= 2 ? "warn" : "info", text: `Chờ ${a.step_type === "FINAL" ? "duyệt mua" : "thẩm định"}: ${a.approver_email} (${d > 0 ? `${d} ngày` : "hôm nay"})` });
   }
-  if (postIssue?.n) cb.push({ muc: "warn", text: `${postIssue.n} dòng thêm sau ban hành đang chờ người duyệt cuối duyệt` });
+  if (postIssue?.n) cb.push({ muc: "warn", text: `${postIssue.n} dòng thêm sau ban hành đang chờ người duyệt mua duyệt` });
   const dem = (f: (r: any) => boolean) => td.filter(f).length;
   const tre = dem((r) => r.ap_dung && r.tinh_trang === "TRE_NDK");
   const cho = dem((r) => r.ap_dung && r.tinh_trang === "CHO_NDK");

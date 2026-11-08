@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import { PageHeader, Card, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { soLuong, pct } from "../../lib/format";
+import { Kho } from "../../lib/kho";
 
 /** nhung = hien trong tab Bao cao cua Quan ly don hang (khong PageHeader rieng). */
 export default function ReportTuan({ nhung }: { nhung?: boolean }) {
@@ -15,7 +16,7 @@ export default function ReportTuan({ nhung }: { nhung?: boolean }) {
   const cols: Col<any>[] = [
     { key: "idlk", header: "ID ĐẶT LK", render: (r) => r.id_dat_lk },
     { key: "eo", header: "Mã EO", render: (r) => r.ma_eo },
-    { key: "kho", header: "Kho", render: (r) => r.kho },
+    { key: "kho", header: "Kho", render: (r) => <Kho t={r.kho} /> },
     { key: "pc", header: "Mã linh kiện", render: (r) => r.part_code },
     { key: "pn", header: "Tên linh kiện", render: (r) => r.part_name },
     { key: "gcnm", header: "Ghi chú nhà máy", render: (r) => r.ghi_chu_nha_may || "" },

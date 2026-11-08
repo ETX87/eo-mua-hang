@@ -161,7 +161,7 @@ app.post("/:id/act", async (c) => {
         eventStmt(c.env.DB, { entity_type: "eo_approval", entity_id: aid, eo_id: eoId, event_type: "REJECT_FINAL", user_email: u.email, at: now, metadata: { comment: b.comment ?? null } }),
       );
       if (a.eo_created_by !== u.email) {
-        stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "rejected", noi_dung: `EO ${a.eo_code} bị từ chối (duyệt cuối)${b.comment ? ": " + b.comment : ""}`, eo_id: eoId, at: now }));
+        stmts.push(notifyStmt(c.env.DB, { email: a.eo_created_by, loai: "rejected", noi_dung: `EO ${a.eo_code} bị từ chối (duyệt mua)${b.comment ? ": " + b.comment : ""}`, eo_id: eoId, at: now }));
       }
       await c.env.DB.batch(stmts);
       await bumpVersions(c.env.DB, ["eo"]);

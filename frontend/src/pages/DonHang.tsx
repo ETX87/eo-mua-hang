@@ -21,6 +21,7 @@ import { KeHoachExcelModal } from "./donhang/KeHoachExcelModal";
 import BaoCaoGiaiDoan from "./reports/BaoCaoGiaiDoan";
 import ReportTuan from "./reports/ReportTuan";
 import ReportLuyKe from "./reports/ReportLuyKe";
+import { Kho, khoGon } from "../lib/kho";
 
 /**
  * "LK đặt" (/don-hang, truoc la "Quan ly don hang"): MOI dong linh kien tren EO (moi trang thai) - 1 man cho ca xem lan thao tac.
@@ -58,12 +59,12 @@ function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Rec
     { k: "loai_hinh", l: "Loại hình", nhom: "EO", get: (r) => r.loai_hinh, maxW: 130 },
     { k: "phong_ban", l: "Phòng ban", nhom: "EO", get: (r) => r.phong_ban, maxW: 120 },
     { k: "nguoi_tao", l: "Người tạo EO", nhom: "EO", get: (r) => r.nguoi_tao, render: (r) => ten(r.nguoi_tao) },
-    { k: "nguoi_duyet_cuoi", l: "Người duyệt cuối", nhom: "EO", get: (r) => r.nguoi_duyet_cuoi, render: (r) => ten(r.nguoi_duyet_cuoi) },
+    { k: "nguoi_duyet_cuoi", l: "Người duyệt mua", nhom: "EO", get: (r) => r.nguoi_duyet_cuoi, render: (r) => ten(r.nguoi_duyet_cuoi) },
     { k: "ngay_ban_hanh", l: "Ngày ban hành", nhom: "EO", get: (r) => ngay(r.ngay_ban_hanh) },
     // ---- dong linh kien
     { k: "part_code", l: "Mã linh kiện", nhom: "Linh kiện", get: (r) => r.part_code, render: (r) => <><PartLink ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}</> },
     { k: "part_name", l: "Tên linh kiện", nhom: "Linh kiện", get: (r) => r.part_name, maxW: 200 },
-    { k: "kho", l: "Kho", nhom: "Linh kiện", get: (r) => r.kho, maxW: 150 },
+    { k: "kho", l: "Kho", nhom: "Linh kiện", get: (r) => r.kho, render: (r) => <Kho t={r.kho} />, maxW: 150 },
     { k: "doi_tac", l: "Đối tác (NCC)", nhom: "Linh kiện", get: (r) => r.doi_tac, maxW: 120 },
     { k: "so_luong_dat", l: "SL đặt", nhom: "Linh kiện", get: (r) => r.so_luong_dat, render: (r) => soLuong(r.so_luong_dat), align: "right" },
     { k: "don_gia", l: "Đơn giá dự kiến", nhom: "Linh kiện", get: (r) => r.don_gia_du_kien, render: (r) => r.don_gia_du_kien != null ? soLuong(r.don_gia_du_kien) : "", align: "right" },
@@ -121,7 +122,7 @@ const LOC_COT: Record<string, LocMot> = {
   nguoi_tao: { loc: "chon", nhan: (v) => ten(v) }, nguoi_duyet_cuoi: { loc: "chon", nhan: (v) => ten(v) },
   ngay_ban_hanh: { loc: "ngay", gt: (r) => r.ngay_ban_hanh },
   part_code: { loc: "chu", gt: (r) => `${r.part_code ?? ""} ${r.part_code_goc ?? ""}` }, part_name: { loc: "chu" },
-  kho: { loc: "chon" }, doi_tac: { loc: "chon" }, so_luong_dat: { loc: "so" }, don_gia: { loc: "so" },
+  kho: { loc: "chon", nhan: (v) => (khoGon(v) !== v ? `${khoGon(v)} — ${v}` : v) }, doi_tac: { loc: "chon" }, so_luong_dat: { loc: "so" }, don_gia: { loc: "so" },
   ly_do_ps: { loc: "chon" }, ghi_chu: { loc: "chu" }, id_crm: { loc: "chu" }, id_dat_hang: { loc: "chu" }, id_dat_lk: { loc: "chu" },
   phan_loai: { loc: "chon" }, ngay_tao: { loc: "ngay", gt: (r) => r.ngay_tao },
   trang_thai_don_hang: { loc: "chon" }, canh_bao: { loc: "chon" },

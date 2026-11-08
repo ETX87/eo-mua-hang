@@ -9,6 +9,7 @@ import { Hoi } from "../lib/thuatNgu";
 import { soLuong, ngay } from "../lib/format";
 import { nextWeeks, todayISO, weekSat, weekStartOf } from "../lib/excel";
 import { maPO, parseWeeklyFile, weeklyTemplate, type Parsed, type PlanLine } from "../lib/planExcel";
+import { Kho } from "../lib/kho";
 
 /**
  * Ke hoach hang ve THEO TUAN - danh cho don ke hoach thang cua KRF: moi linh kien chia SL theo tuan
@@ -223,7 +224,7 @@ function WeekGrid({ eoId, lines, plans, onSaved }: { eoId: number; lines: PlanLi
                 <tr key={l.id} style={{ background: e ? "#FEF2F2" : undefined }} title={e}>
                   <td><b>{l.part_code}</b>{l.part_code_goc && <div className="muted" style={{ fontSize: 11 }}>thay từ {l.part_code_goc}</div>}</td>
                   <td style={{ maxWidth: 220 }}>{l.part_name}{l.ghi_chu && <div className="muted" style={{ fontSize: 11 }}>Ghi chú: {l.ghi_chu}</div>}</td>
-                  <td>{l.warehouse}</td>
+                  <td><Kho t={l.warehouse} /></td>
                   <td style={{ textAlign: "right" }}>{soLuong(l.current_qty)}</td>
                   <td style={{ textAlign: "right" }}>{soLuong(l.da_ve)}</td>
                   <td style={{ textAlign: "right" }}>{soLuong(khNgay(l))}</td>

@@ -289,6 +289,19 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - **R1 24h**: đối tác nhóm Karofi/KRF, Livotec/LVT, Korihome/KRH (`laNhomR1_24h`) hạn ngày dự kiến 24h làm việc, hãng khác 48h — chỉ dòng bắt
   đầu từ `app_settings.r1_24h_tu` (2026-11-08), dòng cũ giữ 48h (không ghi lỗi hồi tố). `DongTheoDoi.gio_r1`; cache `tl:goc-theo-doi:v5`.
 
+## v0.067 (2026-11-08)
+
+- **"Duyệt cuối" đổi tên "Duyệt mua"** (bước "Duyệt mua trên hệ thống") ở mọi nhãn UI / thông báo; mã nội bộ vẫn `FINAL`, `final_approver_email`.
+- **Kho hiển thị rút gọn** `lib/kho.tsx` (`khoGon`, `<Kho t>`): mã kho ở Danh mục › Kho, không có mã giữ tên gốc; dữ liệu / lọc / Excel vẫn tên đầy đủ.
+- **Ý nghĩa loại hình** `lib/loaiHinh.ts` = `settings_eo_category.cap2`: dòng nhỏ dưới `TypeBadge`, trong ô chọn + dòng "Ý nghĩa" ở form EO.
+  App nạp 1 lần (`dm-kho`, `dm-loaihinh`) như tên người dùng.
+- **Lỗi sau khi hàng về bỏ qua** (`lib/theoDoi.ts`): `ngay_ve_dau` = ngày chứng từ AMIS lần về đầu tiên (kể cả về thiếu). Không ghi R1/R3/R4
+  có hạn từ ngày đó; `danhGiaQuyTac` tự xoá lỗi R1/R3/R4 ĐANG CHỜ có `han` >= ngày về đầu (cả dòng đã đóng — AMIS nhập muộn), event
+  `XOA_LOI_THEO_DOI`. Cache `tl:goc-theo-doi:v6`.
+- **File mẫu import EO** có sheet "Huong dan" (4 lý do PS, đối tác chuẩn, loại hình + ý nghĩa). Import gọi `POST /danh-muc/chuan/kiem-tra`
+  (bí danh → chuẩn, lý do sai → để trống + nhắc); đối tác chưa có → hỏi "chắc chắn thêm đối tác mới?" → `POST /danh-muc/chuan/doi-tac-moi`
+  (người tạo EO, trùng bí danh trả tên sẵn có). Lưu form với đối tác gõ mới cũng hỏi như vậy rồi lưu lại.
+
 ## ETX nhân sự
 
 Danh bạ nhân sự kéo từ ETX (`lib/etxNhanSu.ts`, `routes/etxNhanSu.ts`, tab "ETX nhân sự" ở Cài đặt › Người dùng),

@@ -8,7 +8,7 @@ import { soLuong } from "../lib/format";
 import QuanLyPanel from "./QuanLyPanel";
 
 const DONUT_COLOR: Record<string, string> = {
-  "Nháp": "#B6BAC2", "Đang thẩm định": "#F5CC18", "Chờ duyệt cuối": "#FC7000",
+  "Nháp": "#B6BAC2", "Đang thẩm định": "#F5CC18", "Chờ duyệt mua": "#FC7000",
   "Đã ban hành": "#6CD13D", "Từ chối / Đã hủy": "#FC4244",
 };
 

@@ -14,6 +14,7 @@ import { NGAY, NhanNgay, ChuGiaiNgay } from "../../lib/ngay";
 import { TN, Hoi, type KhoaTN } from "../../lib/thuatNgu";
 import { NgayHangVeModal } from "../theodoi/shared";
 import { DL, GoiYDatalists, useGoiYDong, tenKhiDoiMa, ChonLyDo } from "../../lib/goiY";
+import { Kho } from "../../lib/kho";
 
 /**
  * Cac thao tac xu ly EO dung chung cho trang Chi tiet EO va popup xem nhanh (components/quickview):
@@ -95,7 +96,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
       ),
     },
     { key: "pc", header: "Linh kiện", maxW: 170, render: (r) => <><b>{r.part_code}</b>{r.part_code_goc && <span className="muted" style={{ fontSize: 10.5 }}> · thay từ {r.part_code_goc}</span>}<div className="muted" style={{ fontSize: 11.5 }}>{r.part_name}</div></> },
-    { key: "wh", header: <Hoi k="KHO" nhan="Kho" />, maxW: 95, render: (r) => r.warehouse },
+    { key: "wh", header: <Hoi k="KHO" nhan="Kho" />, maxW: 95, render: (r) => <Kho t={r.warehouse} /> },
     { key: "sl", header: <Hoi k="SL_DAT" />, align: "right", render: (r) => <b>{soLuong(r.current_qty)}</b> },
     {
       key: "ps", header: <span title="Mỗi dòng = 1 đợt: ngày nhà máy cam kết → ngày dự kiến · SL"><NhanNgay k="NM" ngan /> → <NhanNgay k="DK" ngan /> · SL</span>, wrap: true, render: (r) => r._ps.length === 0
@@ -334,7 +335,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
                   <td style={cell}>{po}</td>
                   <td style={cell}><b>{i.part_code}</b></td>
                   <td style={{ ...cell, maxWidth: 220 }}>{i.part_name}{i.ghi_chu && <div className="muted" style={{ fontSize: 11 }}>Ghi chú: {i.ghi_chu}</div>}</td>
-                  <td style={cell}>{i.warehouse}</td>
+                  <td style={cell}><Kho t={i.warehouse} /></td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(i.current_qty)}</td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(sumOf(i.id))}</td>
                   <td style={{ ...cell, textAlign: "right" }}>{soLuong(conLai(i))}</td>
@@ -385,7 +386,7 @@ export function ReplacePartModal({ item, onClose, onSaved }: any) {
         hàng về AMIS theo cả mã cũ lẫn mã mới đều được tính cho dòng này. Lịch sử EO ghi lại lần thay.
       </div>
       <div style={{ fontSize: 13, marginBottom: 10 }}>
-        Kho: <b>{item.warehouse}</b> · Mã hiện tại: <b>{item.part_code}</b> {item.part_name && `— ${item.part_name}`}
+        Kho: <b><Kho t={item.warehouse} /></b> · Mã hiện tại: <b>{item.part_code}</b> {item.part_name && `— ${item.part_name}`}
         {goc && <div>Mã đã duyệt ban đầu: <b>{goc}</b> <button className="btn ghost sm" onClick={() => { setCode(goc); setName(item.part_name_goc ?? ""); setReason("Trả về mã đã duyệt"); }}>Trả về mã gốc</button></div>}
       </div>
       <label className="field-label">Mã linh kiện mới <span className="req">*</span></label>
@@ -641,8 +642,8 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
     <Modal title="Thêm dòng linh kiện (duyệt sau ban hành)" onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
       <div style={{ fontSize: 13, marginBottom: 10, background: tuDuyet ? "#F0FDF4" : "#FFFBEB", borderRadius: 8, padding: "8px 10px" }}>
-        {tuDuyet ? <>Bạn là <b>người duyệt cuối</b> của EO này — dòng mới được <b>duyệt luôn</b> khi lưu.</>
-          : <>Dòng mới sẽ <b>chờ {ten(nguoiDuyet)} duyệt</b> (người duyệt cuối của EO) hoặc Admin. Chưa duyệt thì chưa đặt hàng; người duyệt có thể từ chối.</>}
+        {tuDuyet ? <>Bạn là <b>người duyệt mua</b> của EO này — dòng mới được <b>duyệt luôn</b> khi lưu.</>
+          : <>Dòng mới sẽ <b>chờ {ten(nguoiDuyet)} duyệt</b> (người duyệt mua của EO) hoặc Admin. Chưa duyệt thì chưa đặt hàng; người duyệt có thể từ chối.</>}
       </div>
       <GoiYDatalists data={goiY.data} />
       <label className="field-label">Mã linh kiện <span className="req">*</span></label>
@@ -692,7 +693,7 @@ export function RecallModal({ eo, onClose, onDone }: any) {
     <Modal title={`Sửa EO đang chờ duyệt — ${eo.eo_code}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn primary" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Rút về nháp & sửa"}</button></>}>
       <div style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 10 }}>
-        EO đang <b>{eo.trang_thai === "IN_REVIEW" ? "thẩm định" : "chờ duyệt cuối"}</b>. Để sửa, EO sẽ được <b>rút về Nháp</b>:
+        EO đang <b>{eo.trang_thai === "IN_REVIEW" ? "thẩm định" : "chờ duyệt mua"}</b>. Để sửa, EO sẽ được <b>rút về Nháp</b>:
         <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
           <li>Các phiếu duyệt đang chờ bị hủy, người duyệt nhận thông báo.</li>
           <li>Sửa xong bấm <b>Gửi trình duyệt</b> lại. Người thẩm định đã đồng ý ở lần này được giữ kết quả.</li>
@@ -752,7 +753,7 @@ export function NhanSauBH({ r, nguoiDuyet }: { r: any; nguoiDuyet?: string | nul
     ? <span className="badge reject" style={{ marginLeft: 6 }} title="Dòng đã hủy — không đặt hàng (xem lý do ở Lịch sử)">Đã hủy</span> : null;
   if (huy) return huy;
   if (r.post_issue_status === "PENDING")
-    return <span className="badge final" style={{ marginLeft: 6 }} title={`Dòng thêm sau khi EO đã ban hành — chờ người duyệt cuối của EO (${ten(nguoiDuyet)}) hoặc Admin duyệt / từ chối. Chưa duyệt thì chưa đặt hàng.`}>Chờ {ten(nguoiDuyet)} duyệt</span>;
+    return <span className="badge final" style={{ marginLeft: 6 }} title={`Dòng thêm sau khi EO đã ban hành — chờ người duyệt mua của EO (${ten(nguoiDuyet)}) hoặc Admin duyệt / từ chối. Chưa duyệt thì chưa đặt hàng.`}>Chờ {ten(nguoiDuyet)} duyệt</span>;
   if (r.post_issue_status === "APPROVED")
     return <span className="badge issued" style={{ marginLeft: 6 }} title={`Thêm sau ban hành — ${ten(r.post_issue_approved_by)} duyệt ${ngayGio(r.post_issue_approved_at)}`}>Thêm sau BH · đã duyệt</span>;
   if (r.post_issue_rejected_at)
@@ -770,7 +771,7 @@ export function TuChoiDongModal({ item, onClose, onDone }: { item: any; onClose:
     setErr(""); setBusy(true);
     try { await api.post(`/eo/items/${item.id}/reject-post-issue`, { reason: reason.trim() }); onDone(); }
     catch (e: any) {
-      setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt cuối của EO hoặc Admin được từ chối." : e?.body?.error === "NOT_PENDING" ? "Dòng này đã được xử lý." : "Lỗi từ chối.");
+      setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt mua của EO hoặc Admin được từ chối." : e?.body?.error === "NOT_PENDING" ? "Dòng này đã được xử lý." : "Lỗi từ chối.");
       setBusy(false);
     }
   };
@@ -778,7 +779,7 @@ export function TuChoiDongModal({ item, onClose, onDone }: { item: any; onClose:
     <Modal title={`Từ chối dòng thêm sau ban hành — ${item.part_code}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Từ chối dòng"}</button></>}>
       <div style={{ fontSize: 13, marginBottom: 10 }}>
-        {item.part_name} · {item.warehouse} · SL {soLuong(item.current_qty)}
+        {item.part_name} · <Kho t={item.warehouse} /> · SL {soLuong(item.current_qty)}
         <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Từ chối = dòng bị <b>hủy</b> (SL về 0, không đặt hàng), kế hoạch hàng về của dòng bị xóa. Ghi vào lịch sử EO.</div>
       </div>
       <label className="field-label">Lý do từ chối <span className="req">*</span></label>
@@ -799,7 +800,7 @@ export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: ()
     try { await api.post(`/eo/items/${item.id}/cancel-line`, { reason: reason.trim() }); onDone(); }
     catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "FORBIDDEN" ? "Bạn không có quyền hủy dòng này (người tạo EO / KH cung ứng / người duyệt cuối / Admin)." :
+      setErr(c === "FORBIDDEN" ? "Bạn không có quyền hủy dòng này (người tạo EO / KH cung ứng / người duyệt mua / Admin)." :
         c === "USE_REJECT" ? "Dòng đang chờ duyệt — dùng nút Từ chối." : c === "ALREADY_CANCELLED" ? "Dòng đã bị hủy." : "Lỗi hủy dòng.");
       setBusy(false);
     }
@@ -808,7 +809,7 @@ export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: ()
     <Modal title={`Hủy đơn đặt hàng — ${item.part_code}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Hủy đơn"}</button></>}>
       <div style={{ fontSize: 13, marginBottom: 10 }}>
-        {item.part_name} · {item.warehouse} · SL đặt {soLuong(item.current_qty)}
+        {item.part_name} · <Kho t={item.warehouse} /> · SL đặt {soLuong(item.current_qty)}
         <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Hủy = không đặt hàng này nữa: SL đặt về 0, các đợt kế hoạch hàng về bị xóa, hết cảnh báo theo dõi, trạng thái "Đơn trên EO bị hủy". Ghi vào lịch sử EO.</div>
         {(item.da_dat ?? 0) > 0 && <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>Đơn đã có <b>{soLuong(item.da_dat)}</b> về theo AMIS — hủy thì số đã về này <b>không được tính</b> cho đơn nữa. Muốn giữ số đã về và dừng phần còn lại → dùng <b>Kết thúc sớm</b>.</div>}
       </div>
@@ -830,7 +831,7 @@ export function KetThucSomModal({ item, onClose, onDone }: { item: { id: number;
     try { await api.post(`/eo/items/${item.id}/ket-thuc-som`, { reason: reason.trim() }); onDone(); }
     catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "FORBIDDEN" ? "Bạn không có quyền (người tạo EO / KH cung ứng / người duyệt cuối / Admin)." : c === "CHUA_VE" ? "Đơn chưa về hàng nào — dùng Hủy đơn." :
+      setErr(c === "FORBIDDEN" ? "Bạn không có quyền (người tạo EO / KH cung ứng / người duyệt mua / Admin)." : c === "CHUA_VE" ? "Đơn chưa về hàng nào — dùng Hủy đơn." :
         c === "DA_VE_DU" ? "Đơn đã về đủ — tự kết thúc, không cần kết thúc sớm." : c === "NOT_ACTIVE" ? "Đơn đã hủy / đang chờ duyệt." : "Lỗi kết thúc sớm.");
       setBusy(false);
     }
@@ -839,7 +840,7 @@ export function KetThucSomModal({ item, onClose, onDone }: { item: { id: number;
     <Modal title={`Kết thúc sớm đơn đặt — ${item.part_code}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn primary" disabled={busy} onClick={run}>{busy ? "Đang xử lý..." : "Kết thúc sớm"}</button></>}>
       <div style={{ fontSize: 13, marginBottom: 10 }}>
-        {item.part_name} · {item.warehouse}
+        {item.part_name} · <Kho t={item.warehouse} />
         <div style={{ display: "flex", gap: 16, margin: "10px 0", fontSize: 14 }}>
           <span>SL đặt <b>{soLuong(item.current_qty)}</b> → <b style={{ color: "var(--ok-ink)" }}>{soLuong(item.da_dat)}</b></span>
           <span className="muted">bỏ phần còn thiếu {soLuong(item.current_qty - item.da_dat)}</span>

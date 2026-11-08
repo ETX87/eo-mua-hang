@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { I } from "../lib/icons";
 import { STATUS_META } from "../lib/nav";
+import { yNghiaLoaiHinh } from "../lib/loaiHinh";
 
 export function Card({ children, className = "", pad = true, style }: { children: ReactNode; className?: string; pad?: boolean; style?: React.CSSProperties }) {
   return <div className={`card ${pad ? "card-pad" : ""} ${className}`} style={style}>{children}</div>;
@@ -16,8 +17,11 @@ export function TypeBadge({ loai }: { loai?: string | null }) {
   if (!loai) return null;
   const s = String(loai);
   const vp = /văn phòng|hành chính|office|D103|D30/i.test(s);
-  return <span className={`badge ${vp ? "type-vp" : "type-sx"}`} style={{ maxWidth: 150 }} title={s}>
-    <span className="badge-txt">{s}</span>
+  // y nghia = loai hinh cap 2 trong Cai dat (lib/loaiHinh) - dong nho duoi badge
+  const yn = yNghiaLoaiHinh(s);
+  return <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, maxWidth: 170 }} title={yn ? `${s}\n${yn}` : s}>
+    <span className={`badge ${vp ? "type-vp" : "type-sx"}`} style={{ maxWidth: 150 }}><span className="badge-txt">{s}</span></span>
+    {yn && <span style={{ fontSize: 10.5, color: "var(--text-muted)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{yn}</span>}
   </span>;
 }
 

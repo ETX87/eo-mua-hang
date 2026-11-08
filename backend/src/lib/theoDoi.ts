@@ -62,6 +62,8 @@ export interface DongTheoDoi {
   tinh_trang: "CHO_NDK" | "TRE_NDK" | "QUA_HAN_NDK" | "CHO_HANG" | "DONG";
   /** ngay chung tu AMIS ma luy ke ve DU so luong dat (null = chua ve du) */
   ngay_ve_du: string | null;
+  /** ngay chung tu AMIS LAN VE DAU TIEN (ke ca ve thieu) - tu ngay nay moi loi R1/R3/R4 bo qua (2026-11-08) */
+  ngay_ve_dau: string | null;
   /** ngay hang ve thuc te gan nhat (phieu AMIS khop dong, ke ca ve thieu) */
   ngay_hang_ve: string | null;
   /** ngay nha may cam ket cua dot ke hoach cap nhat gan nhat co dien */
@@ -107,7 +109,7 @@ type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do"
  * phan phu thuoc "bay gio" (tre 48h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
  */
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v5", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v6", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -187,8 +189,10 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
   const luyKe = new Map<number, number>();
   const veDuBy = new Map<number, string>();
   const veCuoiBy = new Map<number, string>();
+  const veDauBy = new Map<number, string>();
   for (const x of veDau.results as any[]) {
     veCuoiBy.set(x.id, x.d);
+    if ((x.q || 0) > 0 && x.d && !veDauBy.has(x.id)) veDauBy.set(x.id, String(x.d).slice(0, 10));
     if (veDuBy.has(x.id)) continue;
     const t = (luyKe.get(x.id) ?? 0) + (x.q || 0);
     luyKe.set(x.id, t);
@@ -251,7 +255,7 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
       trang_thai_don_hang: r.trang_thai_don_hang, canh_bao: r.canh_bao, toc_do_hang_ve: r.toc_do_hang_ve,
       ngay_ban_hanh: r.ngay_ban_hanh, ngay_du_kien_gan_nhat: ndk,
       ap_dung: apDungDong, bat_dau: batDau, han_ngay_du_kien: han, lan_dau_co_ndk: lanDau, gio_r1: gioR1Dong,
-      so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0, ngay_ve_du: veDuBy.get(r.item_id) ?? null,
+      so_lan_lui: soLui, so_loi: soLoi, so_loi_cho_gt: l?.cho ?? 0, ngay_ve_du: veDuBy.get(r.item_id) ?? null, ngay_ve_dau: veDauBy.get(r.item_id) ?? null,
       ngay_hang_ve: veCuoiBy.get(r.item_id) ?? null, ngay_nm_cam_ket: nmBy.get(r.item_id) ?? null,
       sau_ban_hanh: m?.created_after_issue === 1, ngay_tao: r.ngay_tao,
       ...(luiDs.has(r.item_id) ? { lui_ds: luiDs.get(r.item_id) } : {}), ...(l ? { loi_qt: l.qt } : {}),
@@ -294,9 +298,11 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
     const loi: unknown[][] = [];
     const add = (r: DongTheoDoi, quyTac: string, khoa: string, han: string, ngayTc: string | null, loiMa: string) =>
       loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, "NGUOI_DAT", r.nguoi_dat, loiMa]);
-    // R1 vi pham? (hang da ve DU truoc han theo ngay chung tu -> khong loi)
+    // Hang DA VE (lan dau, theo ngay chung tu AMIS) truoc / dung moc -> moi loi tu moc do bo qua (2026-11-08: "hang da ve nhung van bat loi")
+    const daVe = (r: DongTheoDoi, moc: string) => !!r.ngay_ve_dau && r.ngay_ve_dau <= moc.slice(0, 10);
+    // R1 vi pham? (hang da ve truoc han theo ngay chung tu -> khong loi)
     const viPhamR1 = (r: DongTheoDoi) => !!r.han_ngay_du_kien && now > r.han_ngay_du_kien
-      && (!r.lan_dau_co_ndk || r.lan_dau_co_ndk > r.han_ngay_du_kien) && !(r.ngay_ve_du && r.ngay_ve_du <= r.han_ngay_du_kien.slice(0, 10));
+      && (!r.lan_dau_co_ndk || r.lan_dau_co_ndk > r.han_ngay_du_kien) && !daVe(r, r.han_ngay_du_kien);
     for (const r of rows) {
       // R1
       // hang da ve DU truoc moc (theo ngay chung tu) -> khong loi
@@ -305,7 +311,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
         add(r, "R1", `R1:${r.item_id}`, r.han_ngay_du_kien!, null, "KHONG_NDK_24H");
       }
       // R4
-      if (r.han_cap_nhat_lai && now > r.han_cap_nhat_lai && r.ngay_du_kien_gan_nhat) {
+      if (r.han_cap_nhat_lai && now > r.han_cap_nhat_lai && r.ngay_du_kien_gan_nhat && !daVe(r, r.han_cap_nhat_lai)) {
         add(r, "R4", `R4:${r.item_id}:${r.ngay_du_kien_gan_nhat}`, r.han_cap_nhat_lai, r.ngay_du_kien_gan_nhat, "KHONG_NDK_QUA_HAN");
       }
       // R3: moi thu 2 / thu 4 da qua, ke tu ngay sau khi dong bat dau, ma het ngay do dong chua tung co ngay du kien
@@ -318,7 +324,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           const x = fmtVN(d).slice(0, 10);
           const hetNgay = `${x} 23:59:59`;
           if (r.lan_dau_co_ndk && r.lan_dau_co_ndk <= hetNgay) break; // da co ngay du kien tu truoc -> het nghia vu push
-          if (veTruoc(x)) break; // hang da ve du -> het nghia vu push
+          if (veTruoc(x) || daVe(r, x)) break; // hang da ve -> het nghia vu push
           const kyTu = fmtVN(new Date(d.getTime() - (dow === 1 ? 5 : 2) * 86400_000)).slice(0, 10);
           const coMail = (mailBy.get(r.item_id) ?? []).some((m) => m > kyTu && m <= x);
           if (!pushed.has(`${r.item_id}|${x}`) && !coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
@@ -350,6 +356,29 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
         ).bind(JSON.stringify(doiHan.map((l) => [l.id, dongBy.get(l.eo_item_id)!.han_ngay_du_kien]))),
       ]);
       await bumpVersions(db, ["theo_doi"]);
+    }
+    // Loi R1/R3/R4 DANG CHO co han tu ngay hang ve lan dau tro di (AMIS nhap muon / ve thieu) -> tu bo, ghi event_log (2026-11-08).
+    // Ca dong da dong (ve du) - chi xet dong con loi cho de tham so nho.
+    const veDauLoi = (await layDongTheoDoi(env, "tat_ca")).filter((r) => r.ngay_ve_dau && r.so_loi_cho_gt > 0).map((r) => [r.item_id, r.ngay_ve_dau]);
+    if (veDauLoi.length) {
+      const boVe = (await db.prepare(
+        `SELECT l.id FROM tl_loi l JOIN json_each(?) v ON l.eo_item_id = json_extract(v.value, '$[0]')
+         WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac IN ('R1', 'R3', 'R4') AND substr(l.han, 1, 10) >= json_extract(v.value, '$[1]')`,
+      ).bind(JSON.stringify(veDauLoi)).all<{ id: number }>()).results.map((x) => x.id);
+      if (boVe.length) {
+        const ids = JSON.stringify(boVe);
+        await db.batch([
+          db.prepare(
+            `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, before_json, metadata_json, user_email, created_at)
+             SELECT 'eo', eo_id, eo_id, 'XOA_LOI_THEO_DOI', json_group_array(json_object('id', id, 'khoa', khoa, 'han', han)),
+                    json_object('ly_do', 'Hàng đã về (theo ngày chứng từ AMIS) — lỗi phát sinh sau thời điểm hàng về tự bỏ qua'), NULL, ?
+             FROM tl_loi WHERE id IN (SELECT value FROM json_each(?)) GROUP BY eo_id`,
+          ).bind(now, ids),
+          db.prepare("DELETE FROM tl_nhac_nho WHERE loi_id IN (SELECT value FROM json_each(?))").bind(ids),
+          db.prepare("DELETE FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND id IN (SELECT value FROM json_each(?))").bind(ids),
+        ]);
+        await bumpVersions(db, ["theo_doi"]);
+      }
     }
     for (let i = 0; i < loi.length; i += 300) {
       const res = await db.prepare(

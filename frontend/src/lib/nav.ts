@@ -42,7 +42,7 @@ export const KHO_THEO_PHONG_BAN: Record<string, string> = {
 export const STATUS_META: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: "Nháp", cls: "nhap" },
   IN_REVIEW: { label: "Đang thẩm định", cls: "review" },
-  WAITING_FINAL_APPROVAL: { label: "Chờ duyệt cuối", cls: "final" },
+  WAITING_FINAL_APPROVAL: { label: "Chờ duyệt mua", cls: "final" },
   ISSUED: { label: "Đã ban hành", cls: "issued" },
   REJECTED: { label: "Từ chối", cls: "reject" },
   CANCELLED: { label: "Đã hủy", cls: "reject" },

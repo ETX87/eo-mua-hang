@@ -21,7 +21,7 @@ import { nowVN } from "./vnTime";
 export const GIAI_DOAN = [
   { k: "G1", l: "Lập & trình EO", vai_tro: "Người tạo EO" },
   { k: "G2", l: "Thẩm định", vai_tro: "Người thẩm định" },
-  { k: "G3", l: "Duyệt cuối & ban hành", vai_tro: "Người duyệt cuối" },
+  { k: "G3", l: "Duyệt mua & ban hành", vai_tro: "Người duyệt mua" },
   { k: "G4", l: "Gửi đơn cho NCC (mail)", vai_tro: "NV đặt hàng" },
   { k: "G5", l: "Có ngày dự kiến", vai_tro: "NV đặt hàng" },
   { k: "G6", l: "Chờ sản xuất & giao", vai_tro: "Nhà cung cấp" },

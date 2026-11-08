@@ -371,7 +371,7 @@ app.post("/:id/items", async (c) => {
     eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "ADD_ITEM", user_email: c.get("user").email, at: now, after: it, metadata: { after_issue: afterIssue } }),
   ];
   if (tuDuyet) {
-    stmts.push(eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "APPROVE_POST_ISSUE_ITEM", user_email: c.get("user").email, at: now, metadata: { ly_do: "Tự duyệt — người thêm là người duyệt cuối của EO" } }));
+    stmts.push(eventStmt(c.env.DB, { entity_type: "eo_item", entity_id: ins!.id, eo_id: id, event_type: "APPROVE_POST_ISSUE_ITEM", user_email: c.get("user").email, at: now, metadata: { ly_do: "Tự duyệt — người thêm là người duyệt mua của EO" } }));
   }
   if (afterIssue && eo.final_approver_email && eo.final_approver_email !== c.get("user").email) {
     stmts.push(notifyStmt(c.env.DB, { email: eo.final_approver_email, loai: "post_issue_pending", noi_dung: `EO ${eo.eo_code}: dòng ${it.part_code} thêm sau ban hành đang chờ bạn duyệt`, eo_id: id, at: now }));

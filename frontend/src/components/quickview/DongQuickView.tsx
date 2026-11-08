@@ -11,6 +11,7 @@ import { QvHeader, Kpi, EoLink, PartLink } from "./QuickView";
 import { TienTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong } from "../../pages/theodoi/shared";
 import { HuyDongModal, KetThucSomModal } from "../../pages/eo/eoActions";
+import { Kho } from "../../lib/kho";
 
 /**
  * Popup "don hang" = 1 dong linh kien tren EO: duong tien trinh 8 giai doan + bang chi tiet tung giai doan (bat dau, ket thuc,
@@ -68,7 +69,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
             <span>EO <EoLink id={it.eo_id}>{it.approval_code || it.eo_code}</EoLink>{it.approval_code ? ` (${it.eo_code})` : ""} {r.trang_thai_eo && <StatusBadge status={r.trang_thai_eo} />}</span>
-            <span>Kho <b>{it.warehouse}</b></span>
+            <span>Kho <b><Kho t={it.warehouse} /></b></span>
             <span>Đối tác <b>{it.supplier || "—"}</b></span>
             <span>Người đặt <b>{ten(r.nguoi_dat ?? it.created_by)}</b></span>
             {r.id_dat_lk && <span>ID dòng <b>{r.id_dat_lk}</b></span>}

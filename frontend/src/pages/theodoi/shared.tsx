@@ -8,6 +8,7 @@ import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { normKey, writeBook } from "../../lib/excel";
 import { NGAY, NhanNgay } from "../../lib/ngay";
 import { krfMoiNhat } from "./KrfGoiY";
+import { Kho } from "../../lib/kho";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -147,7 +148,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
       {q.isLoading || !d ? <Spinner /> : (
         <div style={{ fontSize: 13 }}>
           <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
-            <b style={{ color: "var(--text)" }}>{it?.approval_code || it?.eo_code}</b> · {it?.part_name} · {it?.warehouse} · {it?.supplier || "—"} · SL đặt <b>{soLuong(slDat)}</b>
+            <b style={{ color: "var(--text)" }}>{it?.approval_code || it?.eo_code}</b> · {it?.part_name} · <Kho t={it?.warehouse} /> · {it?.supplier || "—"} · SL đặt <b>{soLuong(slDat)}</b>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, marginBottom: 14 }}>
             <The k="VE" v={ngayVe ? ngay(ngayVe) : "Chưa về"} sub={<>Đã về <b>{soLuong(daVe)}</b> / {soLuong(slDat)}{daVe >= slDat && slDat > 0 ? " — đủ hàng" : daVe > 0 ? ` — còn thiếu ${soLuong(slDat - daVe)}` : ""}</>} />
@@ -371,7 +372,7 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
     <>
       {ls.isLoading || !d ? <Spinner /> : (
         <div style={{ fontSize: 12.5 }}>
-          <div className="muted">{dong.part_name} · {dong.kho} · {dong.doi_tac ?? "—"} · đặt {soLuong(dong.so_luong_dat)}, về {soLuong(dong.sl_nhap_amis)} · bắt đầu theo dõi {ngayGio(dong.bat_dau)} · hạn có ngày DK {ngayGio(dong.han_ngay_du_kien)}</div>
+          <div className="muted">{dong.part_name} · <Kho t={dong.kho} /> · {dong.doi_tac ?? "—"} · đặt {soLuong(dong.so_luong_dat)}, về {soLuong(dong.sl_nhap_amis)} · bắt đầu theo dõi {ngayGio(dong.bat_dau)} · hạn có ngày DK {ngayGio(dong.han_ngay_du_kien)}</div>
           <H>Lỗi ({d.loi.length}{loiGop.length < d.loi.length ? ` — ${loiGop.length} loại` : ""})</H>
           {d.loi.length === 0 ? <div className="muted">Không có lỗi.</div> : loiGop.map(({ x: l, ds }: any) => (
             <div key={l.id} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>

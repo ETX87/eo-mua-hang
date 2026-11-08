@@ -5,7 +5,7 @@ import { ngayGio } from "./format";
  * Dong co: gd_hien_tai ('G1'..'G8' | 'XONG' | 'HUY'), gd_hien_tai_ten, gd_bat_dau, gd_gio (gio lam viec), gd_tre.
  */
 export const GD_CHINH = [
-  { k: "G1", l: "Lập & trình EO" }, { k: "G2", l: "Thẩm định" }, { k: "G3", l: "Duyệt cuối & ban hành" },
+  { k: "G1", l: "Lập & trình EO" }, { k: "G2", l: "Thẩm định" }, { k: "G3", l: "Duyệt mua & ban hành" },
   { k: "G5", l: "Có ngày dự kiến" }, { k: "G6", l: "Chờ sản xuất & giao" }, { k: "G8", l: "Giao bù đến đủ" },
 ] as const;
 

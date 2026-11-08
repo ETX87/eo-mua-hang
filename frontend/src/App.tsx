@@ -17,6 +17,8 @@ import DanhMuc from "./pages/admin/DanhMuc";
 import SysConfig from "./pages/admin/SysConfig";
 import Pending from "./pages/Pending";
 import { datTenHienThi } from "./lib/format";
+import { datKho } from "./lib/kho";
+import { datLoaiHinh } from "./lib/loaiHinh";
 
 /** Duong dan cu -> man moi, giu query string (link da gui / danh dau / Viec can xu ly cu khong chet). */
 function ChuyenHuong({ to, them }: { to: string; them?: string }) {
@@ -33,6 +35,12 @@ export default function App() {
   const daDuyet = me.data?.trang_thai_duyet === "Da duyet";
   const tenQ = useQuery({ queryKey: ["users-ten"], queryFn: () => api.get<Record<string, string>>("/users/ten"), enabled: daDuyet, staleTime: 5 * 60_000 });
   if (tenQ.data) datTenHienThi(tenQ.data);
+  // ten kho rut gon theo ma kho (lib/kho)
+  const khoQ = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: daDuyet, staleTime: 5 * 60_000 });
+  if (khoQ.data) datKho(khoQ.data);
+  // y nghia loai hinh EO = loai hinh cap 2 (lib/loaiHinh)
+  const lhQ = useQuery({ queryKey: ["dm-loaihinh"], queryFn: () => api.get<any[]>("/danh-muc/loai-hinh"), enabled: daDuyet, staleTime: 5 * 60_000 });
+  if (lhQ.data) datLoaiHinh(lhQ.data);
 
   if (me.isLoading || (daDuyet && tenQ.isLoading)) return <Spinner text="Đang tải hệ thống…" />;
   if (me.data && me.data.trang_thai_duyet !== "Da duyet") return <Pending me={me.data} />;

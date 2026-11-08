@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { PageHeader, Card, Spinner } from "../../components/ui";
 import { soLuong, pct } from "../../lib/format";
+import { Kho } from "../../lib/kho";
 
 const WEEKS = Array.from({ length: 53 }, (_, i) => `W${String(i + 1).padStart(2, "0")}`);
 
@@ -50,7 +51,7 @@ export default function ReportLuyKe({ nhung }: { nhung?: boolean }) {
                 {(q.data?.rows ?? []).map((r: any, i: number) => (
                   <tr key={i}>
                     <td style={{ position: "sticky", left: 0, background: "#fff", fontWeight: 600 }}>{r.ma_eo}</td>
-                    <td>{r.kho || ""}</td>
+                    <td><Kho t={r.kho} /></td>
                     <td className="right mono-num">{soLuong(r.sl_lk_eo)}</td>
                     <td className="right mono-num">{soLuong(r.sl_ke_hoach)}</td>
                     <td className="right mono-num">{soLuong(r.sl_thieu_ke_hoach)}</td>

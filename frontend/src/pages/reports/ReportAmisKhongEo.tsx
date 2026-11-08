@@ -5,6 +5,7 @@ import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay } from "../../lib/format";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
+import { Kho } from "../../lib/kho";
 
 const EXPORT_COLS: ExportCol<any>[] = [
   { header: "Số chứng từ", get: (r) => r.doc_no },
@@ -23,7 +24,7 @@ export default function ReportAmisKhongEo({ nhung }: { nhung?: boolean }) {
   const rows = q.data?.rows ?? [];
   const cols: Col<any>[] = [
     { key: "d", header: "Số chứng từ", render: (r) => r.doc_no },
-    { key: "k", header: "Tên kho", render: (r) => r.warehouse_name },
+    { key: "k", header: "Tên kho", render: (r) => <Kho t={r.warehouse_name} /> },
     { key: "m", header: "Mã hàng", render: (r) => r.part_code },
     { key: "tn", header: "Tên hàng", render: (r) => r.part_name || "" },
     { key: "sl", header: "SL Nhập", align: "right", render: (r) => soLuong(r.qty_in) },

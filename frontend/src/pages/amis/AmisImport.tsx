@@ -10,6 +10,7 @@ import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { writeBook } from "../../lib/excel";
+import { Kho } from "../../lib/kho";
 
 const COLS = ["Mã kho", "Tên kho", "Mã hàng", "Tên hàng", "Ngày hạch toán", "Ngày chứng từ", "Số chứng từ", "ĐVT", "Diễn giải", "Số lượng Nhập", "Số lượng Xuất", "Số lượng Tồn", "TK Kho", "TK đối ứng", "Mã phê duyệt"];
 
@@ -201,7 +202,7 @@ function NhapAmis() {
   const receiptCols: Col<any>[] = [
     { key: "d", header: "Số CT", render: (r) => r.doc_no },
     { key: "n", header: "Ngày CT", render: (r) => ngay(r.doc_date) },
-    { key: "k", header: "Kho", render: (r) => r.warehouse_name },
+    { key: "k", header: "Kho", render: (r) => <Kho t={r.warehouse_name} /> },
     { key: "m", header: "Mã hàng", render: (r) => r.part_code },
     { key: "sl", header: "SL nhập", align: "right", render: (r) => soLuong(r.qty_in) },
     { key: "a", header: "Mã phê duyệt", render: (r) => r.approval_code_raw },
@@ -388,7 +389,7 @@ function NhapAmis() {
           <DataTable
             cols={[
               { key: "d", header: "Số chứng từ", render: (r) => r.doc_no },
-              { key: "k", header: "Kho", render: (r) => r.warehouse_name },
+              { key: "k", header: "Kho", render: (r) => <Kho t={r.warehouse_name} /> },
               { key: "m", header: "Mã hàng", render: (r) => r.part_code },
               { key: "sl", header: "SL nhập", align: "right", render: (r) => soLuong(r.qty_in) },
               { key: "nc", header: "Ngày chứng từ", render: (r) => ngay(r.doc_date) },

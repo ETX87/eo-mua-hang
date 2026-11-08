@@ -12,6 +12,7 @@ import { gopTrung, lietKe } from "../lib/gopTrung";
 import { boDau } from "../lib/tonDong";
 import { GiaiTrinhModal, LichSuDong, NgayHangVeModal, QUY_TAC, TINH_TRANG, useDanhMuc, type Dong } from "./theodoi/shared";
 import { GiaiTrinhNhieuModal, GiaiTrinhPoModal } from "./theodoi/GiaiTrinhPo";
+import { khoGon } from "../lib/kho";
 
 /**
  * "Vi phạm & giải trình" (/vi-pham) - theo doi rieng mang loi (backend routes/viPham.ts, migrations/0016).
@@ -388,7 +389,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 10, marginTop: 12, padding: 10, background: "var(--panel-2)", borderRadius: 10 }}>
           <Tt k="PO (mã phê duyệt / EO)" v={<EoLink id={x.eo_id}>{maPo(x)}</EoLink>} />
           <Tt k="Linh kiện" v={<><PartLink ma={x.part_code} /> <span className="muted" style={{ fontWeight: 400 }}>{x.part_name}</span></>} />
-          <Tt k="Kho · Đối tác" v={`${x.kho} · ${x.doi_tac || "—"}`} />
+          <Tt k="Kho · Đối tác" v={`${khoGon(x.kho)} · ${x.doi_tac || "—"}`} />
           <Tt k="Tình trạng dòng" v={x.tinh_trang ? TINH_TRANG[x.tinh_trang as Dong["tinh_trang"]]?.l : ""} />
           <Tt k="Người vi phạm" v={`${ten(x.nguoi_vp)}${x.ai_ma ? ` (${tenDm("AI", x.ai_ma)})` : ""}`} />
           <Tt k="Người đặt" v={ten(x.nguoi_dat)} />

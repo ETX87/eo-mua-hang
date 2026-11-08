@@ -11,7 +11,7 @@ const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
   IN_REVIEW: "Đang thẩm định",
-  WAITING_FINAL_APPROVAL: "Chờ duyệt cuối",
+  WAITING_FINAL_APPROVAL: "Chờ duyệt mua",
   ISSUED: "Đã ban hành",
   REJECTED: "Từ chối / Đã hủy",
   CANCELLED: "Từ chối / Đã hủy",
@@ -42,7 +42,7 @@ app.get("/summary", async (c) => {
       const label = STATUS_LABEL[k] ?? k;
       donutMap.set(label, (donutMap.get(label) ?? 0) + v);
     }
-    const donut = ["Nháp", "Đang thẩm định", "Chờ duyệt cuối", "Đã ban hành", "Từ chối / Đã hủy"]
+    const donut = ["Nháp", "Đang thẩm định", "Chờ duyệt mua", "Đã ban hành", "Từ chối / Đã hủy"]
       .filter((l) => donutMap.has(l))
       .map((label) => {
         const count = donutMap.get(label)!;

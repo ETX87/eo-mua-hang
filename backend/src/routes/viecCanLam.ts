@@ -60,7 +60,7 @@ app.get("/", async (c) => {
     ).bind(u.email).first<{ n: number }>(),
   ]);
   if ((pa?.n ?? 0) + (pi?.n ?? 0) > 0) out.push({ key: "duyet", to: "/eo?chip=cho_toi_duyet", label: "Phiếu chờ bạn duyệt", count: (pa?.n ?? 0) + (pi?.n ?? 0),
-    chi_tiet: [{ label: "Thẩm định / duyệt cuối", count: pa?.n ?? 0 }, { label: "Dòng thêm sau ban hành", count: pi?.n ?? 0 }] });
+    chi_tiet: [{ label: "Thẩm định / duyệt mua", count: pa?.n ?? 0 }, { label: "Dòng thêm sau ban hành", count: pi?.n ?? 0 }] });
 
   // 3 + 4. Theo doi linh kien dat / Canh bao CEO (chi dong ap dung quy tac)
   if (canEditPlan(u) || TOAN_BO(u)) {

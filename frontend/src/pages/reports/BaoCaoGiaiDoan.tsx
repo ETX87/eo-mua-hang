@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import { PageHeader, Card, Spinner } from "../../components/ui";
 import { soLuong, ten } from "../../lib/format";
 import { gioTxt } from "../../lib/giaiDoan";
+import { khoGon } from "../../lib/kho";
 
 /**
  * Bao cao "Giai doan don hang" (dot 2): moi giai doan G1..G8 - so dong da qua, thoi gian TB / trung vi / P90 (gio lam viec),
@@ -45,10 +46,10 @@ function thongKe(rows: Row[], k: string): ThongKe {
 
 const CHIEU: { k: string; l: string; get: (r: Row) => string | null; hien?: (v: string) => string }[] = [
   { k: "nguoi_tao", l: "Người tạo EO", get: (r) => r.nguoi_tao, hien: ten },
-  { k: "nguoi_duyet_cuoi", l: "Người duyệt cuối", get: (r) => r.nguoi_duyet_cuoi, hien: ten },
+  { k: "nguoi_duyet_cuoi", l: "Người duyệt mua", get: (r) => r.nguoi_duyet_cuoi, hien: ten },
   { k: "phong_ban", l: "Phòng ban", get: (r) => r.phong_ban },
   { k: "doi_tac", l: "Nhà cung cấp", get: (r) => r.doi_tac },
-  { k: "kho", l: "Kho", get: (r) => r.kho },
+  { k: "kho", l: "Kho", get: (r) => r.kho, hien: khoGon },
   { k: "loai_hinh", l: "Loại hình", get: (r) => r.loai_hinh },
 ];
 
