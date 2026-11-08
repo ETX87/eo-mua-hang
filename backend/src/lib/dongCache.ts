@@ -15,7 +15,8 @@ import { tinhTrangBayGio } from "./theoDoi";
 const DOMAINS = ["eo", "amis", "settings", "theo_doi"] as const;
 const NOW_KEYS = new Set(["gd_gio", "gd_tre", "g4_trang_thai", "gd_gio_tung", "gd_tre_tung", "tinh_trang"]);
 const KHOA_MS = 60_000;
-const CHUNK = 150;
+const TOI_DA_KY_TU = 45_000; // ky tu JSON / cau lenh (UTF-8 tieng Viet ~1.3 byte/ky tu -> < 100KB)
+const LO_BATCH = 40;
 
 type Row = Record<string, any>;
 export interface MetaCache { seq: number; epoch: string; sla: Record<string, number> }
@@ -79,23 +80,32 @@ export async function damBaoDongCache(env: Env, xay: () => Promise<{ rows: Row[]
       if (cu.get(r.item_id) !== sig) doi.push([r.item_id, r.eo_id, sig, seq, laMo(r) ? 1 : 0, JSON.stringify(r), JSON.stringify(nguonNow(r)),
         String(r.part_code ?? "").trim().toUpperCase() || null, String(r.part_code_goc ?? "").trim().toUpperCase() || null]);
     }
-    const stmts: D1PreparedStatement[] = [];
-    for (let i = 0; i < doi.length; i += CHUNK) {
-      stmts.push(db.prepare(
-        `INSERT INTO dong_cache (item_id, eo_id, sig, seq, mo, data, nguon_now, ma_lk, ma_goc)
+    // D1: moi cau lenh <= 100KB (KE CA tham so - local khong chan) + ca batch <= 30s -> chia theo DO DAI (<= TOI_DA_KY_TU / cau lenh,
+    // chu Viet UTF-8 nhieu byte nen de du), moi batch <= LO_BATCH cau lenh. Lan dung dau ghi ~9.000 dong -> vai chuc batch.
+    const sql = `INSERT INTO dong_cache (item_id, eo_id, sig, seq, mo, data, nguon_now, ma_lk, ma_goc)
          SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), json_extract(value, '$[3]'),
                 json_extract(value, '$[4]'), json_extract(value, '$[5]'), json_extract(value, '$[6]'), json_extract(value, '$[7]'),
                 json_extract(value, '$[8]') FROM json_each(?) WHERE true
          ON CONFLICT(item_id) DO UPDATE SET eo_id = excluded.eo_id, sig = excluded.sig, seq = excluded.seq, mo = excluded.mo,
-           data = excluded.data, nguon_now = excluded.nguon_now, ma_lk = excluded.ma_lk, ma_goc = excluded.ma_goc`,
-      ).bind(JSON.stringify(doi.slice(i, i + CHUNK))));
+           data = excluded.data, nguon_now = excluded.nguon_now, ma_lk = excluded.ma_lk, ma_goc = excluded.ma_goc`;
+    const stmts: D1PreparedStatement[] = [];
+    let goi: string[] = [], dai = 0;
+    const dong = () => { if (goi.length) stmts.push(db.prepare(sql).bind(`[${goi.join(",")}]`)); goi = []; dai = 0; };
+    for (const x of doi) {
+      const s = JSON.stringify(x);
+      if (goi.length && dai + s.length > TOI_DA_KY_TU) dong();
+      goi.push(s); dai += s.length + 1;
     }
-    stmts.push(db.prepare("UPDATE dong_cache_meta SET tag = ?, seq = ?, sla = ?, building_until = NULL WHERE id = 1")
-      .bind(tag, doi.length ? seq : m.seq, JSON.stringify(sla)));
-    await db.batch(stmts);
+    dong();
+    for (let i = 0; i < stmts.length; i += LO_BATCH) await db.batch(stmts.slice(i, i + LO_BATCH));
+    await db.prepare("UPDATE dong_cache_meta SET tag = ?, seq = ?, sla = ?, building_until = NULL, loi = NULL WHERE id = 1")
+      .bind(tag, doi.length ? seq : m.seq, JSON.stringify(sla)).run();
     return { seq: doi.length ? seq : m.seq, epoch: m.epoch, sla };
   } catch (e) {
-    await db.prepare("UPDATE dong_cache_meta SET building_until = NULL WHERE id = 1").run().catch(() => {});
+    // ghi loi de chan doan (migration 0022); dong da ghi xong o cac batch truoc van giu (lan sau so sig, khong ghi lai)
+    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    await db.prepare("UPDATE dong_cache_meta SET building_until = NULL, loi = ?, loi_luc = ? WHERE id = 1").bind(msg.slice(0, 800), nowVN()).run()
+      .catch(() => db.prepare("UPDATE dong_cache_meta SET building_until = NULL WHERE id = 1").run().catch(() => {}));
     throw e;
   }
 }

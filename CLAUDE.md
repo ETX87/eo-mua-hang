@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng · 0022 ghi lỗi dựng cache
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -336,7 +336,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   giai đoạn / theo dõi / ds EO ~200KB) kể cả khi chỉ mở 1 PO hay 1 mã LK.
 - `dong_cache` (1 dòng LK = 1 bản ghi đã gộp: báo cáo 0.1 + EO + giai đoạn + theo dõi; `sig`, `seq`, `mo`, `ma_lk/ma_goc`, `nguon_now`) +
   `dong_cache_meta` (tag, seq, epoch, sla, khoá). `damBaoDongCache`: tag (version eo/amis/settings/theo_doi + ngày VN) đổi → dựng lại bằng
-  `xayDongSdh` (routes/soDonHang, pipeline cũ) và **chỉ ghi dòng có sig khác** (seq mới, ghi theo lô json_each 150 dòng).
+  `xayDongSdh` (routes/soDonHang, pipeline cũ) và **chỉ ghi dòng có sig khác** (seq mới, ghi theo lô json_each ≤ 45.000 ký tự / câu lệnh — D1 giới hạn
+  100KB / câu lệnh KỂ CẢ tham số, local không chặn; ≤ 40 câu / batch vì batch ≤ 30s). Lỗi dựng ghi `dong_cache_meta.loi` / `loi_luc` (0022).
 - Phần "bây giờ" (giờ từng giai đoạn, trễ hạn, `tinh_trang` theo dõi) KHÔNG nằm trong sig: dòng `mo = 1` tính lại mỗi request từ `nguon_now`
   (`ketQuaGd` của lib/giaiDoan + `tinhTrangBayGio` của lib/theoDoi — dùng chung với đường cũ).
 - `GET /so-don-hang?eo_id=` / `/xem/eo/:id/bo-sung` / `/xem/linh-kien` đọc đúng các dòng cần (`dongCacheTheo`). FE LK đặt + báo cáo giai đoạn:
