@@ -72,6 +72,9 @@ async function tinhMoc(env: Env): Promise<{ sla: Record<string, number>; dong: G
     db.prepare(
       `SELECT x.item_id, MIN(m.thoi_gian) t FROM (
          SELECT id m_id, eo_item_id item_id FROM tl_mail WHERE huong = 'GUI' AND eo_item_id IS NOT NULL
+           -- mail khong co ma PO, app theodoimuahang gan "van de chung" theo ma LK cho MOI dong dang mo cung ma (2026-11-08)
+           -- -> khong phai mail gui don cua dong nay, khong tinh moc G4
+           AND COALESCE(CASE WHEN json_valid(payload) THEN json_extract(payload, '$.loai') END, '') <> 'van_de_chung'
          UNION
          SELECT m.id, pi.eo_item_id FROM tl_mail m JOIN tl_push p ON p.ma_push = m.ma_push JOIN tl_push_item pi ON pi.push_id = p.id WHERE m.huong = 'GUI'
        ) x JOIN tl_mail m ON m.id = x.m_id GROUP BY x.item_id`,
