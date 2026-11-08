@@ -4,6 +4,7 @@ import { cachedReport } from "../lib/reportCache";
 import { computeTienDo01 } from "./reports";
 import { layGiaiDoan, GIAI_DOAN } from "../lib/giaiDoan";
 import { layDongTheoDoi, danhGiaQuyTac } from "../lib/theoDoi";
+import { damBaoDongCache, lamTuoi, phanBayGioDs } from "../lib/dongCache";
 
 /**
  * GET /api/so-don-hang[?eo_id=] - "So don hang": moi dong linh kien (ke ca chua ban hanh / dong / huy) = bao cao 0.1
@@ -14,12 +15,14 @@ import { layDongTheoDoi, danhGiaQuyTac } from "../lib/theoDoi";
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-app.get("/", async (c) => {
-  const db = c.env.DB;
-  const eoId = Number(c.req.query("eo_id")) || null;
-  // danh gia quy tac (toi da 10 phut/lan) truoc khi doc - nhu GET /theo-doi/danh-sach
-  await danhGiaQuyTac(c.env).catch((e) => console.error("danhGiaQuyTac", e));
-  const [base, gd, them, td, st] = await Promise.all([
+/**
+ * Dung TOAN BO dong da gop (pipeline cu: bao cao 0.1 + EO + giai doan + theo doi, cac blob cache) - chi chay khi du lieu doi,
+ * ket qua ghi vao cache theo dong (lib/dongCache, chi dong khac moi ghi).
+ */
+export async function xayDongSdh(env: Env): Promise<{ rows: any[]; sla: Record<string, number> }> {
+  const db = env.DB;
+  const c = { env };
+  const [base, gd, them, td] = await Promise.all([
     cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(c.env)),
     layGiaiDoan(c.env),
     cachedReport(db, "rep:so-don-hang-them", ["eo", "theo_doi"], async () => {
@@ -37,14 +40,13 @@ app.get("/", async (c) => {
       return { eo: eo.results, it: it.results, nm: nm.results, loi: loi.results };
     }),
     layDongTheoDoi(c.env, "tat_ca"),
-    db.prepare("SELECT danh_gia_luc FROM tl_state WHERE id = 1").first<{ danh_gia_luc: string | null }>(),
   ]);
   const tdBy = new Map(td.map((r) => [r.item_id, r]));
   const eoBy = new Map(them.eo.map((e: any) => [e.id, e]));
   const itBy = new Map(them.it.map((e: any) => [e.id, e]));
   const nmBy = new Map(them.nm.map((e: any) => [e.eo_item_id, e.nm]));
   const loiBy = new Map(them.loi.map((e: any) => [e.eo_item_id, e]));
-  const rows = base.filter((r: any) => !eoId || r.eo_id === eoId).map((r: any) => {
+  const rows = base.map((r: any) => {
     const e: any = eoBy.get(r.eo_id) ?? {};
     const i: any = itBy.get(r.item_id) ?? {};
     const l: any = loiBy.get(r.item_id);
@@ -65,7 +67,49 @@ app.get("/", async (c) => {
       ngay_ve_du: t?.ngay_ve_du ?? null, sl_nhap_amis: t?.sl_nhap_amis ?? r.sl_nhap_amis_dung_eo ?? 0, nguoi_dat: t?.nguoi_dat ?? e.created_by ?? null,
     };
   });
-  return c.json({ giai_doan: GIAI_DOAN, sla: gd.sla, rows, danh_gia_luc: st?.danh_gia_luc ?? null });
+  return { rows, sla: gd.sla };
+}
+
+/**
+ * GET /?eo_id=      -> cac dong cua 1 PO (doc dong_cache theo eo_id - khong giai nen blob toan he thong).
+ * GET /?seq=&epoch= -> FE LK dat (IndexedDB): chi dong co seq > seq da co + phan "bay gio" cua dong dang mo con lai;
+ *                      epoch khac / seq lon hon cua server -> reset (gui het).
+ * GET /             -> tat ca dong (tuong thich).
+ */
+app.get("/", async (c) => {
+  const db = c.env.DB;
+  const eoId = Number(c.req.query("eo_id")) || null;
+  // danh gia quy tac (toi da 10 phut/lan) truoc khi doc - nhu GET /theo-doi/danh-sach
+  await danhGiaQuyTac(c.env).catch((e) => console.error("danhGiaQuyTac", e));
+  const st = await db.prepare("SELECT danh_gia_luc FROM tl_state WHERE id = 1").first<{ danh_gia_luc: string | null }>();
+  let meta;
+  try { meta = await damBaoDongCache(c.env, () => xayDongSdh(c.env)); } catch (e) {
+    // cache theo dong loi (vd gioi han D1) -> tra cach cu (tinh truc tiep), FE reset moi lan - khong lam hong man hinh
+    console.error("dongCache", e);
+    const { rows, sla } = await xayDongSdh(c.env);
+    return c.json({ giai_doan: GIAI_DOAN, sla, danh_gia_luc: st?.danh_gia_luc ?? null, seq: 0, epoch: "", reset: true, now: [],
+      rows: eoId ? rows.filter((r: any) => r.eo_id === eoId) : rows });
+  }
+  const chung = { giai_doan: GIAI_DOAN, sla: meta.sla, danh_gia_luc: st?.danh_gia_luc ?? null };
+  type D = { data: string; mo: number; nguon_now: string | null };
+  if (eoId) {
+    const ds = (await db.prepare("SELECT data, mo, nguon_now FROM dong_cache WHERE eo_id = ? ORDER BY item_id").bind(eoId).all<D>()).results;
+    return c.json({ ...chung, rows: lamTuoi(ds) });
+  }
+  const seqQ = c.req.query("seq");
+  if (seqQ != null) {
+    const daCo = Number(seqQ) || 0;
+    const reset = !daCo || c.req.query("epoch") !== meta.epoch || daCo > meta.seq;
+    const tu = reset ? 0 : daCo;
+    const [doi, mo] = await Promise.all([
+      db.prepare("SELECT data, mo, nguon_now FROM dong_cache WHERE seq > ? ORDER BY item_id").bind(tu).all<D>(),
+      reset ? Promise.resolve({ results: [] as { item_id: number; nguon_now: string | null }[] })
+        : db.prepare("SELECT item_id, nguon_now FROM dong_cache WHERE mo = 1 AND seq <= ?").bind(tu).all<{ item_id: number; nguon_now: string | null }>(),
+    ]);
+    return c.json({ ...chung, seq: meta.seq, epoch: meta.epoch, reset, rows: lamTuoi(doi.results), now: phanBayGioDs(mo.results) });
+  }
+  const ds = (await db.prepare("SELECT data, mo, nguon_now FROM dong_cache ORDER BY item_id").all<D>()).results;
+  return c.json({ ...chung, rows: lamTuoi(ds) });
 });
 
 export default app;

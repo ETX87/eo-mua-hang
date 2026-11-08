@@ -5,6 +5,7 @@ import { cachedReport } from "../lib/reportCache";
 import { computeTienDo01, TRANG_THAI_DONG } from "./reports";
 import { layDongTheoDoi } from "../lib/theoDoi";
 import { nowVN } from "../lib/vnTime";
+import { dongCacheTheo } from "../lib/dongCache";
 
 /**
  * /api/xem - du lieu cho 2 popup xem nhanh (FE components/quickview):
@@ -67,7 +68,9 @@ app.get("/eo/:id/bo-sung", async (c) => {
   ]);
 
   // theo doi tung dong (chi EO da ban hanh; dong dat truoc moc bo qua se khong co)
-  const td = eo.trang_thai === "ISSUED" ? (await layDongTheoDoi(c.env, "tat_ca")).filter((r) => r.eo_id === id) : [];
+  // 2026-11-08 (#25/#27): doc cache theo dong (lib/dongCache) cua dung PO nay thay vi giai nen blob theo doi toan he thong
+  const td: any[] = eo.trang_thai === "ISSUED" ? (await dongCacheTheo(c.env, "eo_id = ?1", id, (r) => r.eo_id === id)).filter((r) => r.theo_doi)
+    .map((r) => ({ ...r, co_ngay_du_kien: !!r.ngay_du_kien_gan_nhat })) : [];
 
   const cb: CanhBao[] = [];
   const now = nowVN();
@@ -85,8 +88,8 @@ app.get("/eo/:id/bo-sung", async (c) => {
   const qua = dem((r) => r.ap_dung && r.tinh_trang === "QUA_HAN_NDK");
   const loiCho = loi.results.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
   const ceo = td.filter((r) => r.ceo_ly_do.length > 0);
-  if (tre) cb.push({ muc: "danger", text: `${tre} dòng quá 48h chưa có ngày dự kiến` });
-  if (cho) cb.push({ muc: "warn", text: `${cho} dòng cần nhập ngày dự kiến (trong 48h làm việc)` });
+  if (tre) cb.push({ muc: "danger", text: `${tre} dòng quá hạn (24h/48h) chưa có ngày dự kiến` });
+  if (cho) cb.push({ muc: "warn", text: `${cho} dòng cần nhập ngày dự kiến (trong 24h/48h làm việc)` });
   if (qua) cb.push({ muc: "danger", text: `${qua} dòng đã quá ngày dự kiến — phải nhập ngày mới` });
   if (loiCho) cb.push({ muc: "danger", text: `${loiCho} lỗi chờ giải trình` });
   if (ceo.length) cb.push({ muc: "danger", text: `${ceo.length} dòng ở cấp CEO: ${[...new Set(ceo.flatMap((r) => r.ceo_ly_do))].join("; ")}` });
@@ -104,10 +107,9 @@ app.get("/linh-kien", async (c) => {
   const ma = (c.req.query("ma") ?? "").trim();
   if (!ma) return c.json({ error: "MISSING_MA" }, 400);
   const db = c.env.DB;
-  const base = await cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(c.env));
   const up = ma.toUpperCase();
-  const dong = base.filter((r) => String(r.part_code).toUpperCase() === up || String(r.part_code_goc ?? "").toUpperCase() === up)
-    .sort((a, b) => String(b.ngay_tao).localeCompare(String(a.ngay_tao)));
+  // 2026-11-08 (#27): dong cua MA nay tu cache theo dong (da gop bao cao 0.1 + theo doi + giai doan) - khong giai nen blob 0.1 / theo doi / giai doan
+  const dong: any[] = (await dongCacheTheo(c.env, "ma_lk = ?1 OR ma_goc = ?1", up, (r) => String(r.part_code ?? "").toUpperCase() === up || String(r.part_code_goc ?? "").toUpperCase() === up)).sort((a, b) => String(b.ngay_tao).localeCompare(String(a.ngay_tao)));
   const ids = JSON.stringify(dong.map((r) => r.item_id));
   const [nhap, log, loi, gia] = await Promise.all([
     db.prepare(
@@ -126,15 +128,10 @@ app.get("/linh-kien", async (c) => {
     db.prepare("SELECT l.*, e.eo_code FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.eo_item_id IN (SELECT value FROM json_each(?)) ORDER BY l.id DESC").bind(ids).all<any>(),
     db.prepare("SELECT don_gia_du_kien g, created_at FROM eo_item WHERE id IN (SELECT value FROM json_each(?)) AND don_gia_du_kien IS NOT NULL ORDER BY created_at DESC LIMIT 1").bind(ids).first<any>(),
   ]);
-  const idSet = new Set(dong.map((r) => r.item_id));
-  const td = dong.some((r) => r.trang_thai_eo === "ISSUED") ? (await layDongTheoDoi(c.env, "tat_ca")).filter((r) => idSet.has(r.item_id)) : [];
-  // giai doan tung dong (lib/giaiDoan, da cache) -> tien trinh thu gon o tab lich su dat hang
-  const gd = await layGiaiDoan(c.env);
-  const giaiDoan = Object.fromEntries(dong.map((r) => {
-    const g = gd.map.get(r.item_id);
-    return [r.item_id, g ? { item_id: r.item_id, gd_hien_tai: g.gd_hien_tai, gd_hien_tai_ten: g.gd_hien_tai_ten, gd_gio: g.gd_gio, gd_tre: g.gd_tre,
-      gd_moc: g.moc, gd_gio_tung: g.gio, gd_tre_tung: g.tre } : null];
-  }));
+  const td = dong.filter((r) => r.theo_doi).map((r) => ({ ...r, co_ngay_du_kien: !!r.ngay_du_kien_gan_nhat }));
+  // giai doan tung dong (da gop trong cache theo dong) -> tien trinh thu gon o tab lich su dat hang
+  const giaiDoan = Object.fromEntries(dong.map((r) => [r.item_id, r.gd_hien_tai ? { item_id: r.item_id, gd_hien_tai: r.gd_hien_tai,
+    gd_hien_tai_ten: r.gd_hien_tai_ten, gd_gio: r.gd_gio, gd_tre: r.gd_tre, gd_moc: r.gd_moc, gd_gio_tung: r.gd_gio_tung, gd_tre_tung: r.gd_tre_tung } : null]));
   const mo = dong.filter((r) => !TRANG_THAI_DONG.includes(r.trang_thai_don_hang) && r.trang_thai_eo === "ISSUED");
   const xong = dong.filter((r) => ["Kết thúc", "Kết thúc sớm"].includes(r.trang_thai_don_hang) && r.thoi_gian_xu_ly_ngay != null);
   const tenMoiNhat = dong.find((r) => r.part_name)?.part_name ?? nhap.results.find((r) => r.part_name)?.part_name ?? "";

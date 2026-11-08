@@ -22,6 +22,7 @@ import BaoCaoGiaiDoan from "./reports/BaoCaoGiaiDoan";
 import ReportTuan from "./reports/ReportTuan";
 import ReportLuyKe from "./reports/ReportLuyKe";
 import { Kho, khoGon } from "../lib/kho";
+import { taiSoDonHang } from "../lib/sdhCache";
 
 /**
  * "LK đặt" (/don-hang, truoc la "Quan ly don hang"): MOI dong linh kien tren EO (moi trang thai) - 1 man cho ca xem lan thao tac.
@@ -232,7 +233,7 @@ function DanhSach() {
   const qc = useQueryClient();
   const qv = useQuickView();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
-  const q = useQuery({ queryKey: ["so-don-hang"], queryFn: () => api.get<{ giai_doan: any[]; sla: Record<string, number>; rows: Row[]; danh_gia_luc: string | null }>("/so-don-hang") });
+  const q = useQuery({ queryKey: ["so-don-hang"], queryFn: taiSoDonHang });
   const [loc, setLoc] = useState<Loc>(() => {
     const tuUrl: Record<string, string> = Object.fromEntries([...sp.entries()].filter(([k]) => k in LOC_TRONG));
     if (tuUrl.nhom === "tat_ca") tuUrl.nhom = ""; // link cu cua man Theo doi

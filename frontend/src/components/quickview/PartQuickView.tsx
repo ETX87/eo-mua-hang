@@ -10,7 +10,7 @@ import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, EoLink, useQuickView } from "./QuickView";
+import { QvHeader, Kpi, EoLink, DongLink, useQuickView } from "./QuickView";
 import { quyenEo, QtyModal } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 import { Kho } from "../../lib/kho";
@@ -24,10 +24,12 @@ const TRANG_THAI_MAU: Record<string, string> = {
 };
 type Tab = "kho" | "eo" | "amis" | "loi";
 
-export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma: string; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
+export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: { ma: string; po?: string; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
   const qv = useQuickView();
   const q = useQuery({ queryKey: ["xem-lk", ma], queryFn: () => api.get<any>(`/xem/linh-kien?ma=${encodeURIComponent(ma)}`) });
-  const [tab, setTab] = useState<Tab>("kho");
+  // po (ma phe duyet): UI ma LK TRONG 1 PO (khi khong co dong dat de mo popup don hang) - loc dong / phieu AMIS / loi / log theo PO; bo loc = UI chung
+  const [locPo, setLocPo] = useState(!!po);
+  const [tab, setTab] = useState<Tab>(po ? "amis" : "kho");
   const [chiMo, setChiMo] = useState(false);
   const [loaiLog, setLoaiLog] = useState<"all" | "sl" | "kh" | "khac">("all");
   const qc = useQueryClient();
@@ -39,7 +41,22 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
   const [err, setErr] = useState("");
   const [tim, setTim] = useState("");
   const [timLog, setTimLog] = useState("");
-  const d = q.data;
+  const d = useMemo(() => {
+    const g = q.data;
+    if (!g || !po || !locPo) return g;
+    const dong = g.dong.filter((r: any) => r.ma_phe_duyet === po);
+    const ids = new Set(dong.map((r: any) => r.item_id));
+    const eoIds = new Set(dong.map((r: any) => r.eo_id));
+    const phieu = g.phieu_nhap.filter((r: any) => r.approval_code_raw === po);
+    const mo = dong.filter((r: any) => ["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang));
+    return {
+      ...g, dong, phieu_nhap: phieu, theo_doi: (g.theo_doi ?? []).filter((r: any) => ids.has(r.item_id)),
+      loi: (g.loi ?? []).filter((l: any) => ids.has(l.eo_item_id)), log: (g.log ?? []).filter((e: any) => eoIds.has(e.eo_id)),
+      tong: { ...g.tong, so_eo: eoIds.size, so_dong: dong.length, sl_dat: dong.reduce((s: number, r: any) => s + (r.so_luong_dat || 0), 0),
+        sl_ve: dong.reduce((s: number, r: any) => s + (r.sl_nhap_amis_dung_eo || 0), 0), sl_thieu: mo.reduce((s: number, r: any) => s + (r.so_luong_con_thieu || 0), 0),
+        dong_mo: mo.length, ve_gan_nhat: phieu.find((r: any) => !r.voided_at)?.doc_date ?? null },
+    };
+  }, [q.data, po, locPo]);
 
   // ---- chi so cho quan ly: ty le dap ung, du kien ve tiep, theo tung kho
   const tk = useMemo(() => {
@@ -102,6 +119,11 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
             <span style={{ fontSize: 22, fontWeight: 900, fontFamily: "ui-monospace, monospace" }}>{d.ma}</span>
             <Clip w="min(55vw, 640px)" style={{ fontSize: 15, fontWeight: 600 }}>{d.ten || "(chưa có tên)"}</Clip>
             {d.thay_ma.map((x: string) => <span key={x} className="badge final" title="Thay mã tương đương">{x}</span>)}
+            {/* UI ma LK trong 1 PO (#26) <-> UI chung */}
+            {po && (locPo
+              ? <><span className="badge issued" title="Đang xem mã này trong PO này (không có dòng đặt khớp để mở đơn hàng)">trong PO {po}</span>
+                  <button type="button" className="btn ghost sm" onClick={() => setLocPo(false)}>⇄ Xem tất cả đơn của mã này</button></>
+              : <button type="button" className="btn ghost sm" onClick={() => setLocPo(true)}>⇄ Chỉ PO {po}</button>)}
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             Đối tác: <b>{t.doi_tac.length ? t.doi_tac.join(", ") : "—"}</b>
@@ -162,9 +184,9 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
             )}
             {tab === "eo" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th title="8 giai đoạn: bấm để xem chi tiết đơn hàng">Tiến trình</th><th>Lý do / ghi chú</th></tr></thead>
+                <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th title="Bấm mã: mở đơn hàng (mã này trong PO này)">Mã LK trong PO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th title="8 giai đoạn: bấm để xem chi tiết đơn hàng">Tiến trình</th><th>Lý do / ghi chú</th></tr></thead>
                 <tbody>
-                  {dong.length === 0 && <tr><td colSpan={13} className="muted">Không có dòng.</td></tr>}
+                  {dong.length === 0 && <tr><td colSpan={14} className="muted">{po && locPo ? `PO ${po} không có dòng đặt mang mã này (xem phiếu AMIS / bấm Xem tất cả đơn).` : "Không có dòng."}</td></tr>}
                   {dong.filter(khopTim(tim)).map((r: any) => {
                     const Q = quyen(r);
                     const mo = moDong(r);
@@ -181,6 +203,7 @@ export default function PartQuickView({ ma, onClose, onCloseAll, coTruoc }: { ma
                       <td>{chonDuoc(r) && <input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_tao)}</td>
                       <td style={{ whiteSpace: "nowrap" }}><EoLink id={r.eo_id}>{r.eo_code}</EoLink><div className="muted" style={{ fontSize: 10.5 }}>{r.ma_phe_duyet || "chưa ban hành"}{r.part_code_goc ? ` · ${r.part_code_goc} → ${r.part_code}` : ""}</div></td>
+                      <td style={{ whiteSpace: "nowrap" }}><DongLink id={r.item_id} ma={r.part_code} /></td>
                       <td><StatusBadge status={r.trang_thai_eo} /></td>
                       <td><Clip w={140}><Kho t={r.kho} /></Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.doi_tac || "—"}</Clip></td>
                       <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)}</td>

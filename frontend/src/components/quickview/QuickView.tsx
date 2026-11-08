@@ -5,8 +5,9 @@ import { Spinner } from "../ui";
  * Popup xem nhanh 95% man hinh: EO (theo id), don hang = 1 dong linh kien (theo item id) va ma linh kien (theo ma). Xep chong duoc (tu EO mo ma LK, tu ma LK mo EO),
  * nut ← quay lai popup duoi, Esc dong popup tren cung. Mo tu bat ky dau qua useQuickView() / <EoLink> / <PartLink>.
  */
-type Item = { loai: "eo"; id: number } | { loai: "dong"; id: number } | { loai: "lk"; ma: string };
-interface Api { openEo: (id: number) => void; openDong: (itemId: number) => void; openPart: (ma: string) => void; closeAll: () => void }
+type Item = { loai: "eo"; id: number } | { loai: "dong"; id: number } | { loai: "lk"; ma: string; po?: string };
+/** openPart(ma, po?): po = ma phe duyet -> UI ma LK LOC theo PO do (dong khong xac dinh duoc dong dat, vd chung tu chua khop). */
+interface Api { openEo: (id: number) => void; openDong: (itemId: number) => void; openPart: (ma: string, po?: string) => void; closeAll: () => void }
 const Ctx = createContext<Api | null>(null);
 
 const EoQuickView = lazy(() => import("./EoQuickView"));
@@ -24,7 +25,7 @@ export function QuickViewProvider({ children }: { children: ReactNode }) {
   const api: Api = {
     openEo: (id) => setStack((s) => [...s, { loai: "eo", id }]),
     openDong: (id) => setStack((s) => [...s, { loai: "dong", id }]),
-    openPart: (ma) => ma.trim() && setStack((s) => [...s, { loai: "lk", ma: ma.trim() }]),
+    openPart: (ma, po) => ma.trim() && setStack((s) => [...s, { loai: "lk", ma: ma.trim(), po: po?.trim() || undefined }]),
     closeAll: () => setStack([]),
   };
   const pop = () => setStack((s) => s.slice(0, -1));
@@ -46,7 +47,7 @@ export function QuickViewProvider({ children }: { children: ReactNode }) {
             <Suspense fallback={<Spinner />}>
               {it.loai === "eo" ? <EoQuickView id={it.id} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />
                 : it.loai === "dong" ? <DongQuickView id={it.id} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />
-                : <PartQuickView ma={it.ma} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />}
+                : <PartQuickView ma={it.ma} po={it.po} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />}
             </Suspense>
           </div>
         </div>
@@ -97,9 +98,12 @@ export function Kpi({ l, v, tone }: { l: string; v: ReactNode; tone?: "danger" |
  *  - DongLink  -> UI LE: ma LK trong 1 PO (= 1 dong dat, popup don hang) - dung o dong LE. Shift / Ctrl + bam -> UI chung.
  * Hai popup co nut chuyen qua lai (popup don hang: "⇄ Tất cả đơn của mã này"; popup ma LK: nut mo don tren tung dong).
  */
-export function DongLink({ id, ma, children }: { id?: number | null; ma: string | null | undefined; children?: ReactNode }) {
+export function DongLink({ id, ma, po, children }: { id?: number | null; ma: string | null | undefined; po?: string | null; children?: ReactNode }) {
   const qv = useContext(Ctx);
   if (!qv || !ma) return <>{children ?? ma}</>;
+  // khong co dong dat nhung biet ma PO (vd chung tu AMIS chua khop) -> UI ma LK loc theo PO do; khong biet PO -> UI chung
+  if (!id && po) return <button type="button" className="qv-link" title={`Xem mã ${ma} trong PO ${po} — Shift + bấm: tất cả đơn của mã`}
+    onClick={(e) => { e.stopPropagation(); if (e.shiftKey || e.ctrlKey || e.metaKey) qv.openPart(ma); else qv.openPart(ma, po); }}>{children ?? ma}</button>;
   if (!id) return <PartLink ma={ma}>{children}</PartLink>;
   return <button type="button" className="qv-link" title={`Xem ${ma} trong PO này (đơn hàng) — Shift + bấm: tất cả đơn của mã`}
     onClick={(e) => { e.stopPropagation(); if (e.shiftKey || e.ctrlKey || e.metaKey) qv.openPart(ma); else qv.openDong(id); }}>{children ?? ma}</button>;

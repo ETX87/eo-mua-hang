@@ -150,11 +150,8 @@ export interface GdKetQua {
 }
 const THU_TU = ["G1", "G2", "G3", "G5", "G6", "G8"]; // G4 song song, G7 chi do
 
-export async function layGiaiDoan(env: Env): Promise<{ sla: Record<string, number>; map: Map<number, GdKetQua> }> {
-  const { sla, dong } = await cachedReport(env.DB, "rep:giai-doan", ["eo", "amis", "settings", "theo_doi"], () => tinhMoc(env));
-  const now = nowVN();
-  const map = new Map<number, GdKetQua>();
-  for (const x of dong) {
+/** Phan "bay gio" cua 1 dong tu moc da cache (dung chung layGiaiDoan + lib/dongCache tinh lai dong dang mo moi request). */
+export function ketQuaGd(x: { gd: Record<string, MocGd>; ket_thuc: string | null; so_lan_trinh: number; so_lan_tra_ve: number }, now: string): GdKetQua {
     const gio: Record<string, number | null> = {}, tre: Record<string, boolean | null> = {};
     for (const [k, m] of Object.entries(x.gd)) {
       gio[k] = m.bd ? gioLamViec(m.bd, m.kt ?? now) : null;
@@ -165,12 +162,18 @@ export async function layGiaiDoan(env: Env): Promise<{ sla: Record<string, numbe
     const cur = x.ket_thuc === "HUY" ? "HUY" : x.ket_thuc === "XONG" ? "XONG" : THU_TU.find((k) => x.gd[k]?.bd && !x.gd[k]?.kt) ?? "G1";
     const g4 = x.gd.G4;
     const ten = cur === "XONG" ? "Hoàn tất (về đủ)" : cur === "HUY" ? "Đã hủy" : GIAI_DOAN.find((g) => g.k === cur)!.l;
-    map.set(x.item_id, {
+    return {
       gd_hien_tai: cur, gd_hien_tai_ten: ten, gd_bat_dau: x.gd[cur]?.bd ?? null,
       gd_gio: x.gd[cur]?.bd ? gio[cur] : null, gd_tre: x.gd[cur] ? tre[cur] : null,
       g4_trang_thai: !g4?.bd ? null : g4.kt ? "DA_GUI" : tre.G4 ? "TRE" : "CHUA_GHI_NHAN",
       so_lan_trinh: x.so_lan_trinh, so_lan_tra_ve: x.so_lan_tra_ve, gio, tre, moc: x.gd,
-    });
-  }
+    };
+}
+
+export async function layGiaiDoan(env: Env): Promise<{ sla: Record<string, number>; map: Map<number, GdKetQua> }> {
+  const { sla, dong } = await cachedReport(env.DB, "rep:giai-doan", ["eo", "amis", "settings", "theo_doi"], () => tinhMoc(env));
+  const now = nowVN();
+  const map = new Map<number, GdKetQua>();
+  for (const x of dong) map.set(x.item_id, ketQuaGd(x, now));
   return { sla, map };
 }

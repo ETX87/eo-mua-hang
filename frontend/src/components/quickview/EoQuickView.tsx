@@ -20,7 +20,8 @@ import {
 import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
-import { Kho } from "../../lib/kho";
+import { Kho, khoGon } from "../../lib/kho";
+import { DataTable, type Col } from "../DataTable";
 
 /**
  * Popup xem nhanh 1 EO (95% man hinh). Du lieu: GET /eo/:id (goc) + GET /xem/eo/:id/bo-sung (theo doi, loi, giai trinh,
@@ -69,6 +70,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const [err, setErr] = useState("");
   const [tim, setTim] = useState(""); // tim nhanh trong tab dang mo
   const [timTl, setTimTl] = useState(""); // tim trong nhat ky
+  const [xemHuy, setXemHuy] = useState(false); // #29: mac dinh an dong huy / tu choi
 
   const d = goc.data;
   const b = bs.data;
@@ -148,6 +150,57 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const k = khopTim(tim);
   const kTl = khopTim(timTl);
   const tlLoc = tl.filter((x) => (nhom === "all" || x.nhom === nhom) && kTl(x));
+
+  // ---- #29 bang dong linh kien (DataTable): an don huy mac dinh, dong con thieu len dau (thieu nhieu truoc)
+  const huy = (r: any) => r.line_status === "CANCELLED_LINE";
+  const soHuy = d.items.filter(huy).length;
+  const lkRows = d.items.map((r: any, i: number) => {
+    const t = tdBy.get(r.id) as any;
+    const kh = d.plans.filter((p: any) => p.eo_item_id === r.id);
+    const ndk = t?.ngay_du_kien_gan_nhat ?? kh.map((p: any) => p.planned_date).sort().pop();
+    const nm = t?.ngay_nm_cam_ket ?? [...kh].filter((p: any) => p.factory_committed_date).sort((a: any, b: any) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date;
+    const ve = (b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop();
+    const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id);
+    return { r, t, i, ndk, nm, ve, g };
+  }).filter((x: any) => (xemHuy || !huy(x.r)) && k({ ...x.r, ...(x.t ?? {}) }))
+    .sort((a: any, b: any) => {
+      const mo = (x: any) => !huy(x.r) && (x.r.chua_dat ?? 0) > 0;
+      return Number(mo(b)) - Number(mo(a)) || (mo(a) ? (b.r.chua_dat ?? 0) - (a.r.chua_dat ?? 0) : 0) || a.i - b.i;
+    });
+  const lkCols: Col<any>[] = [
+    { key: "act", header: <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>{coChon && <input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} />}Thao tác</span>,
+      render: ({ r, t }: any) => { const active = !huy(r); return (
+      <span style={{ display: "inline-flex", gap: 2, alignItems: "center", opacity: active ? 1 : 0.6 }} onClick={(e) => e.stopPropagation()}>
+        {coChon && (active && r.chua_dat > 0 ? <input type="checkbox" checked={chon.has(r.id)} onChange={() => doiChon(r.id)} title="Chọn để push đối tác" /> : <span style={{ width: 13 }} />)}
+        <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi" onClick={() => qv.openDong(r.id)}><I.trend width={14} height={14} /></button>
+        {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+        {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
+        {P.canSuaThongTin && r.line_status === "ACTIVE" && !poDone && <button className="btn ghost sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd({ k: "sua-tt", x: r })}><I.tag width={14} height={14} /></button>}
+        {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
+        {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+        {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
+        {P.canApprovePostIssue && r.post_issue_status === "PENDING" && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button> <button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
+        {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && (r.da_dat ?? 0) > 0 && (r.da_dat ?? 0) < r.current_qty && <button className="btn ghost sm" title={`Kết thúc sớm — SL đặt về đúng SL đã về (${soLuong(r.da_dat)}), không chờ phần còn lại`} onClick={() => setMd({ k: "kts", x: r })}><I.check width={14} height={14} /></button>}
+        {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && <button className="btn ghost sm danger" title="Hủy đơn đặt (không đặt nữa, SL đã về không tính) — bắt buộc lý do" onClick={() => setMd({ k: "huy", x: r })}><I.trash width={14} height={14} /></button>}
+      </span>); } },
+    { key: "stt", header: "#", align: "right", sapXep: true, gt: (x: any) => x.i + 1, render: (x: any) => <span className="muted">{x.i + 1}</span> },
+    { key: "ma", header: "Mã LK", loc: "chu", gt: ({ r }: any) => `${r.part_code} ${r.part_code_goc ?? ""}`, gtSap: ({ r }: any) => r.part_code, wrap: true,
+      render: ({ r }: any) => <span style={{ whiteSpace: "nowrap", opacity: huy(r) ? 0.6 : 1 }}><DongLink id={r.id} ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}<div style={{ marginLeft: -6 }}><NhanSauBH r={r} nguoiDuyet={eo.final_approver_email} /></div>{huy(r) && <span className="badge nhap" style={{ fontSize: 10 }}>Đã hủy / từ chối</span>}</span> },
+    { key: "ten", header: "Tên linh kiện", loc: "chu", gt: ({ r }: any) => r.part_name, maxW: 170, render: ({ r }: any) => r.part_name },
+    { key: "kho", header: "Kho", loc: "chon", gt: ({ r }: any) => r.warehouse, nhanChon: (v) => (khoGon(v) !== v ? `${khoGon(v)} — ${v}` : v), render: ({ r }: any) => <Kho t={r.warehouse} /> },
+    { key: "ncc", header: "Đối tác", loc: "chon", gt: ({ r }: any) => r.supplier ?? "", maxW: 110, render: ({ r }: any) => r.supplier || "—" },
+    { key: "dat", header: <Hoi k="SL_DAT" nhan="Đặt" />, align: "right", loc: "so", gt: ({ r }: any) => r.current_qty, render: ({ r }: any) => soLuong(r.current_qty) },
+    { key: "ve", header: <Hoi k="SL_VE" nhan="Về" />, align: "right", loc: "so", gt: ({ r }: any) => r.da_dat, render: ({ r }: any) => <span style={{ color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</span> },
+    { key: "thieu", header: <Hoi k="SL_THIEU" nhan="Thiếu" />, align: "right", loc: "so", gt: ({ r }: any) => r.chua_dat, render: ({ r }: any) => <b>{soLuong(r.chua_dat)}</b> },
+    { key: "ngay", header: <><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></>, loc: "ngay", gt: (x: any) => x.ndk, wrap: true,
+      render: (x: any) => <BaNgay nm={x.nm} dk={x.ndk} ve={x.ve} veDu={x.r.da_dat >= x.r.current_qty} /> },
+    { key: "td", header: "Theo dõi", loc: "chon", gt: ({ t }: any) => (t ? TT[t.tinh_trang]?.l ?? t.tinh_trang : ""), wrap: true,
+      render: ({ t }: any) => t ? <span style={{ whiteSpace: "nowrap" }}><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>CEO</span>}</span> : <span className="muted">—</span> },
+    { key: "gd", header: <span title="8 giai đoạn: bấm để xem chi tiết đơn hàng (thời gian, hạn, lỗi từng bước)">Tiến trình</span>, loc: "chon", gt: ({ g }: any) => g?.gd_hien_tai_ten ?? "", wrap: true,
+      render: ({ r, t, g }: any) => g ? <TienTrinhGon r={g} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.id)} /> : <span className="muted">—</span> },
+    { key: "gc", header: "Ca / ghi chú", loc: "chu", gt: ({ r }: any) => [r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · "), maxW: 120,
+      render: ({ r }: any) => [r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—" },
+  ];
 
   const guiBinhLuan = async () => {
     if (!cmt.trim()) return;
@@ -238,45 +291,15 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             )}
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
             {tab === "lk" && (
-              <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th>{coChon && <th style={{ width: 28, minWidth: 28 }}><input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} /></th>}<th>#</th><th>Mã LK</th><th>Tên linh kiện</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}><Hoi k="SL_DAT" nhan="Đặt" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_VE" nhan="Về" /></th><th style={{ textAlign: "right" }}><Hoi k="SL_THIEU" nhan="Thiếu" /></th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Theo dõi</th><th title="8 giai đoạn: bấm để xem chi tiết đơn hàng (thời gian, hạn, lỗi từng bước)">Tiến trình</th><th>Ca / ghi chú</th></tr></thead>
-                <tbody>
-                  {d.items.map((r: any, i: number) => ({ r, i })).filter(({ r }: any) => k({ ...r, ...(tdBy.get(r.id) as any ?? {}) })).map(({ r, i }: any) => {
-                    const t = tdBy.get(r.id) as any;
-                    const kh = d.plans.filter((p: any) => p.eo_item_id === r.id);
-                    const ndk = t?.ngay_du_kien_gan_nhat ?? kh.map((p: any) => p.planned_date).sort().pop();
-                    const active = r.line_status !== "CANCELLED_LINE";
-                    return (
-                      <tr key={r.id} style={{ opacity: active ? 1 : 0.5 }}><td className="qv-act">
-                          <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi" onClick={() => qv.openDong(r.id)}><I.trend width={14} height={14} /></button>
-                          {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
-                          {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
-                          {P.canSuaThongTin && r.line_status === "ACTIVE" && !poDone && <button className="btn ghost sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd({ k: "sua-tt", x: r })}><I.tag width={14} height={14} /></button>}
-                          {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
-                          {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
-                          {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
-                          {P.canApprovePostIssue && r.post_issue_status === "PENDING" && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button> <button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
-                          {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && (r.da_dat ?? 0) > 0 && (r.da_dat ?? 0) < r.current_qty && <button className="btn ghost sm" title={`Kết thúc sớm — SL đặt về đúng SL đã về (${soLuong(r.da_dat)}), không chờ phần còn lại`} onClick={() => setMd({ k: "kts", x: r })}><I.check width={14} height={14} /></button>}
-                          {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && <button className="btn ghost sm danger" title="Hủy đơn đặt (không đặt nữa, SL đã về không tính) — bắt buộc lý do" onClick={() => setMd({ k: "huy", x: r })}><I.trash width={14} height={14} /></button>}
-                        </td>
-                        {coChon && <td>{active && r.chua_dat > 0 && <input type="checkbox" checked={chon.has(r.id)} onChange={() => doiChon(r.id)} />}</td>}
-                        <td className="muted">{i + 1}</td>
-                        <td style={{ whiteSpace: "nowrap" }}><DongLink id={r.id} ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}<div style={{ marginLeft: -6 }}><NhanSauBH r={r} nguoiDuyet={eo.final_approver_email} /></div></td>
-                        <td><Clip w={170}>{r.part_name}</Clip></td>
-                        <td><Clip w={140}><Kho t={r.warehouse} /></Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.supplier || "—"}</Clip></td>
-                        <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td>
-                        <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.chua_dat)}</td>
-                        <td><BaNgay nm={t?.ngay_nm_cam_ket ?? [...kh].filter((p: any) => p.factory_committed_date).sort((a: any, b: any) => String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at))).pop()?.factory_committed_date}
-                          dk={ndk} ve={(b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop()} veDu={r.da_dat >= r.current_qty} /></td>
-                        <td style={{ whiteSpace: "nowrap" }}>{t ? <><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>CEO</span>}</> : <span className="muted">—</span>}</td>
-                        <td>{(() => { const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id); return g ? <TienTrinhGon r={g} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.id)} /> : <span className="muted">—</span>; })()}</td>
-                        <td><Clip w={120}>{[r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—"}</Clip></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              // #29 (2026-11-08): bang dung chung DataTable - loc / sap xep kieu Excel tren tieu de; mac dinh AN don huy / tu choi
+              // (tick "Xem cả đơn hủy"); thu tu mac dinh: dong con thieu len dau, thieu nhieu xep truoc. Loc tren may nguoi dung.
+              <>
+                <label className="muted" style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, padding: "6px 12px" }}>
+                  <input type="checkbox" checked={xemHuy} onChange={(e) => setXemHuy(e.target.checked)} />
+                  Xem cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}
+                </label>
+                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} empty="Không có dòng linh kiện khớp bộ lọc" />
+              </>
             )}
             {tab === "kh" && (
               <>

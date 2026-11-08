@@ -108,6 +108,14 @@ type GocDong = Omit<DongTheoDoi, "tinh_trang" | "han_cap_nhat_lai" | "ceo_ly_do"
  * so lan lui tu event_log, ngay ve du) cache qua cachedReport theo version eo/amis/settings/theo_doi + ngay;
  * phan phu thuoc "bay gio" (tre 48h, qua ngay DK, han cap nhat lai, cap CEO) tinh lai moi lan goi - re, trong bo nho.
  */
+/** Tinh trang theo doi "bay gio" (dung chung layDongTheoDoi + lib/dongCache tinh lai dong dang mo moi request). */
+export function tinhTrangBayGio(r: { trang_thai_don_hang: string; ngay_du_kien_gan_nhat: string | null; han_ngay_du_kien: string | null }, now: string, today: string): DongTheoDoi["tinh_trang"] {
+  const dong = DONG.includes(r.trang_thai_don_hang);
+  const ndk = r.ngay_du_kien_gan_nhat;
+  return dong ? "DONG" : !!ndk && ndk < today ? "QUA_HAN_NDK"
+    : !ndk ? (r.han_ngay_du_kien && now > r.han_ngay_du_kien ? "TRE_NDK" : "CHO_NDK") : "CHO_HANG";
+}
+
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
   const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v6", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
@@ -120,8 +128,7 @@ export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "d
     const ndk = r.ngay_du_kien_gan_nhat;
     const coNdk = !!ndk;
     const quaHan = !dong && !!ndk && ndk < today;
-    const tinhTrang: DongTheoDoi["tinh_trang"] = dong ? "DONG" : quaHan ? "QUA_HAN_NDK"
-      : !coNdk ? (r.han_ngay_du_kien && now > r.han_ngay_du_kien ? "TRE_NDK" : "CHO_NDK") : "CHO_HANG";
+    const tinhTrang = tinhTrangBayGio(r, now, today);
     const ceo: string[] = [];
     const ct: CeoChiTiet[] = [];
     if (r.ap_dung && !dong) {

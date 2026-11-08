@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -329,6 +329,26 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - `DongLink id ma` → UI LẺ (popup đơn hàng = mã LK trong 1 PO) — dùng ở dòng LẺ (LK đặt, bảng linh kiện popup EO, Vi phạm, KRF, AMIS);
   không có `id` → tự rơi về `PartLink`; Shift/Ctrl + bấm → UI chung.
 - Chuyển qua lại: popup đơn hàng có nút "⇄ Tất cả đơn của mã này" (`openPart`); popup mã LK, tab Lịch sử EO / đặt hàng, nút 👁 từng dòng (`openDong`).
+
+## Cache theo từng dòng (v0.073, migration 0021, `lib/dongCache.ts`) — tốc độ LK đặt / popup
+
+- Đo 2026-11-08: D1 nhanh (truy vấn nặng nhất ~215ms), chậm do **giải nén blob cache toàn hệ thống** mỗi lần (`rep:tien-do-01` ~700KB gzip,
+  giai đoạn / theo dõi / ds EO ~200KB) kể cả khi chỉ mở 1 PO hay 1 mã LK.
+- `dong_cache` (1 dòng LK = 1 bản ghi đã gộp: báo cáo 0.1 + EO + giai đoạn + theo dõi; `sig`, `seq`, `mo`, `ma_lk/ma_goc`, `nguon_now`) +
+  `dong_cache_meta` (tag, seq, epoch, sla, khoá). `damBaoDongCache`: tag (version eo/amis/settings/theo_doi + ngày VN) đổi → dựng lại bằng
+  `xayDongSdh` (routes/soDonHang, pipeline cũ) và **chỉ ghi dòng có sig khác** (seq mới, ghi theo lô json_each 150 dòng).
+- Phần "bây giờ" (giờ từng giai đoạn, trễ hạn, `tinh_trang` theo dõi) KHÔNG nằm trong sig: dòng `mo = 1` tính lại mỗi request từ `nguon_now`
+  (`ketQuaGd` của lib/giaiDoan + `tinhTrangBayGio` của lib/theoDoi — dùng chung với đường cũ).
+- `GET /so-don-hang?eo_id=` / `/xem/eo/:id/bo-sung` / `/xem/linh-kien` đọc đúng các dòng cần (`dongCacheTheo`). FE LK đặt + báo cáo giai đoạn:
+  `lib/sdhCache.ts` giữ danh sách trong IndexedDB, gọi `?seq=&epoch=` → chỉ nhận dòng đổi + `now` của dòng mở. Cache lỗi → tự rơi về cách cũ.
+- Thêm trường vào dòng /so-don-hang: sửa `xayDongSdh`; trường phụ thuộc thời gian: thêm vào `NOW_KEYS` + `phanBayGio`.
+
+## v0.073 khác
+
+- `DongLink po`: không có dòng đặt nhưng biết mã PO (chứng từ chưa khớp) → popup mã LK **lọc theo PO** (`openPart(ma, po)`, badge "trong PO",
+  nút ⇄ xem tất cả). Popup mã LK, tab Lịch sử EO / đặt hàng có cột "Mã LK trong PO" (DongLink).
+- Popup PO, bảng linh kiện = `DataTable` (lọc / sắp xếp kiểu Excel trên máy), mặc định ẩn dòng hủy / từ chối (tick "Xem cả đơn hủy"),
+  dòng còn thiếu lên đầu, thiếu nhiều trước.
 
 ## ETX nhân sự
 

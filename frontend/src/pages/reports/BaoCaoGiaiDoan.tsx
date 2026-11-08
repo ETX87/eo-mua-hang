@@ -7,6 +7,7 @@ import { PageHeader, Card, Spinner } from "../../components/ui";
 import { soLuong, ten } from "../../lib/format";
 import { gioTxt } from "../../lib/giaiDoan";
 import { khoGon } from "../../lib/kho";
+import { taiSoDonHang } from "../../lib/sdhCache";
 
 /**
  * Bao cao "Giai doan don hang" (dot 2): moi giai doan G1..G8 - so dong da qua, thoi gian TB / trung vi / P90 (gio lam viec),
@@ -56,7 +57,7 @@ const CHIEU: { k: string; l: string; get: (r: Row) => string | null; hien?: (v: 
 /** nhung = hien trong tab Bao cao cua Quan ly don hang (khong PageHeader rieng). */
 export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
   const nav = useNavigate();
-  const q = useQuery({ queryKey: ["so-don-hang"], queryFn: () => api.get<{ giai_doan: any[]; sla: Record<string, number>; rows: Row[] }>("/so-don-hang") });
+  const q = useQuery({ queryKey: ["so-don-hang"], queryFn: taiSoDonHang });
   const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
   const [tu, setTu] = useState(() => `${homNay.slice(0, 4)}-${String(Math.max(1, Number(homNay.slice(5, 7)) - 2)).padStart(2, "0")}-01`);
   const [den, setDen] = useState("");
