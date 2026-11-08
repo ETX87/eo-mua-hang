@@ -17,7 +17,8 @@ import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
   actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, KetThucSomModal, SuaThongTinDongModal, KetThucSomPoModal, xuatDongEo,
 } from "../../pages/eo/eoActions";
-import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
+import { gopTrung, gopLienTiep, khoaMail, lietKe } from "../../lib/gopTrung";
+import { NhatKyGop } from "../NhatKyGop";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
 import { Kho, khoGon } from "../../lib/kho";
@@ -79,13 +80,15 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
 
   const tl = useMemo(() => {
     if (!d) return [];
-    const out: { at: string; nhom: Nhom; h: string; ai?: string | null; text?: string }[] = [];
+    // loai: dung gom muc lien tiep cung loai (NhatKyGop, #30); ma: ma LK cua muc (tom tat nhom)
+    const out: { at: string; nhom: Nhom; h: string; ai?: string | null; text?: string; loai?: string; ma?: string | null }[] = [];
     // gom muc trung (lib/gopTrung): su kien giong het (du lieu chuyen tu Sheet cu), loi cung quy tac & han tren nhieu dong,
     // thu luu 1 ban ghi / dong -> 1 muc kem so dong / ma LK
     const lk = (ids: number[]) => lietKe(ids.map((x) => (itemBy.get(x) as any)?.part_code));
     for (const { x: e, ds } of gopTrung(d.events as any[], (e) => `${e.event_type}|${e.entity_type}|${e.entity_id}|${e.created_at}|${moTaSuKien(e) ?? ""}`)) {
       const it = itemBy.get(e.entity_id) as any;
-      out.push({ at: e.created_at, nhom: nhomCua(e.event_type), h: `${EVENT_LABEL[e.event_type] ?? e.event_type}${e.entity_type === "eo_item" && it ? ` · ${it.part_code}` : ""}${ds.length > 1 ? ` (×${ds.length})` : ""}`, ai: e.user_email, text: moTaSuKien(e) });
+      out.push({ at: e.created_at, nhom: nhomCua(e.event_type), h: `${EVENT_LABEL[e.event_type] ?? e.event_type}${e.entity_type === "eo_item" && it ? ` · ${it.part_code}` : ""}${ds.length > 1 ? ` (×${ds.length})` : ""}`, ai: e.user_email, text: moTaSuKien(e),
+        loai: EVENT_LABEL[e.event_type] ?? e.event_type, ma: e.entity_type === "eo_item" ? it?.part_code ?? null : null });
     }
     for (const c of d.comments) out.push({ at: c.created_at, nhom: "binhluan", h: "Bình luận", ai: c.user_email, text: c.noi_dung });
     // loi: 1 muc / (quy tac, trang thai) - "x n lan" (R3 ghi moi thu 2 / thu 4, R4 moi moc qua han), moc = lan gan nhat
@@ -98,10 +101,10 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     for (const p of b?.push ?? []) out.push({ at: p.created_at, nhom: "mail", h: `Tạo push ${p.ma_push} · ${p.doi_tac}`, ai: p.created_by, text: `${p.so_dong} dòng · ${p.trang_thai === "DA_TAO" ? "đã tạo file" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"}` });
     for (const { x: m, ds } of gopTrung((b?.mail ?? []) as any[], khoaMail)) {
       const ids = idsThu(ds).filter((x) => itemBy.has(x));
-      out.push({ at: m.thoi_gian || m.synced_at, nhom: "mail", h: `${m.huong === "GUI" ? "✉ Gửi" : "✉ Nhận"}: ${m.tieu_de ?? ""}`, ai: m.huong === "GUI" ? m.den : m.tu,
+      out.push({ at: m.thoi_gian || m.synced_at, nhom: "mail", h: `${m.huong === "GUI" ? "✉ Gửi" : "✉ Nhận"}: ${m.tieu_de ?? ""}`, ai: m.huong === "GUI" ? m.den : m.tu, loai: m.huong === "GUI" ? "✉ Gửi mail" : "✉ Nhận mail",
         text: [m.tom_tat, ids.length ? `${new Set(ids).size} dòng của EO: ${lk(ids)}` : ""].filter(Boolean).join(" · ") });
     }
-    return out.sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 300);
+    return out.sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 1500);
   }, [d, b, itemBy]);
 
   if (goc.isLoading) return <Spinner />;
@@ -150,6 +153,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const k = khopTim(tim);
   const kTl = khopTim(timTl);
   const tlLoc = tl.filter((x) => (nhom === "all" || x.nhom === nhom) && kTl(x));
+  // #30: muc lien tiep cung loai + cung nguoi + cach nhau <= 2 gio -> 1 dong "(×n)" (binh luan khong gom)
+  const tlGop = gopLienTiep(tlLoc, (x) => (x.nhom === "binhluan" || !x.loai ? null : `${x.nhom}|${x.loai}|${x.ai ?? ""}`), (x) => x.at);
 
   // ---- #29 bang dong linh kien (DataTable): an don huy mac dinh, dong con thieu len dau (thieu nhieu truoc)
   const huy = (r: any) => r.line_status === "CANCELLED_LINE";
@@ -375,23 +380,16 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
         {/* ------- phai: nhat ky ------- */}
         <div className="qv-col">
           <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-            <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 8 }}>Nhật ký xử lý ({tlLoc.length})</div>
+            <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 8 }}>Nhật ký xử lý ({tlLoc.length}{tlGop.length < tlLoc.length ? ` — gọn ${tlGop.length} mục` : ""})</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {NHOM_TL.map((n) => <button key={n.k} className={`qv-chip ${nhom === n.k ? "on" : ""}`} onClick={() => setNhom(n.k)}>{n.l}</button>)}
               <input className="input" style={{ height: 28, fontSize: 12, marginTop: 6, width: "100%" }} placeholder="🔍 Tìm trong nhật ký (người, mã LK, nội dung…)" value={timTl} onChange={(e) => setTimTl(e.target.value)} />
             </div>
           </div>
           <div className="qv-scroll">
-            <ul className="qv-tl">
-              {tlLoc.length === 0 && <li className="muted" style={{ fontSize: 12 }}>Không có mục nào.</li>}
-              {tlLoc.map((x, i) => (
-                <li key={i} style={{ ["--dot" as any]: MAU[x.nhom] }}>
-                  <div className="t">{ngayGio(x.at)}{x.ai ? ` · ${ten(x.ai)}` : ""}</div>
-                  <div className="h">{x.h}</div>
-                  {x.text && <div className="d">{x.text}</div>}
-                </li>
-              ))}
-            </ul>
+            <NhatKyGop nhom={tlGop} khoa={(x, i) => `${i}|${x.at}|${x.h}`} dot={(x) => MAU[x.nhom]} luc={(x) => x.at} ai={(x) => (x.ai ? ten(x.ai) : null)}
+              tieu={(x) => x.h} tieuNhom={(x) => x.loai ?? x.h} moTa={(x) => x.text ?? null}
+              tomTat={(ds) => { const ma = lietKe(ds.map((y) => y.ma), 6); return ma ? `Mã LK: ${ma}` : ds[0].text ?? null; }} />
           </div>
           <div style={{ borderTop: "1px solid var(--border)", padding: 10, display: "flex", gap: 6 }}>
             <input className="input" placeholder="Viết bình luận / trao đổi…" value={cmt} onChange={(e) => setCmt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && guiBinhLuan()} />

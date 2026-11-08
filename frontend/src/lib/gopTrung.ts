@@ -25,3 +25,19 @@ export const lietKe = (xs: (string | null | undefined)[], toiDa = 4) => {
   const u = [...new Set(xs.filter(Boolean) as string[])];
   return u.length <= toiDa ? u.join(", ") : `${u.slice(0, toiDa).join(", ")} +${u.length - toiDa}`;
 };
+
+/**
+ * Gom muc LIEN TIEP (danh sach da sap moi -> cu) cung khoa, cach muc truoc trong nhom <= cuaSoPhut (2026-11-08, #30 nhat ky gon).
+ * khoa tra null = khong gom (vd binh luan). Giu thu tu; x = muc moi nhat cua nhom.
+ */
+export function gopLienTiep<T>(ds: T[], khoa: (x: T) => string | null, luc: (x: T) => string, cuaSoPhut = 120): { x: T; ds: T[] }[] {
+  const ms = (s: string) => Date.parse(String(s).slice(0, 19).replace(" ", "T") + "Z");
+  const out: { k: string | null; x: T; ds: T[] }[] = [];
+  for (const x of ds) {
+    const k = khoa(x);
+    const cur = out[out.length - 1];
+    if (cur && k != null && cur.k === k && Math.abs(ms(luc(cur.ds[cur.ds.length - 1])) - ms(luc(x))) <= cuaSoPhut * 60_000) cur.ds.push(x);
+    else out.push({ k, x, ds: [x] });
+  }
+  return out.map(({ x, ds }) => ({ x, ds }));
+}

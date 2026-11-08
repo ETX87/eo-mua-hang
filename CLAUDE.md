@@ -350,6 +350,13 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - Popup PO, bảng linh kiện = `DataTable` (lọc / sắp xếp kiểu Excel trên máy), mặc định ẩn dòng hủy / từ chối (tick "Xem cả đơn hủy"),
   dòng còn thiếu lên đầu, thiếu nhiều trước.
 
+## Nhật ký gọn (v0.074, `components/NhatKyGop.tsx` + `gopLienTiep` ở `lib/gopTrung.ts`)
+
+Nhiều nhất trên production (2026-11-08): ADD_ITEM ~7.9k, UPDATE_PLAN ~7.6k, ADD_PLAN ~3.2k — ghi theo loạt (tạo PO / cập nhật kế hoạch hàng loạt).
+Hiển thị: mục LIÊN TIẾP cùng loại + cùng người (+ cùng PO ở popup mã LK), cách nhau ≤ 2 giờ → 1 dòng "×n" + khoảng thời gian + tóm tắt
+(mã LK), "▾ Xem n mục" mở từng mục. Bình luận không gộp. Dùng ở popup PO (Nhật ký xử lý, tối đa 1.500 mục trước gộp) và popup mã LK.
+Dữ liệu event_log không đổi. `gopTrung` (trùng hệt) vẫn chạy trước.
+
 ## ETX nhân sự
 
 Danh bạ nhân sự kéo từ ETX (`lib/etxNhanSu.ts`, `routes/etxNhanSu.ts`, tab "ETX nhân sự" ở Cài đặt › Người dùng),
