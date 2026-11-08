@@ -181,38 +181,43 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} lỗi)</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
         </>}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
             <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}>{eo.eo_code}</span>
             <StatusBadge status={poDone ? "DONE" : eo.trang_thai} />
             {eo.approval_code ? <span className="badge issued">{eo.approval_code}</span> : <span className="badge nhap">Chưa ban hành</span>}
             <Clip w="min(60vw, 720px)" style={{ fontSize: 15, fontWeight: 600 }}>{eo.tieu_de || "(không tiêu đề)"}</Clip>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <div className="muted qv-meta" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 12, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden" }}>
             <span>Người tạo <b>{ten(eo.created_by)}</b> · {ngayGio(eo.created_at)}</span>
             <span>Phòng ban <b>{eo.phong_ban || "—"}</b></span>
             <span>Loại hình <b>{eo.loai_hinh || "—"}</b></span>
             <span>Duyệt mua <b>{ten(eo.final_approver_email)}</b></span>
             {eo.issued_at && <span>Ban hành <b>{ngayGio(eo.issued_at)}</b></span>}
             {eo.cancelled_at && <span style={{ color: "var(--danger-ink)" }}>Hủy {ngayGio(eo.cancelled_at)}{eo.cancel_reason ? ` — ${eo.cancel_reason}` : ""}</span>}
+            {/* so lieu chinh ngay tren dong thong tin; o so lieu day du + canh bao nam trong "Xem chi tiết" cua QuyTrinh (#22) */}
+            <span>Đặt <b>{soLuong(d.tong.tong_sl_dat)}</b> · về <b style={{ color: "var(--ok-ink)" }}>{soLuong(d.tong.sl_da_dat)}</b> · thiếu <b style={{ color: d.tong.sl_chua_dat > 0 ? "var(--warn-ink)" : undefined }}>{soLuong(d.tong.sl_chua_dat)}</b></span>
+            {(b?.canh_bao ?? []).length > 0 && <span title={b.canh_bao.map((c: any) => c.text).join("\n")} style={{ color: "var(--danger-ink)", fontWeight: 700 }}>⚠ {b.canh_bao.length} cảnh báo</span>}
           </div>
         </QvHeader>
-        <div className="qv-kpis">
-          <Kpi l="Số dòng" v={soLuong(d.tong.so_dong)} />
-          <Kpi l="Tổng SL đặt" v={soLuong(d.tong.tong_sl_dat)} />
-          <Kpi l="Đã về (AMIS)" v={soLuong(d.tong.sl_da_dat)} tone="ok" />
-          <Kpi l="Còn thiếu" v={soLuong(d.tong.sl_chua_dat)} tone={d.tong.sl_chua_dat > 0 ? "warn" : undefined} />
-          <Kpi l="Tiền dự kiến" v={tien(d.tong.tong_tien_du_kien)} />
-          <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
-          <Kpi l="Tài liệu" v={soLuong(d.files.length)} />
-        </div>
-        {/* quy trinh gon + mo rong, hang ve nhieu dot, van de theo buoc (QuyTrinh) */}
+        {/* THU GON = chi 1 dong quy trinh (~80% man cho danh sach); so lieu + canh bao + hang ve + van de theo buoc trong "Xem chi tiết" */}
         {sdh.data && <QuyTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []}
-          phieuNhap={bs.data ? b?.phieu_nhap ?? [] : undefined} slDat={d.tong.tong_sl_dat} phuTrach={phuTrach} />}
-        <div className="qv-alerts">
-          {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
-            : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
-            : b.canh_bao.map((c: any, i: number) => <span key={i} className={`qv-alert ${c.muc}`}>{c.muc === "danger" ? "⚠ " : c.muc === "warn" ? "! " : "i "}{c.text}</span>)}
-        </div>
+          phieuNhap={bs.data ? b?.phieu_nhap ?? [] : undefined} slDat={d.tong.tong_sl_dat} phuTrach={phuTrach}
+          chiTiet={<>
+            <div className="qv-kpis" style={{ marginTop: 6 }}>
+              <Kpi l="Số dòng" v={soLuong(d.tong.so_dong)} />
+              <Kpi l="Tổng SL đặt" v={soLuong(d.tong.tong_sl_dat)} />
+              <Kpi l="Đã về (AMIS)" v={soLuong(d.tong.sl_da_dat)} tone="ok" />
+              <Kpi l="Còn thiếu" v={soLuong(d.tong.sl_chua_dat)} tone={d.tong.sl_chua_dat > 0 ? "warn" : undefined} />
+              <Kpi l="Tiền dự kiến" v={tien(d.tong.tong_tien_du_kien)} />
+              <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
+              <Kpi l="Tài liệu" v={soLuong(d.files.length)} />
+            </div>
+            <div className="qv-alerts">
+              {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
+                : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
+                : b.canh_bao.map((c: any, i: number) => <span key={i} className={`qv-alert ${c.muc}`}>{c.muc === "danger" ? "⚠ " : c.muc === "warn" ? "! " : "i "}{c.text}</span>)}
+            </div>
+          </>} />}
       </div>
 
       <div className="qv-body">

@@ -308,6 +308,9 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   "▾ Xem chi tiết" (bản đầy đủ `TienTrinh nhung`), thanh **hàng về nhiều đợt** (`gomDotVe`: phiếu AMIS gom theo ngày CT, lũy kế / SL đặt,
   thiếu → giao bù) và **Vấn đề theo bước** (lỗi gắn giai đoạn qua `LOI_GD` + trễ hạn, gom theo AI mắc: tên ETX + vai `ai_ma`; phụ trách
   từng bước truyền `phuTrach`). KPI popup = pill 1 dòng (CSS `.qv-kpi`).
+  **Thu gọn = đúng 1 dòng** (v0.071, yêu cầu ~80% popup cho danh sách): nhãn | đường quy trình | tóm tắt ("⚠ n bước có vấn đề", "Về x/y") | nút;
+  ô số liệu, cảnh báo, giải thích cấp CEO truyền vào `chiTiet` của QuyTrinh (chỉ hiện khi "Xem chi tiết"). Dòng tiêu đề + dòng thông tin
+  popup (`.qv-meta`) không xuống dòng, số Đặt/về/thiếu nằm trên dòng thông tin.
 - **Lỗi giai đoạn trước sau khi đơn sang giai đoạn sau** (`danhGiaQuyTac`): R1/R3 đang chờ có hạn >= `lan_dau_co_ndk`, R1/R3/R4 có hạn >=
   `ngay_ve_dau` → tự xoá + event `XOA_LOI_THEO_DOI`.
 - **Màn AMIS**: cột chung `pages/amis/cotAmis.tsx` (mã phê duyệt → popup PO qua `po_eo_id`, mã hàng → popup ĐƠN HÀNG (cùng giao diện LK đặt) qua `dong_id` = dòng khớp hoặc dòng cùng PO + cùng mã;

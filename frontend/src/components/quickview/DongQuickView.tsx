@@ -62,15 +62,15 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           {moDong && <button className="btn sm ghost danger" title="Không đặt nữa — SL đã về (nếu có) không tính" onClick={() => setMd("huy")}><I.x width={13} height={13} /> Hủy đơn</button>}
           {r.theo_doi && <button className="btn sm" onClick={() => setMd("gt")} style={{ color: loiCho ? "var(--danger)" : undefined }}><I.edit width={13} height={13} /> Giải trình{loiCho ? ` (${loiCho})` : ""}</button>}
         </>}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
             <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>Đơn hàng</span>
             <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}><PartLink ma={it.part_code} /></span>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>{it.part_name}</span>
+            <span style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", minWidth: 60 }} title={it.part_name}>{it.part_name}</span>
             {r.trang_thai_don_hang && <span className="badge nhap">{r.trang_thai_don_hang}</span>}
             {tt && <span className={`badge ${tt.c}`}>{tt.l}</span>}
             {(r.ceo_ly_do ?? []).length > 0 && <span className="badge reject" title={ceoTxt(r.ceo_chi_tiet, r.ceo_ly_do)}>Cấp CEO</span>}
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <div className="muted qv-meta" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 12, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden" }}>
             <span>EO <EoLink id={it.eo_id}>{it.approval_code || it.eo_code}</EoLink>{it.approval_code ? ` (${it.eo_code})` : ""} {r.trang_thai_eo && <StatusBadge status={r.trang_thai_eo} />}</span>
             <span>Kho <b><Kho t={it.warehouse} /></b></span>
             <span>Đối tác <b>{it.supplier || "—"}</b></span>
@@ -79,21 +79,26 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             {r.ly_do_ps && <span>Lý do PS <b>{r.ly_do_ps}</b></span>}
             {r.part_code_goc && <span>Thay từ mã <b>{r.part_code_goc}</b></span>}
             {r.ket_thuc_som_at && <span style={{ color: "var(--ok-ink)" }}>Kết thúc sớm <b>{ngayGio(r.ket_thuc_som_at)}</b>{r.sl_dat_truoc_kts != null ? <> · SL đặt ban đầu <b>{soLuong(r.sl_dat_truoc_kts)}</b></> : null}</span>}
+            {/* so lieu chinh tren dong thong tin; o so lieu day du + giai thich cap CEO trong "Xem chi tiết" (#22) */}
+            <span>Đặt <b>{soLuong(r.so_luong_dat ?? it.current_qty)}</b> · về <b style={{ color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo ?? 0)}</b> · thiếu <b style={{ color: r.so_luong_con_thieu ? "var(--warn-ink)" : undefined }}>{soLuong(r.so_luong_con_thieu ?? 0)}</b>
+              {" "}· DK <b style={{ color: r.canh_bao === "Quá dự kiến" ? "var(--danger-ink)" : undefined }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</b></span>
           </div>
         </QvHeader>
-        <div className="qv-kpis">
-          <Kpi l="SL đặt" v={soLuong(r.so_luong_dat ?? it.current_qty)} />
-          <Kpi l="Đã về (AMIS)" v={soLuong(r.sl_nhap_amis_dung_eo ?? 0)} tone="ok" />
-          <Kpi l="Còn thiếu" v={soLuong(r.so_luong_con_thieu ?? 0)} tone={r.so_luong_con_thieu ? "warn" : undefined} />
-          <Kpi l="Ngày NM cam kết" v={ngay(r.ngay_nm_cam_ket) || "—"} />
-          <Kpi l="Ngày dự kiến" v={ngay(r.ngay_du_kien_gan_nhat) || "—"} tone={r.canh_bao === "Quá dự kiến" ? "danger" : undefined} />
-          <Kpi l="Ngày hàng về" v={ngay(r.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo) || "—"} />
-          <Kpi l="Tồn (từ ngày đặt)" v={["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? <MocTon tu={r.bat_dau ?? r.ngay_ban_hanh} nho /> : "—"} />
-          <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
-        </div>
-        {(r.ceo_ly_do ?? []).length > 0 && <GiaiThichCeo ct={r.ceo_chi_tiet} lyDo={r.ceo_ly_do} />}
         {r.item_id ? <QuyTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} phieuNhap={ls.data.phieu_nhap ?? []} slDat={r.so_luong_dat ?? it.current_qty}
-          phuTrach={{ G4: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G5: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G6: `NCC — ${it.supplier || "—"}`, G8: `NCC — ${it.supplier || "—"} + NV theo dõi` }} />
+          phuTrach={{ G4: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G5: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G6: `NCC — ${it.supplier || "—"}`, G8: `NCC — ${it.supplier || "—"} + NV theo dõi` }}
+          chiTiet={<>
+            <div className="qv-kpis" style={{ marginTop: 6 }}>
+              <Kpi l="SL đặt" v={soLuong(r.so_luong_dat ?? it.current_qty)} />
+              <Kpi l="Đã về (AMIS)" v={soLuong(r.sl_nhap_amis_dung_eo ?? 0)} tone="ok" />
+              <Kpi l="Còn thiếu" v={soLuong(r.so_luong_con_thieu ?? 0)} tone={r.so_luong_con_thieu ? "warn" : undefined} />
+              <Kpi l="Ngày NM cam kết" v={ngay(r.ngay_nm_cam_ket) || "—"} />
+              <Kpi l="Ngày dự kiến" v={ngay(r.ngay_du_kien_gan_nhat) || "—"} tone={r.canh_bao === "Quá dự kiến" ? "danger" : undefined} />
+              <Kpi l="Ngày hàng về" v={ngay(r.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo) || "—"} />
+              <Kpi l="Tồn (từ ngày đặt)" v={["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? <MocTon tu={r.bat_dau ?? r.ngay_ban_hanh} nho /> : "—"} />
+              <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
+            </div>
+            {(r.ceo_ly_do ?? []).length > 0 && <GiaiThichCeo ct={r.ceo_chi_tiet} lyDo={r.ceo_ly_do} />}
+          </>} />
           : <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
       </div>
 

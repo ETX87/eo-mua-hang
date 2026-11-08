@@ -209,6 +209,15 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 /* Quy trinh gon (QuyTrinh): duong ngang 8 moc + bong loi, mo rong = TienTrinh */
 /* van de theo buoc: 2 cot tren man rong */
 .ttq-vd { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 4px 18px; margin-top: 4px; }
+/* QuyTrinh thu gon = 1 dong: nhan | duong quy trinh | tom tat + nut */
+/* dong thong tin popup 1 hang: tran thi an, rong man moi hien het (#22) */
+.qv-meta > span { flex-shrink: 0; }
+.qv-meta > span:last-child { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
+.ttq-gon { display: flex; align-items: center; gap: 10px; padding: 4px 10px !important; margin-top: 8px; }
+.ttq-nhan { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; flex-shrink: 0; min-width: 78px; }
+.ttq-tt { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; font-size: 11px; }
+.ttq-tt .badge { font-size: 10.5px; white-space: nowrap; }
+.ttq-tt .btn { padding: 0 8px; height: 22px; font-size: 11.5px; }
 .ttq-line { display: flex; overflow-x: auto; margin-top: 6px; }
 .ttq-nut { position: relative; flex: 1 1 0; min-width: 84px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 2px; }
 .ttq-noi { position: absolute; top: 9px; right: 50%; width: 100%; height: 3px; z-index: 0; }

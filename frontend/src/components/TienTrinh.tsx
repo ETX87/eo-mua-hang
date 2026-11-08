@@ -303,13 +303,15 @@ function VanDeTheoBuoc({ nut, rows, loiKhac, phuTrach }: { nut: NutGd[]; rows: R
   );
 }
 
-export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach, onChonNut }: {
+export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach, onChonNut, chiTiet }: {
   defs: GdDef[]; sla: Record<string, number>; rows: Row[]; loi?: Row[];
   /** phieu nhap AMIS khop (doc_date, qty_in) -> dot hang ve; undefined = khong hien */
   phieuNhap?: Row[]; slDat?: number;
   /** ten nguoi phu trach tung giai doan (G1 nguoi tao, G3 nguoi duyet mua, G4/G5 nguoi dat...) */
   phuTrach?: Record<string, string>;
   onChonNut?: (k: string) => void;
+  /** noi dung chi hien khi bam "Xem chi tiết" (vd o so lieu, canh bao cua popup) - ban thu gon CHI 1 dong quy trinh */
+  chiTiet?: ReactNode;
 }) {
   const [mo, setMo] = useState(false);
   if (!defs.length || !rows.length) return null;
@@ -341,6 +343,28 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
       </div>
     );
   });
+  // 2026-11-08 (yeu cau #22): THU GON = DUNG 1 DONG (nhan + duong quy trinh + tom tat + nut) -> ~80% man cho danh sach ben duoi;
+  // hang ve, van de theo buoc, chiTiet (so lieu, canh bao) chi hien khi "Xem chi tiết".
+  const soVanDe = nut.filter((n) => n.loi.length || n.tre.length).length + (loiKhac.length ? 1 : 0);
+  const loiChoTong = nut.reduce((s, n) => s + n.loiCho, 0) + loiKhac.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
+  const ve = dot.reduce((s, x) => s + x.sl, 0);
+  if (!mo) return (
+    <div className="tt-wrap ttq-gon">
+      <div className="ttq-nhan">
+        <b>{mot ? "Tiến trình" : `PO · ${rows.length} dòng`}</b>
+        {ketThuc ? <span className={`badge ${mot!.gd_hien_tai === "XONG" ? "issued" : "nhap"}`}>{mot!.gd_hien_tai_ten}</span>
+          : dangO.slice(0, 1).map((n) => <span key={n.g.k} className={`badge ${n.tt === "tre" ? "reject" : "review"}`} title={dangO.map((x) => `${x.g.k} ${x.g.l}${mot ? "" : ` · ${x.dang.length} dòng`}`).join("\n")}>
+            {n.g.k}{n.tt === "tre" ? " · trễ" : ""}{dangO.length > 1 ? ` +${dangO.length - 1}` : ""}</span>)}
+      </div>
+      <div className="ttq-line" style={{ marginTop: 0, flex: 1, minWidth: 0 }}>{moc}</div>
+      <div className="ttq-tt">
+        {soVanDe > 0 && <span className={`badge ${loiChoTong ? "reject" : "final"}`} title="Lỗi / trễ hạn theo bước — bấm Xem chi tiết">⚠ {soVanDe} bước có vấn đề{loiChoTong ? ` · ${loiChoTong} chờ GT` : ""}</span>}
+        {phieuNhap && slDat != null && slDat > 0 && <span className={`badge ${ve >= slDat ? "issued" : ve > 0 ? "final" : "nhap"}`} title={dot.map((x, i) => `Đợt ${i + 1}: ${ngay(x.d)} +${soLuong(x.sl)}`).join("\n") || "Chưa có hàng về"}>
+          Về {soLuong(ve)}/{soLuong(slDat)}{dot.length > 1 ? ` · ${dot.length} đợt` : ""}</span>}
+        <button className="btn ghost sm" onClick={() => setMo(true)}>▾ Xem chi tiết</button>
+      </div>
+    </div>
+  );
   return (
     <div className="tt-wrap" style={{ padding: "8px 12px" }}>
       <div style={{ fontSize: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -349,9 +373,10 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
           : dangO.length ? dangO.map((n) => <span key={n.g.k} className={`badge ${n.tt === "tre" ? "reject" : "review"}`}>
             {n.g.k} · {n.g.l}{mot ? "" : ` · ${n.dang.length} dòng`}{n.tt === "tre" ? " · trễ hạn" : ""}</span>)
           : <span className="muted">Chưa bắt đầu</span>}
-        <button className="btn ghost sm" style={{ marginLeft: "auto" }} onClick={() => setMo((x) => !x)}>{mo ? "▴ Thu gọn" : "▾ Xem chi tiết"}</button>
+        <button className="btn ghost sm" style={{ marginLeft: "auto" }} onClick={() => setMo(false)}>▴ Thu gọn</button>
       </div>
-      {mo ? <TienTrinh defs={defs} sla={sla} rows={rows} loi={loi} onChonNut={onChonNut} nhung /> : <div className="ttq-line">{moc}</div>}
+      {chiTiet}
+      <TienTrinh defs={defs} sla={sla} rows={rows} loi={loi} onChonNut={onChonNut} nhung />
       {phieuNhap && slDat != null && slDat > 0 && <ThanhHangVe dot={dot} slDat={slDat} />}
       <VanDeTheoBuoc nut={nut} rows={rows} loiKhac={loiKhac} phuTrach={phuTrach} />
     </div>
