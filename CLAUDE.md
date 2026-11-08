@@ -209,7 +209,7 @@ Thanh trên mỗi màn chỉ còn bộ lọc **thường dùng** (ô tìm + nhó
 `Popover` + `MenuItem` (`components/ui.tsx`), Chọn cột / Xuất Excel = nút icon; ô nhập/chọn trên thanh dùng class `.tb` (cao 32px).
 Menu "Quản lý EO" đổi tên **"Đơn PO"** (đường dẫn vẫn `/eo`). "LK đặt" có 2 mục con ở sidebar (`NavItem.children` trong `lib/nav.ts`):
 Danh sách (`/don-hang`) · Báo cáo (`/don-hang?tab=bao-cao`).
-**LK đặt v0.064**: 20 dòng / trang; ô "Xem" 3 chế độ (localStorage `sdh-xem`): từng dòng · nhóm theo PO (`eo_id`) · nhóm theo mã LK —
+**LK đặt v0.065**: 20 dòng / trang; ô "Xem" 3 chế độ (localStorage `sdh-xem`): từng dòng · nhóm theo PO (`eo_id`) · nhóm theo mã LK —
 `DataTable` prop `nhom={ khoa, dau }` (dòng tiêu đề nhóm bấm thu gọn/mở, phân trang theo nhóm trọn vẹn ~pageSize dòng, ẩn cột đã ở tiêu đề nhóm).
 Tick 1 / nhiều dòng / cả nhóm (ô tick ở tiêu đề nhóm; dòng `theo_doi`) → **Giải trình chung** (`GiaiTrinhDongModal` → `POST /vi-pham/giai-trinh-dong`:
 `xem` = xem trước lỗi chờ theo dòng; mặc định đóng MỌI lỗi chờ của các dòng (nhiều PO, nhiều loại; R1/R4 bắt buộc ảnh); `moi` = ghi lỗi TAY
