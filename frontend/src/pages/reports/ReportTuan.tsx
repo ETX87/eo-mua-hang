@@ -54,8 +54,8 @@ export default function ReportTuan({ nhung }: { nhung?: boolean }) {
       )}
       <Card>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input className="input" style={{ width: 180 }} placeholder="Mã phê duyệt (3TDO-...)" value={ma} onChange={(e) => setMa(e.target.value)} />
-          <input className="input" style={{ width: 140 }} placeholder="Kỳ (Y2609)" value={ky} onChange={(e) => setKy(e.target.value)} />
+          <input className="input tb" style={{ width: 180 }} placeholder="Mã phê duyệt (3TDO-...)" value={ma} onChange={(e) => setMa(e.target.value)} />
+          <input className="input tb" style={{ width: 140 }} placeholder="Kỳ (Y2609)" value={ky} onChange={(e) => setKy(e.target.value)} />
         </div>
         {rep.isLoading ? <Spinner /> : (
           <DataTable

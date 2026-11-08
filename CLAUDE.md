@@ -302,6 +302,24 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (bí danh → chuẩn, lý do sai → để trống + nhắc); đối tác chưa có → hỏi "chắc chắn thêm đối tác mới?" → `POST /danh-muc/chuan/doi-tac-moi`
   (người tạo EO, trùng bí danh trả tên sẵn có). Lưu form với đối tác gõ mới cũng hỏi như vậy rồi lưu lại.
 
+## v0.069 (2026-11-08)
+
+- **Quy trình gọn** `QuyTrinh` (`components/TienTrinh.tsx`) ở popup EO + popup đơn hàng: đường ngang 8 mốc (bóng đỏ = số lỗi) + nút
+  "▾ Xem chi tiết" (bản đầy đủ `TienTrinh nhung`), thanh **hàng về nhiều đợt** (`gomDotVe`: phiếu AMIS gom theo ngày CT, lũy kế / SL đặt,
+  thiếu → giao bù) và **Vấn đề theo bước** (lỗi gắn giai đoạn qua `LOI_GD` + trễ hạn, gom theo AI mắc: tên ETX + vai `ai_ma`; phụ trách
+  từng bước truyền `phuTrach`). KPI popup = pill 1 dòng (CSS `.qv-kpi`).
+- **Lỗi giai đoạn trước sau khi đơn sang giai đoạn sau** (`danhGiaQuyTac`): R1/R3 đang chờ có hạn >= `lan_dau_co_ndk`, R1/R3/R4 có hạn >=
+  `ngay_ve_dau` → tự xoá + event `XOA_LOI_THEO_DOI`.
+- **Màn AMIS**: cột chung `pages/amis/cotAmis.tsx` (mã phê duyệt → popup PO qua `po_eo_id`, mã hàng → popup mã LK, "· dòng" → popup dòng;
+  lọc kiểu Excel); `GET /amis/receipts` thêm `tu/den/kho/khop`, 1.000 dòng.
+- **Sửa mã LK / kho / đối tác** `POST /eo/items/:id/sua-thong-tin` (`canSuaThongTinDong`: kế toán, KH cung ứng, NV đặt hàng, người tạo PO, Admin;
+  EO DRAFT/ISSUED và PO còn dòng chưa về đủ; bắt buộc lý do; event `SUA_THONG_TIN_DONG` trước/sau; đổi mã/kho → `recomputeMatch`). Khác
+  "thay mã tương đương" (không ghi `part_code_goc`). FE `SuaThongTinDongModal`.
+- **Kết thúc sớm cả PO** `POST /eo/:id/ket-thuc-som` (`xem` = xem trước từng dòng): về 1 phần → SL đặt = SL đã về; chưa về → SL 0 + CANCELLED_LINE;
+  đủ / đã KTS / chờ duyệt → bỏ qua; event `KET_THUC_SOM` từng dòng + `KET_THUC_SOM_PO`. FE `KetThucSomPoModal` (cảnh báo + tick xác nhận).
+- **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
+  chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
+
 ## ETX nhân sự
 
 Danh bạ nhân sự kéo từ ETX (`lib/etxNhanSu.ts`, `routes/etxNhanSu.ts`, tab "ETX nhân sự" ở Cài đặt › Người dùng),

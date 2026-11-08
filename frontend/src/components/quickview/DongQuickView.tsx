@@ -8,9 +8,9 @@ import { gioTxt } from "../../lib/giaiDoan";
 import { MocTon } from "../../lib/tonDong";
 import { NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink, PartLink } from "./QuickView";
-import { TienTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
+import { QuyTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong } from "../../pages/theodoi/shared";
-import { HuyDongModal, KetThucSomModal } from "../../pages/eo/eoActions";
+import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
 
 /**
@@ -29,7 +29,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
     queryFn: () => api.get<{ giai_doan: GdDef[]; sla: Record<string, number>; rows: any[] }>(`/so-don-hang?eo_id=${eoId}`),
   });
   const [tab, setTab] = useState<Tab>("gd");
-  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | null>(null);
+  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | null>(null);
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
 
   if (ls.isLoading || (eoId && sdh.isLoading)) return <Spinner />;
   const it = ls.data?.item;
@@ -56,6 +57,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll} actions={<>
           {issued && <button className="btn sm primary" onClick={() => setMd("ndk")}><I.calendar width={13} height={13} /> Ngày NM / dự kiến / hàng về</button>}
           {moDong && daVe > 0 && daVe < it.current_qty && <button className="btn sm" title="SL đặt về đúng SL đã về, không chờ phần còn lại" onClick={() => setMd("kts")}><I.check width={13} height={13} /> Kết thúc sớm</button>}
+          {/* sua ma LK / kho / doi tac (nhap sai) - quyen khop backend canSuaThongTinDong; PO het hang cho -> backend tu chan */}
+          {it.line_status === "ACTIVE" && quyenEo({ trang_thai: r.trang_thai_eo ?? "", created_by: r.nguoi_tao ?? it.created_by, final_approver_email: r.nguoi_duyet_cuoi }, me.data).canSuaThongTin && (r.so_luong_con_thieu ?? 1) > 0 && <button className="btn sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd("sua")}><I.tag width={13} height={13} /> Sửa mã / kho / NCC</button>}
           {moDong && <button className="btn sm ghost danger" title="Không đặt nữa — SL đã về (nếu có) không tính" onClick={() => setMd("huy")}><I.x width={13} height={13} /> Hủy đơn</button>}
           {r.theo_doi && <button className="btn sm" onClick={() => setMd("gt")} style={{ color: loiCho ? "var(--danger)" : undefined }}><I.edit width={13} height={13} /> Giải trình{loiCho ? ` (${loiCho})` : ""}</button>}
         </>}>
@@ -89,7 +92,9 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
         </div>
         {(r.ceo_ly_do ?? []).length > 0 && <GiaiThichCeo ct={r.ceo_chi_tiet} lyDo={r.ceo_ly_do} />}
-        {r.item_id ? <TienTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} /> : <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
+        {r.item_id ? <QuyTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} phieuNhap={ls.data.phieu_nhap ?? []} slDat={r.so_luong_dat ?? it.current_qty}
+          phuTrach={{ G4: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G5: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G6: `NCC — ${it.supplier || "—"}`, G8: `NCC — ${it.supplier || "—"} + NV theo dõi` }} />
+          : <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
       </div>
 
       <div className="qv-body">
@@ -162,6 +167,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
       {md === "gt" && <GiaiTrinhModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
       {md === "huy" && <HuyDongModal item={itemHuy} onClose={() => setMd(null)} onDone={xong} />}
       {md === "kts" && <KetThucSomModal item={itemHuy} onClose={() => setMd(null)} onDone={xong} />}
+      {md === "sua" && <SuaThongTinDongModal item={{ id, part_code: it.part_code, part_name: it.part_name, warehouse: it.warehouse, supplier: it.supplier }} onClose={() => setMd(null)} onDone={xong} />}
     </>
   );
 }

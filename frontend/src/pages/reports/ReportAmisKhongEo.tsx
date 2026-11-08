@@ -6,6 +6,7 @@ import { I } from "../../lib/icons";
 import { soLuong, ngay } from "../../lib/format";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 import { Kho } from "../../lib/kho";
+import { cotChungTuAmis } from "../amis/cotAmis";
 
 const EXPORT_COLS: ExportCol<any>[] = [
   { header: "Số chứng từ", get: (r) => r.doc_no },
@@ -22,15 +23,9 @@ export default function ReportAmisKhongEo({ nhung }: { nhung?: boolean }) {
   const q = useQuery({ queryKey: ["rep-amis-ko-eo"], queryFn: () => api.get<any>("/reports/amis-khong-eo") });
   if (q.isLoading) return <Spinner />;
   const rows = q.data?.rows ?? [];
-  const cols: Col<any>[] = [
-    { key: "d", header: "Số chứng từ", render: (r) => r.doc_no },
-    { key: "k", header: "Tên kho", render: (r) => <Kho t={r.warehouse_name} /> },
-    { key: "m", header: "Mã hàng", render: (r) => r.part_code },
-    { key: "tn", header: "Tên hàng", render: (r) => r.part_name || "" },
-    { key: "sl", header: "SL Nhập", align: "right", render: (r) => soLuong(r.qty_in) },
-    { key: "nc", header: "Ngày chứng từ", render: (r) => ngay(r.doc_date) },
-    { key: "mp", header: "Mã phê duyệt", render: (r) => r.approval_code_raw },
-  ];
+  // lien ket mo nhanh PO / ma LK + loc kieu Excel (cot chung man AMIS)
+  const chung = cotChungTuAmis();
+  const cols: Col<any>[] = [...chung.slice(0, 4), { key: "tn", header: "Tên hàng", loc: "chu", gt: (r) => r.part_name, render: (r) => r.part_name || "" }, ...chung.slice(4)];
   return (
     <div>
       {!nhung && <PageHeader title="Báo cáo – AMIS không có EO" />}
@@ -43,7 +38,7 @@ export default function ReportAmisKhongEo({ nhung }: { nhung?: boolean }) {
         <DataTable
           pageSize={PAGE_SIZE}
           cols={cols} rows={q.data?.rows ?? []} keyOf={(_r, i) => i}
-          totalRow={[<b key="t">TỔNG</b>, "", "", "", <b key="s">{soLuong(q.data?.tong?.so_luong_nhap)}</b>, "", <b key="n">{soLuong(q.data?.tong?.so_dong)}</b>]}
+          totalRow={[<b key="t">TỔNG</b>, "", "", "", "", <b key="s">{soLuong(q.data?.tong?.so_luong_nhap)}</b>, <b key="n">{soLuong(q.data?.tong?.so_dong)} dòng</b>]}
           empty="Không có dòng AMIS lệch EO."
         />
       </Card>

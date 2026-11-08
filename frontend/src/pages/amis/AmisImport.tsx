@@ -11,6 +11,8 @@ import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { writeBook } from "../../lib/excel";
 import { Kho } from "../../lib/kho";
+import { EoLink, useQuickView } from "../../components/quickview/QuickView";
+import { cotChungTuAmis } from "./cotAmis";
 
 const COLS = ["Mã kho", "Tên kho", "Mã hàng", "Tên hàng", "Ngày hạch toán", "Ngày chứng từ", "Số chứng từ", "ĐVT", "Diễn giải", "Số lượng Nhập", "Số lượng Xuất", "Số lượng Tồn", "TK Kho", "TK đối ứng", "Mã phê duyệt"];
 
@@ -73,6 +75,9 @@ function NhapAmis() {
   const [voidBatch, setVoidBatch] = useState<any>(null);
   const [q, setQ] = useState("");
   const [showVoided, setShowVoided] = useState<"" | "1" | "only">("");
+  // loc tra cuu phia server (2026-11-08): khoang ngay chung tu, kho, trang thai khop
+  const [tu, setTu] = useState(""); const [den, setDen] = useState(""); const [khoLoc, setKhoLoc] = useState(""); const [khop, setKhop] = useState("");
+  const qv = useQuickView();
 
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const canEdit = me.data?.vai_tro === "Admin" || me.data?.vai_tro === "Ke toan" || me.data?.la_ke_toan === 1;
@@ -81,8 +86,8 @@ function NhapAmis() {
   const tomtat = useQuery({ queryKey: ["amis-tomtat"], queryFn: () => api.get<any>("/dashboard/amis-tomtat") });
   const kho = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const receipts = useQuery({
-    queryKey: ["amis-receipts", q, showVoided],
-    queryFn: () => api.get<any[]>(`/amis/receipts?q=${encodeURIComponent(q.trim())}${showVoided ? `&include_voided=${showVoided}` : ""}`),
+    queryKey: ["amis-receipts", q, showVoided, tu, den, khoLoc, khop],
+    queryFn: () => api.get<any[]>(`/amis/receipts?${new URLSearchParams({ q: q.trim(), ...(showVoided ? { include_voided: showVoided } : {}), ...(tu ? { tu } : {}), ...(den ? { den } : {}), ...(khoLoc ? { kho: khoLoc } : {}), ...(khop ? { khop } : {}) })}`),
   });
   const validKho = new Set((kho.data ?? []).filter((k) => k.active).map((k) => k.ten_kho));
   const taiFileMau = () => writeBook("Mau_import_AMIS_MISA.xlsx", [
@@ -199,14 +204,7 @@ function NhapAmis() {
     } },
     ...COLS.map((c) => ({ key: c, header: c, align: /Số lượng/.test(c) ? "right" as const : undefined, render: (r: any) => /Ngày/.test(c) ? ngay(r[c]) : String(r[c] ?? "") })),
   ];
-  const receiptCols: Col<any>[] = [
-    { key: "d", header: "Số CT", render: (r) => r.doc_no },
-    { key: "n", header: "Ngày CT", render: (r) => ngay(r.doc_date) },
-    { key: "k", header: "Kho", render: (r) => <Kho t={r.warehouse_name} /> },
-    { key: "m", header: "Mã hàng", render: (r) => r.part_code },
-    { key: "sl", header: "SL nhập", align: "right", render: (r) => soLuong(r.qty_in) },
-    { key: "a", header: "Mã phê duyệt", render: (r) => r.approval_code_raw },
-  ];
+  const receiptCols: Col<any>[] = cotChungTuAmis();
 
   const scrollUpload = () => document.getElementById("amis-upload")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
@@ -387,14 +385,7 @@ function NhapAmis() {
             Tổng SL {soLuong(unmatched.data?.total?.so_luong_nhap)} · {soLuong(unmatched.data?.total?.so_dong)} dòng
           </div>
           <DataTable
-            cols={[
-              { key: "d", header: "Số chứng từ", render: (r) => r.doc_no },
-              { key: "k", header: "Kho", render: (r) => <Kho t={r.warehouse_name} /> },
-              { key: "m", header: "Mã hàng", render: (r) => r.part_code },
-              { key: "sl", header: "SL nhập", align: "right", render: (r) => soLuong(r.qty_in) },
-              { key: "nc", header: "Ngày chứng từ", render: (r) => ngay(r.doc_date) },
-              { key: "mp", header: "Mã phê duyệt", render: (r) => r.approval_code_raw },
-            ]}
+            cols={cotChungTuAmis()}
             rows={unmatched.data?.rows ?? []} keyOf={(_r, i) => i} pageSize={PAGE_SIZE} empty="Không có dòng AMIS lệch EO."
           />
         </Card>
@@ -403,20 +394,30 @@ function NhapAmis() {
       <Card style={{ marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
           <strong style={{ fontSize: 14 }}>Tra cứu &amp; hủy chứng từ AMIS</strong>
-          <input className="input" style={{ width: 300 }} placeholder="Số CT / mã hàng / mã 3TDO / tên hàng..." value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className="select" style={{ width: 200 }} value={showVoided} onChange={(e) => setShowVoided(e.target.value as any)}>
+          <input className="input tb" style={{ width: 260 }} placeholder="Số CT / mã hàng / mã 3TDO / tên hàng..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input tb" type="date" style={{ width: 140 }} title="Ngày chứng từ từ" value={tu} onChange={(e) => setTu(e.target.value)} />
+          <span className="muted">→</span>
+          <input className="input tb" type="date" style={{ width: 140 }} title="Ngày chứng từ đến" value={den} onChange={(e) => setDen(e.target.value)} />
+          <select className="select tb" style={{ width: 190 }} value={khoLoc} onChange={(e) => setKhoLoc(e.target.value)} title="Kho">
+            <option value="">Mọi kho</option>{(kho.data ?? []).map((k: any) => <option key={k.ten_kho} value={k.ten_kho}>{k.ma_kho ? `${k.ma_kho} — ` : ""}{k.ten_kho}</option>)}</select>
+          <select className="select tb" style={{ width: 170 }} value={khop} onChange={(e) => setKhop(e.target.value)} title="Trạng thái khớp EO">
+            <option value="">Mọi trạng thái khớp</option><option value="MATCHED_EO">Khớp dòng EO</option><option value="CODE_ONLY_NO_LINE">Có mã PO, không khớp dòng</option><option value="UNMATCHED">Không khớp</option></select>
+          <select className="select tb" style={{ width: 190 }} value={showVoided} onChange={(e) => setShowVoided(e.target.value as any)}>
             <option value="">Chứng từ đang tính</option><option value="1">Tất cả (cả đã hủy)</option><option value="only">Chỉ chứng từ đã hủy</option>
           </select>
-          <span className="muted" style={{ fontSize: 12 }}>300 dòng mới nhất khớp tìm kiếm. Chứng từ đã hủy không tính vào EO / báo cáo; import lại đúng chứng từ sẽ tự khôi phục.</span>
+          <span className="muted" style={{ fontSize: 12 }}>1.000 dòng mới nhất khớp bộ lọc · bấm mã phê duyệt / mã hàng / khớp để mở nhanh PO, linh kiện, dòng đặt; lọc thêm trên tiêu đề cột. Chứng từ đã hủy không tính vào EO / báo cáo; import lại đúng chứng từ sẽ tự khôi phục.</span>
         </div>
         <DataTable
           cols={[
             ...receiptCols.slice(0, 4),
-            { key: "t", header: "Tên hàng", render: (r) => r.part_name || "" },
+            { key: "t", header: "Tên hàng", loc: "chu", gt: (r) => r.part_name, render: (r) => r.part_name || "" },
             ...receiptCols.slice(4),
-            { key: "e", header: "Khớp EO", render: (r) => r.voided_at
+            { key: "e", header: "Khớp EO", loc: "chon", gt: (r) => r.voided_at ? "Đã hủy" : r.eo_code ? "Khớp dòng EO" : r.match_status === "CODE_ONLY_NO_LINE" ? "Có mã, không có dòng" : "Không khớp",
+              render: (r) => r.voided_at
               ? <span className="badge reject" title={`${ten(r.voided_by)} · ${ngayGio(r.voided_at)}`}>Đã hủy: {r.void_reason}</span>
-              : r.eo_code ? <a className="cell-link" href={`/eo/${r.eo_id}`}>{r.eo_code}</a>
+              : r.eo_code ? <span style={{ display: "inline-flex", gap: 6 }}>
+                  <EoLink id={r.eo_id} title="Mở PO">{r.approval_code || r.eo_code}</EoLink>
+                  {r.item_id && <button type="button" className="qv-link" title="Mở dòng linh kiện đặt khớp phiếu này" onClick={(e) => { e.stopPropagation(); qv.openDong(r.item_id); }}>· dòng</button>}</span>
               : r.match_status === "CODE_ONLY_NO_LINE" ? <span className="badge final">Có mã, không có dòng</span> : <span className="muted">Không khớp</span> },
             { key: "x", header: "", render: (r) => !canEdit ? null : r.voided_at
               ? <button className="btn ghost sm" onClick={() => actReceipt(r, "restore")}>Khôi phục</button>

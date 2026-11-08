@@ -18,7 +18,7 @@ interface EoRow {
   loai_hinh: string | null; phong_ban: string | null; trang_thai: string;
   created_by: string; created_at: string; so_dong: number; tong_sl: number; final_approver_email: string | null;
   issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number; sl_ve: number;
-  so_dong_cho_duyet: number; phieu_cho_toi_id: number | null; phieu_cho_toi_buoc: string | null;
+  so_dong_cho_duyet: number; phieu_cho_toi_id: number | null; phieu_cho_toi_buoc: string | null; xong?: boolean;
 }
 interface DsEo { rows: EoRow[]; total: number; tong_truoc_loc: number; tuy_chon: Record<string, string[]>; limit: number; offset: number }
 
@@ -32,7 +32,8 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "nhap_cua_toi", l: "Nháp / bị trả về của tôi", mau: "#C2410C" },
   { k: "dang_tham_dinh", l: "Đang thẩm định" },
   { k: "cho_duyet_cuoi", l: "Chờ duyệt mua" },
-  { k: "da_ban_hanh", l: "Đã ban hành" },
+  { k: "da_ban_hanh", l: "Đã ban hành (còn chờ hàng)" },
+  { k: "done", l: "Đủ hàng (DONE)", title: "Đã ban hành, mọi dòng đã về đủ SL đặt (kể cả dòng kết thúc sớm)" },
   { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
@@ -102,7 +103,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     { key: "loai_hinh", header: "Loại hình", loc: "chon", render: (r) => <TypeBadge loai={r.loai_hinh} /> },
     { key: "phong_ban", header: "Phòng ban", loc: "chon", maxW: 115, render: (r) => r.phong_ban || "" },
     { key: "ma_lk", header: "Mã linh kiện", loc: "chu", maxW: 150, render: (r) => r.ma_lk ? <span title={r.ma_lk}>{r.ma_lk}{r.so_dong > 4 ? ", …" : ""}</span> : <span className="muted">—</span> },
-    { key: "trang_thai", header: "Trạng thái", loc: "chon", nhanChon: (v) => STATUS_META[v]?.label ?? v, render: (r) => <StatusBadge status={r.trang_thai} /> },
+    { key: "trang_thai", header: "Trạng thái", loc: "chon", nhanChon: (v) => STATUS_META[v]?.label ?? v, render: (r) => <StatusBadge status={r.xong ? "DONE" : r.trang_thai} /> },
     {
       // ton: EO da ban hanh con dong chua ve du -> tinh tu ngay ban hanh; EO dang cho duyet -> tinh tu ngay tao
       key: "ton", header: "Tồn", loc: "chon", render: (r) => r.trang_thai === "ISSUED"

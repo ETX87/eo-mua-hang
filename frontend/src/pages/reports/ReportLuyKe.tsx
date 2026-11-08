@@ -23,10 +23,10 @@ export default function ReportLuyKe({ nhung }: { nhung?: boolean }) {
       {!nhung && <PageHeader title="Báo cáo – Kế hoạch lũy kế năm" />}
       <Card>
         <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
-          <select className="select" style={{ width: 120 }} value={nam} onChange={(e) => setNam(Number(e.target.value))}>
+          <select className="select tb" style={{ width: 120 }} value={nam} onChange={(e) => setNam(Number(e.target.value))}>
             {[nowY - 1, nowY, nowY + 1].map((y) => <option key={y} value={y}>Y{y}</option>)}
           </select>
-          <select className="select" style={{ width: 150 }} value={kieuXem} onChange={(e) => setKieuXem(e.target.value)}>
+          <select className="select tb" style={{ width: 150 }} value={kieuXem} onChange={(e) => setKieuXem(e.target.value)}>
             <option value="eo">Chỉ mã EO</option>
             <option value="eo_kho">Kèm kho</option>
           </select>

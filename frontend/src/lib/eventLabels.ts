@@ -8,7 +8,7 @@ export const EVENT_LABEL: Record<string, string> = {
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
   IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
-  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi", KET_THUC_SOM: "Kết thúc sớm đơn đặt",
+  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi", KET_THUC_SOM: "Kết thúc sớm đơn đặt", KET_THUC_SOM_PO: "Kết thúc sớm cả PO", SUA_THONG_TIN_DONG: "Sửa mã LK / kho / đối tác",
 };
 
 const sl = (v: unknown) => (v == null || v === "" ? "" : Number(v).toLocaleString("vi-VN"));
@@ -21,6 +21,13 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   const p: string[] = [];
   if (b?.qty != null && a?.qty != null) p.push(`SL ${sl(b.qty)} → ${sl(a.qty)}`);
   if (e.event_type === "REPLACE_PART") p.push(`${b?.part_code} → ${a?.part_code}`);
+  // sua thong tin dong (2026-11-08): moi truong doi "truoc → sau" + ly do
+  if (e.event_type === "SUA_THONG_TIN_DONG") {
+    const TEN: Record<string, string> = { part_code: "Mã LK", part_name: "Tên LK", warehouse: "Kho", supplier: "Đối tác" };
+    for (const k of Object.keys(a ?? {})) p.push(`${TEN[k] ?? k}: ${b?.[k] ?? "—"} → ${a[k] ?? "—"}`);
+    if (m?.ly_do) p.push(`Lý do: ${m.ly_do}`);
+  }
+  if (e.event_type === "KET_THUC_SOM_PO") p.push(`${m?.so_dong ?? ""} dòng: SL đặt = SL đã về${m?.reason ? ` · Lý do: ${m.reason}` : ""}`);
   if (e.event_type === "BULK_PLAN" && Array.isArray(a)) {
     p.push(`${m?.part_code ?? ""}: ${a.map((x: any) => `${m?.loai === "TUAN" ? x.tuan : d(x.planned_date)}: ${sl(x.planned_qty)}`).slice(0, 4).join(", ")}${a.length > 4 ? "…" : ""}`);
     if (m?.thay_the) p.push(`thay ${m.so_ke_hoach_cu} mốc cũ`);

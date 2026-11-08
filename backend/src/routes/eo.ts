@@ -3,7 +3,7 @@ import type { Env, AppVariables } from "../types";
 import { nowVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
-import { canCreateEo, canManageEo } from "../lib/eoAccess";
+import { canCreateEo, canManageEo, canSuaThongTinDong } from "../lib/eoAccess";
 import { uploadPublicFile } from "../lib/googleDrive";
 import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
@@ -28,6 +28,8 @@ interface DongEo {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string | null; loai_hinh: string | null; phong_ban: string | null;
   trang_thai: string; final_approver_email: string | null; created_by: string; created_at: string; issued_at: string | null;
   so_dong: number; tong_sl: number; so_dong_sau_bh: number; so_dong_cho_duyet: number; sl_ve: number; so_dong_chua_du: number;
+  /** DONE (2026-11-08): da ban hanh, co dong song va moi dong song ve >= SL dat (ket thuc som = SL dat ve SL da ve) */
+  xong: boolean;
   ma_lk: string | null; lk: string; kho: string[]; ncc: string[]; ly_do: string[];
 }
 const boDau = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase();
@@ -41,6 +43,7 @@ async function dsEo(env: Env): Promise<DongEo[]> {
               SUM(i.created_after_issue = 1) so_dong_sau_bh, SUM(i.post_issue_status = 'PENDING') so_dong_cho_duyet,
               SUM(CASE WHEN i.line_status = 'ACTIVE' THEN MIN(i.current_qty, COALESCE(ve.q, 0)) ELSE 0 END) sl_ve,
               SUM(CASE WHEN i.line_status = 'ACTIVE' AND i.current_qty > COALESCE(ve.q, 0) THEN 1 ELSE 0 END) so_dong_chua_du,
+              SUM(i.line_status = 'ACTIVE') so_dong_song,
               GROUP_CONCAT(CASE WHEN i.line_status = 'ACTIVE' THEN i.part_code END, char(31)) lk_song,
               GROUP_CONCAT(i.part_code || ' ' || COALESCE(i.part_code_goc, '') || ' ' || COALESCE(i.part_name, ''), char(31)) lk,
               GROUP_CONCAT(i.warehouse, char(31)) kho, GROUP_CONCAT(i.supplier, char(31)) ncc, GROUP_CONCAT(i.reason, char(31)) ly_do
@@ -56,6 +59,7 @@ async function dsEo(env: Env): Promise<DongEo[]> {
       trang_thai: r.trang_thai, final_approver_email: r.final_approver_email, created_by: r.created_by, created_at: r.created_at, issued_at: r.issued_at,
       so_dong: r.so_dong ?? 0, tong_sl: r.tong_sl ?? 0, so_dong_sau_bh: r.so_dong_sau_bh ?? 0, so_dong_cho_duyet: r.so_dong_cho_duyet ?? 0,
       sl_ve: r.sl_ve ?? 0, so_dong_chua_du: r.so_dong_chua_du ?? 0,
+      xong: r.trang_thai === "ISSUED" && (r.so_dong_song ?? 0) > 0 && (r.so_dong_chua_du ?? 0) === 0,
       ma_lk: song.length ? song.slice(0, 4).join(", ") : null, lk: tachDs(r.lk).join(" "),
       kho: tachDs(r.kho), ncc: tachDs(r.ncc), ly_do: tachDs(r.ly_do),
     };
@@ -71,7 +75,8 @@ const CHIP_EO: Record<string, (r: DongEo, n: NguCanh) => boolean> = {
   nhap_cua_toi: (r, n) => r.trang_thai === "DRAFT" && r.created_by === n.email,
   dang_tham_dinh: (r) => r.trang_thai === "IN_REVIEW",
   cho_duyet_cuoi: (r) => r.trang_thai === "WAITING_FINAL_APPROVAL",
-  da_ban_hanh: (r) => r.trang_thai === "ISSUED",
+  da_ban_hanh: (r) => r.trang_thai === "ISSUED" && !r.xong,
+  done: (r) => r.xong,
   sau_bh_cho: (r) => r.trang_thai === "ISSUED" && r.so_dong_cho_duyet > 0,
   tu_choi_huy: (r) => ["REJECTED", "CANCELLED"].includes(r.trang_thai),
 };
@@ -85,7 +90,7 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   loai_hinh: { kieu: "chon", gt: (r) => r.loai_hinh },
   phong_ban: { kieu: "chon", gt: (r) => r.phong_ban },
   ma_lk: { kieu: "chu", gt: (r) => r.lk, sap: (r) => r.ma_lk },
-  trang_thai: { kieu: "chon", gt: (r) => r.trang_thai },
+  trang_thai: { kieu: "chon", gt: (r) => (r.xong ? "DONE" : r.trang_thai) },
   ton: { kieu: "chon", gt: tonTt, sap: (r) => (tonTt(r) === "Còn dòng chưa về đủ" ? r.issued_at : tonTt(r) === "Chờ duyệt" ? r.created_at : null) },
   created_by: { kieu: "chon", gt: (r) => r.created_by },
   created_at: { kieu: "ngay", gt: (r) => r.created_at },
@@ -115,7 +120,7 @@ async function nguCanh(c: any): Promise<NguCanh> {
 
 // ------------------------------------------------------------------ GET /dem (so dem tren tung chip)
 app.get("/dem", async (c) => {
-  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v1", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
+  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
   const out: Record<string, number> = { tat_ca: ds.length };
   for (const [k, f] of Object.entries(CHIP_EO)) out[k] = ds.filter((r) => f(r, n)).length;
   return c.json(out);
@@ -131,7 +136,7 @@ app.get("/", async (c) => {
   const offset = Math.max(0, Number(g("offset") || 0) || 0);
   let loc: Record<string, GtLoc> = {};
   try { loc = JSON.parse(g("loc") || "{}"); } catch { /* bo qua */ }
-  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v1", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
+  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
 
   const chip = CHIP_EO[g("chip")];
   const tu = boDau(g("q")).split(/\s+/).filter(Boolean);
@@ -746,6 +751,71 @@ app.post("/items/:itemId/replace-part", async (c) => {
   return c.json({ ok: true, part_code: newCode, part_code_goc: revert ? null : goc });
 });
 
+// ------------------------------------------------------------------ POST /items/:itemId/sua-thong-tin
+// Sua lai MA LINH KIEN / KHO / DOI TAC cua dong dat (nhap sai) - ke toan, mua hang, nguoi tao PO (2026-11-08, lib/eoAccess
+// canSuaThongTinDong). Chi khi PO CHUA ket thuc hoan toan (con dong dang mo chua ve du) va EO DRAFT / ISSUED. Bat buoc ly do.
+// Khac "thay ma tuong duong" (replace-part, giu ma goc): day la SUA SAI -> khong ghi part_code_goc. Log day du truoc / sau.
+// Doi ma / kho cua EO da ban hanh -> khop lai AMIS (recomputeMatch theo ma phe duyet).
+app.post("/items/:itemId/sua-thong-tin", async (c) => {
+  const db = c.env.DB;
+  const itemId = Number(c.req.param("itemId"));
+  const row = await db.prepare(
+    `SELECT i.*, e.trang_thai eo_status, e.created_by eo_created_by, e.approval_code FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?`,
+  ).bind(itemId).first<any>();
+  if (!row) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (!canSuaThongTinDong(u, { created_by: row.eo_created_by })) return c.json({ error: "FORBIDDEN" }, 403);
+  if (!["DRAFT", "ISSUED"].includes(row.eo_status)) return c.json({ error: "BAD_STATE", trang_thai: row.eo_status }, 409);
+  if (row.line_status !== "ACTIVE") return c.json({ error: "DONG_DA_HUY" }, 409);
+  if (row.eo_status === "ISSUED") {
+    const mo = await db.prepare(
+      `SELECT 1 FROM eo_item i WHERE i.eo_id = ? AND i.line_status = 'ACTIVE' AND i.ket_thuc_som_at IS NULL AND i.current_qty >
+         (SELECT COALESCE(SUM(r.qty_in), 0) FROM amis_receipt r WHERE r.matched_eo_item_id = i.id AND r.match_status = 'MATCHED_EO') LIMIT 1`,
+    ).bind(row.eo_id).first();
+    if (!mo) return c.json({ error: "PO_DA_KET_THUC" }, 409);
+  }
+  const b = (await c.req.json().catch(() => ({}))) as { part_code?: string; warehouse?: string; supplier?: string | null; part_name?: string; ly_do?: string };
+  const lyDo = (b.ly_do ?? "").trim();
+  if (!lyDo) return c.json({ error: "REASON_REQUIRED" }, 400);
+  const truoc: Record<string, unknown> = {}, sau: Record<string, unknown> = {};
+  const doi = (k: string, cu: unknown, moi: unknown) => { if (moi !== undefined && moi !== cu) { truoc[k] = cu; sau[k] = moi; } };
+  if (b.part_code !== undefined) {
+    const v = b.part_code.trim();
+    if (!v) return c.json({ error: "PART_REQUIRED" }, 400);
+    doi("part_code", row.part_code, v);
+  }
+  if (b.part_name !== undefined) doi("part_name", row.part_name, b.part_name.trim());
+  if (b.warehouse !== undefined) {
+    const v = b.warehouse.trim();
+    if (!(await db.prepare("SELECT 1 FROM settings_warehouse WHERE ten_kho = ?").bind(v).first())) return c.json({ error: "KHO_KHONG_CO" }, 400);
+    doi("warehouse", row.warehouse, v);
+  }
+  if (b.supplier !== undefined) {
+    const x: { supplier?: string | null } = { supplier: b.supplier ?? null };
+    const loi = chuanHoaDong(await layBoChuan(db), [x]);
+    if (loi.length) return c.json(loiChuan(loi), 400);
+    doi("supplier", row.supplier ?? null, x.supplier ?? null);
+  }
+  if (!Object.keys(sau).length) return c.json({ error: "NO_CHANGE" }, 400);
+  const maMoi = (sau.part_code as string) ?? row.part_code, khoMoi = (sau.warehouse as string) ?? row.warehouse;
+  if ("part_code" in sau || "warehouse" in sau) {
+    const dup = await db.prepare("SELECT id FROM eo_item WHERE eo_id = ? AND id <> ? AND warehouse = ? AND part_code = ? AND line_status = 'ACTIVE'")
+      .bind(row.eo_id, itemId, khoMoi, maMoi).first();
+    if (dup) return c.json({ error: "DUPLICATE_LINE" }, 409);
+  }
+  const now = nowVN();
+  const cols = Object.keys(sau);
+  await db.batch([
+    db.prepare(`UPDATE eo_item SET ${cols.map((k) => `${k} = ?`).join(", ")}, updated_by = ?, updated_at = ? WHERE id = ?`)
+      .bind(...cols.map((k) => sau[k]), u.email, now, itemId),
+    eventStmt(db, { entity_type: "eo_item", entity_id: itemId, eo_id: row.eo_id, event_type: "SUA_THONG_TIN_DONG", user_email: u.email, at: now,
+      before: truoc, after: sau, metadata: { ly_do: lyDo, part_code: row.part_code, warehouse: row.warehouse } }),
+  ]);
+  if (row.approval_code && ("part_code" in sau || "warehouse" in sau)) await recomputeMatch(db, [row.approval_code]);
+  await bumpVersions(db, ["eo", "amis"]);
+  return c.json({ ok: true, doi: sau });
+});
+
 // ------------------------------------------------------------------ POST /items/:itemId/approve-post-issue
 app.post("/items/:itemId/approve-post-issue", async (c) => {
   const itemId = Number(c.req.param("itemId"));
@@ -829,6 +899,56 @@ app.post("/items/:itemId/ket-thuc-som", async (c) => {
   ]);
   await bumpVersions(c.env.DB, ["eo"]);
   return c.json({ ok: true, sl_dat: daVe, sl_dat_truoc: row.current_qty });
+});
+
+// ------------------------------------------------------------------ POST /:id/ket-thuc-som (ca PO)
+// Ket thuc som CA PO (2026-11-08): moi dong dang mo -> SL dat = SL da ve thuc te (AMIS). Dong ve 1 phan: nhu ket thuc som 1 dong;
+// dong CHUA VE gi: SL 0 + huy dong (CANCELLED_LINE) + danh dau ket thuc som; dong da ve du / da ket thuc som / huy: giu nguyen;
+// dong them sau BH dang cho duyet: bo qua (duyet / tu choi rieng). { xem: true } = xem truoc tung dong (FE canh bao). Bat buoc ly do.
+app.post("/:id/ket-thuc-som", async (c) => {
+  const db = c.env.DB;
+  const id = Number(c.req.param("id"));
+  const b = (await c.req.json().catch(() => ({}))) as { reason?: string; xem?: boolean };
+  const eo = await db.prepare("SELECT id, trang_thai, created_by, final_approver_email, approval_code FROM eo WHERE id = ?").bind(id).first<any>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  const u = c.get("user");
+  if (!canManageEo(u, { created_by: eo.created_by }) && u.email !== eo.final_approver_email) return c.json({ error: "FORBIDDEN" }, 403);
+  if (eo.trang_thai !== "ISSUED") return c.json({ error: "ONLY_ISSUED" }, 409);
+  const ds = (await db.prepare(
+    `SELECT i.id, i.part_code, i.part_name, i.warehouse, i.current_qty, i.line_status, i.post_issue_status, i.ket_thuc_som_at,
+            COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id AND r.voided_at IS NULL), 0) da_ve,
+            (SELECT COALESCE(SUM(p.planned_qty), 0) FROM item_plan p WHERE p.eo_item_id = i.id AND p.deleted_at IS NULL) sl_kh
+     FROM eo_item i WHERE i.eo_id = ? ORDER BY i.id`,
+  ).bind(id).all<any>()).results.map((r) => {
+    const daVe = round3(r.da_ve);
+    const hd = r.line_status !== "ACTIVE" ? "BO_QUA_HUY" : r.post_issue_status === "PENDING" ? "BO_QUA_CHO_DUYET"
+      : r.ket_thuc_som_at ? "BO_QUA_DA_KTS" : daVe >= r.current_qty ? "BO_QUA_DU" : daVe > 0 ? "VE_MOT_PHAN" : "CHUA_VE";
+    return { ...r, da_ve: daVe, hanh_dong: hd };
+  });
+  const doi = ds.filter((r) => r.hanh_dong === "VE_MOT_PHAN" || r.hanh_dong === "CHUA_VE");
+  if (b.xem) return c.json({ dong: ds, so_doi: doi.length });
+  const reason = String(b.reason ?? "").trim();
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+  if (!doi.length) return c.json({ error: "KHONG_CO_DONG_MO" }, 409);
+  const now = nowVN();
+  const stmts: D1PreparedStatement[] = [];
+  for (const r of doi) {
+    const du = (r.sl_kh ?? 0) - r.da_ve;
+    if (du > 1e-9) stmts.push(...(await catKeHoach(db, r.id, id, du, u.email, now, "Kết thúc sớm cả PO — SL đặt về SL đã về")));
+    stmts.push(
+      db.prepare(
+        `UPDATE eo_item SET current_qty = ?, line_status = ?, sl_dat_truoc_kts = ?, ket_thuc_som_at = ?, ket_thuc_som_by = ?, ket_thuc_som_ly_do = ?,
+           updated_by = ?, updated_at = ? WHERE id = ?`,
+      ).bind(r.da_ve, r.da_ve > 0 ? "ACTIVE" : "CANCELLED_LINE", r.current_qty, now, u.email, reason, u.email, now, r.id),
+      eventStmt(db, { entity_type: "eo_item", entity_id: r.id, eo_id: id, event_type: "KET_THUC_SOM", user_email: u.email, at: now,
+        before: { qty: r.current_qty }, after: { qty: r.da_ve }, metadata: { reason, pham_vi: "PO", chua_ve: r.da_ve <= 0 } }),
+    );
+  }
+  stmts.push(eventStmt(db, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "KET_THUC_SOM_PO", user_email: u.email, at: now,
+    metadata: { reason, so_dong: doi.length, dong: doi.map((r) => ({ id: r.id, part_code: r.part_code, truoc: r.current_qty, sau: r.da_ve })) } }));
+  await db.batch(stmts);
+  await bumpVersions(db, ["eo"]);
+  return c.json({ ok: true, so_dong: doi.length });
 });
 
 // ------------------------------------------------------------------ POST /items/:itemId/reject-post-issue

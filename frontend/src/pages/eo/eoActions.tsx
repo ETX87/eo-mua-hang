@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { Modal, Card } from "../../components/ui";
+import { Modal, Card, Spinner } from "../../components/ui";
 import { DataTable, PAGE_SIZE, type Col } from "../../components/DataTable";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten, loiChuanTxt } from "../../lib/format";
@@ -41,6 +41,11 @@ export function quyenEo(eo: any, me: any) {
     canCancelLine: issued && (canManage || m.email === eo.final_approver_email),
     canDeleteFile: role === "Admin" || (canManage && !["ISSUED", "CANCELLED"].includes(eo.trang_thai)),
     readOnly: role === "View",
+    // sua ma LK / kho / doi tac dong dat - khop backend lib/eoAccess canSuaThongTinDong (dieu kien PO chua ket thuc kiem o backend)
+    canSuaThongTin: ["DRAFT", "ISSUED"].includes(eo.trang_thai) && role !== "View" && (["Admin", "KH cung ung", "Ke toan"].includes(role) ||
+      m.la_ke_toan === 1 || m.la_nv_dat_hang === 1 || eo.created_by === m.email),
+    // ket thuc som ca PO - khop backend POST /eo/:id/ket-thuc-som
+    canKetThucSomPo: issued && (canManage || m.email === eo.final_approver_email),
     // Copy EO = tao EO moi tu thong tin phieu - khop backend lib/eoAccess.ts canCreateEo
     canCopy: role === "Admin" || role === "KH cung ung" || m.la_nv_dat_hang === 1 || m.la_nv_kho === 1,
   };
@@ -915,4 +920,143 @@ export async function xuatDongEo(eo: any, items: any[], plans: any[], boSung?: a
     { header: "Cấp CEO", get: (r) => r.td?.ceo_ly_do?.join("; ") ?? "" },
   ];
   exportRowsToXlsx(rows, cols, `Linh_kien_${eo.approval_code || eo.eo_code}.xlsx`, "Linh kien");
+}
+
+/**
+ * Sua lai MA LINH KIEN / KHO / DOI TAC cua 1 dong dat (nhap sai) - POST /eo/items/:id/sua-thong-tin (2026-11-08).
+ * Ke toan, mua hang, nguoi tao PO; PO chua ket thuc hoan toan. Bat buoc ly do, log day du truoc / sau. Doi tac moi -> hoi them.
+ */
+export function SuaThongTinDongModal({ item, onClose, onDone }: { item: { id: number; part_code: string; part_name?: string; warehouse: string; supplier?: string | null }; onClose: () => void; onDone: () => void }) {
+  const goiY = useGoiYDong();
+  const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
+  const [ma, setMa] = useState(item.part_code);
+  const [tenLk, setTenLk] = useState(item.part_name ?? "");
+  const [kho, setKho] = useState(item.warehouse);
+  const [ncc, setNcc] = useState(item.supplier ?? "");
+  const [lyDo, setLyDo] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setErr("");
+    const body: any = { ly_do: lyDo.trim() };
+    if (ma.trim() !== item.part_code) body.part_code = ma.trim();
+    if (tenLk.trim() !== (item.part_name ?? "")) body.part_name = tenLk.trim();
+    if (kho !== item.warehouse) body.warehouse = kho;
+    if (ncc.trim() !== (item.supplier ?? "")) body.supplier = ncc.trim() || null;
+    if (Object.keys(body).length === 1) return setErr("Chưa thay đổi gì.");
+    if (!body.ly_do) return setErr("Cần nhập lý do sửa (ghi vào lịch sử PO).");
+    setBusy(true);
+    const gui = () => api.post(`/eo/items/${item.id}/sua-thong-tin`, body);
+    try {
+      try { await gui(); }
+      catch (e: any) {
+        const loi = (e?.body?.error === "GIA_TRI_KHONG_CHUAN" ? e.body.loi : []) as { loai: string; gia_tri: string }[];
+        const moi = loi.filter((x) => x.loai === "DOI_TAC").map((x) => x.gia_tri);
+        if (!moi.length || !confirm(`Đối tác CHƯA CÓ trong hệ thống: ${moi.join(", ")}.\nBạn có chắc chắn muốn THÊM đối tác mới?`)) throw e;
+        for (const v of moi) await api.post("/danh-muc/chuan/doi-tac-moi", { ten: v });
+        await gui();
+      }
+      onDone();
+    } catch (e: any) {
+      const c = e?.body?.error;
+      setErr(loiChuanTxt(e?.body) ?? (c === "FORBIDDEN" ? "Bạn không có quyền sửa (kế toán / mua hàng / người tạo PO)." : c === "PO_DA_KET_THUC" ? "PO đã kết thúc hoàn toàn (mọi dòng đã về đủ) — không sửa được."
+        : c === "DUPLICATE_LINE" ? "PO đã có dòng khác cùng mã + kho này." : c === "KHO_KHONG_CO" ? "Kho không có trong danh mục." : c === "BAD_STATE" ? "PO đang trình duyệt — rút về để sửa." : c === "DONG_DA_HUY" ? "Dòng đã hủy." : "Lỗi lưu."));
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Sửa mã LK / kho / đối tác — ${item.part_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn primary" disabled={busy} onClick={run}>{busy ? "Đang lưu..." : "Lưu thay đổi"}</button></>}>
+      <GoiYDatalists data={goiY.data} />
+      <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+        Dùng khi <b>nhập sai</b> mã linh kiện / kho / đối tác. Mọi thay đổi ghi lịch sử (trước → sau, người sửa, lý do). Đổi mã hoặc kho của PO đã ban hành
+        → hệ thống <b>khớp lại phiếu AMIS</b> theo mã + kho mới. NCC giao mã tương đương (không phải nhập sai) → dùng <b>Thay mã tương đương</b>.
+      </div>
+      <label className="field-label">Mã linh kiện</label>
+      <input className="input" list={DL.lk} value={ma} onChange={(e) => { const v = e.target.value; setTenLk(tenKhiDoiMa(goiY.tenTheoMa, ma, v, tenLk)); setMa(v); }} />
+      <label className="field-label" style={{ marginTop: 10 }}>Tên linh kiện</label>
+      <input className="input" value={tenLk} onChange={(e) => setTenLk(e.target.value)} />
+      <label className="field-label" style={{ marginTop: 10 }}>Kho</label>
+      <select className="select" value={kho} onChange={(e) => setKho(e.target.value)}>
+        {!(khos.data ?? []).some((k: any) => k.ten_kho === kho) && <option value={kho}>{kho}</option>}
+        {(khos.data ?? []).filter((k: any) => k.active !== 0 || k.ten_kho === kho).map((k: any) => <option key={k.ten_kho} value={k.ten_kho}>{k.ma_kho ? `${k.ma_kho} — ` : ""}{k.ten_kho}</option>)}
+      </select>
+      <label className="field-label" style={{ marginTop: 10 }}>Đối tác</label>
+      <input className="input" list={DL.doiTac} value={ncc} onChange={(e) => setNcc(e.target.value)} placeholder="Chọn đối tác chuẩn" />
+      <label className="field-label" style={{ marginTop: 10 }}>Lý do sửa <span className="req">*</span></label>
+      <input className="input" value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="vd: nhập nhầm kho 6804, đúng là kho ký gửi Media Mart" />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+/**
+ * Ket thuc som CA PO (2026-11-08) - POST /eo/:id/ket-thuc-som: moi dong dang mo -> SL dat = SL da ve thuc te.
+ * Xem truoc tung dong + canh bao day du truoc khi lam (khong hoan tac tu dong).
+ */
+export function KetThucSomPoModal({ eo, onClose, onDone }: { eo: { id: number; eo_code: string; approval_code?: string | null }; onClose: () => void; onDone: () => void }) {
+  const xem = useQuery({ queryKey: ["kts-po", eo.id], queryFn: () => api.post<{ dong: any[]; so_doi: number }>(`/eo/${eo.id}/ket-thuc-som`, { xem: true }) });
+  const [lyDo, setLyDo] = useState("");
+  const [dongY, setDongY] = useState(false);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ds = xem.data?.dong ?? [];
+  const veMotPhan = ds.filter((r) => r.hanh_dong === "VE_MOT_PHAN"), chuaVe = ds.filter((r) => r.hanh_dong === "CHUA_VE");
+  const choDuyet = ds.filter((r) => r.hanh_dong === "BO_QUA_CHO_DUYET");
+  const bot = veMotPhan.reduce((s, r) => s + (r.current_qty - r.da_ve), 0) + chuaVe.reduce((s, r) => s + r.current_qty, 0);
+  const NHAN: Record<string, string> = { VE_MOT_PHAN: "SL đặt → SL đã về", CHUA_VE: "Chưa về gì → SL 0, hủy dòng", BO_QUA_DU: "Đã về đủ — giữ nguyên",
+    BO_QUA_DA_KTS: "Đã kết thúc sớm — giữ nguyên", BO_QUA_HUY: "Đã hủy — giữ nguyên", BO_QUA_CHO_DUYET: "Chờ duyệt (thêm sau BH) — bỏ qua" };
+  const run = async () => {
+    setErr("");
+    if (!lyDo.trim()) return setErr("Cần nhập lý do kết thúc sớm (ghi vào lịch sử PO).");
+    if (!dongY) return setErr("Tick xác nhận đã đọc cảnh báo.");
+    setBusy(true);
+    try { await api.post(`/eo/${eo.id}/ket-thuc-som`, { reason: lyDo.trim() }); onDone(); }
+    catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "FORBIDDEN" ? "Bạn không có quyền (người tạo PO / KH cung ứng / người duyệt mua / Admin)." : c === "KHONG_CO_DONG_MO" ? "PO không còn dòng nào đang chờ hàng." : "Lỗi kết thúc sớm.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Kết thúc sớm cả PO — ${eo.approval_code || eo.eo_code}`} onClose={onClose} width={860}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy || !(xem.data?.so_doi)} onClick={run}>{busy ? "Đang xử lý..." : `Kết thúc sớm ${xem.data?.so_doi ?? 0} dòng`}</button></>}>
+      {xem.isLoading ? <Spinner /> : (
+        <div style={{ fontSize: 13 }}>
+          <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", color: "var(--danger-ink)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, lineHeight: 1.55 }}>
+            <b>⚠ Cảnh báo — đọc kỹ trước khi kết thúc sớm:</b>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+              <li>Mọi dòng đang chờ hàng: <b>SL đặt đổi bằng SL đã về thực tế (AMIS)</b> — giảm tổng <b>{soLuong(bot)}</b> cái chưa về; hệ thống <b>không chờ / không theo dõi phần còn lại</b>.</li>
+              {chuaVe.length > 0 && <li><b>{chuaVe.length} dòng chưa về gì</b> sẽ thành SL 0 và bị hủy: {chuaVe.slice(0, 6).map((r) => r.part_code).join(", ")}{chuaVe.length > 6 ? "…" : ""}.</li>}
+              <li>Kế hoạch hàng về vượt SL mới bị cắt bớt; lỗi theo dõi / cảnh báo của phần còn lại không còn tính.</li>
+              <li>Hàng về thêm sau này (nếu NCC vẫn giao) <b>không được tính</b> cho PO này — cần đặt PO mới.</li>
+              {choDuyet.length > 0 && <li>{choDuyet.length} dòng thêm sau ban hành đang chờ duyệt — <b>không bị ảnh hưởng</b>, duyệt / từ chối riêng.</li>}
+              <li>Không hoàn tác tự động — sửa lại phải sửa SL từng dòng.</li>
+            </ul>
+          </div>
+          <div className="tbl-wrap" style={{ maxHeight: 240, overflow: "auto" }}>
+            <table className="tbl tbl-dense">
+              <thead><tr><th>Mã LK</th><th>Tên</th><th>Kho</th><th style={{ textAlign: "right" }}>SL đặt</th><th style={{ textAlign: "right" }}>Đã về</th><th>Sau khi kết thúc sớm</th></tr></thead>
+              <tbody>{ds.map((r) => {
+                const doi = r.hanh_dong === "VE_MOT_PHAN" || r.hanh_dong === "CHUA_VE";
+                return (
+                  <tr key={r.id} style={{ opacity: doi ? 1 : 0.5 }}>
+                    <td><b>{r.part_code}</b></td><td>{r.part_name}</td><td><Kho t={r.warehouse} /></td>
+                    <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td><td style={{ textAlign: "right" }}>{soLuong(r.da_ve)}</td>
+                    <td style={{ color: r.hanh_dong === "CHUA_VE" ? "var(--danger-ink)" : undefined }}>{NHAN[r.hanh_dong] ?? r.hanh_dong}{doi ? ` (${soLuong(r.da_ve)})` : ""}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+          <label className="field-label" style={{ marginTop: 12 }}>Lý do kết thúc sớm <span className="req">*</span></label>
+          <textarea className="textarea" value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="vd: NCC báo ngừng sản xuất, phần còn lại đặt PO khác…" />
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontWeight: 600 }}>
+            <input type="checkbox" checked={dongY} onChange={(e) => setDongY(e.target.checked)} /> Tôi đã đọc cảnh báo và muốn kết thúc sớm {xem.data?.so_doi ?? 0} dòng của PO này
+          </label>
+          {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+        </div>
+      )}
+    </Modal>
+  );
 }

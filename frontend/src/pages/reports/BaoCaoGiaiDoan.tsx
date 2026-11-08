@@ -97,7 +97,7 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
   // G4 song song -> loc rieng g4 (khong phai "giai doan hien tai"); con lai loc giai doan hien tai
   const den2 = (k: string, tre?: boolean) => nav(k === "G4" ? `/don-hang?g4=${tre ? "tre" : "chua"}` : `/don-hang?gd=${k}${tre ? "&tre=tre" : ""}`);
   const S = ({ v, on, opts, l }: { v: string; on: (v: string) => void; opts: string[]; l: string }) => (
-    <select className="select" style={{ width: 170, height: 32 }} value={v} onChange={(e) => on(e.target.value)}><option value="">{l}</option>{opts.map((x) => <option key={x}>{x}</option>)}</select>
+    <select className="select tb" style={{ width: 170, }} value={v} onChange={(e) => on(e.target.value)}><option value="">{l}</option>{opts.map((x) => <option key={x}>{x}</option>)}</select>
   );
   if (q.isLoading) return <Spinner />;
   const slaTxt = (k: string) => (k === "G6" ? "ngày DK lần đầu" : sla[k] != null ? gioTxt(sla[k]) : "—");
@@ -108,9 +108,9 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span className="muted" style={{ fontSize: 12.5 }}>Đơn đặt từ</span>
-          <input className="input" type="date" style={{ width: 150, height: 32 }} value={tu} onChange={(e) => setTu(e.target.value)} />
+          <input className="input tb" type="date" style={{ width: 150 }} value={tu} onChange={(e) => setTu(e.target.value)} />
           <span className="muted">đến</span>
-          <input className="input" type="date" style={{ width: 150, height: 32 }} value={den} onChange={(e) => setDen(e.target.value)} />
+          <input className="input tb" type="date" style={{ width: 150 }} value={den} onChange={(e) => setDen(e.target.value)} />
           <S v={kho} on={setKho} opts={uniq((r) => r.kho)} l="Mọi kho" />
           <S v={doiTac} on={setDoiTac} opts={uniq((r) => r.doi_tac)} l="Mọi NCC" />
           <S v={loaiHinh} on={setLoaiHinh} opts={uniq((r) => r.loai_hinh)} l="Mọi loại hình" />
@@ -164,8 +164,8 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
         <Card>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
             <b style={{ fontSize: 14 }}>Xếp hạng</b>
-            <select className="select" style={{ width: 170, height: 30 }} value={chieu} onChange={(e) => setChieu(e.target.value)}>{CHIEU.map((x) => <option key={x.k} value={x.k}>theo {x.l}</option>)}</select>
-            <select className="select" style={{ width: 210, height: 30 }} value={gdXh} onChange={(e) => setGdXh(e.target.value)}>{gds.map((g) => <option key={g.k} value={g.k}>{g.k} · {g.l}</option>)}</select>
+            <select className="select tb" style={{ width: 170, }} value={chieu} onChange={(e) => setChieu(e.target.value)}>{CHIEU.map((x) => <option key={x.k} value={x.k}>theo {x.l}</option>)}</select>
+            <select className="select tb" style={{ width: 210, }} value={gdXh} onChange={(e) => setGdXh(e.target.value)}>{gds.map((g) => <option key={g.k} value={g.k}>{g.k} · {g.l}</option>)}</select>
             <span className="muted" style={{ fontSize: 11.5 }}>% đúng hạn thấp lên đầu</span>
           </div>
           <div className="tbl-wrap" style={{ maxHeight: 420, overflow: "auto" }}>

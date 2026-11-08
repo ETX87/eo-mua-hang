@@ -44,6 +44,8 @@ export const STATUS_META: Record<string, { label: string; cls: string }> = {
   IN_REVIEW: { label: "Đang thẩm định", cls: "review" },
   WAITING_FINAL_APPROVAL: { label: "Chờ duyệt mua", cls: "final" },
   ISSUED: { label: "Đã ban hành", cls: "issued" },
+  // trang thai TINH (2026-11-08): da ban hanh + moi dong song ve >= SL dat -> du hang (backend routes/eo xong)
+  DONE: { label: "Đủ hàng (DONE)", cls: "issued" },
   REJECTED: { label: "Từ chối", cls: "reject" },
   CANCELLED: { label: "Đã hủy", cls: "reject" },
 };

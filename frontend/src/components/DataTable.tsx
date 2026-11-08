@@ -214,7 +214,7 @@ export function DataTable<T>({
           )}
           {coTim && <>
             {q && <span className="muted" style={{ fontSize: 12 }}>{rows.length} / {rowsIn.length} dòng</span>}
-            <input className="input" style={{ width: 260, height: 32 }} placeholder="🔍 Tìm nhanh trong bảng (không dấu)…" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
+            <input className="input tb" style={{ width: 260 }} placeholder="🔍 Tìm nhanh trong bảng (không dấu)…" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
           </>}
         </div>
       )}
@@ -323,10 +323,10 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
       onKeyDown={(e) => { if (e.key === "Enter" && kieu !== "chon") apDung(); }}>
       <div style={{ fontWeight: 800, fontSize: 12.5, marginBottom: 6 }}>Lọc: {tieuDe}</div>
       {kieu === "chu" && (
-        <input autoFocus className="input" style={{ height: 32 }} placeholder="Gõ từ cần tìm (không dấu)…" value={g.q ?? ""} onChange={(e) => setG({ q: e.target.value })} />
+        <input autoFocus className="input tb" placeholder="Gõ từ cần tìm (không dấu)…" value={g.q ?? ""} onChange={(e) => setG({ q: e.target.value })} />
       )}
       {kieu === "chon" && <>
-        <input autoFocus className="input" style={{ height: 30, fontSize: 12.5 }} placeholder="🔍 Tìm giá trị…" value={tim} onChange={(e) => setTim(e.target.value)} />
+        <input autoFocus className="input tb" placeholder="🔍 Tìm giá trị…" value={tim} onChange={(e) => setTim(e.target.value)} />
         <div style={{ display: "flex", gap: 6, margin: "6px 0", fontSize: 12 }}>
           <button className="btn ghost sm" onClick={() => setG({ chon: [...new Set([...(g.chon ?? []), ...ds])] })}>Chọn tất cả{tim ? " (đang tìm)" : ""}</button>
           <button className="btn ghost sm" onClick={() => setG({ chon: tim ? (g.chon ?? []).filter((v) => !ds.includes(v)) : [] })}>Bỏ chọn</button>
@@ -345,9 +345,9 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
       {(kieu === "ngay" || kieu === "so") && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
           <label style={{ fontSize: 11.5 }}>{kieu === "ngay" ? "Từ ngày" : "Từ"}
-            <input autoFocus className="input" style={{ height: 32 }} type={kieu === "ngay" ? "date" : "number"} value={g.tu ?? ""} onChange={(e) => setG({ ...g, tu: e.target.value })} /></label>
+            <input autoFocus className="input tb" type={kieu === "ngay" ? "date" : "number"} value={g.tu ?? ""} onChange={(e) => setG({ ...g, tu: e.target.value })} /></label>
           <label style={{ fontSize: 11.5 }}>{kieu === "ngay" ? "Đến ngày" : "Đến"}
-            <input className="input" style={{ height: 32 }} type={kieu === "ngay" ? "date" : "number"} value={g.den ?? ""} onChange={(e) => setG({ ...g, den: e.target.value })} /></label>
+            <input className="input tb" type={kieu === "ngay" ? "date" : "number"} value={g.den ?? ""} onChange={(e) => setG({ ...g, den: e.target.value })} /></label>
           {kieu === "ngay" && <div className="muted" style={{ gridColumn: "1 / -1", fontSize: 11 }}>1 ngày: chọn cùng ngày ở 2 ô.</div>}
         </div>
       )}

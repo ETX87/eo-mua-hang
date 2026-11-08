@@ -136,16 +136,16 @@ table.tbl tbody tr { height: 40px; }
   width: 95vw; height: 95vh; background: var(--panel-2); border-radius: 18px; box-shadow: 0 24px 64px rgba(15,23,42,.35);
   display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto;
 }
-.qv-head { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 20px; }
+.qv-head { background: #fff; border-bottom: 1px solid var(--border); padding: 10px 20px; }
 /* min-height: dau popup cao (KPI + duong tien trinh) tren man nho -> than van du cao, popup cuon */
 .qv-body { flex: 1 1 0; min-height: max(320px, 45vh); display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 420px); gap: 14px; padding: 14px 20px 18px; }
 .qv-col { min-height: 0; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 .qv-scroll { flex: 1; min-height: 0; overflow: auto; }
-.qv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin-top: 12px; }
-.qv-kpi { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; min-width: 0; }
+.qv-kpis { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.qv-kpi { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; min-width: 0; display: inline-flex; align-items: baseline; gap: 6px; }
 .qv-kpi .l { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qv-kpi .v { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qv-alerts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.qv-kpi .v { font-size: 13.5px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qv-alerts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .qv-alert { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid transparent; }
 .qv-alert.danger { background: var(--danger-bg); color: var(--danger-ink); border-color: #FCA5A5; }
 .qv-alert.warn { background: var(--warn-bg); color: var(--warn-ink); border-color: #FCD34D; }
@@ -206,6 +206,17 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .tt-ten { font-size: 12px; font-weight: 800; margin-top: 4px; line-height: 1.2; }
 .tt-phu { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
 .tt-gio { font-size: 12px; font-weight: 800; margin-top: 2px; }
+/* Quy trinh gon (QuyTrinh): duong ngang 8 moc + bong loi, mo rong = TienTrinh */
+/* van de theo buoc: 2 cot tren man rong */
+.ttq-vd { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 4px 18px; margin-top: 4px; }
+.ttq-line { display: flex; overflow-x: auto; margin-top: 6px; }
+.ttq-nut { position: relative; flex: 1 1 0; min-width: 84px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 2px; }
+.ttq-noi { position: absolute; top: 9px; right: 50%; width: 100%; height: 3px; z-index: 0; }
+.ttq-cham { position: relative; z-index: 1; width: 20px; height: 20px; border-radius: 50%; border: 2px solid; display: grid; place-items: center; font-weight: 900; font-size: 10.5px; }
+.ttq-cham.on { box-shadow: 0 0 0 3px #fff, 0 0 0 5px currentColor; }
+.ttq-loi { position: absolute; top: -7px; right: -11px; min-width: 15px; height: 15px; border-radius: 8px; color: #fff; font-size: 9.5px; font-weight: 800; display: grid; place-items: center; padding: 0 3px; border: 1.5px solid #fff; }
+.ttq-ten { font-size: 11px; line-height: 1.2; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ttq-phu { font-size: 10.5px; color: var(--text-muted); line-height: 1.2; white-space: nowrap; }
 /* Tien trinh thu gon 1 dong (TienTrinhGon) */
 .ttg { display: inline-flex; flex-direction: column; gap: 2px; }
 .ttg-cham { display: inline-flex; align-items: center; }
@@ -237,8 +248,8 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
   .qv-panel { width: 100vw; height: 100dvh; border-radius: 0; }
   .qv-head { padding: 10px 12px; }
   .qv-body { padding: 8px; gap: 8px; }
-  .qv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .qv-kpi .v { font-size: 16px; }
+  .qv-kpis { gap: 5px; }
+  .qv-kpi .v { font-size: 13.5px; }
   .qv-tim { width: 100%; margin-left: 0; }
   /* bang: cuon ngang trong khung, cham nhe tren dien thoai */
   .tbl-wrap { -webkit-overflow-scrolling: touch; }

@@ -357,13 +357,18 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       ]);
       await bumpVersions(db, ["theo_doi"]);
     }
-    // Loi R1/R3/R4 DANG CHO co han tu ngay hang ve lan dau tro di (AMIS nhap muon / ve thieu) -> tu bo, ghi event_log (2026-11-08).
-    // Ca dong da dong (ve du) - chi xet dong con loi cho de tham so nho.
-    const veDauLoi = (await layDongTheoDoi(env, "tat_ca")).filter((r) => r.ngay_ve_dau && r.so_loi_cho_gt > 0).map((r) => [r.item_id, r.ngay_ve_dau]);
+    // Dong DA SANG GIAI DOAN SAU -> loi DANG CHO cua giai doan truoc co han tu moc chuyen giai doan tro di tu bo (2026-11-08):
+    //  - co ngay du kien (xong G5): R1 (chua co ngay DK) + R3 (chua push) het nghia vu;
+    //  - hang ve lan dau (G7, theo ngay chung tu AMIS - ke ca nhap muon / ve thieu): R1 + R3 + R4.
+    // Ca dong da dong (ve du) - chi xet dong con loi cho de tham so nho. Ghi event_log.
+    const veDauLoi = (await layDongTheoDoi(env, "tat_ca")).filter((r) => (r.ngay_ve_dau || r.lan_dau_co_ndk) && r.so_loi_cho_gt > 0)
+      .map((r) => [r.item_id, r.ngay_ve_dau ?? null, r.lan_dau_co_ndk ?? null]);
     if (veDauLoi.length) {
       const boVe = (await db.prepare(
         `SELECT l.id FROM tl_loi l JOIN json_each(?) v ON l.eo_item_id = json_extract(v.value, '$[0]')
-         WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac IN ('R1', 'R3', 'R4') AND substr(l.han, 1, 10) >= json_extract(v.value, '$[1]')`,
+         WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (
+           (l.quy_tac IN ('R1', 'R3', 'R4') AND json_extract(v.value, '$[1]') IS NOT NULL AND substr(l.han, 1, 10) >= json_extract(v.value, '$[1]'))
+           OR (l.quy_tac IN ('R1', 'R3') AND json_extract(v.value, '$[2]') IS NOT NULL AND l.han >= json_extract(v.value, '$[2]')))`,
       ).bind(JSON.stringify(veDauLoi)).all<{ id: number }>()).results.map((x) => x.id);
       if (boVe.length) {
         const ids = JSON.stringify(boVe);
@@ -371,7 +376,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           db.prepare(
             `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, before_json, metadata_json, user_email, created_at)
              SELECT 'eo', eo_id, eo_id, 'XOA_LOI_THEO_DOI', json_group_array(json_object('id', id, 'khoa', khoa, 'han', han)),
-                    json_object('ly_do', 'Hàng đã về (theo ngày chứng từ AMIS) — lỗi phát sinh sau thời điểm hàng về tự bỏ qua'), NULL, ?
+                    json_object('ly_do', 'Đơn đã sang giai đoạn sau (đã có ngày dự kiến / hàng đã về) — lỗi của giai đoạn trước phát sinh sau thời điểm đó tự bỏ qua'), NULL, ?
              FROM tl_loi WHERE id IN (SELECT value FROM json_each(?)) GROUP BY eo_id`,
           ).bind(now, ids),
           db.prepare("DELETE FROM tl_nhac_nho WHERE loi_id IN (SELECT value FROM json_each(?))").bind(ids),

@@ -264,18 +264,25 @@ app.get("/receipts", async (c) => {
   const inclVoided = c.req.query("include_voided") === "1";
   const onlyVoided = c.req.query("include_voided") === "only";
   const batchId = Number(c.req.query("batch_id")) || null;
+  // loc tra cuu cho ke toan (2026-11-08): khoang ngay chung tu, kho, trang thai khop
+  const tu = c.req.query("tu")?.trim(), den = c.req.query("den")?.trim(), kho = c.req.query("kho")?.trim(), khop = c.req.query("khop")?.trim();
   const where: string[] = [];
   const bind: unknown[] = [];
+  if (tu) { where.push("r.doc_date >= ?"); bind.push(tu); }
+  if (den) { where.push("r.doc_date <= ?"); bind.push(den); }
+  if (kho) { where.push("r.warehouse_name = ?"); bind.push(kho); }
+  if (khop && ["MATCHED_EO", "CODE_ONLY_NO_LINE", "UNMATCHED"].includes(khop)) { where.push("r.match_status = ?"); bind.push(khop); }
   if (q) { where.push("(r.doc_no LIKE ? OR r.part_code LIKE ? OR r.approval_code_raw LIKE ? OR r.part_name LIKE ?)"); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
   if (onlyVoided) where.push("r.voided_at IS NOT NULL");
   else if (!inclVoided) where.push("r.voided_at IS NULL");
   if (batchId) { where.push("r.import_batch_id = ?"); bind.push(batchId); }
   const rows = await c.env.DB.prepare(
     `SELECT r.id, r.import_batch_id, r.doc_no, r.doc_date, r.warehouse_name, r.part_code, r.part_name, r.qty_in, r.approval_code_raw,
-            r.match_status, r.voided_at, r.voided_by, r.void_reason, e.eo_code, e.id eo_id
+            r.match_status, r.voided_at, r.voided_by, r.void_reason, e.eo_code, e.approval_code, e.id eo_id, r.matched_eo_item_id item_id,
+            (SELECT e2.id FROM eo e2 WHERE e2.approval_code = r.approval_code_raw LIMIT 1) po_eo_id
      FROM amis_receipt r LEFT JOIN eo_item i ON i.id = r.matched_eo_item_id LEFT JOIN eo e ON e.id = i.eo_id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY r.doc_date DESC, r.id DESC LIMIT 300`,
+     ORDER BY r.doc_date DESC, r.id DESC LIMIT 1000`,
   ).bind(...bind).all();
   return c.json(rows.results);
 });
@@ -317,8 +324,8 @@ app.get("/batches", async (c) => {
 // ------------------------------------------------------------------ GET /unmatched  (bao cao 0.2)
 app.get("/unmatched", async (c) => {
   const rows = await c.env.DB.prepare(
-    `SELECT doc_no, warehouse_name, part_code, part_name, qty_in, doc_date, approval_code_raw
-     FROM amis_receipt WHERE match_status = 'CODE_ONLY_NO_LINE' ORDER BY doc_date DESC`,
+    `SELECT doc_no, warehouse_name, part_code, part_name, qty_in, doc_date, approval_code_raw, (SELECT e2.id FROM eo e2 WHERE e2.approval_code = amis_receipt.approval_code_raw LIMIT 1) po_eo_id
+     FROM amis_receipt WHERE match_status = 'CODE_ONLY_NO_LINE' AND voided_at IS NULL ORDER BY doc_date DESC`,
   ).all();
   const tot = await c.env.DB.prepare(
     "SELECT COALESCE(SUM(qty_in),0) so_luong_nhap, COUNT(*) so_dong FROM amis_receipt WHERE match_status = 'CODE_ONLY_NO_LINE'",

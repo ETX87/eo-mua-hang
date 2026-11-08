@@ -11,11 +11,11 @@ import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, PartLink, useQuickView } from "./QuickView";
-import { TienTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
+import { QuyTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
-  actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, KetThucSomModal, xuatDongEo,
+  actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, KetThucSomModal, SuaThongTinDongModal, KetThucSomPoModal, xuatDongEo,
 } from "../../pages/eo/eoActions";
 import { gopTrung, khoaMail, lietKe } from "../../lib/gopTrung";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
@@ -111,6 +111,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     d.submissions.find((s: any) => s.id === a.submission_id)?.status === "PENDING");
   const xong = () => { setMd(null); qc.invalidateQueries(); };
   const activeItems = d.items.filter((i: any) => i.line_status !== "CANCELLED_LINE");
+  // DONE (2026-11-08): da ban hanh + moi dong song ve >= SL dat
+  const poDone = eo.trang_thai === "ISSUED" && activeItems.length > 0 && activeItems.every((i: any) => (i.chua_dat ?? 0) <= 0);
   const ndkCua = (r: any) => (tdBy.get(r.id) as any)?.ngay_du_kien_gan_nhat ?? d.plans.filter((p: any) => p.eo_item_id === r.id).map((p: any) => p.planned_date).sort().pop() ?? null;
   // dong theo doi (lib/theoDoi) neu co, khong thi dung tu dong EO - du truong cho modal ngay DK / giai trinh / lich su
   const asDong = (r: any): Dong => (tdBy.get(r.id) as Dong) ?? ({
@@ -136,6 +138,13 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     catch (e: any) { setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt mua của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
   };
   const loiCho = (b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").length;
+  // nguoi phu trach tung giai doan -> "Van de theo buoc" (ai tre han)
+  const nguoiTD = [...new Set(d.approvals.filter((a: any) => a.step_type === "REVIEW" && a.submission_id === eo.current_submission_id).map((a: any) => ten(a.approver_email)))].join(", ");
+  const ncc = [...new Set(activeItems.map((i: any) => i.supplier).filter(Boolean))].join(", ");
+  const phuTrach: Record<string, string> = {
+    G1: `Người tạo — ${ten(eo.created_by)}`, G2: nguoiTD ? `Thẩm định — ${nguoiTD}` : "Người thẩm định", G3: `Duyệt mua — ${ten(eo.final_approver_email)}`,
+    G4: `NV đặt hàng — ${ten(eo.created_by)}`, G5: `NV đặt hàng — ${ten(eo.created_by)}`, G6: `NCC${ncc ? ` — ${ncc}` : ""}`, G8: `NCC${ncc ? ` — ${ncc}` : ""} + NV theo dõi`,
+  };
   const k = khopTim(tim);
   const kTl = khopTim(timTl);
   const tlLoc = tl.filter((x) => (nhom === "all" || x.nhom === nhom) && kTl(x));
@@ -168,12 +177,13 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           {P.canEditDraft && <button className="btn sm" onClick={() => { onCloseAll(); nav(`/eo/${id}/edit`); }}><I.edit width={13} height={13} /> Sửa / gửi trình</button>}
           {P.canRecall && <button className="btn sm" onClick={() => setMd({ k: "recall" })}><I.edit width={13} height={13} /> Rút về &amp; sửa</button>}
           {P.canCancel && <button className="btn sm ghost danger" onClick={() => setMd({ k: "cancel" })}><I.x width={13} height={13} /> Hủy EO</button>}
+          {P.canKetThucSomPo && !poDone && <button className="btn sm" title="Mọi dòng đang chờ hàng: SL đặt = SL đã về thực tế (xem trước + cảnh báo)" onClick={() => setMd({ k: "kts-po" })}><I.check width={13} height={13} /> Kết thúc sớm PO</button>}
           {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} lỗi)</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}>{eo.eo_code}</span>
-            <StatusBadge status={eo.trang_thai} />
+            <StatusBadge status={poDone ? "DONE" : eo.trang_thai} />
             {eo.approval_code ? <span className="badge issued">{eo.approval_code}</span> : <span className="badge nhap">Chưa ban hành</span>}
             <Clip w="min(60vw, 720px)" style={{ fontSize: 15, fontWeight: 600 }}>{eo.tieu_de || "(không tiêu đề)"}</Clip>
           </div>
@@ -195,7 +205,9 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
           <Kpi l="Tài liệu" v={soLuong(d.files.length)} />
         </div>
-        {sdh.data && <TienTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []} />}
+        {/* quy trinh gon + mo rong, hang ve nhieu dot, van de theo buoc (QuyTrinh) */}
+        {sdh.data && <QuyTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []}
+          phieuNhap={bs.data ? b?.phieu_nhap ?? [] : undefined} slDat={d.tong.tong_sl_dat} phuTrach={phuTrach} />}
         <div className="qv-alerts">
           {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
             : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
@@ -234,6 +246,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                           <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi" onClick={() => qv.openDong(r.id)}><I.trend width={14} height={14} /></button>
                           {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
                           {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
+                          {P.canSuaThongTin && r.line_status === "ACTIVE" && !poDone && <button className="btn ghost sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd({ k: "sua-tt", x: r })}><I.tag width={14} height={14} /></button>}
                           {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
                           {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
                           {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
@@ -370,6 +383,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       {md?.k === "gt-po" && <GiaiTrinhPoModal eoId={id} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "huy" && <HuyDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
+      {md?.k === "sua-tt" && <SuaThongTinDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
+      {md?.k === "kts-po" && <KetThucSomPoModal eo={eo} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "kts" && <KetThucSomModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "tuchoi" && <TuChoiDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
