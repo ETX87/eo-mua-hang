@@ -162,10 +162,10 @@ app.get("/tien-do-don-hang", async (c) => {
 
 // ============================================================================ 0.2 AMIS khong co EO
 app.get("/amis-khong-eo", async (c) => {
-  const data = await cachedReport(c.env.DB, "rep:amis-khong-eo:v2", ["eo", "amis"], async () => {
+  const data = await cachedReport(c.env.DB, "rep:amis-khong-eo:v3", ["eo", "amis"], async () => {
     const rows = await c.env.DB.prepare(
       // po_eo_id: mo nhanh popup PO theo ma phe duyet (man AMIS, 2026-11-08)
-      `SELECT doc_no, warehouse_name, part_code, part_name, qty_in, doc_date, approval_code_raw, (SELECT e2.id FROM eo e2 WHERE e2.approval_code = amis_receipt.approval_code_raw LIMIT 1) po_eo_id
+      `SELECT doc_no, warehouse_name, part_code, part_name, qty_in, doc_date, approval_code_raw, (SELECT e2.id FROM eo e2 WHERE e2.approval_code = amis_receipt.approval_code_raw LIMIT 1) po_eo_id, COALESCE(amis_receipt.matched_eo_item_id, (SELECT i3.id FROM eo_item i3 JOIN eo e3 ON e3.id = i3.eo_id WHERE e3.approval_code = amis_receipt.approval_code_raw AND (UPPER(i3.part_code) = UPPER(amis_receipt.part_code) OR UPPER(COALESCE(i3.part_code_goc, '')) = UPPER(amis_receipt.part_code)) ORDER BY (i3.line_status = 'ACTIVE') DESC, i3.id LIMIT 1)) dong_id
        FROM amis_receipt WHERE match_status = 'CODE_ONLY_NO_LINE' AND voided_at IS NULL ORDER BY doc_date DESC`,
     ).all();
     const tong = await c.env.DB.prepare(

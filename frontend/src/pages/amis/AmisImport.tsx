@@ -11,7 +11,7 @@ import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { writeBook } from "../../lib/excel";
 import { Kho } from "../../lib/kho";
-import { EoLink, useQuickView } from "../../components/quickview/QuickView";
+import { EoLink } from "../../components/quickview/QuickView";
 import { cotChungTuAmis } from "./cotAmis";
 
 const COLS = ["Mã kho", "Tên kho", "Mã hàng", "Tên hàng", "Ngày hạch toán", "Ngày chứng từ", "Số chứng từ", "ĐVT", "Diễn giải", "Số lượng Nhập", "Số lượng Xuất", "Số lượng Tồn", "TK Kho", "TK đối ứng", "Mã phê duyệt"];
@@ -77,7 +77,6 @@ function NhapAmis() {
   const [showVoided, setShowVoided] = useState<"" | "1" | "only">("");
   // loc tra cuu phia server (2026-11-08): khoang ngay chung tu, kho, trang thai khop
   const [tu, setTu] = useState(""); const [den, setDen] = useState(""); const [khoLoc, setKhoLoc] = useState(""); const [khop, setKhop] = useState("");
-  const qv = useQuickView();
 
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const canEdit = me.data?.vai_tro === "Admin" || me.data?.vai_tro === "Ke toan" || me.data?.la_ke_toan === 1;
@@ -417,7 +416,7 @@ function NhapAmis() {
               ? <span className="badge reject" title={`${ten(r.voided_by)} · ${ngayGio(r.voided_at)}`}>Đã hủy: {r.void_reason}</span>
               : r.eo_code ? <span style={{ display: "inline-flex", gap: 6 }}>
                   <EoLink id={r.eo_id} title="Mở PO">{r.approval_code || r.eo_code}</EoLink>
-                  {r.item_id && <button type="button" className="qv-link" title="Mở dòng linh kiện đặt khớp phiếu này" onClick={(e) => { e.stopPropagation(); qv.openDong(r.item_id); }}>· dòng</button>}</span>
+</span>
               : r.match_status === "CODE_ONLY_NO_LINE" ? <span className="badge final">Có mã, không có dòng</span> : <span className="muted">Không khớp</span> },
             { key: "x", header: "", render: (r) => !canEdit ? null : r.voided_at
               ? <button className="btn ghost sm" onClick={() => actReceipt(r, "restore")}>Khôi phục</button>

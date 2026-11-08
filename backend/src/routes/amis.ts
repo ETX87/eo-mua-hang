@@ -279,7 +279,7 @@ app.get("/receipts", async (c) => {
   const rows = await c.env.DB.prepare(
     `SELECT r.id, r.import_batch_id, r.doc_no, r.doc_date, r.warehouse_name, r.part_code, r.part_name, r.qty_in, r.approval_code_raw,
             r.match_status, r.voided_at, r.voided_by, r.void_reason, e.eo_code, e.approval_code, e.id eo_id, r.matched_eo_item_id item_id,
-            (SELECT e2.id FROM eo e2 WHERE e2.approval_code = r.approval_code_raw LIMIT 1) po_eo_id
+            (SELECT e2.id FROM eo e2 WHERE e2.approval_code = r.approval_code_raw LIMIT 1) po_eo_id, COALESCE(r.matched_eo_item_id, (SELECT i3.id FROM eo_item i3 JOIN eo e3 ON e3.id = i3.eo_id WHERE e3.approval_code = r.approval_code_raw AND (UPPER(i3.part_code) = UPPER(r.part_code) OR UPPER(COALESCE(i3.part_code_goc, '')) = UPPER(r.part_code)) ORDER BY (i3.line_status = 'ACTIVE') DESC, i3.id LIMIT 1)) dong_id
      FROM amis_receipt r LEFT JOIN eo_item i ON i.id = r.matched_eo_item_id LEFT JOIN eo e ON e.id = i.eo_id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
      ORDER BY r.doc_date DESC, r.id DESC LIMIT 1000`,
@@ -324,7 +324,7 @@ app.get("/batches", async (c) => {
 // ------------------------------------------------------------------ GET /unmatched  (bao cao 0.2)
 app.get("/unmatched", async (c) => {
   const rows = await c.env.DB.prepare(
-    `SELECT doc_no, warehouse_name, part_code, part_name, qty_in, doc_date, approval_code_raw, (SELECT e2.id FROM eo e2 WHERE e2.approval_code = amis_receipt.approval_code_raw LIMIT 1) po_eo_id
+    `SELECT doc_no, warehouse_name, part_code, part_name, qty_in, doc_date, approval_code_raw, (SELECT e2.id FROM eo e2 WHERE e2.approval_code = amis_receipt.approval_code_raw LIMIT 1) po_eo_id, COALESCE(amis_receipt.matched_eo_item_id, (SELECT i3.id FROM eo_item i3 JOIN eo e3 ON e3.id = i3.eo_id WHERE e3.approval_code = amis_receipt.approval_code_raw AND (UPPER(i3.part_code) = UPPER(amis_receipt.part_code) OR UPPER(COALESCE(i3.part_code_goc, '')) = UPPER(amis_receipt.part_code)) ORDER BY (i3.line_status = 'ACTIVE') DESC, i3.id LIMIT 1)) dong_id
      FROM amis_receipt WHERE match_status = 'CODE_ONLY_NO_LINE' AND voided_at IS NULL ORDER BY doc_date DESC`,
   ).all();
   const tot = await c.env.DB.prepare(

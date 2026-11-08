@@ -310,7 +310,7 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   từng bước truyền `phuTrach`). KPI popup = pill 1 dòng (CSS `.qv-kpi`).
 - **Lỗi giai đoạn trước sau khi đơn sang giai đoạn sau** (`danhGiaQuyTac`): R1/R3 đang chờ có hạn >= `lan_dau_co_ndk`, R1/R3/R4 có hạn >=
   `ngay_ve_dau` → tự xoá + event `XOA_LOI_THEO_DOI`.
-- **Màn AMIS**: cột chung `pages/amis/cotAmis.tsx` (mã phê duyệt → popup PO qua `po_eo_id`, mã hàng → popup mã LK, "· dòng" → popup dòng;
+- **Màn AMIS**: cột chung `pages/amis/cotAmis.tsx` (mã phê duyệt → popup PO qua `po_eo_id`, mã hàng → popup ĐƠN HÀNG (cùng giao diện LK đặt) qua `dong_id` = dòng khớp hoặc dòng cùng PO + cùng mã;
   lọc kiểu Excel); `GET /amis/receipts` thêm `tu/den/kho/khop`, 1.000 dòng.
 - **Sửa mã LK / kho / đối tác** `POST /eo/items/:id/sua-thong-tin` (`canSuaThongTinDong`: kế toán, KH cung ứng, NV đặt hàng, người tạo PO, Admin;
   EO DRAFT/ISSUED và PO còn dòng chưa về đủ; bắt buộc lý do; event `SUA_THONG_TIN_DONG` trước/sau; đổi mã/kho → `recomputeMatch`). Khác
