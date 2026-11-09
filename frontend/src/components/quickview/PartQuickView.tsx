@@ -12,7 +12,7 @@ import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, EoLink, DongLink, useQuickView } from "./QuickView";
-import { quyenEo, QtyModal } from "../../pages/eo/eoActions";
+import { quyenEo, QtyModal, KetThucSomMaModal } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
 import { Kho } from "../../lib/kho";
 
@@ -125,6 +125,11 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
               ? <><span className="badge issued" title="Đang xem mã này trong PO này (không có dòng đặt khớp để mở đơn hàng)">trong PO {po}</span>
                   <button type="button" className="btn ghost sm" onClick={() => setLocPo(false)}>⇄ Xem tất cả đơn của mã này</button></>
               : <button type="button" className="btn ghost sm" onClick={() => setLocPo(true)}>⇄ Chỉ PO {po}</button>)}
+            {/* 2026-11-09: doi tac bao ngung san xuat -> ket thuc som moi dong dang mo cua ma (moi PO) */}
+            {q.data?.tong?.dong_mo > 0 && me.data?.vai_tro !== "View" && (
+              <button type="button" className="btn sm danger" style={{ marginLeft: "auto" }} title="Đối tác báo ngừng sản xuất: mọi PO đang chờ mã này → SL đặt = SL đã về (xem trước, chọn dòng)"
+                onClick={() => setMd({ k: "kts-ma" })}><I.check width={13} height={13} /> Kết thúc sớm mã này ({q.data.tong.dong_mo} dòng mở)</button>
+            )}
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             Đối tác: <b>{t.doi_tac.length ? t.doi_tac.join(", ") : "—"}</b>
@@ -278,6 +283,8 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
       {md?.k === "gt" && <GiaiTrinhModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
       {md?.k === "qty" && <QtyModal item={md.x} issued onClose={() => setMd(null)} onSaved={xong} />}
+      {md?.k === "kts-ma" && <KetThucSomMaModal ma={d.ma} onClose={() => setMd(null)}
+        onDone={(kq) => { xong(); alert(`Đã kết thúc sớm ${kq.so_dong} dòng trên ${kq.so_po} PO của mã ${d.ma}.`); }} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
     </>
   );

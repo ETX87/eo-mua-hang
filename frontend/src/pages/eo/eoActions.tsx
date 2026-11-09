@@ -1060,3 +1060,88 @@ export function KetThucSomPoModal({ eo, onClose, onDone }: { eo: { id: number; e
     </Modal>
   );
 }
+
+/**
+ * Ket thuc som THEO MA LINH KIEN (2026-11-09) - POST /eo/ma-lk/ket-thuc-som: doi tac bao ngung san xuat -> moi dong dang mo cua ma nay
+ * tren moi PO: SL dat = SL da ve thuc te (chua ve -> SL 0, huy dong). Xem truoc + tick chon dong (mac dinh tat ca) + canh bao.
+ */
+export function KetThucSomMaModal({ ma, onClose, onDone }: { ma: string; onClose: () => void; onDone: (kq: { so_dong: number; so_po: number }) => void }) {
+  const xem = useQuery({ queryKey: ["kts-ma", ma], queryFn: () => api.post<{ dong: any[]; so_doi: number }>(`/eo/ma-lk/ket-thuc-som`, { ma, xem: true }) });
+  const [lyDo, setLyDo] = useState("");
+  const [dongY, setDongY] = useState(false);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [bo, setBo] = useState<Set<number>>(new Set()); // dong BO tick (mac dinh chon het)
+  const ds = xem.data?.dong ?? [];
+  const doiDuoc = (r: any) => r.hanh_dong === "VE_MOT_PHAN" || r.hanh_dong === "CHUA_VE";
+  const chon = ds.filter((r) => doiDuoc(r) && !bo.has(r.id));
+  const soPo = new Set(chon.map((r) => r.eo_id)).size;
+  const chuaVe = chon.filter((r) => r.hanh_dong === "CHUA_VE");
+  const bot = chon.reduce((s, r) => s + (r.current_qty - r.da_ve), 0);
+  const khongQuyen = ds.filter((r) => r.hanh_dong === "BO_QUA_QUYEN"), chuaBh = ds.filter((r) => r.hanh_dong === "BO_QUA_CHUA_BH");
+  const NHAN: Record<string, string> = { VE_MOT_PHAN: "SL đặt → SL đã về", CHUA_VE: "Chưa về gì → SL 0, hủy dòng", BO_QUA_CHO_DUYET: "Chờ duyệt (thêm sau BH) — bỏ qua",
+    BO_QUA_QUYEN: "Không có quyền trên PO này — bỏ qua", BO_QUA_CHUA_BH: "EO chưa ban hành — sửa / hủy trực tiếp trên EO" };
+  const run = async () => {
+    setErr("");
+    if (!chon.length) return setErr("Chưa chọn dòng nào.");
+    if (!lyDo.trim()) return setErr("Cần nhập lý do (ghi vào lịch sử từng PO).");
+    if (!dongY) return setErr("Tick xác nhận đã đọc cảnh báo.");
+    setBusy(true);
+    try { onDone(await api.post<{ so_dong: number; so_po: number }>(`/eo/ma-lk/ket-thuc-som`, { ma, reason: lyDo.trim(), item_ids: chon.map((r) => r.id) })); }
+    catch (e: any) {
+      setErr(e?.body?.error === "KHONG_CO_DONG_MO" ? "Không còn dòng nào đang chờ hàng (có thể vừa được người khác xử lý)." : "Lỗi kết thúc sớm.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Kết thúc sớm mã linh kiện ${ma} — mọi PO đang chờ hàng`} onClose={onClose} width={960}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy || !chon.length} onClick={run}>{busy ? "Đang xử lý..." : `Kết thúc sớm ${chon.length} dòng / ${soPo} PO`}</button></>}>
+      {xem.isLoading ? <Spinner /> : xem.isError ? <div style={{ color: "var(--danger)" }}>Không tải được danh sách dòng.</div> : (
+        <div style={{ fontSize: 13 }}>
+          <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", color: "var(--danger-ink)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, lineHeight: 1.55 }}>
+            <b>⚠ Dùng khi đối tác báo mã này ngừng sản xuất / không giao nữa. Đọc kỹ:</b>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+              <li>Mọi dòng được chọn: <b>SL đặt đổi bằng SL đã về thực tế (AMIS)</b> — giảm tổng <b>{soLuong(bot)}</b> cái chưa về trên <b>{soPo} PO</b>; hệ thống <b>không chờ / không theo dõi phần còn lại</b>.</li>
+              {chuaVe.length > 0 && <li><b>{chuaVe.length} dòng chưa về gì</b> sẽ thành SL 0 và bị hủy.</li>}
+              <li>Kế hoạch hàng về vượt SL mới bị cắt bớt; lỗi theo dõi / cảnh báo của phần còn lại không còn tính.</li>
+              <li>Hàng về thêm sau này (nếu NCC vẫn giao) <b>không được tính</b> cho các PO này.</li>
+              {khongQuyen.length > 0 && <li>{khongQuyen.length} dòng thuộc PO bạn không có quyền — <b>không bị ảnh hưởng</b> (báo người tạo PO / KH cung ứng).</li>}
+              {chuaBh.length > 0 && <li>{chuaBh.length} dòng trên EO chưa ban hành — không đụng tới, sửa / hủy trực tiếp trên EO.</li>}
+              <li>Không hoàn tác tự động — sửa lại phải sửa SL từng dòng.</li>
+            </ul>
+          </div>
+          {ds.length === 0 ? <div className="muted">Mã này không còn dòng nào đang chờ hàng.</div> : (
+            <div className="tbl-wrap" style={{ maxHeight: 280, overflow: "auto" }}>
+              <table className="tbl tbl-dense">
+                <thead><tr>
+                  <th style={{ width: 30 }}><input type="checkbox" checked={ds.some(doiDuoc) && ds.filter(doiDuoc).every((r) => !bo.has(r.id))}
+                    onChange={(e) => setBo(e.target.checked ? new Set() : new Set(ds.filter(doiDuoc).map((r) => r.id)))} /></th>
+                  <th>PO / EO</th><th>Mã LK</th><th>Kho</th><th style={{ textAlign: "right" }}>SL đặt</th><th style={{ textAlign: "right" }}>Đã về</th><th>Sau khi kết thúc sớm</th>
+                </tr></thead>
+                <tbody>{ds.map((r) => {
+                  const doi = doiDuoc(r), on = doi && !bo.has(r.id);
+                  return (
+                    <tr key={r.id} style={{ opacity: on ? 1 : 0.5 }}>
+                      <td><input type="checkbox" disabled={!doi} checked={on} onChange={() => setBo((s) => { const n = new Set(s); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })} /></td>
+                      <td><b>{r.approval_code || "—"}</b><div className="muted" style={{ fontSize: 11 }}>{r.eo_code}</div></td>
+                      <td>{r.part_code}{r.part_code_goc && r.part_code_goc !== r.part_code ? <div className="muted" style={{ fontSize: 11 }}>gốc {r.part_code_goc}</div> : null}</td>
+                      <td><Kho t={r.warehouse} /></td>
+                      <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td><td style={{ textAlign: "right" }}>{soLuong(r.da_ve)}</td>
+                      <td style={{ color: r.hanh_dong === "CHUA_VE" ? "var(--danger-ink)" : undefined }}>{NHAN[r.hanh_dong] ?? r.hanh_dong}{doi ? ` (${soLuong(r.da_ve)})` : ""}</td>
+                    </tr>
+                  );
+                })}</tbody>
+              </table>
+            </div>
+          )}
+          <label className="field-label" style={{ marginTop: 12 }}>Lý do kết thúc sớm <span className="req">*</span></label>
+          <textarea className="textarea" value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="vd: Karofi báo ngừng sản xuất mã này từ 11/2026…" />
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontWeight: 600 }}>
+            <input type="checkbox" checked={dongY} onChange={(e) => setDongY(e.target.checked)} /> Tôi đã đọc cảnh báo và muốn kết thúc sớm {chon.length} dòng của mã {ma}
+          </label>
+          {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+        </div>
+      )}
+    </Modal>
+  );
+}

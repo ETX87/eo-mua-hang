@@ -901,6 +901,64 @@ app.post("/items/:itemId/ket-thuc-som", async (c) => {
   return c.json({ ok: true, sl_dat: daVe, sl_dat_truoc: row.current_qty });
 });
 
+// ------------------------------------------------------------------ POST /ma-lk/ket-thuc-som (theo MA LINH KIEN, moi PO)
+// 2026-11-09: doi tac bao 1 linh kien ngung san xuat -> ket thuc som MOI dong dang mo cua ma nay (ma hien tai hoac ma goc truoc khi thay)
+// tren moi PO da ban hanh. Cung quy tac voi ket thuc som ca PO: ve 1 phan -> SL dat = SL da ve; chua ve -> SL 0 + CANCELLED_LINE.
+// Quyen xet TUNG dong (nguoi quan ly EO / nguoi duyet cuoi) - dong khong co quyen bo qua. { xem: true } = xem truoc;
+// item_ids (tuy chon) = chi lam cac dong da tick. Bat buoc ly do. PHAI dang ky TRUOC "/:id/ket-thuc-som" (cung dang 2 doan).
+app.post("/ma-lk/ket-thuc-som", async (c) => {
+  const db = c.env.DB;
+  const b = (await c.req.json().catch(() => ({}))) as { ma?: string; reason?: string; xem?: boolean; item_ids?: number[] };
+  const up = String(b.ma ?? "").trim().toUpperCase();
+  if (!up) return c.json({ error: "MISSING_MA" }, 400);
+  const u = c.get("user");
+  const ds = (await db.prepare(
+    `SELECT i.id, i.eo_id, i.part_code, i.part_code_goc, i.part_name, i.warehouse, i.current_qty, i.line_status, i.post_issue_status, i.ket_thuc_som_at,
+            e.eo_code, e.approval_code, e.trang_thai eo_status, e.created_by eo_created_by, e.final_approver_email,
+            COALESCE((SELECT SUM(r.qty_in) FROM amis_receipt r WHERE r.match_status = 'MATCHED_EO' AND r.matched_eo_item_id = i.id AND r.voided_at IS NULL), 0) da_ve,
+            (SELECT COALESCE(SUM(p.planned_qty), 0) FROM item_plan p WHERE p.eo_item_id = i.id AND p.deleted_at IS NULL) sl_kh
+     FROM eo_item i JOIN eo e ON e.id = i.eo_id
+     WHERE (UPPER(i.part_code) = ?1 OR UPPER(i.part_code_goc) = ?1)
+       AND e.trang_thai IN ('ISSUED','DRAFT','IN_REVIEW','WAITING_FINAL_APPROVAL')
+     ORDER BY e.id DESC, i.id`,
+  ).bind(up).all<any>()).results.map((r) => {
+    const daVe = round3(r.da_ve);
+    const coQuyen = canManageEo(u, { created_by: r.eo_created_by }) || u.email === r.final_approver_email;
+    const hd = r.eo_status !== "ISSUED" ? "BO_QUA_CHUA_BH" : r.line_status !== "ACTIVE" ? "BO_QUA_HUY" : r.post_issue_status === "PENDING" ? "BO_QUA_CHO_DUYET"
+      : r.ket_thuc_som_at ? "BO_QUA_DA_KTS" : daVe >= r.current_qty ? "BO_QUA_DU" : !coQuyen ? "BO_QUA_QUYEN" : daVe > 0 ? "VE_MOT_PHAN" : "CHUA_VE";
+    const { eo_created_by: _c, final_approver_email: _f, ...rest } = r;
+    return { ...rest, da_ve: daVe, hanh_dong: hd };
+  });
+  // dong da ve du / da dong / chua ban hanh khong can hien o xem truoc (chi gay roi) - tru dong DRAFT de nguoi dung biet con EO nhap
+  const hien = ds.filter((r) => !["BO_QUA_HUY", "BO_QUA_DU", "BO_QUA_DA_KTS"].includes(r.hanh_dong));
+  const chon = Array.isArray(b.item_ids) ? new Set(b.item_ids.map(Number)) : null;
+  const doi = ds.filter((r) => (r.hanh_dong === "VE_MOT_PHAN" || r.hanh_dong === "CHUA_VE") && (!chon || chon.has(r.id)));
+  if (b.xem) return c.json({ dong: hien, so_doi: doi.length });
+  const reason = String(b.reason ?? "").trim();
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+  if (!doi.length) return c.json({ error: "KHONG_CO_DONG_MO" }, 409);
+  const now = nowVN();
+  const stmts: D1PreparedStatement[] = [];
+  for (const r of doi) {
+    const du = (r.sl_kh ?? 0) - r.da_ve;
+    if (du > 1e-9) stmts.push(...(await catKeHoach(db, r.id, r.eo_id, du, u.email, now, `Kết thúc sớm theo mã LK ${up} — SL đặt về SL đã về`)));
+    stmts.push(
+      db.prepare(
+        `UPDATE eo_item SET current_qty = ?, line_status = ?, sl_dat_truoc_kts = ?, ket_thuc_som_at = ?, ket_thuc_som_by = ?, ket_thuc_som_ly_do = ?,
+           updated_by = ?, updated_at = ? WHERE id = ?`,
+      ).bind(r.da_ve, r.da_ve > 0 ? "ACTIVE" : "CANCELLED_LINE", r.current_qty, now, u.email, reason, u.email, now, r.id),
+      eventStmt(db, { entity_type: "eo_item", entity_id: r.id, eo_id: r.eo_id, event_type: "KET_THUC_SOM", user_email: u.email, at: now,
+        before: { qty: r.current_qty }, after: { qty: r.da_ve }, metadata: { reason, pham_vi: "MA_LK", ma: up, chua_ve: r.da_ve <= 0 } }),
+    );
+  }
+  await db.batch(stmts);
+  // dong chua ve bi huy -> doi khop AMIS cua PO do (giong huy dong)
+  const codes = [...new Set(doi.filter((r) => r.da_ve <= 0 && r.approval_code).map((r) => String(r.approval_code)))];
+  if (codes.length) await recomputeMatch(db, codes);
+  await bumpVersions(db, codes.length ? ["eo", "amis"] : ["eo"]);
+  return c.json({ ok: true, so_dong: doi.length, so_po: new Set(doi.map((r) => r.eo_id)).size });
+});
+
 // ------------------------------------------------------------------ POST /:id/ket-thuc-som (ca PO)
 // Ket thuc som CA PO (2026-11-08): moi dong dang mo -> SL dat = SL da ve thuc te (AMIS). Dong ve 1 phan: nhu ket thuc som 1 dong;
 // dong CHUA VE gi: SL 0 + huy dong (CANCELLED_LINE) + danh dau ket thuc som; dong da ve du / da ket thuc som / huy: giu nguyen;

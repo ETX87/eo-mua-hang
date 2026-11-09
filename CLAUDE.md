@@ -320,6 +320,10 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   "thay mã tương đương" (không ghi `part_code_goc`). FE `SuaThongTinDongModal`.
 - **Kết thúc sớm cả PO** `POST /eo/:id/ket-thuc-som` (`xem` = xem trước từng dòng): về 1 phần → SL đặt = SL đã về; chưa về → SL 0 + CANCELLED_LINE;
   đủ / đã KTS / chờ duyệt → bỏ qua; event `KET_THUC_SOM` từng dòng + `KET_THUC_SOM_PO`. FE `KetThucSomPoModal` (cảnh báo + tick xác nhận).
+- **Kết thúc sớm theo mã LK** (v0.076, đối tác báo ngừng sản xuất) `POST /eo/ma-lk/ket-thuc-som` `{ ma, xem?, item_ids?, reason }` — **đăng ký TRƯỚC**
+  `/:id/ket-thuc-som` (cùng 2 đoạn). Mọi dòng mở của mã (`part_code` hoặc `part_code_goc`) trên mọi PO ISSUED, cùng quy tắc KTS cả PO; quyền xét
+  từng dòng (không quyền → `BO_QUA_QUYEN`), EO chưa BH → `BO_QUA_CHUA_BH`; dòng chưa về bị hủy → `recomputeMatch`. Event `KET_THUC_SOM` metadata
+  `pham_vi='MA_LK'`. FE nút đỏ ở tiêu đề popup mã LK → `KetThucSomMaModal` (tick chọn dòng, mặc định tất cả).
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
 
