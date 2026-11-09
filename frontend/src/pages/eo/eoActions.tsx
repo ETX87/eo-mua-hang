@@ -508,6 +508,7 @@ export function QtyModal({ item, issued, onClose, onSaved }: any) {
     if (qtyChanged) {
       if (!(moi >= 0)) return setErr("SL đặt phải là số ≥ 0.");
       if (issued && !reason.trim()) return setErr("EO đã ban hành — cần ghi lý do đổi SL đặt (lưu vào lịch sử để người duyệt xem).");
+      if (moi === 0 && !reason.trim()) return setErr("SL đặt = 0 là hủy dòng — cần nhập lý do hủy.");
       if (vuotKh && !catKh) return setErr(`SL đặt mới (${soLuong(moi)}) nhỏ hơn tổng kế hoạch (${soLuong(tongKh)}). Tick "Tự giảm kế hoạch" hoặc sửa các đợt trước.`);
       body.current_qty = moi; body.reason = reason.trim() || undefined; if (vuotKh) body.cat_ke_hoach = true;
     }
@@ -565,9 +566,9 @@ export function QtyModal({ item, issued, onClose, onSaved }: any) {
       )}
       {qtyChanged && (
         <>
-          <label className="field-label" style={{ marginTop: 12 }}>Lý do đổi SL đặt {issued && <span className="req">*</span>}</label>
+          <label className="field-label" style={{ marginTop: 12 }}>{moi === 0 ? "Lý do hủy dòng" : "Lý do đổi SL đặt"} {(issued || moi === 0) && <span className="req">*</span>}</label>
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: nhà máy chỉ giao được 80, khách hủy 20…" />
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Ghi vào lịch sử EO{issued ? " — bắt buộc vì EO đã ban hành (số đã được duyệt)" : ""}.</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Ghi vào lịch sử EO{issued ? " — bắt buộc vì EO đã ban hành (số đã được duyệt)" : moi === 0 ? " — bắt buộc khi hủy dòng" : ""}.</div>
         </>
       )}
       <label className="field-label" style={{ marginTop: 12 }}><Hoi k="GHI_CHU" nhan="Ghi chú dòng" /></label>
@@ -587,14 +588,16 @@ export function CancelModal({ eo, onClose, onDone }: any) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const run = async () => {
-    setErr(""); setBusy(true);
+    setErr("");
+    if (!reason.trim()) return setErr("Cần nhập lý do hủy EO (ghi vào lịch sử).");
+    setBusy(true);
     try {
-      await api.post(`/eo/${eo.id}/cancel`, { reason: reason.trim() || undefined });
+      await api.post(`/eo/${eo.id}/cancel`, { reason: reason.trim() });
       onDone();
     } catch (e: any) {
       setErr(e?.body?.error === "FORBIDDEN" ? "Bạn không có quyền hủy EO này." :
         e?.body?.error === "ADMIN_ONLY_AFTER_ISSUE" ? "EO đã ban hành — chỉ Admin được hủy." :
-        e?.body?.error === "BAD_STATE" ? "EO đang ở trạng thái không thể hủy." : "Lỗi hủy EO.");
+        e?.body?.error === "BAD_STATE" ? "EO đang ở trạng thái không thể hủy." : e?.body?.error === "REASON_REQUIRED" ? "Cần nhập lý do hủy." : "Lỗi hủy EO.");
       setBusy(false);
     }
   };
@@ -602,8 +605,8 @@ export function CancelModal({ eo, onClose, onDone }: any) {
     <Modal title={`Hủy EO — ${eo.eo_code}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy} onClick={run}>Xác nhận hủy</button></>}>
       <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Hành động này sẽ chuyển EO sang trạng thái "Đã hủy" và không thể hoàn tác.</div>
-      <label className="field-label">Lý do hủy</label>
-      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do hủy (tuỳ chọn)..." />
+      <label className="field-label">Lý do hủy <span className="req">*</span></label>
+      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do hủy (bắt buộc)..." />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );

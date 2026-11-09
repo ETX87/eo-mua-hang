@@ -324,6 +324,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   `/:id/ket-thuc-som` (cùng 2 đoạn). Mọi dòng mở của mã (`part_code` hoặc `part_code_goc`) trên mọi PO ISSUED, cùng quy tắc KTS cả PO; quyền xét
   từng dòng (không quyền → `BO_QUA_QUYEN`), EO chưa BH → `BO_QUA_CHUA_BH`; dòng chưa về bị hủy → `recomputeMatch`. Event `KET_THUC_SOM` metadata
   `pham_vi='MA_LK'`. FE nút đỏ ở tiêu đề popup mã LK → `KetThucSomMaModal` (tick chọn dòng, mặc định tất cả).
+- **Hủy / kết thúc sớm luôn bắt buộc lý do** (v0.077): hủy EO `POST /eo/:id/cancel` → 400 `REASON_REQUIRED` (trước đây tuỳ chọn); hộp sửa SL đặt = 0
+  (hủy dòng) bắt buộc lý do cả khi EO nháp (chỉ ở FE — form sửa EO nháp xoá dòng vẫn gửi SL 0 không lý do). Thêm đường hủy mới thì cũng bắt buộc.
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
 

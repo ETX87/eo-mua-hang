@@ -435,6 +435,8 @@ app.patch("/items/:itemId", async (c) => {
 
   if (b.current_qty !== undefined && !validQty(b.current_qty)) return c.json({ error: "BAD_QTY" }, 400);
   if (typeof b.current_qty === "number" && b.current_qty !== row.current_qty) {
+    // ly do bat buoc khi EO da ban hanh (EO nhap: form sua EO xoa dong = SL 0 khong kem ly do; hop sua SL o FE tu bat buoc khi SL = 0)
+    b.reason = String(b.reason ?? "").trim() || undefined;
     if (row.eo_status === "ISSUED" && !b.reason) return c.json({ error: "REASON_REQUIRED" }, 400);
     // rang buoc: current_qty moi >= tong planned_qty song
     const sump = await c.env.DB.prepare(
@@ -576,12 +578,15 @@ app.post("/:id/cancel", async (c) => {
     return c.json({ error: "BAD_STATE" }, 409);
   }
   const b = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  // 2026-11-09: huy EO bat buoc ly do (moi duong huy / ket thuc som deu bat buoc)
+  const reason = String(b.reason ?? "").trim();
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
   const now = nowVN();
   await c.env.DB.batch([
     c.env.DB.prepare("UPDATE eo SET trang_thai = 'CANCELLED', cancelled_by = ?, cancelled_at = ?, cancel_reason = ? WHERE id = ?")
-      .bind(u.email, now, b.reason ?? null, id),
+      .bind(u.email, now, reason, id),
     c.env.DB.prepare("UPDATE eo_submission SET status = 'CANCELLED', closed_at = ? WHERE eo_id = ? AND status IN ('PENDING','REQUEST_UPDATE')").bind(now, id),
-    eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "CANCEL_EO", user_email: u.email, at: now, metadata: { reason: b.reason ?? null, after_issue: !preIssue } }),
+    eventStmt(c.env.DB, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "CANCEL_EO", user_email: u.email, at: now, metadata: { reason, after_issue: !preIssue } }),
   ]);
   // huy sau ban hanh: dong AMIS chi khop ma (CODE_ONLY_NO_LINE) cua EO nay khong con tinh nua
   if (!preIssue && eo.approval_code) await recomputeMatch(c.env.DB, [eo.approval_code]);
