@@ -1005,7 +1005,7 @@ export function KetThucSomPoModal({ eo, onClose, onDone }: { eo: { id: number; e
   const [busy, setBusy] = useState(false);
   const ds = xem.data?.dong ?? [];
   const veMotPhan = ds.filter((r) => r.hanh_dong === "VE_MOT_PHAN"), chuaVe = ds.filter((r) => r.hanh_dong === "CHUA_VE");
-  const choDuyet = ds.filter((r) => r.hanh_dong === "BO_QUA_CHO_DUYET");
+  const choDuyet = ds.filter((r) => (r.hanh_dong === "VE_MOT_PHAN" || r.hanh_dong === "CHUA_VE") && r.post_issue_status === "PENDING");
   const bot = veMotPhan.reduce((s, r) => s + (r.current_qty - r.da_ve), 0) + chuaVe.reduce((s, r) => s + r.current_qty, 0);
   const NHAN: Record<string, string> = { VE_MOT_PHAN: "SL đặt → SL đã về", CHUA_VE: "Chưa về gì → SL 0, hủy dòng", BO_QUA_DU: "Đã về đủ — giữ nguyên",
     BO_QUA_DA_KTS: "Đã kết thúc sớm — giữ nguyên", BO_QUA_HUY: "Đã hủy — giữ nguyên", BO_QUA_CHO_DUYET: "Chờ duyệt (thêm sau BH) — bỏ qua" };
@@ -1033,7 +1033,7 @@ export function KetThucSomPoModal({ eo, onClose, onDone }: { eo: { id: number; e
               {chuaVe.length > 0 && <li><b>{chuaVe.length} dòng chưa về gì</b> sẽ thành SL 0 và bị hủy: {chuaVe.slice(0, 6).map((r) => r.part_code).join(", ")}{chuaVe.length > 6 ? "…" : ""}.</li>}
               <li>Kế hoạch hàng về vượt SL mới bị cắt bớt; lỗi theo dõi / cảnh báo của phần còn lại không còn tính.</li>
               <li>Hàng về thêm sau này (nếu NCC vẫn giao) <b>không được tính</b> cho PO này — cần đặt PO mới.</li>
-              {choDuyet.length > 0 && <li>{choDuyet.length} dòng thêm sau ban hành đang chờ duyệt — <b>không bị ảnh hưởng</b>, duyệt / từ chối riêng.</li>}
+              {choDuyet.length > 0 && <li>{choDuyet.length} dòng thêm sau ban hành đang chờ duyệt <b>cũng được kết thúc sớm</b>: chưa về → hủy, gỡ khỏi hàng chờ duyệt; về 1 phần → SL đặt = SL đã về, vẫn chờ người duyệt mua duyệt.</li>}
               <li>Không hoàn tác tự động — sửa lại phải sửa SL từng dòng.</li>
             </ul>
           </div>
@@ -1046,7 +1046,7 @@ export function KetThucSomPoModal({ eo, onClose, onDone }: { eo: { id: number; e
                   <tr key={r.id} style={{ opacity: doi ? 1 : 0.5 }}>
                     <td><b>{r.part_code}</b></td><td>{r.part_name}</td><td><Kho t={r.warehouse} /></td>
                     <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td><td style={{ textAlign: "right" }}>{soLuong(r.da_ve)}</td>
-                    <td style={{ color: r.hanh_dong === "CHUA_VE" ? "var(--danger-ink)" : undefined }}>{NHAN[r.hanh_dong] ?? r.hanh_dong}{doi ? ` (${soLuong(r.da_ve)})` : ""}</td>
+                    <td style={{ color: r.hanh_dong === "CHUA_VE" ? "var(--danger-ink)" : undefined }}>{NHAN[r.hanh_dong] ?? r.hanh_dong}{doi ? ` (${soLuong(r.da_ve)})` : ""}{doi && r.post_issue_status === "PENDING" ? " · dòng chờ duyệt" : ""}</td>
                   </tr>
                 );
               })}</tbody>
@@ -1130,7 +1130,7 @@ export function KetThucSomMaModal({ ma, onClose, onDone }: { ma: string; onClose
                       <td>{r.part_code}{r.part_code_goc && r.part_code_goc !== r.part_code ? <div className="muted" style={{ fontSize: 11 }}>gốc {r.part_code_goc}</div> : null}</td>
                       <td><Kho t={r.warehouse} /></td>
                       <td style={{ textAlign: "right" }}>{soLuong(r.current_qty)}</td><td style={{ textAlign: "right" }}>{soLuong(r.da_ve)}</td>
-                      <td style={{ color: r.hanh_dong === "CHUA_VE" ? "var(--danger-ink)" : undefined }}>{NHAN[r.hanh_dong] ?? r.hanh_dong}{doi ? ` (${soLuong(r.da_ve)})` : ""}</td>
+                      <td style={{ color: r.hanh_dong === "CHUA_VE" ? "var(--danger-ink)" : undefined }}>{NHAN[r.hanh_dong] ?? r.hanh_dong}{doi ? ` (${soLuong(r.da_ve)})` : ""}{doi && r.post_issue_status === "PENDING" ? " · dòng chờ duyệt" : ""}</td>
                     </tr>
                   );
                 })}</tbody>

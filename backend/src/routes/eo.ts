@@ -929,7 +929,8 @@ app.post("/ma-lk/ket-thuc-som", async (c) => {
   ).bind(up).all<any>()).results.map((r) => {
     const daVe = round3(r.da_ve);
     const coQuyen = canManageEo(u, { created_by: r.eo_created_by }) || u.email === r.final_approver_email;
-    const hd = r.eo_status !== "ISSUED" ? "BO_QUA_CHUA_BH" : r.line_status !== "ACTIVE" ? "BO_QUA_HUY" : r.post_issue_status === "PENDING" ? "BO_QUA_CHO_DUYET"
+    // 2026-11-13: dong them sau BH dang cho duyet cung ket thuc som duoc (truoc bo qua -> ma chi co dong cho duyet thi khong lam gi duoc)
+    const hd = r.eo_status !== "ISSUED" ? "BO_QUA_CHUA_BH" : r.line_status !== "ACTIVE" ? "BO_QUA_HUY"
       : r.ket_thuc_som_at ? "BO_QUA_DA_KTS" : daVe >= r.current_qty ? "BO_QUA_DU" : !coQuyen ? "BO_QUA_QUYEN" : daVe > 0 ? "VE_MOT_PHAN" : "CHUA_VE";
     const { eo_created_by: _c, final_approver_email: _f, ...rest } = r;
     return { ...rest, da_ve: daVe, hanh_dong: hd };
@@ -950,8 +951,9 @@ app.post("/ma-lk/ket-thuc-som", async (c) => {
     stmts.push(
       db.prepare(
         `UPDATE eo_item SET current_qty = ?, line_status = ?, sl_dat_truoc_kts = ?, ket_thuc_som_at = ?, ket_thuc_som_by = ?, ket_thuc_som_ly_do = ?,
+           post_issue_status = CASE WHEN ? = 1 AND post_issue_status = 'PENDING' THEN NULL ELSE post_issue_status END,
            updated_by = ?, updated_at = ? WHERE id = ?`,
-      ).bind(r.da_ve, r.da_ve > 0 ? "ACTIVE" : "CANCELLED_LINE", r.current_qty, now, u.email, reason, u.email, now, r.id),
+      ).bind(r.da_ve, r.da_ve > 0 ? "ACTIVE" : "CANCELLED_LINE", r.current_qty, now, u.email, reason, r.da_ve > 0 ? 0 : 1, u.email, now, r.id),
       eventStmt(db, { entity_type: "eo_item", entity_id: r.id, eo_id: r.eo_id, event_type: "KET_THUC_SOM", user_email: u.email, at: now,
         before: { qty: r.current_qty }, after: { qty: r.da_ve }, metadata: { reason, pham_vi: "MA_LK", ma: up, chua_ve: r.da_ve <= 0 } }),
     );
@@ -967,7 +969,7 @@ app.post("/ma-lk/ket-thuc-som", async (c) => {
 // ------------------------------------------------------------------ POST /:id/ket-thuc-som (ca PO)
 // Ket thuc som CA PO (2026-11-08): moi dong dang mo -> SL dat = SL da ve thuc te (AMIS). Dong ve 1 phan: nhu ket thuc som 1 dong;
 // dong CHUA VE gi: SL 0 + huy dong (CANCELLED_LINE) + danh dau ket thuc som; dong da ve du / da ket thuc som / huy: giu nguyen;
-// dong them sau BH dang cho duyet: bo qua (duyet / tu choi rieng). { xem: true } = xem truoc tung dong (FE canh bao). Bat buoc ly do.
+// dong them sau BH dang cho duyet: cung ket thuc som (chua ve -> huy + go khoi hang cho duyet; ve 1 phan -> van cho duyet). { xem: true } = xem truoc tung dong (FE canh bao). Bat buoc ly do.
 app.post("/:id/ket-thuc-som", async (c) => {
   const db = c.env.DB;
   const id = Number(c.req.param("id"));
@@ -984,7 +986,7 @@ app.post("/:id/ket-thuc-som", async (c) => {
      FROM eo_item i WHERE i.eo_id = ? ORDER BY i.id`,
   ).bind(id).all<any>()).results.map((r) => {
     const daVe = round3(r.da_ve);
-    const hd = r.line_status !== "ACTIVE" ? "BO_QUA_HUY" : r.post_issue_status === "PENDING" ? "BO_QUA_CHO_DUYET"
+    const hd = r.line_status !== "ACTIVE" ? "BO_QUA_HUY"
       : r.ket_thuc_som_at ? "BO_QUA_DA_KTS" : daVe >= r.current_qty ? "BO_QUA_DU" : daVe > 0 ? "VE_MOT_PHAN" : "CHUA_VE";
     return { ...r, da_ve: daVe, hanh_dong: hd };
   });
@@ -1001,8 +1003,9 @@ app.post("/:id/ket-thuc-som", async (c) => {
     stmts.push(
       db.prepare(
         `UPDATE eo_item SET current_qty = ?, line_status = ?, sl_dat_truoc_kts = ?, ket_thuc_som_at = ?, ket_thuc_som_by = ?, ket_thuc_som_ly_do = ?,
+           post_issue_status = CASE WHEN ? = 1 AND post_issue_status = 'PENDING' THEN NULL ELSE post_issue_status END,
            updated_by = ?, updated_at = ? WHERE id = ?`,
-      ).bind(r.da_ve, r.da_ve > 0 ? "ACTIVE" : "CANCELLED_LINE", r.current_qty, now, u.email, reason, u.email, now, r.id),
+      ).bind(r.da_ve, r.da_ve > 0 ? "ACTIVE" : "CANCELLED_LINE", r.current_qty, now, u.email, reason, r.da_ve > 0 ? 0 : 1, u.email, now, r.id),
       eventStmt(db, { entity_type: "eo_item", entity_id: r.id, eo_id: id, event_type: "KET_THUC_SOM", user_email: u.email, at: now,
         before: { qty: r.current_qty }, after: { qty: r.da_ve }, metadata: { reason, pham_vi: "PO", chua_ve: r.da_ve <= 0 } }),
     );
@@ -1010,7 +1013,10 @@ app.post("/:id/ket-thuc-som", async (c) => {
   stmts.push(eventStmt(db, { entity_type: "eo", entity_id: id, eo_id: id, event_type: "KET_THUC_SOM_PO", user_email: u.email, at: now,
     metadata: { reason, so_dong: doi.length, dong: doi.map((r) => ({ id: r.id, part_code: r.part_code, truoc: r.current_qty, sau: r.da_ve })) } }));
   await db.batch(stmts);
-  await bumpVersions(db, ["eo"]);
+  // dong chua ve bi huy -> doi khop AMIS cua PO (giong huy dong / ket thuc som theo ma)
+  const coHuy = doi.some((r) => r.da_ve <= 0) && !!eo.approval_code;
+  if (coHuy) await recomputeMatch(db, [String(eo.approval_code)]);
+  await bumpVersions(db, coHuy ? ["eo", "amis"] : ["eo"]);
   return c.json({ ok: true, so_dong: doi.length });
 });
 
