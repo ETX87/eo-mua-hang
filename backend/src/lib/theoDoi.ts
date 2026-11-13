@@ -117,7 +117,7 @@ export function tinhTrangBayGio(r: { trang_thai_don_hang: string; ngay_du_kien_g
 }
 
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v6", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v7", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -182,8 +182,8 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
     ).bind(ids).all<any>(),
     // lich su ngay du kien (dem so lan lui) - chi dong ap dung de nhe
     db.prepare(
-      `SELECT entity_id, event_type, after_json, metadata_json, created_at, user_email FROM event_log
-       WHERE event_type IN ('ADD_PLAN','UPDATE_PLAN','BULK_PLAN') AND created_at >= ?
+      `SELECT entity_id, event_type, before_json, after_json, metadata_json, created_at, user_email FROM event_log
+       WHERE event_type IN ('ADD_PLAN','UPDATE_PLAN','DELETE_PLAN','BULK_PLAN') AND created_at >= ?
          AND eo_id IN (SELECT id FROM eo WHERE issued_at >= ?) ORDER BY created_at, id`,
     ).bind(apDung, apDung).all<any>(),
     // phieu nhap AMIS khop dong (tinh ngay ve DU)
@@ -215,33 +215,9 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
     g.n += x.n; g.cho += x.cho ?? 0; g.qt[x.quy_tac] = x.n;
     loiBy.set(x.eo_item_id, g);
   }
-  const luiDs = new Map<number, LanLui[]>();
-  // so lan lui: chuoi ngay du kien moi nhat theo thoi gian, dem lan ngay moi > ngay truoc
-  const luiBy = new Map<number, number>();
-  const lastBy = new Map<number, string>();
-  for (const e of ev.results) {
-    let itemId: number | null = null;
-    let ngay: string | null = null;
-    try {
-      const a = e.after_json ? JSON.parse(e.after_json) : null;
-      const m = e.metadata_json ? JSON.parse(e.metadata_json) : null;
-      if (e.event_type === "BULK_PLAN") {
-        itemId = e.entity_id;
-        const ds = (Array.isArray(a) ? a : []).map((x: any) => x.planned_date).filter(Boolean).sort();
-        ngay = ds.length ? ds[ds.length - 1] : null;
-      } else {
-        itemId = Number(m?.eo_item_id ?? e.entity_id);
-        ngay = a?.planned_date ?? null;
-      }
-    } catch { continue; }
-    if (!itemId || !ngay) continue;
-    const truoc = lastBy.get(itemId);
-    if (truoc && ngay > truoc) {
-      luiBy.set(itemId, (luiBy.get(itemId) ?? 0) + 1);
-      luiDs.set(itemId, [...(luiDs.get(itemId) ?? []), { luc: e.created_at, tu: truoc, den: ngay, ai: e.user_email ?? null }]);
-    }
-    lastBy.set(itemId, ngay);
-  }
+  // so lan lui (2026-11-13): dem THEO TUNG DOT - xem demLui. Them dot giao bu ngay muon hon KHONG tinh la lui.
+  const luiDs = demLui(ev.results as any[]);
+  const luiBy = new Map<number, number>([...luiDs].map(([k, v]) => [k, v.length]));
 
   return base.map((r) => {
     const m = metaBy.get(r.item_id);
@@ -268,6 +244,60 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
       ...(luiDs.has(r.item_id) ? { lui_ds: luiDs.get(r.item_id) } : {}), ...(l ? { loi_qt: l.qt } : {}),
     };
   });
+}
+
+export interface SuKienKh { entity_id: number; event_type: string; before_json: string | null; after_json: string | null; metadata_json: string | null; created_at: string; user_email: string | null }
+
+/**
+ * Dem cac lan LUI ngay du kien cua tung dong tu event_log ke hoach (sap xep theo thoi gian). Lui = 1 DOT bi doi sang ngay muon hon:
+ *  - UPDATE_PLAN: ngay moi > ngay cu cua chinh dot do (before_json, khong co thi ngay da biet cua dot) - sua tay, KRF tu dien...;
+ *  - xoa dot roi them dot moi ngay muon hon trong vong 30 phut (cung nguoi) = doi ngay kieu "xoa - them lai";
+ *  - BULK_PLAN thay_the (import Excel thay ke hoach): ngay muon nhat moi > ngay muon nhat cu.
+ * KHONG tinh: them dot moi (giao bu / chia dot) du ngay muon hon cac dot khac; import them (khong thay the); cat ke hoach khi giam SL / ket thuc som.
+ * Truoc 2026-11-13 dem theo "ngay moi nhat duoc ghi > ngay truoc do cua ca dong" nen them dot giao bu cung bi tinh la lui.
+ */
+export function demLui(evs: SuKienKh[]): Map<number, LanLui[]> {
+  const out = new Map<number, LanLui[]>();
+  const dot = new Map<number, Map<string, string>>(); // item -> (khoa dot -> ngay)
+  const xoa = new Map<number, { ngay: string; luc: string; ai: string | null }>();
+  const j = (x: string | null) => { try { return x ? JSON.parse(x) : null; } catch { return null; } };
+  const lui = (id: number, luc: string, tu: string, den: string, ai: string | null) => out.set(id, [...(out.get(id) ?? []), { luc, tu, den, ai }]);
+  const phut = (a: string, b: string) => Math.abs(Date.parse(a.replace(" ", "T") + "Z") - Date.parse(b.replace(" ", "T") + "Z")) / 60000;
+  let syn = 0;
+  for (const e of evs) {
+    const a = j(e.after_json), bf = j(e.before_json), m = j(e.metadata_json);
+    const id = Number(e.event_type === "BULK_PLAN" ? e.entity_id : (m?.eo_item_id ?? e.entity_id));
+    if (!id) continue;
+    const ds = dot.get(id) ?? new Map<string, string>();
+    dot.set(id, ds);
+    const k = m?.plan_id != null ? `p${m.plan_id}` : `s${++syn}`;
+    if (e.event_type === "ADD_PLAN") {
+      const nd = a?.planned_date as string | undefined;
+      if (!nd) continue;
+      const x = xoa.get(id);
+      if (x && nd > x.ngay && x.ai === e.user_email && phut(x.luc, e.created_at) <= 30) lui(id, e.created_at, x.ngay, nd, e.user_email);
+      xoa.delete(id);
+      ds.set(k, nd);
+    } else if (e.event_type === "UPDATE_PLAN") {
+      const nd = a?.planned_date as string | undefined;
+      const cu = (bf?.planned_date as string | undefined) ?? ds.get(k);
+      if (nd && cu && nd > cu) lui(id, e.created_at, cu, nd, e.user_email);
+      if (nd) ds.set(k, nd);
+    } else if (e.event_type === "DELETE_PLAN") {
+      // cat ke hoach (giam SL / ket thuc som) co metadata.ly_do - khong phai doi ngay
+      if (!m?.ly_do && bf?.planned_date) xoa.set(id, { ngay: bf.planned_date, luc: e.created_at, ai: e.user_email });
+      ds.delete(k);
+    } else if (e.event_type === "BULK_PLAN") {
+      const moi = (Array.isArray(a) ? a : []).map((x: any) => x.planned_date).filter(Boolean).sort() as string[];
+      if (m?.thay_the) {
+        const cu = [...ds.values()].sort();
+        if (moi.length && cu.length && moi[moi.length - 1] > cu[cu.length - 1]) lui(id, e.created_at, cu[cu.length - 1], moi[moi.length - 1], e.user_email);
+        ds.clear();
+      }
+      for (const d of moi) ds.set(`s${++syn}`, d);
+    }
+  }
+  return out;
 }
 
 /** Ky cua lan kiem tra R3 ngay x (thu 2 / thu 4, YYYY-MM-DD): (ngay kiem tra truoc, x] - tra ngay bat dau (khong tinh). */

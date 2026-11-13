@@ -330,6 +330,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (LK đặt khi tick, popup PO / mã LK khi tick, popup đơn hàng) → `LienHeDoiTacModal` (`pages/theodoi/shared.tsx`); lịch sử dòng có mục riêng.
 - **Số lần lùi ngày DK** (v0.080): `/so-don-hang` dòng có `lui_ds` (chỉ khi có lùi); popup đơn hàng: ô "Số lần lùi ngày DK" + bảng từng lần (Xem chi tiết),
   dòng thông tin "lùi n lần · NM …"; popup PO / mã LK: "lùi n lần" dưới cột 3 ngày. Chỉ đếm cho PO ban hành từ `theo_doi_ap_dung_tu`.
+  **Cách đếm lùi theo TỪNG ĐỢT** (v0.081, `demLui` ở `lib/theoDoi.ts`): sửa 1 đợt sang ngày muộn hơn · xoá đợt rồi thêm đợt ngày muộn hơn ≤ 30 phút cùng người ·
+  import thay thế có ngày muộn nhất muộn hơn. Thêm đợt giao bù / import thêm / cắt KH (metadata `ly_do`) KHÔNG tính. Cache `tl:goc-theo-doi:v7`.
 - **Hủy / kết thúc sớm luôn bắt buộc lý do** (v0.077): hủy EO `POST /eo/:id/cancel` → 400 `REASON_REQUIRED` (trước đây tuỳ chọn); hộp sửa SL đặt = 0
   (hủy dòng) bắt buộc lý do cả khi EO nháp (chỉ ở FE — form sửa EO nháp xoá dòng vẫn gửi SL 0 không lý do). Thêm đường hủy mới thì cũng bắt buộc.
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
