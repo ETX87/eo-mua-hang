@@ -8,7 +8,7 @@ export const EVENT_LABEL: Record<string, string> = {
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
   IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
-  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi", KET_THUC_SOM: "Kết thúc sớm đơn đặt", KET_THUC_SOM_PO: "Kết thúc sớm cả PO", SUA_THONG_TIN_DONG: "Sửa mã LK / kho / đối tác",
+  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi", LIEN_HE_DOI_TAC: "Nhắc đối tác (gọi điện / tin nhắn)", KET_THUC_SOM: "Kết thúc sớm đơn đặt", KET_THUC_SOM_PO: "Kết thúc sớm cả PO", SUA_THONG_TIN_DONG: "Sửa mã LK / kho / đối tác",
 };
 
 const sl = (v: unknown) => (v == null || v === "" ? "" : Number(v).toLocaleString("vi-VN"));
@@ -48,6 +48,7 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.pham_vi === "PO") p.push(`Giải trình chung cả PO (${a.so_loi ?? a.so_dong ?? ""} ${a.so_loi != null ? "lỗi" : "dòng"})`);
   if (e.event_type === "GIAI_TRINH_THEO_DOI" && a?.noi_dung) p.push(a.noi_dung);
   if (e.event_type === "XOA_LOI_THEO_DOI" && Array.isArray(b)) p.push(`${b.length} lỗi`);
+  if (e.event_type === "LIEN_HE_DOI_TAC" && a) p.push(`${KENH_LIEN_HE[a.kenh] ?? a.kenh}${a.ngay_lien_he ? ` ${String(a.ngay_lien_he).slice(8, 10)}/${String(a.ngay_lien_he).slice(5, 7)}` : ""}: ${a.ket_qua ?? ""}`);
   if (e.event_type === "NHAC_NHO_VI_PHAM") p.push(`Nhắc giải trình ${a?.so_loi ?? ""} lỗi${a?.noi_dung ? `: ${a.noi_dung}` : ""}`);
   if (e.event_type === "UPDATE_EO" && a) p.push(Object.keys(a).join(", "));
   if (m?.comment) p.push(m.comment);
@@ -55,3 +56,6 @@ export function moTaSuKien(e: { event_type: string; before_json?: string | null;
   if (m?.ly_do) p.push(m.ly_do);
   return p.filter(Boolean).join(" · ");
 }
+
+/** Kenh nhac doi tac khong qua mail (tl_lien_he, migration 0023) - khop backend routes/theoDoi.ts KENH. */
+export const KENH_LIEN_HE: Record<string, string> = { DIEN_THOAI: "📞 Gọi điện", ZALO: "💬 Zalo", TIN_NHAN: "✉️ Tin nhắn SMS", GAP: "🤝 Gặp trực tiếp", KHAC: "Khác" };

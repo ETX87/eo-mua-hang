@@ -9,7 +9,7 @@ import { MocTon } from "../../lib/tonDong";
 import { NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink, useQuickView } from "./QuickView";
 import { QuyTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
-import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong } from "../../pages/theodoi/shared";
+import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
 
@@ -30,7 +30,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   });
   const [tab, setTab] = useState<Tab>("gd");
   const qv = useQuickView();
-  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | null>(null);
+  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | "lh" | null>(null);
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
 
   if (ls.isLoading || (eoId && sdh.isLoading)) return <Spinner />;
@@ -57,6 +57,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
       <div className="qv-head">
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll} actions={<>
           {issued && <button className="btn sm primary" onClick={() => setMd("ndk")}><I.calendar width={13} height={13} /> Ngày NM / dự kiến / hàng về</button>}
+          {moDong && r.theo_doi && (r.so_luong_con_thieu ?? 1) > 0 && <button className="btn sm" title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn (không mail) — tính như đã push (R3)" onClick={() => setMd("lh")}>📞 Đã nhắc đối tác</button>}
           {moDong && daVe > 0 && daVe < it.current_qty && <button className="btn sm" title="SL đặt về đúng SL đã về, không chờ phần còn lại" onClick={() => setMd("kts")}><I.check width={13} height={13} /> Kết thúc sớm</button>}
           {/* sua ma LK / kho / doi tac (nhap sai) - quyen khop backend canSuaThongTinDong; PO het hang cho -> backend tu chan */}
           {it.line_status === "ACTIVE" && quyenEo({ trang_thai: r.trang_thai_eo ?? "", created_by: r.nguoi_tao ?? it.created_by, final_approver_email: r.nguoi_duyet_cuoi }, me.data).canSuaThongTin && (r.so_luong_con_thieu ?? 1) > 0 && <button className="btn sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd("sua")}><I.tag width={13} height={13} /> Sửa mã / kho / NCC</button>}
@@ -83,7 +84,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             {r.ket_thuc_som_at && <span style={{ color: "var(--ok-ink)" }}>Kết thúc sớm <b>{ngayGio(r.ket_thuc_som_at)}</b>{r.sl_dat_truoc_kts != null ? <> · SL đặt ban đầu <b>{soLuong(r.sl_dat_truoc_kts)}</b></> : null}</span>}
             {/* so lieu chinh tren dong thong tin; o so lieu day du + giai thich cap CEO trong "Xem chi tiết" (#22) */}
             <span>Đặt <b>{soLuong(r.so_luong_dat ?? it.current_qty)}</b> · về <b style={{ color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo ?? 0)}</b> · thiếu <b style={{ color: r.so_luong_con_thieu ? "var(--warn-ink)" : undefined }}>{soLuong(r.so_luong_con_thieu ?? 0)}</b>
-              {" "}· DK <b style={{ color: r.canh_bao === "Quá dự kiến" ? "var(--danger-ink)" : undefined }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</b></span>
+              {" "}· DK <b style={{ color: r.canh_bao === "Quá dự kiến" ? "var(--danger-ink)" : undefined }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</b>{r.so_lan_lui > 0 && <b style={{ color: r.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến (ngày mới muộn hơn ngày trước)"> · lùi {r.so_lan_lui} lần</b>}{r.ngay_nm_cam_ket && <> · NM <b>{ngay(r.ngay_nm_cam_ket)}</b></>}</span>
           </div>
         </QvHeader>
         {r.item_id ? <QuyTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} phieuNhap={ls.data.phieu_nhap ?? []} slDat={r.so_luong_dat ?? it.current_qty}
@@ -95,10 +96,23 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
               <Kpi l="Còn thiếu" v={soLuong(r.so_luong_con_thieu ?? 0)} tone={r.so_luong_con_thieu ? "warn" : undefined} />
               <Kpi l="Ngày NM cam kết" v={ngay(r.ngay_nm_cam_ket) || "—"} />
               <Kpi l="Ngày dự kiến" v={ngay(r.ngay_du_kien_gan_nhat) || "—"} tone={r.canh_bao === "Quá dự kiến" ? "danger" : undefined} />
+              <Kpi l="Số lần lùi ngày DK" v={soLuong(r.so_lan_lui ?? 0)} tone={(r.so_lan_lui ?? 0) >= 3 ? "danger" : r.so_lan_lui ? "warn" : undefined} />
               <Kpi l="Ngày hàng về" v={ngay(r.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo) || "—"} />
               <Kpi l="Tồn (từ ngày đặt)" v={["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? <MocTon tu={r.bat_dau ?? r.ngay_ban_hanh} nho /> : "—"} />
               <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
             </div>
+            {(r.lui_ds ?? []).length > 0 && (
+              <div style={{ fontSize: 12.5, marginTop: 8 }}>
+                <b>Các lần lùi ngày dự kiến</b> <span className="muted">(từ 3 lần → cấp CEO)</span>
+                <table className="tbl tbl-dense" style={{ marginTop: 4, width: "auto" }}>
+                  <thead><tr><th>Lần</th><th>Lúc</th><th>Người sửa</th><th>Từ ngày</th><th>Sang ngày</th><th style={{ textAlign: "right" }}>Lùi thêm</th></tr></thead>
+                  <tbody>{r.lui_ds.map((x: any, i: number) => (
+                    <tr key={i}><td>{i + 1}</td><td>{ngayGio(x.luc)}</td><td>{x.ai ? ten(x.ai) : "Hệ thống"}</td><td>{ngay(x.tu)}</td><td><b>{ngay(x.den)}</b></td>
+                      <td style={{ textAlign: "right" }}>+{Math.round((Date.parse(x.den) - Date.parse(x.tu)) / 86400_000)} ngày</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
             {(r.ceo_ly_do ?? []).length > 0 && <GiaiThichCeo ct={r.ceo_chi_tiet} lyDo={r.ceo_ly_do} />}
           </>} />
           : <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
@@ -172,6 +186,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
 
       {md === "ndk" && <NgayHangVeModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
       {md === "gt" && <GiaiTrinhModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
+      {md === "lh" && <LienHeDoiTacModal ids={[id]} nhan={`${it.part_code} (${it.approval_code || it.eo_code})`} onClose={() => setMd(null)}
+        onSaved={(kq) => { xong(); if (kq.bo_loi_r3) alert(`Đã ghi nhận — bỏ ${kq.bo_loi_r3} lỗi R3 (không push) của kỳ đó.`); }} />}
       {md === "huy" && <HuyDongModal item={itemHuy} onClose={() => setMd(null)} onDone={xong} />}
       {md === "kts" && <KetThucSomModal item={itemHuy} onClose={() => setMd(null)} onDone={xong} />}
       {md === "sua" && <SuaThongTinDongModal item={{ id, part_code: it.part_code, part_name: it.part_name, warehouse: it.warehouse, supplier: it.supplier }} onClose={() => setMd(null)} onDone={xong} />}

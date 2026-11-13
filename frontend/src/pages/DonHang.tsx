@@ -13,7 +13,7 @@ import { MocTon, MOC_TON, mocCua, soNgayTon, khopTim } from "../lib/tonDong";
 import { GdBadge, gioTxt } from "../lib/giaiDoan";
 import { TienTrinhGon, ceoTxt } from "../components/TienTrinh";
 import { BaNgay, ChuGiaiNgay } from "../lib/ngay";
-import { TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, type Dong } from "./theodoi/shared";
+import { TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, LienHeDoiTacModal, type Dong } from "./theodoi/shared";
 import { KrfGoiYModal, useGoiYKrf } from "./theodoi/KrfGoiY";
 import { BangLoiModal } from "./theodoi/BangLoi";
 import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
@@ -310,6 +310,7 @@ function DanhSach() {
   const dongChon = useMemo(() => all.filter((r) => chon.has(r.item_id)), [all, chon]);
   const idPush = dongChon.filter(pushDuoc).map((r) => r.item_id);
   const doiChon = (ids: number[], bat: boolean) => setChon((s) => { const n = new Set(s); ids.forEach((id) => (bat ? n.add(id) : n.delete(id))); return n; });
+  const [lh, setLh] = useState<number[] | null>(null); // ghi nhan nhac doi tac (goi dien / tin nhan)
   const taoPush = async () => {
     if (!idPush.length) return alert("Các dòng đã chọn đều đã đóng — không còn gì để push.");
     if (!confirm(`Tạo file push đối tác cho ${idPush.length} dòng còn mở? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
@@ -449,6 +450,7 @@ function DanhSach() {
             <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}>Đã chọn {soLuong(chon.size)}<span role="button" title="Bỏ chọn tất cả" style={{ cursor: "pointer" }} onClick={() => setChon(new Set())}>×</span></span>
             <button className="btn sm primary" onClick={() => setGtChung(true)} title="1 nội dung giải trình cho mọi dòng đã chọn (cùng nguyên nhân)"><I.edit width={14} height={14} /> Giải trình chung</button>
             <button className="btn sm" disabled={busy || !idPush.length} onClick={taoPush} title="Mỗi đối tác 1 file + tiêu đề mail chuẩn (chỉ dòng còn mở)"><I.send width={14} height={14} /> Push ({idPush.length})</button>
+            <button className="btn sm" disabled={!idPush.length} onClick={() => setLh(idPush)} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn (không mail) — tính như đã push (R3)">📞 Đã nhắc đối tác ({idPush.length})</button>
           </>}
           <Popover align="right" width={290} title="Công cụ: push đối tác, ngày KRF từ mail, kế hoạch hàng về…"
             label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
@@ -486,6 +488,8 @@ function DanhSach() {
         onClose={() => setGtChung(false)}
         onSaved={(kq) => { setGtChung(false); setChon(new Set()); refresh(); alert(`Đã giải trình chung: ${kq.so_loi} lỗi trên ${kq.so_dong} dòng (${kq.so_po} PO).`); }} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
+      {lh && <LienHeDoiTacModal ids={lh} nhan={`${lh.length} dòng đã chọn`} onClose={() => setLh(null)}
+        onSaved={(kq) => { setLh(null); setChon(new Set()); refresh(); alert(`Đã ghi nhận nhắc đối tác cho ${kq.so_dong} dòng${kq.bo_loi_r3 ? ` — bỏ ${kq.bo_loi_r3} lỗi R3 (không push) của kỳ đó` : ""}.`); }} />}
       {hop === "krf" && <KrfGoiYModal onClose={() => setHop("")} onSaved={refresh} onMoDong={(d) => { setHop(""); setModal({ loai: "ndk", dong: d }); }} />}
       {hop === "kh" && <KeHoachExcelModal onClose={() => setHop("")} onDone={refresh} />}
       {hop === "loi" && <BangLoiModal onClose={() => setHop("")} />}

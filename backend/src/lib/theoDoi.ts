@@ -10,7 +10,7 @@ import { laNhomR1_24h } from "./chuanHoa";
  *  R1  tu luc dong bat dau (EO ban hanh / dong them sau ban hanh duoc duyet) -> 48h LAM VIEC (bo Chu nhat, tu 2026-11-05; truoc la 24h) phai co
  *      ngay du kien (co it nhat 1 item_plan, ke ca da xoa mem). Tre -> loi.
  *  R3  Thu 2 / thu 4 (ngay X, dong bat dau truoc X): het ngay X ma dong van chua tung co ngay du kien va khong nam
- *      trong dot push doi tac (tl_push_item ngay X) -> loi.
+ *      trong dot push doi tac (tl_push_item ngay X) / khong co mail (tl_mail) / lien he ghi tay (tl_lien_he) trong ky -> loi.
  *  R4  Ngay du kien gan nhat D < hom nay, dong chua du hang: tu 00:00 ngay D+1 + 24h lam viec phai nhap ngay moi
  *      (ngay du kien gan nhat > D). Qua han -> loi (khoa theo D, moi lan qua han 1 loi).
  *  Cap CEO (1 trong 3): lui ngay du kien >= 3 lan | ngay du kien gan nhat - ngay dat >= 30 ngay ma chua du | >= 3 loi.
@@ -270,6 +270,12 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
   });
 }
 
+/** Ky cua lan kiem tra R3 ngay x (thu 2 / thu 4, YYYY-MM-DD): (ngay kiem tra truoc, x] - tra ngay bat dau (khong tinh). */
+export function kyR3Tu(x: string): string {
+  const d = parseVN(`${x} 00:00:00`);
+  return fmtVN(new Date(d.getTime() - (d.getUTCDay() === 1 ? 5 : 2) * 86400_000)).slice(0, 10);
+}
+
 /** Ghi loi tu dong R1/R3/R4 (idempotent). Tra so loi moi. force = bo qua khoang cach 10 phut. */
 export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
   const db = env.DB;
@@ -300,8 +306,13 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       ? (await db.prepare("SELECT DISTINCT eo_item_id, substr(thoi_gian, 1, 10) d FROM tl_mail WHERE thoi_gian IS NOT NULL AND eo_item_id IN (SELECT value FROM json_each(?))")
           .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; d: string }>()).results
       : [];
+    // 2026-11-13 (migration 0023): nhac doi tac khong qua mail (goi dien / Zalo / tin nhan) ghi nhan tay = nhu co mail trong ky
+    const lienHeRs = rows.length
+      ? (await db.prepare("SELECT DISTINCT eo_item_id, substr(ngay_lien_he, 1, 10) d FROM tl_lien_he WHERE eo_item_id IN (SELECT value FROM json_each(?))")
+          .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; d: string }>()).results
+      : [];
     const mailBy = new Map<number, string[]>();
-    for (const m of mailRs) mailBy.set(m.eo_item_id, [...(mailBy.get(m.eo_item_id) ?? []), m.d]);
+    for (const m of [...mailRs, ...lienHeRs]) mailBy.set(m.eo_item_id, [...(mailBy.get(m.eo_item_id) ?? []), m.d]);
     const loi: unknown[][] = [];
     const add = (r: DongTheoDoi, quyTac: string, khoa: string, han: string, ngayTc: string | null, loiMa: string) =>
       loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, "NGUOI_DAT", r.nguoi_dat, loiMa]);

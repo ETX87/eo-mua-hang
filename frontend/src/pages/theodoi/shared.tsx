@@ -9,6 +9,7 @@ import { normKey, writeBook } from "../../lib/excel";
 import { NGAY, NhanNgay } from "../../lib/ngay";
 import { krfMoiNhat } from "./KrfGoiY";
 import { Kho } from "../../lib/kho";
+import { KENH_LIEN_HE } from "../../lib/eventLabels";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -332,6 +333,77 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
   );
 }
 
+/**
+ * Ghi nhan NHAC DOI TAC khong qua mail (2026-11-13) - POST /theo-doi/lien-he: goi dien / Zalo / tin nhan cho 1 hoac nhieu dong.
+ * R3 (push thu 2 / thu 4) tinh nhu da push trong ky; ghi muon (<= 7 ngay) tu bo loi R3 dang cho cua ky do.
+ */
+export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved }: { ids: number[]; nhan: string; onClose: () => void; onSaved: (kq: { so_dong: number; bo_loi_r3: number }) => void }) {
+  const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+  const tuNgay = new Date(Date.now() + 7 * 3600_000 - 7 * 86400_000).toISOString().slice(0, 10);
+  const [kenh, setKenh] = useState("DIEN_THOAI");
+  const [ngayLh, setNgayLh] = useState(homNay);
+  const [gio, setGio] = useState("");
+  const [nguoi, setNguoi] = useState("");
+  const [ketQua, setKetQua] = useState("");
+  const [anh, setAnh] = useState<{ name: string; drive_file_id: string; url: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const upload = async (list: FileList | null) => {
+    setErr("");
+    for (const f of [...(list ?? [])]) {
+      if (!/\.(png|jpe?g|gif|webp|heic|bmp)$/i.test(f.name)) { setErr(`${f.name}: chỉ nhận ảnh`); continue; }
+      try { const r = await api.postBinary<any>(`/theo-doi/upload?filename=${encodeURIComponent(f.name)}`, await f.arrayBuffer(), f.type || "image/jpeg"); setAnh((a) => [...a, r]); }
+      catch (e: any) { setErr(e?.body?.error === "GOOGLE_DRIVE_NOT_CONNECTED" ? "Chưa kết nối Google Drive (Admin › Cấu hình hệ thống)." : `Không tải được ${f.name}.`); }
+    }
+  };
+  const save = async () => {
+    setErr("");
+    if (!ketQua.trim()) return setErr("Nhập kết quả: đối tác trả lời gì (hẹn ngày nào, chưa có ngày vì sao…).");
+    if (!ngayLh || ngayLh > homNay || ngayLh < tuNgay) return setErr(`Ngày liên hệ phải từ ${ngay(tuNgay)} đến hôm nay.`);
+    setBusy(true);
+    try {
+      onSaved(await api.post<any>("/theo-doi/lien-he", { eo_item_ids: ids, kenh, ngay: ngayLh, gio: gio || undefined, nguoi_lien_he: nguoi.trim() || undefined, ket_qua: ketQua.trim(), hinh_anh: anh }));
+    } catch (e: any) {
+      const c = e?.body?.error;
+      setErr(c === "READ_ONLY" ? "Bạn không có quyền trên một số dòng đã chọn." : c === "BAD_NGAY" ? "Ngày / giờ liên hệ không hợp lệ (không sau hiện tại, không quá 7 ngày trước)." : "Lỗi lưu ghi nhận.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Ghi nhận nhắc đối tác — ${nhan}`} onClose={onClose} width={640}
+      footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : `Ghi nhận ${ids.length} dòng`}</button></>}>
+      <div style={{ background: "var(--panel-2)", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 12, lineHeight: 1.5 }}>
+        Dùng khi đã nhắc đối tác bằng <b>gọi điện / Zalo / tin nhắn</b> thay vì mail. Kiểm tra push thứ 2 / thứ 4 (lỗi R3) tính như <b>đã push</b> trong kỳ của ngày liên hệ;
+        ghi muộn mà R3 kỳ đó đã bị ghi lỗi (chưa giải trình) thì lỗi tự bỏ. Đối tác đã báo ngày → nhập luôn <b>ngày dự kiến</b> (nút 📅) để hết theo dõi R1 / R3.
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr", gap: 10 }}>
+        <div><label className="field-label">Kênh <span className="req">*</span></label>
+          <select className="select" value={kenh} onChange={(e) => setKenh(e.target.value)}>{Object.entries(KENH_LIEN_HE).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
+        <div><label className="field-label">Ngày liên hệ <span className="req">*</span></label>
+          <input className="input" type="date" value={ngayLh} min={tuNgay} max={homNay} onChange={(e) => setNgayLh(e.target.value)} /></div>
+        <div><label className="field-label">Giờ</label><input className="input" type="time" value={gio} onChange={(e) => setGio(e.target.value)} /></div>
+      </div>
+      <label className="field-label" style={{ marginTop: 10 }}>Người liên hệ bên đối tác</label>
+      <input className="input" value={nguoi} onChange={(e) => setNguoi(e.target.value)} placeholder="vd: chị Lan — KRF, 09xx…" />
+      <label className="field-label" style={{ marginTop: 10 }}>Kết quả <span className="req">*</span></label>
+      <textarea className="textarea" value={ketQua} onChange={(e) => setKetQua(e.target.value)} placeholder="Đối tác trả lời gì: hẹn giao ngày…, đang chờ NM xác nhận, hết hàng…" />
+      <label className="field-label" style={{ marginTop: 10 }}>Ảnh bằng chứng <span className="muted">(nên có: ảnh chụp tin nhắn / nhật ký cuộc gọi)</span></label>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {anh.map((a, i) => (
+          <span key={a.drive_file_id} className="badge issued" style={{ gap: 6 }}>
+            <a href={a.url} target="_blank" rel="noopener" style={{ color: "inherit" }}>{a.name}</a>
+            <span role="button" style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
+          </span>
+        ))}
+        <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>
+        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
+      </div>
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
 /** Du lieu dong linh kien trong 1 mail (payload.dong tu app theodoimuahang): ngay 3T can, KRF dap ung, note. */
 function DongMail({ payload }: { payload: string | null }) {
   let d: any = null;
@@ -388,6 +460,14 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
               <b>{ten(g.created_by)}</b> · {ngayGio(g.created_at)} · Ai: {tenDm("AI", g.ai_ma)}{g.ai_email ? ` (${ten(g.ai_email)})` : ""} · Lỗi: {tenDm("LOI", g.loi_ma)}
               <div>{g.noi_dung}</div>
               {(() => { try { return (JSON.parse(g.hinh_anh || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } })()}
+            </div>
+          ))}
+          <H>Nhắc đối tác không qua mail ({(d.lien_he ?? []).length})</H>
+          {(d.lien_he ?? []).length === 0 ? <div className="muted">Chưa ghi nhận (gọi điện / Zalo / tin nhắn).</div> : d.lien_he.map((x: any) => (
+            <div key={x.id} style={{ padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
+              <b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b> · {ngayGio(x.ngay_lien_he)}{x.nguoi_lien_he ? ` · với ${x.nguoi_lien_he}` : ""} · ghi bởi {ten(x.created_by)}{x.created_at.slice(0, 10) !== x.ngay_lien_he.slice(0, 10) ? ` (lúc ${ngayGio(x.created_at)})` : ""}
+              <div>{x.ket_qua}</div>
+              {(() => { try { return (JSON.parse(x.hinh_anh || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } })()}
             </div>
           ))}
           <H>Push đối tác ({d.push.length})</H>

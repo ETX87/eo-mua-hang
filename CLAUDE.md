@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng · 0022 ghi lỗi dựng cache
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng · 0022 ghi lỗi dựng cache · 0023 nhắc đối tác không qua mail
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -324,6 +324,12 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   `/:id/ket-thuc-som` (cùng 2 đoạn). Mọi dòng mở của mã (`part_code` hoặc `part_code_goc`) trên mọi PO ISSUED, cùng quy tắc KTS cả PO; quyền xét
   từng dòng (không quyền → `BO_QUA_QUYEN`), EO chưa BH → `BO_QUA_CHUA_BH`; dòng chưa về bị hủy → `recomputeMatch`. Event `KET_THUC_SOM` metadata
   `pham_vi='MA_LK'`. FE nút đỏ ở tiêu đề popup mã LK → `KetThucSomMaModal` (tick chọn dòng, mặc định tất cả).
+- **Nhắc đối tác không qua mail** (v0.080, migration 0023 `tl_lien_he`): `POST /theo-doi/lien-he` `{ eo_item_ids, kenh, ngay, gio?, nguoi_lien_he?, ket_qua, hinh_anh? }`
+  (quyền `canEditPlan` từng dòng, ngày ≤ hôm nay và ≥ 7 ngày trước, kết quả bắt buộc). R3 coi như mail trong kỳ (`danhGiaQuyTac` gộp vào `mailBy`);
+  ghi muộn → xoá lỗi R3 ĐANG CHỜ có kỳ `(kyR3Tu(X), X]` chứa ngày liên hệ (event `XOA_LOI_THEO_DOI`). Event `LIEN_HE_DOI_TAC`. FE nút "📞 Đã nhắc đối tác"
+  (LK đặt khi tick, popup PO / mã LK khi tick, popup đơn hàng) → `LienHeDoiTacModal` (`pages/theodoi/shared.tsx`); lịch sử dòng có mục riêng.
+- **Số lần lùi ngày DK** (v0.080): `/so-don-hang` dòng có `lui_ds` (chỉ khi có lùi); popup đơn hàng: ô "Số lần lùi ngày DK" + bảng từng lần (Xem chi tiết),
+  dòng thông tin "lùi n lần · NM …"; popup PO / mã LK: "lùi n lần" dưới cột 3 ngày. Chỉ đếm cho PO ban hành từ `theo_doi_ap_dung_tu`.
 - **Hủy / kết thúc sớm luôn bắt buộc lý do** (v0.077): hủy EO `POST /eo/:id/cancel` → 400 `REASON_REQUIRED` (trước đây tuỳ chọn); hộp sửa SL đặt = 0
   (hủy dòng) bắt buộc lý do cả khi EO nháp (chỉ ở FE — form sửa EO nháp xoá dòng vẫn gửi SL 0 không lý do). Thêm đường hủy mới thì cũng bắt buộc.
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,

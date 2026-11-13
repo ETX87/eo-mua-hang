@@ -33,13 +33,13 @@ export const MUC: Record<string, { l: string; c: string; mau: string; thu: numbe
 /** Lam gi de het loi / khong bi lap lai - theo quy tac. */
 const CACH_XU_LY: Record<string, string> = {
   R1: "Nhập ngày dự kiến cho dòng (nút “Ngày DK”), rồi giải trình kèm ảnh bằng chứng (mail / tin nhắn với NCC).",
-  R3: "Thứ 2 / thứ 4: tạo push đối tác cho dòng chưa có ngày dự kiến (LK đặt › tick › Push). Có ngày dự kiến là hết lỗi lặp lại.",
+  R3: "Thứ 2 / thứ 4: tạo push đối tác cho dòng chưa có ngày dự kiến (LK đặt › tick › Push), hoặc nhắc bằng gọi điện / Zalo rồi bấm “📞 Đã nhắc đối tác” (ghi muộn trong 7 ngày vẫn tự bỏ lỗi). Có ngày dự kiến là hết lỗi lặp lại.",
   R4: "Đã quá ngày dự kiến mà chưa đủ hàng: nhập ngày dự kiến MỚI (nút “Ngày DK”), rồi giải trình kèm ảnh. Không nhập → mỗi mốc quá hạn ghi thêm 1 lỗi.",
   TAY: "Lỗi ghi tay lúc giải trình (NCC trễ, hết hàng…) — đã có giải trình, chỉ để thống kê.",
 };
 const QT_DAI: Record<string, string> = {
   R1: "Sau khi EO ban hành (hoặc dòng thêm sau ban hành được duyệt) phải có ngày dự kiến trong 24 giờ làm việc với đối tác Karofi / Livotec / Korihome (dòng bắt đầu từ 08/11/2026), 48 giờ với hãng khác (bỏ Chủ nhật).",
-  R3: "Mỗi thứ 2 / thứ 4, dòng chưa từng có ngày dự kiến phải được push đối tác trong ngày (có mail với đối tác qua theodoimuahang@gmail.com trong kỳ cũng tính là đã push).",
+  R3: "Mỗi thứ 2 / thứ 4, dòng chưa từng có ngày dự kiến phải được push đối tác trong ngày (có mail với đối tác qua theodoimuahang@gmail.com, hoặc ghi nhận “Đã nhắc đối tác” bằng gọi điện / Zalo / tin nhắn trong kỳ cũng tính là đã push).",
   R4: "Quá ngày dự kiến mà hàng chưa về đủ → phải nhập ngày dự kiến mới trong 24 giờ làm việc.",
   TAY: "Lỗi do người giải trình tự xác định.",
 };

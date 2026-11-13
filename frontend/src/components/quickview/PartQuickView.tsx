@@ -13,7 +13,7 @@ import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, EoLink, DongLink, useQuickView } from "./QuickView";
 import { quyenEo, QtyModal, KetThucSomMaModal } from "../../pages/eo/eoActions";
-import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
+import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { Kho } from "../../lib/kho";
 
 /**
@@ -38,6 +38,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   const [md, setMd] = useState<{ k: string; x?: any } | null>(null);
   const [chon, setChon] = useState<Set<number>>(new Set());
   const [pushKq, setPushKq] = useState<any[] | null>(null);
+  const [lh, setLh] = useState<number[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [tim, setTim] = useState("");
@@ -159,6 +160,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
           {tab === "eo" && d.dong.some(chonDuoc) && (
             <div className="qv-toolbar">
               <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
+              <button className="btn sm" disabled={!chon.size} onClick={() => setLh([...chon])} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn — tính như đã push (R3)">📞 Đã nhắc đối tác</button>
               <button className="btn sm" onClick={() => setChon(new Set(dong.filter(chonDuoc).map((r: any) => r.item_id)))}>Chọn mọi dòng còn thiếu</button>
               {chon.size > 0 && <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>}
               <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: 3 loại ngày · sửa dòng · ! giải trình · lịch sử</span>
@@ -215,7 +217,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
                       <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)}</td>
                       <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo)}</td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.so_luong_con_thieu)}</td>
-                      <td><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} /></td>
+                      <td><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} />{(t?.so_lan_lui ?? 0) > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: t!.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến">lùi {t!.so_lan_lui} lần</div>}</td>
                       <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={120} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
                       <td><TienTrinhGon r={d.giai_doan?.[r.item_id]} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.item_id)} /></td>
                       <td><Clip w={120}>{[r.ly_do_ps, r.ghi_chu, r.id_crm && `Ca ${r.id_crm}`].filter(Boolean).join(" · ") || "—"}</Clip></td>
@@ -286,6 +288,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
       {md?.k === "kts-ma" && <KetThucSomMaModal ma={d.ma} onClose={() => setMd(null)}
         onDone={(kq) => { xong(); alert(`Đã kết thúc sớm ${kq.so_dong} dòng trên ${kq.so_po} PO của mã ${d.ma}.`); }} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
+      {lh && <LienHeDoiTacModal ids={lh} nhan={`mã ${d.ma} · ${lh.length} dòng`} onClose={() => setLh(null)} onSaved={(kq) => { setLh(null); setChon(new Set()); qc.invalidateQueries(); alert(`Đã ghi nhận nhắc đối tác cho ${kq.so_dong} dòng${kq.bo_loi_r3 ? ` — bỏ ${kq.bo_loi_r3} lỗi R3 (không push) của kỳ đó` : ""}.`); }} />}
     </>
   );
 }

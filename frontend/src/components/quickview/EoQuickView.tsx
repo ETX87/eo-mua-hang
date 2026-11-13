@@ -19,7 +19,7 @@ import {
 } from "../../pages/eo/eoActions";
 import { gopTrung, gopLienTiep, khoaMail, lietKe } from "../../lib/gopTrung";
 import { NhatKyGop } from "../NhatKyGop";
-import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua } from "../../pages/theodoi/shared";
+import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
 import { Kho, khoGon } from "../../lib/kho";
 import { DataTable, type Col } from "../DataTable";
@@ -68,6 +68,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const [md, setMd] = useState<{ k: string; x?: any } | null>(null);
   const [chon, setChon] = useState<Set<number>>(new Set());
   const [pushKq, setPushKq] = useState<any[] | null>(null);
+  const [lh, setLh] = useState<number[] | null>(null); // ghi nhan nhac doi tac (goi dien / tin nhan)
   const [err, setErr] = useState("");
   const [tim, setTim] = useState(""); // tim nhanh trong tab dang mo
   const [timTl, setTimTl] = useState(""); // tim trong nhat ky
@@ -198,7 +199,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     { key: "ve", header: <Hoi k="SL_VE" nhan="Về" />, align: "right", loc: "so", gt: ({ r }: any) => r.da_dat, render: ({ r }: any) => <span style={{ color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</span> },
     { key: "thieu", header: <Hoi k="SL_THIEU" nhan="Thiếu" />, align: "right", loc: "so", gt: ({ r }: any) => r.chua_dat, render: ({ r }: any) => <b>{soLuong(r.chua_dat)}</b> },
     { key: "ngay", header: <><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></>, loc: "ngay", gt: (x: any) => x.ndk, wrap: true,
-      render: (x: any) => <BaNgay nm={x.nm} dk={x.ndk} ve={x.ve} veDu={x.r.da_dat >= x.r.current_qty} /> },
+      render: (x: any) => <><BaNgay nm={x.nm} dk={x.ndk} ve={x.ve} veDu={x.r.da_dat >= x.r.current_qty} />{x.t?.so_lan_lui > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: x.t.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến">lùi {x.t.so_lan_lui} lần</div>}</> },
     { key: "td", header: "Theo dõi", loc: "chon", gt: ({ t }: any) => (t ? TT[t.tinh_trang]?.l ?? t.tinh_trang : ""), wrap: true,
       render: ({ t }: any) => t ? <span style={{ whiteSpace: "nowrap" }}><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>CEO</span>}</span> : <span className="muted">—</span> },
     { key: "gd", header: <span title="8 giai đoạn: bấm để xem chi tiết đơn hàng (thời gian, hạn, lỗi từng bước)">Tiến trình</span>, loc: "chon", gt: ({ g }: any) => g?.gd_hien_tai_ten ?? "", wrap: true,
@@ -288,6 +289,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                 <button className="btn sm" title="Tải Excel mọi dòng linh kiện của EO (kèm kế hoạch, hàng về, theo dõi)" onClick={() => xuatDongEo(eo, d.items, d.plans, b)}><I.download width={13} height={13} /> Tải danh sách linh kiện</button>
                 {P.issued && coChon && <>
                   <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
+                  <button className="btn sm" disabled={!chon.size} onClick={() => setLh([...chon])} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn — tính như đã push (R3)">📞 Đã nhắc đối tác</button>
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
                 {P.issued && P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
@@ -415,6 +417,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       {md?.k === "tuchoi" && <TuChoiDongModal item={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "ls" && <LichSuModal dong={md.x} onClose={() => setMd(null)} />}
       {pushKq && <PushKetQua dot={pushKq} onClose={() => setPushKq(null)} />}
+      {lh && <LienHeDoiTacModal ids={lh} nhan={`${eo.approval_code || eo.eo_code} · ${lh.length} dòng`} onClose={() => setLh(null)} onSaved={(kq) => { setLh(null); setChon(new Set()); qc.invalidateQueries(); alert(`Đã ghi nhận nhắc đối tác cho ${kq.so_dong} dòng${kq.bo_loi_r3 ? ` — bỏ ${kq.bo_loi_r3} lỗi R3 (không push) của kỳ đó` : ""}.`); }} />}
     </>
   );
 }

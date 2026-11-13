@@ -7,7 +7,7 @@ import { canEditPlan } from "../lib/eoAccess";
 import { layGiaiDoan } from "../lib/giaiDoan";
 import { requireAdmin } from "../middleware/guards";
 import { uploadPublicFile } from "../lib/googleDrive";
-import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
+import { danhGiaQuyTac, layDongTheoDoi, kyR3Tu } from "../lib/theoDoi";
 import { apDungKrf, layGoiYKrf } from "../lib/krfGoiY";
 
 // /api/theo-doi - man "Theo doi linh kien dat" + "Canh bao CEO" (quy tac: lib/theoDoi.ts, migrations/0012).
@@ -40,7 +40,7 @@ app.get("/ceo", async (c) => {
 app.get("/dong/:itemId", async (c) => {
   const id = Number(c.req.param("itemId"));
   const db = c.env.DB;
-  const [loi, gt, push, mail, plans, item, keHoach, nhap] = await Promise.all([
+  const [loi, gt, push, mail, plans, item, keHoach, nhap, lienHe] = await Promise.all([
     db.prepare("SELECT * FROM tl_loi WHERE eo_item_id = ? ORDER BY COALESCE(han, created_at) DESC, id DESC").bind(id).all(),
     db.prepare("SELECT * FROM tl_giai_trinh WHERE eo_item_id = ? ORDER BY id DESC").bind(id).all(),
     db.prepare(
@@ -78,10 +78,11 @@ app.get("/dong/:itemId", async (c) => {
       `SELECT id, doc_no, doc_date, warehouse_name, qty_in FROM amis_receipt
        WHERE match_status = 'MATCHED_EO' AND matched_eo_item_id = ? AND voided_at IS NULL ORDER BY doc_date, id`,
     ).bind(id).all(),
+    db.prepare("SELECT id, nhom, kenh, ngay_lien_he, nguoi_lien_he, ket_qua, hinh_anh, created_by, created_at FROM tl_lien_he WHERE eo_item_id = ? ORDER BY ngay_lien_he DESC, id DESC").bind(id).all(),
   ]);
   return c.json({
     loi: loi.results, giai_trinh: gt.results, push: push.results, mail: mail.results, ngay_du_kien: plans.results,
-    item, ke_hoach: keHoach.results, phieu_nhap: nhap.results,
+    item, ke_hoach: keHoach.results, phieu_nhap: nhap.results, lien_he: lienHe.results,
   });
 });
 
@@ -183,6 +184,67 @@ app.post("/ap-dung-krf", async (c) => {
 });
 
 // POST /push { eo_item_ids: number[] } - tao dot push doi tac (1 dot / doi tac) -> FE dung du lieu tra ve de tao file
+// POST /lien-he { eo_item_ids, kenh, ngay (YYYY-MM-DD), gio?, nguoi_lien_he?, ket_qua, hinh_anh? } (2026-11-13, migration 0023)
+// Ghi nhan da nhac doi tac KHONG qua mail (goi dien / Zalo / tin nhan / gap) cho 1 hoac nhieu dong - R3 tinh nhu da push trong ky.
+// Quyen nhu push (canEditPlan tung dong). Ngay lien he: khong sau hom nay, khong qua 7 ngay truoc. Ghi muon -> bo loi R3 DANG CHO
+// ma ky (ngay kiem tra truoc, X] chua ngay lien he (event XOA_LOI_THEO_DOI, giong cac lan tu bo loi khac).
+const KENH = ["DIEN_THOAI", "ZALO", "TIN_NHAN", "GAP", "KHAC"];
+app.post("/lien-he", async (c) => {
+  const u = c.get("user");
+  const db = c.env.DB;
+  const b = (await c.req.json().catch(() => ({}))) as { eo_item_ids?: number[]; kenh?: string; ngay?: string; gio?: string; nguoi_lien_he?: string; ket_qua?: string; hinh_anh?: unknown[] };
+  const ids = [...new Set((b.eo_item_ids ?? []).map(Number).filter((x) => x > 0))];
+  if (!ids.length || ids.length > 2000) return c.json({ error: "BAD_INPUT" }, 400);
+  if (!KENH.includes(String(b.kenh))) return c.json({ error: "BAD_KENH" }, 400);
+  const ketQua = String(b.ket_qua ?? "").trim();
+  if (!ketQua) return c.json({ error: "KET_QUA_REQUIRED" }, 400);
+  const today = todayVN();
+  const ngay = String(b.ngay ?? today).slice(0, 10);
+  const tuNgay = new Date(Date.parse(`${today}T00:00:00Z`) - 7 * 86400_000).toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay) || ngay > today || ngay < tuNgay) return c.json({ error: "BAD_NGAY", tu: tuNgay, den: today }, 400);
+  const gio = /^\d{2}:\d{2}$/.test(String(b.gio ?? "")) ? String(b.gio) : null;
+  const now = nowVN();
+  const ngayLh = gio ? `${ngay} ${gio}:00` : ngay === today ? now : `${ngay} 12:00:00`;
+  if (ngayLh > now) return c.json({ error: "BAD_NGAY", tu: tuNgay, den: today }, 400);
+  const metas = (await db.prepare("SELECT i.id, i.eo_id, e.created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id IN (SELECT value FROM json_each(?))")
+    .bind(JSON.stringify(ids)).all<{ id: number; eo_id: number; created_by: string }>()).results;
+  if (!metas.length) return c.json({ error: "ITEM_NOT_FOUND" }, 404);
+  if (metas.some((m) => !canEditPlan(u, m))) return c.json({ error: "READ_ONLY" }, 403);
+  const anh = Array.isArray(b.hinh_anh) ? JSON.stringify(b.hinh_anh.slice(0, 10)) : null;
+  const nhom = `LH-${now.replace(/\D/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+  const nguoi = String(b.nguoi_lien_he ?? "").trim() || null;
+  const ds = JSON.stringify(metas.map((m) => [m.id, m.eo_id]));
+  // loi R3 dang cho duoc ngay lien he "phu" ky -> bo
+  const r3 = (await db.prepare("SELECT id, eo_item_id, eo_id, ngay_tham_chieu FROM tl_loi WHERE quy_tac = 'R3' AND trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?))")
+    .bind(JSON.stringify(metas.map((m) => m.id))).all<{ id: number; eo_item_id: number; eo_id: number; ngay_tham_chieu: string | null }>()).results
+    .filter((l) => l.ngay_tham_chieu && ngay > kyR3Tu(l.ngay_tham_chieu) && ngay <= l.ngay_tham_chieu);
+  const boIds = JSON.stringify(r3.map((l) => l.id));
+  const stmts = [
+    db.prepare(
+      `INSERT INTO tl_lien_he (nhom, eo_item_id, eo_id, kenh, ngay_lien_he, nguoi_lien_he, ket_qua, hinh_anh, created_by, created_at)
+       SELECT ?, json_extract(value, '$[0]'), json_extract(value, '$[1]'), ?, ?, ?, ?, ?, ?, ? FROM json_each(?)`,
+    ).bind(nhom, b.kenh, ngayLh, nguoi, ketQua, anh, u.email, now, ds),
+    db.prepare(
+      `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, after_json, metadata_json, user_email, created_at)
+       SELECT 'eo_item', json_extract(value, '$[0]'), json_extract(value, '$[1]'), 'LIEN_HE_DOI_TAC', json_object('kenh', ?, 'ngay_lien_he', ?, 'ket_qua', ?),
+              json_object('nhom', ?, 'so_dong', ?), ?, ? FROM json_each(?)`,
+    ).bind(b.kenh, ngayLh, ketQua, nhom, metas.length, u.email, now, ds),
+  ];
+  if (r3.length) stmts.push(
+    db.prepare(
+      `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, before_json, metadata_json, user_email, created_at)
+       SELECT 'eo', eo_id, eo_id, 'XOA_LOI_THEO_DOI', json_group_array(json_object('id', id, 'khoa', khoa, 'han', han)),
+              json_object('ly_do', 'Đã ghi nhận nhắc đối tác (' || ? || ') trong kỳ kiểm tra push — không còn lỗi R3'), ?, ?
+       FROM tl_loi WHERE id IN (SELECT value FROM json_each(?)) GROUP BY eo_id`,
+    ).bind(nhom, u.email, now, boIds),
+    db.prepare("DELETE FROM tl_nhac_nho WHERE loi_id IN (SELECT value FROM json_each(?))").bind(boIds),
+    db.prepare("DELETE FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND id IN (SELECT value FROM json_each(?))").bind(boIds),
+  );
+  await db.batch(stmts);
+  await bumpVersions(db, ["theo_doi"]);
+  return c.json({ ok: true, so_dong: metas.length, bo_loi_r3: r3.length });
+});
+
 // Excel chuan MH-PUSH_<ma>.xlsx + tieu de mail "[MH-PUSH][<ma>] ..." (truoc 2026-11-04: EO-PUSH; app theo-doi-mua-hang
 // chi bat theo ma PUSH-YYMMDD-NNNN nen doi tien to khong anh huong).
 app.post("/push", async (c) => {
