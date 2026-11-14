@@ -66,6 +66,6 @@ export function loiChuanTxt(body: any): string | null {
   const ld = ds.filter((x) => x.loai === "LY_DO").map((x) => `"${x.gia_tri}"`);
   return [
     dt.length ? `Đối tác không có trong danh mục: ${dt.join(", ")} — chọn đối tác từ danh sách gợi ý (đối tác mới: nhờ Admin thêm ở Cài đặt › Danh mục).` : "",
-    ld.length ? `Lý do phát sinh không hợp lệ: ${ld.join(", ")} — chỉ chọn: Ký gửi, Đặt lần đầu, Kế hoạch tháng, Phát sinh.` : "",
+    ld.length ? `Lý do phát sinh không hợp lệ: ${ld.join(", ")} — chỉ chọn: Ký gửi, Đặt lần đầu, Kế hoạch tháng, Phát sinh, Hết hàng.` : "",
   ].filter(Boolean).join(" ");
 }

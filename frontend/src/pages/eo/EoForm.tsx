@@ -230,9 +230,9 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           ["Kho cần đặt *", "Ghi đúng tên kho hoặc mã kho ở sheet \"Danh sach kho\" (phòng ban kho vận tự gán kho)."],
           ["Đối tác", "CHỌN trong danh sách đối tác chuẩn bên dưới. Viết tắt quen thuộc (KRF, LVT…) hệ thống tự đổi về tên chuẩn. Đối tác chưa có → khi nhập file sẽ hỏi lại có chắc thêm đối tác mới không."],
           ["Số lượng *", "Số > 0."],
-          ["Lý do PS", "CHỈ 1 trong 4 giá trị bên dưới. Giá trị khác sẽ bị để trống và nhắc chọn lại."],
+          ["Lý do PS", "CHỈ 1 trong 5 giá trị bên dưới. Giá trị khác sẽ bị để trống và nhắc chọn lại."],
           ["", ""],
-          ["LÝ DO PHÁT SINH (chỉ 4 giá trị)", ""],
+          ["LÝ DO PHÁT SINH (chỉ 5 giá trị)", ""],
           ...LY_DO_CHUAN.map((x) => [x, ""]),
           ["", ""],
           ["ĐỐI TÁC CHUẨN", ""],
@@ -287,7 +287,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
           }
           if (x.supplier.trim() && kt.doi_tac[x.supplier.trim()]) x.supplier = kt.doi_tac[x.supplier.trim()]!;
         }
-        if (ldSai.size) canhBao.push(`⚠ Lý do PS không hợp lệ: ${[...ldSai].map((v) => `"${v}"`).join(", ")} — đã để trống, chọn lại 1 trong 4: ${LY_DO_CHUAN.join(" / ")}.`);
+        if (ldSai.size) canhBao.push(`⚠ Lý do PS không hợp lệ: ${[...ldSai].map((v) => `"${v}"`).join(", ")} — đã để trống, chọn lại 1 trong 5: ${LY_DO_CHUAN.join(" / ")}.`);
         const moi = [...new Set(ok.map((x) => x.supplier.trim()).filter((v) => v && kt.doi_tac[v] === null))];
         if (moi.length) {
           const dong = (v: string) => ok.filter((x) => x.supplier.trim() === v).length;

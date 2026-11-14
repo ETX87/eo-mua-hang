@@ -275,8 +275,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 
 - **Đối tác / Lý do PS chuẩn** `lib/chuanHoa.ts`: danh mục `dm_chuan` + bí danh `dm_bi_danh` (khoá = chữ thường không dấu, bỏ ký tự
   khác a-z0-9 — `khoa()` phải khớp `scripts/gen_0020_chuan_hoa.py`). Mọi đường ghi `eo_item` (tạo EO, thêm dòng, sửa dòng) gọi
-  `chuanHoaDong`: bí danh tự quy đổi (KRF/KAROFI → Karofi), giá trị lạ → 400 `GIA_TRI_KHONG_CHUAN` (FE `loiChuanTxt`). Lý do PS chỉ 4 giá
-  trị: Ký gửi · Đặt lần đầu · Kế hoạch tháng · Phát sinh (FE `ChonLyDo`). PATCH dòng: `b.reason` là lý do đổi SL — chỉ chuẩn hoá supplier.
+  `chuanHoaDong`: bí danh tự quy đổi (KRF/KAROFI → Karofi), giá trị lạ → 400 `GIA_TRI_KHONG_CHUAN` (FE `loiChuanTxt`). Lý do PS chỉ 5 giá
+  trị: Ký gửi · Đặt lần đầu · Kế hoạch tháng · Phát sinh · Hết hàng (v0.082, migration 0024; FE `ChonLyDo`). PATCH dòng: `b.reason` là lý do đổi SL — chỉ chuẩn hoá supplier.
   Dữ liệu cũ chuyển 1 lần bằng `scripts/_data/0020_chuyen_du_lieu.sql` (sinh bởi `scripts/gen_0020_chuan_hoa.py`, chứa giá trị thật — gitignore, repo công khai) (chốt với người dùng 2026-11-08: cảnh báo hết hàng → Phát sinh; lý do lạ → Phát sinh + chép
   "Lý do cũ: …" vào ghi chú; Media/MM → Media Mart; LKDH, NCC, Lọc tổng giữ riêng), bản gốc ở `supplier_goc` / `reason_goc`.
   Admin: Danh mục › "Đối tác & lý do PS" (`GET/PUT /danh-muc/chuan`, `POST /danh-muc/chuan/chuyen` chuyển giá trị chưa chuẩn còn sót).

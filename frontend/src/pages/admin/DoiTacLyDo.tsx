@@ -36,7 +36,7 @@ export default function DoiTacLyDo() {
   const put = async (body: any, loi = "Lỗi lưu.") => {
     setBusy(true);
     try { await api.put("/danh-muc/chuan", { loai, ...body }); lamMoi(); }
-    catch (e: any) { alert(e?.body?.error === "DA_CO" ? `Đã có "${e.body.ten_chuan}" (trùng tên hoặc bí danh).` : e?.body?.error === "LY_DO_CO_DINH" ? "Lý do phát sinh cố định 4 giá trị." : loi); }
+    catch (e: any) { alert(e?.body?.error === "DA_CO" ? `Đã có "${e.body.ten_chuan}" (trùng tên hoặc bí danh).` : e?.body?.error === "LY_DO_CO_DINH" ? "Lý do phát sinh cố định 5 giá trị." : loi); }
     finally { setBusy(false); }
   };
   const chuyen = async (gt: string[], tenChuan: string) => {
@@ -60,7 +60,7 @@ export default function DoiTacLyDo() {
       </div>
       <div className="muted" style={{ marginBottom: 12 }}>
         Người dùng chỉ chọn được giá trị chuẩn. Gõ bí danh (vd <b>KRF</b>, <b>KAROFI</b>) hệ thống tự lưu thành tên chuẩn (<b>Karofi</b>); giá trị lạ bị chặn.
-        {loai === "LY_DO" && " Lý do phát sinh cố định 4 giá trị."}
+        {loai === "LY_DO" && " Lý do phát sinh cố định 5 giá trị."}
       </div>
 
       {chua.length > 0 && (
