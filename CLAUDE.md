@@ -279,6 +279,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   trị: Ký gửi · Đặt lần đầu · Kế hoạch tháng · Phát sinh · Hết hàng (v0.082, migration 0024; FE `ChonLyDo`). PATCH dòng: `b.reason` là lý do đổi SL — chỉ chuẩn hoá supplier.
   Dữ liệu cũ chuyển 1 lần bằng `scripts/_data/0020_chuyen_du_lieu.sql` (sinh bởi `scripts/gen_0020_chuan_hoa.py`, chứa giá trị thật — gitignore, repo công khai) (chốt với người dùng 2026-11-08: cảnh báo hết hàng → Phát sinh; lý do lạ → Phát sinh + chép
   "Lý do cũ: …" vào ghi chú; Media/MM → Media Mart; LKDH, NCC, Lọc tổng giữ riêng), bản gốc ở `supplier_goc` / `reason_goc`.
+  Gợi ý ô chọn `GET /danh-muc/goi-y-dong` cache `dm:goi-y-dong:v3` theo version eo/amis/settings — thêm / sửa `dm_chuan` bằng **migration** (không bump
+  version) thì phải đổi hậu tố khoá, nếu không ô chọn vẫn danh sách cũ (v0.083: "Hết hàng" của 0024 không hiện).
   Admin: Danh mục › "Đối tác & lý do PS" (`GET/PUT /danh-muc/chuan`, `POST /danh-muc/chuan/chuyen` chuyển giá trị chưa chuẩn còn sót).
 - **Tên hiển thị** `lib/tenNguoiDung.ts` → `GET /users/ten` (cache version `users`): ưu tiên họ tên ETX (tài khoản liên kết, hoặc Gmail
   chính / Gmail phụ trùng Gmail hiệu lực ETX, hoặc Gmail ETX không có tài khoản); không có → FE `ten()` cắt Gmail. App nạp 1 lần

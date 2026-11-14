@@ -14,7 +14,9 @@ const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 // ---- doc: ai cung xem duoc (dung cho dropdown form) ----
 // goi y o nhap dong linh kien (form EO) + bo loc: ma LK -> ten (EO truoc, AMIS sau), doi tac, ly do PS da tung dung
-app.get("/goi-y-dong", async (c) => c.json(await cachedReport(c.env.DB, "dm:goi-y-dong:v2", ["eo", "amis", "settings"], async () => {
+// Cache theo version eo/amis/settings: sua danh muc qua man Admin tu bump "settings"; them/sua dm_chuan bang MIGRATION thi KHONG bump
+// -> phai doi hau to khoa (v3: migration 0024 them "Het hang" ma o chon van 4 ly do cu, 2026-11-14).
+app.get("/goi-y-dong", async (c) => c.json(await cachedReport(c.env.DB, "dm:goi-y-dong:v3", ["eo", "amis", "settings"], async () => {
   const [lk, dt, ld] = await Promise.all([
     c.env.DB.prepare(
       `SELECT ma, ten FROM (
