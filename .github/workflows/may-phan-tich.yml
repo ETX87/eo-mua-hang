@@ -1,0 +1,116 @@
+# ── TRỢ LÝ MÂY · APP PHÂN TÍCH (TRỢ LÝ BA) ──────────────────────────────────────────────────────
+# Chạy khi Trợ lý Mây gắn nhãn `may:phan-tich` vào issue của một ĐỀ XUẤT CẢI TIẾN.
+# Claude Code đọc mã + tài liệu của kho này rồi soạn BRD (tài liệu yêu cầu nghiệp vụ) để Giám đốc duyệt ở Phòng duyệt của Mây.
+# CHỈ ĐỌC: quyền workflow `contents: read`, Claude dùng token của workflow (không dùng token GitHub App), không có Bash/Edit
+#          → không commit, không mở PR, không deploy được. Kết quả là tệp `.may/brd.md` hoặc `.may/cau-hoi.md` trong máy chạy, gửi về Mây qua webhook.
+# Cần secrets: CLAUDE_CODE_OAUTH_TOKEN, MAY_WEBHOOK_SECRET. Cần biến: MAY_APP_ID.
+name: Mây · App phân tích (soạn BRD)
+on:
+  issues:
+    types: [labeled]
+permissions:
+  contents: read
+  issues: read
+concurrency:
+  group: may-${{ github.event.issue.number }}
+  cancel-in-progress: false
+jobs:
+  phan-tich:
+    if: github.event.label.name == 'may:phan-tich'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Lấy mã báo cáo MAY-xxxxx từ tiêu đề issue
+        id: ma
+        env:
+          TIEU_DE: ${{ github.event.issue.title }}
+        run: |
+          MA=$(printf '%s' "$TIEU_DE" | grep -oE 'MAY-[0-9]{5}' | head -1)
+          echo "ma=$MA" >> "$GITHUB_OUTPUT"
+      - name: Gom yêu cầu (issue + mọi bình luận) vào .may/yeu-cau.md
+        if: steps.ma.outputs.ma != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SO: ${{ github.event.issue.number }}
+        run: |
+          rm -rf .may && mkdir -p .may
+          gh api "repos/$GITHUB_REPOSITORY/issues/$SO" --jq '"# " + .title + "\n\n" + (.body // "")' > .may/yeu-cau.md
+          gh api "repos/$GITHUB_REPOSITORY/issues/$SO/comments?per_page=100" --paginate \
+            --jq '.[] | "\n\n---\n### Bình luận lúc " + .created_at + "\n\n" + (.body // "")' >> .may/yeu-cau.md
+          wc -c .may/yeu-cau.md
+      - name: Claude Code đọc mã, soạn BRD (chỉ đọc)
+        id: claude
+        if: steps.ma.outputs.ma != ''
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: |
+            --allowedTools "Read,Glob,Grep,Write,TodoWrite"
+            --disallowedTools "Bash,Edit,NotebookEdit,WebFetch,WebSearch"
+            --max-turns 60
+          prompt: |
+            KHO: ${{ github.repository }} · MÃ YÊU CẦU: ${{ steps.ma.outputs.ma }}
+
+            Bạn là người phân tích nghiệp vụ (BA) của app này. Một nhân viên vừa gửi ĐỀ XUẤT CẢI TIẾN qua Trợ lý Mây.
+            Trước khi ai sửa mã, Giám đốc cần một tài liệu yêu cầu nghiệp vụ (BRD) để quyết định có làm hay không.
+            Việc của bạn: đọc mã và tài liệu của kho này, rồi viết BRD đó. Giám đốc đọc trên điện thoại và duyệt dựa
+            vào đúng những gì bạn viết, nên điều quan trọng nhất là BRD phản ánh ĐÚNG hệ thống đang chạy, không phỏng đoán.
+
+            LẦN CHẠY NÀY CHỈ ĐỌC. Không sửa tệp mã nào, không commit, không mở PR. Bạn chỉ được ghi vào thư mục `.may/`.
+
+            Làm theo thứ tự:
+            1. Đọc `.may/yeu-cau.md`: nội dung đề xuất và mọi bình luận. Bình luận về sau có thể là trả lời của người đề xuất,
+               hoặc chỉ đạo của Giám đốc yêu cầu soạn lại (kèm BRD bản trước) — khi đó sửa theo chỉ đạo, giữ phần đã đúng.
+            2. Đọc `CLAUDE.md`, `SRS.md`, `TONG_HOP_LOGIC.md` (nếu có) để nắm luật và logic của app.
+            3. Tìm trong mã phần liên quan đến đề xuất: màn hình, hàm, dữ liệu, phân quyền. Đọc đủ để mô tả hiện trạng
+               bằng dẫn chứng cụ thể (đường dẫn tệp, tên hàm). Điều gì không tìm thấy trong mã thì ghi rõ là không tìm thấy.
+            4. Chọn MỘT trong hai kết quả:
+
+            (A) Đủ thông tin → ghi BRD vào `.may/brd.md`, tiếng Việt, Markdown, đúng 12 mục theo thứ tự này:
+              ## 1. Yêu cầu gốc — mã yêu cầu, người đề xuất (tên, chức danh), nguyên văn đề xuất.
+              ## 2. Hiện trạng — app đang làm gì ở phần liên quan; mỗi ý kèm dẫn chứng `đường/dẫn/tệp` hoặc tên tài liệu.
+              ## 3. Mục tiêu — làm xong thì khác gì so với hiện nay, viết cho người không đọc mã.
+              ## 4. Phạm vi — hai danh sách: "Làm" và "Không làm".
+              ## 5. Quy tắc nghiệp vụ — mỗi quy tắc là một câu kiểm tra được (ai, khi nào, điều kiện gì, kết quả gì).
+              ## 6. Thay đổi dự kiến — màn hình, dữ liệu (trường/bảng thêm hoặc đổi), phân quyền.
+              ## 7. Ảnh hưởng — nhóm người dùng nào, app nào khác dùng chung dữ liệu hoặc đăng nhập, dữ liệu cũ xử lý ra sao.
+              ## 8. Tiêu chí nghiệm thu — danh sách đánh số, mỗi dòng đo được, để làm xong đối chiếu từng dòng.
+              ## 9. Rủi ro và vùng nhạy cảm — đăng nhập, phân quyền, dữ liệu cá nhân, tiền, cấu hình Firebase, luật bảo mật.
+              ## 10. Chi phí vận hành phát sinh — nếu có (dịch vụ trả tiền, lượt gọi AI, lưu trữ); không có thì ghi "Không".
+              ## 11. Câu hỏi còn mở — điều bạn không tự trả lời được từ mã và tài liệu; không có thì ghi "Không".
+              ## 12. Độ lớn ước lượng — Nhỏ / Vừa / Lớn, kèm một câu lý do.
+              Viết gọn, câu đầy đủ, không dùng từ viết tắt tự đặt. Mục nào không áp dụng thì ghi "Không áp dụng" chứ không bỏ mục.
+
+            (B) Đề xuất quá mơ hồ, thiếu điều mà không có thì không viết được phạm vi hay tiêu chí nghiệm thu
+                → KHÔNG ghi `.may/brd.md`; ghi tối đa 5 câu hỏi vào `.may/cau-hoi.md`.
+                Các câu hỏi này được gửi thẳng cho nhân viên đề xuất, người không biết gì về mã. Vì vậy hỏi bằng lời công việc
+                thường ngày, tuyệt đối không nhắc tên tệp, tên hàm, tên bảng dữ liệu hay cách hệ thống hoạt động.
+                Nếu trong `.may/yeu-cau.md` có dòng "Đã hết lượt hỏi lại" thì không được chọn (B): viết BRD với thông tin
+                đang có và ghi điều còn thiếu vào mục 11.
+
+            Ràng buộc cho cả hai tệp: không chép số điện thoại, CCCD, email cá nhân, số tiền của khách hàng hay nhân sự,
+            khoá bí mật hoặc nội dung tệp `.env`/`secrets` vào — BRD được lưu lại lâu dài trong kho mã.
+            Không viết mã sửa lỗi, không đề xuất tên biến; BRD mô tả CẦN GÌ, phần làm thế nào để bước sau quyết.
+      - name: Báo Mây — kết quả phân tích
+        if: always() && steps.ma.outputs.ma != ''
+        env:
+          MA: ${{ steps.ma.outputs.ma }}
+          APP: ${{ vars.MAY_APP_ID }}
+          KHOA: ${{ secrets.MAY_WEBHOOK_SECRET }}
+          KET_LUAN: ${{ steps.claude.outputs.conclusion }}
+          SO_CHAY: ${{ github.run_number }}
+        run: |
+          if [ -s .may/brd.md ]; then
+            jq -n --arg id "$MA" --rawfile brd .may/brd.md '{id:$id,suKien:"brd_xong",brd:$brd}' > /tmp/may.json
+          elif [ -s .may/cau-hoi.md ]; then
+            jq -n --arg id "$MA" --rawfile ch .may/cau-hoi.md '{id:$id,suKien:"brd_can_hoi",cauHoi:$ch}' > /tmp/may.json
+          else
+            jq -n --arg id "$MA" --arg gc "Phân tích không tạo được BRD (claude: ${KET_LUAN:-không chạy} · workflow #$SO_CHAY)" '{id:$id,suKien:"that_bai",ghiChu:$gc}' > /tmp/may.json
+          fi
+          jq -r '.suKien' /tmp/may.json
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/$APP" \
+            -H "Content-Type: application/json" -H "X-May-Secret: $KHOA" \
+            --data-binary @/tmp/may.json
