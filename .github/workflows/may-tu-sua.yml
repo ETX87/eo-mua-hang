@@ -26,15 +26,22 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Lấy mã báo cáo MAY-xxxxx từ tiêu đề issue
         id: ma
+        # AN TOÀN: mọi giá trị lấy từ GitHub (tiêu đề issue, tên nhánh, đầu ra bước trước…) đi qua `env:` rồi dùng biến shell — KHÔNG nhúng thẳng biểu thức vào `run:` (tiêu đề do người dùng gõ, có thể chứa lệnh).
+        env:
+          TIEU_DE: ${{ github.event.issue.title }}
         run: |
-          MA=$(echo "${{ github.event.issue.title }}" | grep -oE 'MAY-[0-9]{5}' | head -1)
+          MA=$(printf '%s' "$TIEU_DE" | grep -oE 'MAY-[0-9]{5}' | head -1)
           echo "ma=$MA" >> "$GITHUB_OUTPUT"
       - name: Báo Mây — đang sửa
         if: steps.ma.outputs.ma != ''
+        env:
+          MA: ${{ steps.ma.outputs.ma }}
+          APP: ${{ vars.MAY_APP_ID }}
+          KHOA: ${{ secrets.MAY_WEBHOOK_SECRET }}
         run: |
-          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/${{ vars.MAY_APP_ID }}" \
-            -H "Content-Type: application/json" -H "X-May-Secret: ${{ secrets.MAY_WEBHOOK_SECRET }}" \
-            -d "{\"id\":\"${{ steps.ma.outputs.ma }}\",\"suKien\":\"dang_sua\",\"ghiChu\":\"workflow #${{ github.run_number }}\"}"
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/$APP" \
+            -H "Content-Type: application/json" -H "X-May-Secret: $KHOA" \
+            -d "{\"id\":\"$MA\",\"suKien\":\"dang_sua\",\"ghiChu\":\"workflow #$GITHUB_RUN_NUMBER\"}"
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - name: Xác thực Google (WIF — chỉ đọc dữ liệu + log, không khoá)
@@ -82,32 +89,42 @@ jobs:
           # Token mặc định của workflow (token Claude App đã bị thu hồi khi bước Claude kết thúc).
           # Kiểm tra PR chạy theo sự kiện PUSH nhánh may/** (Claude đẩy) nên không cần PR do App tạo.
           GH_TOKEN: ${{ github.token }}
+          MA: ${{ steps.ma.outputs.ma }}
+          NHANH_CLAUDE: ${{ steps.claude.outputs.branch_name }}
+          TIEU_DE: ${{ github.event.issue.title }}
+          SO: ${{ github.event.issue.number }}
+          NHANH_CHINH: ${{ github.event.repository.default_branch }}
         run: |
-          NHANH="may/$(echo '${{ steps.ma.outputs.ma }}' | tr 'A-Z' 'a-z')"
-          [ -n "${{ steps.claude.outputs.branch_name }}" ] && NHANH="${{ steps.claude.outputs.branch_name }}"
+          NHANH="may/$(printf '%s' "$MA" | tr 'A-Z' 'a-z')"
+          [ -n "$NHANH_CLAUDE" ] && NHANH="$NHANH_CLAUDE"
           # Kiểm nhánh qua API (không dùng git fetch: sau bước Claude, credential git của checkout có thể đã bị thay).
-          gh api "repos/${{ github.repository }}/branches/$NHANH" >/dev/null 2>&1 || { echo "Không có nhánh $NHANH"; echo "url=" >> "$GITHUB_OUTPUT"; exit 0; }
-          PR=$(gh pr list --repo "${{ github.repository }}" --head "$NHANH" --state open --json url -q '.[0].url')
+          gh api "repos/$GITHUB_REPOSITORY/branches/$NHANH" >/dev/null 2>&1 || { echo "Không có nhánh $NHANH"; echo "url=" >> "$GITHUB_OUTPUT"; exit 0; }
+          PR=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$NHANH" --state open --json url -q '.[0].url')
           if [ -z "$PR" ]; then
-            MOTA="Closes #${{ github.event.issue.number }}"
-            if gh api "repos/${{ github.repository }}/contents/.may-pr.md?ref=$NHANH" --jq .content 2>/dev/null | base64 -d > /tmp/pr.md 2>/dev/null && [ -s /tmp/pr.md ]; then MOTA="$(cat /tmp/pr.md)"$'\n\n'"Closes #${{ github.event.issue.number }}"; fi
-            PR=$(gh pr create --repo "${{ github.repository }}" --head "$NHANH" --base "${{ github.event.repository.default_branch }}" --title "${{ github.event.issue.title }}" --body "$MOTA")
+            MOTA="Closes #$SO"
+            if gh api "repos/$GITHUB_REPOSITORY/contents/.may-pr.md?ref=$NHANH" --jq .content 2>/dev/null | base64 -d > /tmp/pr.md 2>/dev/null && [ -s /tmp/pr.md ]; then MOTA="$(cat /tmp/pr.md)"$'\n\n'"Closes #$SO"; fi
+            PR=$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$NHANH" --base "$NHANH_CHINH" --title "$TIEU_DE" --body "$MOTA")
           fi
           echo "url=$PR" >> "$GITHUB_OUTPUT"; echo "PR: $PR"
       - name: Báo Mây — kết quả
         if: always() && steps.ma.outputs.ma != ''
-        run: |
-          PR="${{ steps.pr.outputs.url }}"
-          if [ -n "$PR" ]; then SK=pr_mo; else SK=that_bai; fi
-          # Không có PR → gửi kèm kết luận cuối của Claude (bình luận bot mới nhất, 600 ký tự) để Mây/Giám đốc biết VÌ SAO, không chỉ "claude: success".
-          GC="claude: ${{ steps.claude.outputs.conclusion }}"
-          if [ -z "$PR" ]; then
-            KL=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments?per_page=100" --jq '[.[] | select(.user.type=="Bot")] | last | .body // ""' 2>/dev/null | tr -d '\r' | head -c 600)
-            [ -n "$KL" ] && GC="$GC · $KL"
-          fi
-          jq -n --arg id "${{ steps.ma.outputs.ma }}" --arg sk "$SK" --arg pr "$PR" --arg gc "$GC" '{id:$id,suKien:$sk,pr:$pr,ghiChu:$gc}' > /tmp/may.json
-          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/${{ vars.MAY_APP_ID }}" \
-            -H "Content-Type: application/json" -H "X-May-Secret: ${{ secrets.MAY_WEBHOOK_SECRET }}" \
-            --data-binary @/tmp/may.json
         env:
           GH_TOKEN: ${{ github.token }}
+          MA: ${{ steps.ma.outputs.ma }}
+          PR: ${{ steps.pr.outputs.url }}
+          KET_LUAN: ${{ steps.claude.outputs.conclusion }}
+          SO: ${{ github.event.issue.number }}
+          APP: ${{ vars.MAY_APP_ID }}
+          KHOA: ${{ secrets.MAY_WEBHOOK_SECRET }}
+        run: |
+          if [ -n "$PR" ]; then SK=pr_mo; else SK=that_bai; fi
+          # Không có PR → gửi kèm kết luận cuối của Claude (bình luận bot mới nhất, 600 ký tự) để Mây/Giám đốc biết VÌ SAO, không chỉ "claude: success".
+          GC="claude: $KET_LUAN"
+          if [ -z "$PR" ]; then
+            KL=$(gh api "repos/$GITHUB_REPOSITORY/issues/$SO/comments?per_page=100" --jq '[.[] | select(.user.type=="Bot")] | last | .body // ""' 2>/dev/null | tr -d '\r' | head -c 600)
+            [ -n "$KL" ] && GC="$GC · $KL"
+          fi
+          jq -n --arg id "$MA" --arg sk "$SK" --arg pr "$PR" --arg gc "$GC" '{id:$id,suKien:$sk,pr:$pr,ghiChu:$gc}' > /tmp/may.json
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/$APP" \
+            -H "Content-Type: application/json" -H "X-May-Secret: $KHOA" \
+            --data-binary @/tmp/may.json

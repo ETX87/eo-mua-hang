@@ -24,14 +24,19 @@ jobs:
           if [ -f package.json ]; then if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi && npm run build; else echo "Không có package.json — bỏ qua build"; fi
       - name: Mã báo cáo
         id: ma
-        run: echo "ma=$(echo '${{ github.ref_name }}' | grep -oiE 'may-[0-9]{5}' | tr a-z A-Z | head -1)" >> "$GITHUB_OUTPUT"
+        # AN TOÀN: tên nhánh lấy từ biến môi trường có sẵn GITHUB_REF_NAME — KHÔNG nhúng thẳng biểu thức vào `run:` (tên nhánh có thể chứa ký tự lệnh).
+        run: echo "ma=$(printf '%s' "$GITHUB_REF_NAME" | grep -oiE 'may-[0-9]{5}' | tr a-z A-Z | head -1)" >> "$GITHUB_OUTPUT"
       - name: Báo Mây
         if: always() && steps.ma.outputs.ma != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          MA: ${{ steps.ma.outputs.ma }}
+          TRANG_THAI: ${{ job.status }}
+          APP: ${{ vars.MAY_APP_ID }}
+          KHOA: ${{ secrets.MAY_WEBHOOK_SECRET }}
         run: |
-          SK=$([ "${{ job.status }}" = "success" ] && echo kiem_tra_xanh || echo kiem_tra_do)
-          PR=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --state open --json url -q '.[0].url' 2>/dev/null || true)
-          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/${{ vars.MAY_APP_ID }}" \
-            -H "Content-Type: application/json" -H "X-May-Secret: ${{ secrets.MAY_WEBHOOK_SECRET }}" \
-            -d "{\"id\":\"${{ steps.ma.outputs.ma }}\",\"suKien\":\"$SK\",\"pr\":\"$PR\"}"
+          SK=$([ "$TRANG_THAI" = "success" ] && echo kiem_tra_xanh || echo kiem_tra_do)
+          PR=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --json url -q '.[0].url' 2>/dev/null || true)
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/$APP" \
+            -H "Content-Type: application/json" -H "X-May-Secret: $KHOA" \
+            -d "{\"id\":\"$MA\",\"suKien\":\"$SK\",\"pr\":\"$PR\"}"
