@@ -95,6 +95,25 @@ jobs:
               ## Câu hỏi còn mở — trùng với mục 3 của Phần 1 nhưng có thể chi tiết hơn; không có thì "Không".
               Mục nào không áp dụng thì ghi "Không áp dụng", không bỏ mục.
 
+              TRƯỜNG HỢP APP ĐÃ CÓ SẴN (Giám đốc dặn 17/11/2026, việc MAY-00479): nếu điều người đề xuất muốn ĐÃ LÀM ĐƯỢC
+              bằng chức năng hiện có (người dùng chỉ không tìm thấy nút, hoặc chưa biết cách làm), thì KHÔNG đề xuất sửa app,
+              không bày thêm phương án "tuỳ Giám đốc". Phần 1 viết như sau:
+              ## 1. Phân tích hiện trạng
+              - Một câu: "App đã có sẵn chức năng này, không cần sửa." + một câu nói vì sao người dùng tưởng là không có.
+              ## 2. Đề xuất xử lý
+              Gửi hướng dẫn sau cho người đề xuất (viết sẵn, người dùng làm theo được ngay, tên menu/nút ghi ĐÚNG chữ trên màn hình,
+              trong ngoặc kép; trên điện thoại nút ghi tắt thì ghi cả hai):
+              **Cách 1:** Vào "<menu>" → "<mục>" → chạm phiếu/đơn → bấm "<nút>" → điền … → bấm "<nút lưu>".
+              **Cách 2:** (đường khác, ví dụ tìm theo mã) …
+              **Lưu ý:** trường hợp nút bị khoá hoặc không hiện và cần ai làm gì (tối đa 2 dòng).
+              Độ lớn: Không cần sửa app.
+              ## 3. Cần Giám đốc bổ sung
+              Không.
+              Phần 2 khi đó chỉ cần: Yêu cầu gốc, Hiện trạng chi tiết (dẫn chứng tệp chứng minh chức năng đã có), các mục khác ghi "Không áp dụng".
+              Nếu chỉ MỘT PHẦN đã có sẵn: phần có sẵn viết hướng dẫn như trên; phần còn thiếu mới đề xuất sửa.
+              Phần đề xuất thay đổi quy trình mà Giám đốc đã chốt (ví dụ bỏ một bước duyệt) thì không đề xuất làm; ghi một dòng
+              "Quy trình hiện hành do Giám đốc chốt <ngày>: <tóm tắt>" để Giám đốc tự quyết.
+
             (B) Đề xuất quá mơ hồ, thiếu điều mà không có thì không viết được phạm vi hay tiêu chí nghiệm thu
                 → KHÔNG ghi `.may/brd.md`; ghi tối đa 5 câu hỏi vào `.may/cau-hoi.md`.
                 Các câu hỏi này được gửi thẳng cho nhân viên đề xuất, người không biết gì về mã. Vì vậy hỏi bằng lời công việc
