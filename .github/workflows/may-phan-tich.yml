@@ -13,7 +13,7 @@ permissions:
   issues: read
 jobs:
   phan-tich:
-    if: github.event.label.name == 'may:phan-tich'
+    if: github.event.label.name == 'may:phan-tich' || github.event.label.name == 'may:y-tuong'
     # Khoá chạy đặt ở MỨC JOB (17/11/2026, MAY-00491): đặt ở mức workflow thì mọi sự kiện gắn nhãn (kể cả nhãn khác, job bị bỏ qua)
     # đều vào cùng nhóm và huỷ lượt đang chờ của nhãn thật. Ở mức job chỉ lượt thật sự chạy mới vào nhóm.
     concurrency:
@@ -54,7 +54,29 @@ jobs:
             --disallowedTools "Bash,Edit,NotebookEdit,WebFetch,WebSearch"
             --max-turns 60
           prompt: |
-            KHO: ${{ github.repository }} · MÃ YÊU CẦU: ${{ steps.ma.outputs.ma }}
+            KHO: ${{ github.repository }} · MÃ YÊU CẦU: ${{ steps.ma.outputs.ma }} · NHÃN: ${{ github.event.label.name }}
+
+            ══ NẾU NHÃN LÀ `may:y-tuong` — CHẾ ĐỘ Ý TƯỞNG (luồng mới, Giám đốc chốt 18/11/2026) ══
+            CHƯA viết BRD. Đọc `.may/yeu-cau.md`, `CLAUDE.md`, `SRS.md`, `TONG_HOP_LOGIC.md` và phần mã liên quan để hiểu ĐÚNG
+            hiện trạng, rồi ghi DUY NHẤT tệp `.may/y-tuong.md` (KHÔNG ghi `.may/brd.md`, KHÔNG ghi `.may/cau-hoi.md`).
+            Viết cho dân văn phòng, gạch đầu dòng, không tên tệp/hàm/bảng (trừ chữ trên màn hình hoặc giá trị dữ liệu nguyên văn
+            cần để lọc, đặt trong ngoặc kép). Việc NHỎ ≤ 150 từ, việc LỚN ≤ 300 từ. Đúng khung:
+              **Độ lớn:** Nhỏ | Lớn
+              ## Tình hình hiện tại
+              - (app đang làm gì ở phần liên quan; vì sao người dùng gặp vấn đề — dựa trên mã, không đoán)
+              ## Cách giải quyết
+              - (cụ thể: người dùng thấy gì / bấm gì / hệ thống làm gì; lọc thì nêu điều kiện chính xác trường = giá trị)
+              ## Không làm
+              - (nếu cần)
+              ## Cần chị chốt
+              - (chỉ điều thật sự phải Giám đốc quyết; không có ghi "Không" — không bịa câu hỏi)
+            App đã làm được rồi (người dùng chỉ không biết cách) → "Cách giải quyết" là hướng dẫn Cách 1 / Cách 2 đúng tên nút.
+            Bình luận "Giám đốc chưa đồng ý hướng trước — lý do" (nếu có) là điều PHẢI sửa ở bản mới.
+            Ở chế độ này BỎ QUA toàn bộ phần hướng dẫn BRD bên dưới.
+
+            ══ NẾU NHÃN LÀ `may:phan-tich` — VIẾT BRD ══
+            Nếu có bình luận "Giám đốc đã DUYỆT hướng giải quyết" thì BRD làm ĐÚNG hướng đó, dạng logic ngắn gọn, không mở rộng;
+            mục "Cần Giám đốc bổ sung" chỉ ghi điều thật sự cần (không có ghi "Không").
 
             Bạn là người phân tích nghiệp vụ (BA) của app này. Một nhân viên vừa gửi ĐỀ XUẤT CẢI TIẾN qua Trợ lý Mây.
             Trước khi ai sửa mã, Giám đốc cần một tài liệu yêu cầu nghiệp vụ (BRD) để quyết định có làm hay không.
@@ -150,7 +172,9 @@ jobs:
           KET_LUAN: ${{ steps.claude.outputs.conclusion }}
           SO_CHAY: ${{ github.run_number }}
         run: |
-          if [ -s .may/brd.md ]; then
+          if [ -s .may/y-tuong.md ]; then
+            jq -n --arg id "$MA" --rawfile yt .may/y-tuong.md '{id:$id,suKien:"y_tuong_xong",yTuong:$yt}' > /tmp/may.json
+          elif [ -s .may/brd.md ]; then
             jq -n --arg id "$MA" --rawfile brd .may/brd.md '{id:$id,suKien:"brd_xong",brd:$brd}' > /tmp/may.json
           elif [ -s .may/cau-hoi.md ]; then
             jq -n --arg id "$MA" --rawfile ch .may/cau-hoi.md '{id:$id,suKien:"brd_can_hoi",cauHoi:$ch}' > /tmp/may.json
