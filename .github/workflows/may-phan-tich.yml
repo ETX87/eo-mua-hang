@@ -69,27 +69,38 @@ jobs:
                bằng dẫn chứng cụ thể (đường dẫn tệp, tên hàm). Điều gì không tìm thấy trong mã thì ghi rõ là không tìm thấy.
             4. Chọn MỘT trong hai kết quả:
 
-            (A) Đủ thông tin → ghi BRD vào `.may/brd.md`, tiếng Việt, Markdown, đúng 12 mục theo thứ tự này:
-              ## 1. Yêu cầu gốc — mã yêu cầu, người đề xuất (tên, chức danh), nguyên văn đề xuất.
-              ## 2. Hiện trạng — app đang làm gì ở phần liên quan; mỗi ý kèm dẫn chứng `đường/dẫn/tệp` hoặc tên tài liệu.
-              ## 3. Mục tiêu — làm xong thì khác gì so với hiện nay, viết cho người không đọc mã.
-              ## 4. Phạm vi — hai danh sách: "Làm" và "Không làm".
-              ## 5. Quy tắc nghiệp vụ — mỗi quy tắc là một câu kiểm tra được (ai, khi nào, điều kiện gì, kết quả gì).
-              ## 6. Thay đổi dự kiến — màn hình, dữ liệu (trường/bảng thêm hoặc đổi), phân quyền.
-              ## 7. Ảnh hưởng — nhóm người dùng nào, app nào khác dùng chung dữ liệu hoặc đăng nhập, dữ liệu cũ xử lý ra sao.
-              ## 8. Tiêu chí nghiệm thu — danh sách đánh số, mỗi dòng đo được, để làm xong đối chiếu từng dòng.
-              ## 9. Rủi ro và vùng nhạy cảm — đăng nhập, phân quyền, dữ liệu cá nhân, tiền, cấu hình Firebase, luật bảo mật.
-              ## 10. Chi phí vận hành phát sinh — nếu có (dịch vụ trả tiền, lượt gọi AI, lưu trữ); không có thì ghi "Không".
-              ## 11. Câu hỏi còn mở — điều bạn không tự trả lời được từ mã và tài liệu; không có thì ghi "Không".
-              ## 12. Độ lớn ước lượng — Nhỏ / Vừa / Lớn, kèm một câu lý do.
-              Viết gọn, câu đầy đủ, không dùng từ viết tắt tự đặt. Mục nào không áp dụng thì ghi "Không áp dụng" chứ không bỏ mục.
+            (A) Đủ thông tin → ghi BRD vào `.may/brd.md`, tiếng Việt, Markdown, gồm HAI PHẦN theo đúng các tiêu đề dưới đây:
+
+              # PHẦN 1 — CHO GIÁM ĐỐC
+              Giám đốc đọc phần này trên điện thoại để quyết định. Tổng cộng KHÔNG QUÁ 200 chữ. Viết bằng lời công việc,
+              KHÔNG nêu tên tệp, tên hàm, tên bảng dữ liệu. Mỗi mục 2–5 gạch đầu dòng, mỗi gạch một câu.
+              ## 1. Phân tích hiện trạng
+              (App đang làm gì ở phần liên quan; điều gì khác với đề xuất. Không tìm thấy trong app thì nói rõ.)
+              ## 2. Đề xuất xử lý
+              (Làm gì, ai bị ảnh hưởng. Dòng cuối: "Độ lớn: Nhỏ / Vừa / Lớn — <một câu lý do>".)
+              ## 3. Cần Giám đốc bổ sung
+              (Điều phải Giám đốc quyết hoặc cho thêm thông tin, mỗi điều một câu hỏi rõ. Không có thì ghi "Không".)
+
+              # PHẦN 2 — CHI TIẾT
+              Dành cho người thẩm định độc lập và cho người làm. Viết đủ nhưng gọn; việc nhỏ thì mỗi mục 1–3 dòng.
+              ## Yêu cầu gốc — mã yêu cầu, người đề xuất (tên, chức danh), nguyên văn đề xuất.
+              ## Hiện trạng chi tiết — mỗi ý kèm dẫn chứng `đường/dẫn/tệp` hoặc tên tài liệu.
+              ## Phạm vi — hai danh sách: "Làm" và "Không làm".
+              ## Quy tắc nghiệp vụ — mỗi quy tắc một câu kiểm tra được.
+              ## Thay đổi dự kiến — màn hình, dữ liệu, phân quyền.
+              ## Ảnh hưởng — nhóm người dùng, app khác dùng chung dữ liệu hoặc đăng nhập, dữ liệu cũ.
+              ## Tiêu chí nghiệm thu — danh sách đánh số, mỗi dòng đo được.
+              ## Rủi ro và vùng nhạy cảm — đăng nhập, phân quyền, dữ liệu cá nhân, tiền, cấu hình Firebase, luật bảo mật.
+              ## Chi phí vận hành phát sinh — không có thì ghi "Không".
+              ## Câu hỏi còn mở — trùng với mục 3 của Phần 1 nhưng có thể chi tiết hơn; không có thì "Không".
+              Mục nào không áp dụng thì ghi "Không áp dụng", không bỏ mục.
 
             (B) Đề xuất quá mơ hồ, thiếu điều mà không có thì không viết được phạm vi hay tiêu chí nghiệm thu
                 → KHÔNG ghi `.may/brd.md`; ghi tối đa 5 câu hỏi vào `.may/cau-hoi.md`.
                 Các câu hỏi này được gửi thẳng cho nhân viên đề xuất, người không biết gì về mã. Vì vậy hỏi bằng lời công việc
                 thường ngày, tuyệt đối không nhắc tên tệp, tên hàm, tên bảng dữ liệu hay cách hệ thống hoạt động.
                 Nếu trong `.may/yeu-cau.md` có dòng "Đã hết lượt hỏi lại" thì không được chọn (B): viết BRD với thông tin
-                đang có và ghi điều còn thiếu vào mục 11.
+                đang có và ghi điều còn thiếu vào mục 3 của Phần 1 và mục "Câu hỏi còn mở".
 
             Ràng buộc cho cả hai tệp: không chép số điện thoại, CCCD, email cá nhân, số tiền của khách hàng hay nhân sự,
             khoá bí mật hoặc nội dung tệp `.env`/`secrets` vào — BRD được lưu lại lâu dài trong kho mã.
