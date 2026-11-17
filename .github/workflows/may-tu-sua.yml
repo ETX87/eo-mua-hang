@@ -13,12 +13,14 @@ permissions:
   pull-requests: write
   issues: write
   id-token: write
-concurrency:
-  group: may-${{ github.event.issue.number }}
-  cancel-in-progress: false
 jobs:
   tu-sua:
     if: github.event.label.name == 'may:tu-sua'
+    # Khoá chạy đặt ở MỨC JOB (17/11/2026, MAY-00491): đặt ở mức workflow thì mọi sự kiện gắn nhãn (kể cả nhãn khác, job bị bỏ qua)
+    # đều vào cùng nhóm và huỷ lượt đang chờ của nhãn thật. Ở mức job chỉ lượt thật sự chạy mới vào nhóm.
+    concurrency:
+      group: may-${{ github.event.issue.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

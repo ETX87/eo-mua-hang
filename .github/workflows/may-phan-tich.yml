@@ -11,12 +11,14 @@ on:
 permissions:
   contents: read
   issues: read
-concurrency:
-  group: may-${{ github.event.issue.number }}
-  cancel-in-progress: false
 jobs:
   phan-tich:
     if: github.event.label.name == 'may:phan-tich'
+    # Khoá chạy đặt ở MỨC JOB (17/11/2026, MAY-00491): đặt ở mức workflow thì mọi sự kiện gắn nhãn (kể cả nhãn khác, job bị bỏ qua)
+    # đều vào cùng nhóm và huỷ lượt đang chờ của nhãn thật. Ở mức job chỉ lượt thật sự chạy mới vào nhóm.
+    concurrency:
+      group: may-${{ github.event.issue.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -77,7 +79,9 @@ jobs:
               ## 1. Phân tích hiện trạng
               (App đang làm gì ở phần liên quan; điều gì khác với đề xuất. Không tìm thấy trong app thì nói rõ.)
               ## 2. Đề xuất xử lý
-              (Làm gì, ai bị ảnh hưởng. Dòng cuối: "Độ lớn: Nhỏ / Vừa / Lớn — <một câu lý do>".)
+              (Đề xuất CỤ THỂ chức năng sẽ chạy thế nào: người dùng thấy gì, ở màn nào, bấm gì, hệ thống làm gì.
+               Nếu là lọc / loại / phân nhóm: nêu điều kiện lọc bằng lời nhưng chính xác — trường nào, giá trị nguyên văn nào.
+               Ai bị ảnh hưởng. Dòng cuối: "Độ lớn: Nhỏ / Vừa / Lớn — <một câu lý do>".)
               ## 3. Cần Giám đốc bổ sung
               (Điều phải Giám đốc quyết hoặc cho thêm thông tin, mỗi điều một câu hỏi rõ. Không có thì ghi "Không".)
 
@@ -94,6 +98,19 @@ jobs:
               ## Chi phí vận hành phát sinh — không có thì ghi "Không".
               ## Câu hỏi còn mở — trùng với mục 3 của Phần 1 nhưng có thể chi tiết hơn; không có thì "Không".
               Mục nào không áp dụng thì ghi "Không áp dụng", không bỏ mục.
+
+              PHÂN TÍCH SÂU, KHÔNG CHUNG CHUNG (Giám đốc dặn 17/11/2026, việc MAY-00481, MAY-00491):
+              - Bạn là người đề xuất giải pháp, không phải người chuyển câu hỏi. Điều gì tự tìm được trong mã, tài liệu, hằng số,
+                câu truy vấn, dữ liệu mẫu, lịch sử commit thì TỰ TÌM rồi viết ra; không đẩy sang mục "Cần Giám đốc bổ sung".
+              - Đề xuất lọc / loại / tách nhóm bản ghi: viết mục "## Nhận diện" trong Phần 2 với bảng
+                | Nhóm | Đặc điểm nhận diện (trường = giá trị nguyên văn) | Nguồn dẫn chứng |
+                cho TỪNG nhóm liên quan, gồm cả nhóm phải loại và nhóm dễ nhầm phải GIỮ (vd. đơn KD dịch vụ Miền Tây khác đơn NSKX
+                ở trường nào, giá trị nào). Rồi viết "Điều kiện lọc đề xuất" thành câu chính xác (vd. loại khi loại lead = "…" VÀ
+                tên KTV bắt đầu "…"). Phần 1 mục 2 nhắc lại điều kiện này bằng lời ngắn.
+              - Chưa chắc giá trị nào đúng: vẫn chọn phương án hợp lý nhất làm MẶC ĐỊNH, ghi rõ vì sao, rồi chỉ hỏi Giám đốc
+                một câu xác nhận ("Đồng ý mặc định … không?"). Không liệt kê nhiều phương án để Giám đốc tự chọn.
+              - Đề xuất tính năng mới (thêm mục chọn, thêm danh sách…): mô tả cụ thể người dùng thấy gì, chọn gì, kết quả ra sao,
+                dữ liệu thêm vào đâu, ai được sửa. Giám đốc không phải tự viết đặc tả.
 
               TRƯỜNG HỢP APP ĐÃ CÓ SẴN (Giám đốc dặn 17/11/2026, việc MAY-00479): nếu điều người đề xuất muốn ĐÃ LÀM ĐƯỢC
               bằng chức năng hiện có (người dùng chỉ không tìm thấy nút, hoặc chưa biết cách làm), thì KHÔNG đề xuất sửa app,
