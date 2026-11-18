@@ -145,7 +145,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     try { await api.post(`/eo/items/${r.id}/approve-post-issue`); qc.invalidateQueries(); }
     catch (e: any) { setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt mua của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
   };
-  const loiCho = (b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").length;
+  // v0.093: dem VI PHAM GOP (cung loi + cung PO + cung ky) dang cho, khong dem tung dong
+  const loiCho = new Set((b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").map((l: any) => l.vp_khoa ?? l.id)).size;
   // nguoi phu trach tung giai doan -> "Van de theo buoc" (ai tre han)
   const nguoiTD = [...new Set(d.approvals.filter((a: any) => a.step_type === "REVIEW" && a.submission_id === eo.current_submission_id).map((a: any) => ten(a.approver_email)))].join(", ");
   const ncc = [...new Set(activeItems.map((i: any) => i.supplier).filter(Boolean))].join(", ");
@@ -224,7 +225,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     { k: "duyet", l: `Quy trình duyệt (${d.submissions.length})` },
     { k: "file", l: `Tài liệu (${d.files.length})` },
     { k: "mail", l: `Mail & push (${mailGop.length + (b?.push ?? []).length})` },
-    { k: "loi", l: `Mã lỗi & giải trình (${(b?.loi ?? []).length})` },
+    { k: "loi", l: `Mã lỗi & giải trình (${new Set((b?.loi ?? []).map((l: any) => l.vp_khoa ?? l.id)).size} vi phạm)` },
   ];
 
   return (
@@ -240,7 +241,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
           {P.canRecall && <button className="btn sm" onClick={() => setMd({ k: "recall" })}><I.edit width={13} height={13} /> Rút về &amp; sửa</button>}
           {P.canCancel && <button className="btn sm ghost danger" onClick={() => setMd({ k: "cancel" })}><I.x width={13} height={13} /> Hủy EO</button>}
           {P.canKetThucSomPo && !poDone && <button className="btn sm" title="Mọi dòng đang chờ hàng: SL đặt = SL đã về thực tế (xem trước + cảnh báo)" onClick={() => setMd({ k: "kts-po" })}><I.check width={13} height={13} /> Kết thúc sớm PO</button>}
-          {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} lỗi)</button>}
+          {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} vi phạm)</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
@@ -354,7 +355,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   myEmail={me.data?.email} preIssue={!["ISSUED", "CANCELLED"].includes(eo.trang_thai)} />
               </div>
             )}
-            {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId) => qv.openDong(itemId)} />}
+            {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} />}
             {tab === "mail" && (
               <>
                 {coChon && BAT_TAO_MAIL_NHAC && <div className="qv-toolbar"><span className="muted" style={{ fontSize: 12 }}>Tạo push mới: tab <b>Linh kiện</b> → tick dòng còn thiếu → <b>Tạo mail nhắc</b>.</span>

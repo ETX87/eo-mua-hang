@@ -94,5 +94,23 @@ export const maTreGd = (g: string) => CO_DINH.find((x) => x.nhom === "GIAI_DOAN"
 
 /** Gan ma_loi / ten_ma / buoc vao danh sach tl_loi (can doi tac theo dong). */
 export function ganMaLoi<T extends { quy_tac: string; loi_ma: string | null; han: string | null }>(b: BangMaLoi, ds: T[], doiTacCua: (l: T) => string | null | undefined) {
-  return ds.map((l) => { const m = maCuaLoi(b, l, doiTacCua(l)); return { ...l, ma_loi: m.ma, ten_ma: m.ten, buoc: m.buoc }; });
+  return ds.map((l) => { const m = maCuaLoi(b, l, doiTacCua(l)); return { ...l, ma_loi: m.ma, ten_ma: m.ten, buoc: m.buoc, vp_khoa: khoaViPham(l as any) }; });
 }
+
+/**
+ * VI PHAM GOP (v0.093, yeu cau lanh dao 2026-11-18: "cung 1 loi tren cung 1 PO gop thanh 1 vi pham chung" - vd 3/6 dong chua co ngay DK = 1 lan).
+ * tl_loi van ghi theo DONG (biet dong nao) nhung DEM / HIEN / GIAI TRINH theo khoa vi pham:
+ *   R1  = PO (1 PO chua co ngay du kien = 1 vi pham, du bao nhieu dong / bao nhieu moc han)
+ *   R3  = PO + ngay kiem tra (thu 2 / thu 4)
+ *   R4  = PO + ngay du kien bi qua
+ *   TAY = PO + loi gi + ngay ghi
+ * Trang thai 1 vi pham: con dong CHO -> cho giai trinh; het cho: co giai trinh THAT -> da giai trinh; con lai -> tu dong (qua han neu moi dong qua han).
+ * khoaViPham (JS) va VP_SQL (SQL, alias bang tl_loi) phai khop nhau.
+ */
+export const khoaViPham = (l: { eo_id: number; quy_tac: string; ngay_tham_chieu?: string | null; han?: string | null; loi_ma?: string | null; created_at?: string | null }) =>
+  l.quy_tac === "R1" ? `${l.eo_id}|R1`
+    : l.quy_tac === "TAY" ? `${l.eo_id}|TAY|${l.loi_ma ?? ""}|${String(l.created_at ?? "").slice(0, 10)}`
+      : `${l.eo_id}|${l.quy_tac}|${l.ngay_tham_chieu ?? String(l.han ?? "").slice(0, 10)}`;
+export const VP_SQL = (a = "l") =>
+  `CASE ${a}.quy_tac WHEN 'R1' THEN ${a}.eo_id || '|R1' WHEN 'TAY' THEN ${a}.eo_id || '|TAY|' || COALESCE(${a}.loi_ma, '') || '|' || substr(${a}.created_at, 1, 10)
+   ELSE ${a}.eo_id || '|' || ${a}.quy_tac || '|' || COALESCE(${a}.ngay_tham_chieu, substr(${a}.han, 1, 10)) END`;

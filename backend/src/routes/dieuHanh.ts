@@ -5,6 +5,7 @@ import { xemToanBoTheoDoi } from "../lib/eoAccess";
 import { danhGiaQuyTac } from "../lib/theoDoi";
 import { layDongDieuHanh, thongKeGiaiDoan, xuHuong, IM_LANG_DO, IM_LANG_VANG, LOI_CHO_DO } from "../lib/dieuHanh";
 import { ghiNhacNho } from "./viPham";
+import { VP_SQL } from "../lib/maLoi";
 
 /**
  * /api/dieu-hanh - man "Dieu hanh" cho lanh dao (v0.084, ../QUAN_TRI_DIEU_HANH.md). 1 payload: moi dong LK dang mo (muc canh bao,
@@ -31,8 +32,10 @@ app.get("/", async (c) => {
   ]);
   // do phu giai trinh (moi loi trong pham vi theo doi, moi thoi diem) - kem moi so "nguyen nhan" de khong ket luan tu mau qua nho
   const phu = await db.prepare(
-    `SELECT COUNT(*) n, SUM(l.trang_thai = 'DA_GIAI_TRINH' AND COALESCE(g.pham_vi, '') <> 'AUTO') gt, SUM(g.pham_vi = 'AUTO') tu_dong
-     FROM tl_loi l JOIN eo e ON e.id = l.eo_id LEFT JOIN tl_giai_trinh g ON g.id = l.giai_trinh_id WHERE COALESCE(e.issued_at, e.created_at) >= ?`,
+    // v0.093: theo VI PHAM GOP - vi pham "da giai trinh" khi het dong cho va co it nhat 1 giai trinh THAT; con lai tu dong
+    `WITH v AS (SELECT ${VP_SQL("l")} k, MAX(l.trang_thai = 'CHO_GIAI_TRINH') cho, MAX(l.trang_thai = 'DA_GIAI_TRINH' AND COALESCE(g.pham_vi, '') <> 'AUTO') that
+       FROM tl_loi l JOIN eo e ON e.id = l.eo_id LEFT JOIN tl_giai_trinh g ON g.id = l.giai_trinh_id WHERE COALESCE(e.issued_at, e.created_at) >= ? GROUP BY 1)
+     SELECT COUNT(*) n, SUM(cho = 0 AND that = 1) gt, SUM(cho = 0 AND that = 0) tu_dong FROM v`,
   ).bind(goc.bo_qua).first<{ n: number; gt: number; tu_dong: number }>();
   const now = nowVN();
   const gio = (t: string) => Math.max(0, Math.round((Date.parse(now.replace(" ", "T") + "Z") - Date.parse(String(t).replace(" ", "T") + "Z")) / 3600_000));

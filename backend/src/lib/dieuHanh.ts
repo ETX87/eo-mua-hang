@@ -5,6 +5,7 @@ import { layGiaiDoan, GIAI_DOAN } from "./giaiDoan";
 import { nowVN, todayVN } from "./vnTime";
 import { weekStart } from "./week";
 import { versionTag } from "./dataVersions";
+import { VP_SQL } from "./maLoi";
 
 /**
  * BANG DIEU HANH (v0.084, yeu cau lanh dao 2026-11-18 - ../QUAN_TRI_DIEU_HANH.md): ghep "ton <-> nguoi <-> hanh dong <-> nguyen nhan"
@@ -21,7 +22,7 @@ import { versionTag } from "./dataVersions";
 export const IM_LANG_DO = 7;
 export const IM_LANG_VANG = 3;
 export const LOI_CHO_DO = 7;
-const KHOA_CACHE = "dh:goc:v1";
+const KHOA_CACHE = "dh:goc:v2"; // v2 (v0.093): them vp_cho, loi30 dem vi pham gop
 
 const ngayGiua = (a: string, b: string) =>
   Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
@@ -34,7 +35,7 @@ interface HdDong {
   gui?: number; gui7?: number; gui_luc?: string; nhan?: number; nhan_luc?: string; nhan_tt?: string;
   lh?: number; lh7?: number; lh_luc?: string; lh_ai?: string; lh_kq?: string;
   gt?: number; gt7?: number; gt_luc?: string; gt_ai?: string; gt_ai_ma?: string; gt_loi_ma?: string; gt_nd?: string;
-  loi?: number; loi_cho?: number; loi_cho_tu?: string; r1?: number; r3?: number; r4?: number; tay?: number;
+  loi?: number; loi_cho?: number; loi_cho_tu?: string; vp_cho?: string; r1?: number; r3?: number; r4?: number; tay?: number;
   nhac?: number; nhac_luc?: string;
 }
 interface Goc {
@@ -71,14 +72,17 @@ async function docGoc(env: Env): Promise<Goc> {
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(ngay_lien_he >= ?1) n7, MAX(ngay_lien_he) luc, created_by ai, substr(kenh || ': ' || ket_qua, 1, 160) kq FROM tl_lien_he GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(created_at >= ?1) n7, MAX(created_at) luc, created_by ai, ai_ma, loi_ma, substr(noi_dung, 1, 200) nd FROM tl_giai_trinh WHERE COALESCE(pham_vi, '') <> 'AUTO' GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(trang_thai = 'CHO_GIAI_TRINH') cho, MIN(CASE WHEN trang_thai = 'CHO_GIAI_TRINH' THEN COALESCE(han, created_at) END) cho_tu,
-                SUM(quy_tac = 'R1') r1, SUM(quy_tac = 'R3') r3, SUM(quy_tac = 'R4') r4, SUM(quy_tac = 'TAY') tay FROM tl_loi GROUP BY eo_item_id`),
+                SUM(quy_tac = 'R1') r1, SUM(quy_tac = 'R3') r3, SUM(quy_tac = 'R4') r4, SUM(quy_tac = 'TAY') tay,
+                GROUP_CONCAT(DISTINCT CASE WHEN trang_thai = 'CHO_GIAI_TRINH' THEN ${VP_SQL("tl_loi")} END) vp_cho FROM tl_loi GROUP BY eo_item_id`),
     db.prepare("SELECT eo_item_id id, COUNT(*) n, MAX(created_at) luc FROM tl_nhac_nho GROUP BY eo_item_id"),
     db.prepare("SELECT id, eo_id, supplier FROM eo_item"),
     db.prepare("SELECT id, created_by, final_approver_email, trang_thai, issued_at, COALESCE(approval_code, eo_code) ma FROM eo"),
     // nguoi tham dinh "cuoi" (duyet muon nhat) cua lan trinh gan nhat - quy trach nhiem tre G2
     db.prepare(`SELECT s.eo_id, a.approver_email ai, MAX(COALESCE(a.action_at, a.assigned_at)) luc FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
                 WHERE a.step_type = 'REVIEW' AND a.status IN ('APPROVED', 'PENDING') GROUP BY s.eo_id`),
-    db.prepare(`SELECT l.quy_tac qt, COALESCE(l.ai_email, e.created_by) ai, i.supplier ncc, SUM(l.trang_thai = 'CHO_GIAI_TRINH') cho, COUNT(*) n
+    // v0.093: dem VI PHAM GOP (PO + loai + ky - lib/maLoi VP_SQL), khong dem tung dong
+    db.prepare(`SELECT l.quy_tac qt, COALESCE(l.ai_email, e.created_by) ai, i.supplier ncc,
+                COUNT(DISTINCT CASE WHEN l.trang_thai = 'CHO_GIAI_TRINH' THEN ${VP_SQL("l")} END) cho, COUNT(DISTINCT ${VP_SQL("l")}) n
                 FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN eo_item i ON i.id = l.eo_item_id
                 WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1, 2, 3`).bind(d30, boQua),
     db.prepare(`SELECT substr(l.created_at, 1, 10) d, COUNT(*) n FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1`).bind(d60, boQua),
@@ -95,7 +99,7 @@ async function docGoc(env: Env): Promise<Goc> {
   for (const r of nhanTt.results as any[]) lay(r.id).nhan_tt = r.tt ?? undefined;
   for (const r of lh.results as any[]) Object.assign(lay(r.id), { lh: r.n, lh7: r.n7, lh_luc: r.luc, lh_ai: r.ai, lh_kq: r.kq });
   for (const r of gt.results as any[]) Object.assign(lay(r.id), { gt: r.n, gt7: r.n7, gt_luc: r.luc, gt_ai: r.ai, gt_ai_ma: r.ai_ma, gt_loi_ma: r.loi_ma, gt_nd: r.nd });
-  for (const r of loi.results as any[]) Object.assign(lay(r.id), { loi: r.n, loi_cho: r.cho, loi_cho_tu: r.cho_tu ?? undefined, r1: r.r1, r3: r.r3, r4: r.r4, tay: r.tay });
+  for (const r of loi.results as any[]) Object.assign(lay(r.id), { loi: r.n, loi_cho: r.cho, loi_cho_tu: r.cho_tu ?? undefined, r1: r.r1, r3: r.r3, r4: r.r4, tay: r.tay, vp_cho: r.vp_cho ?? undefined });
   for (const r of nhac.results as any[]) Object.assign(lay(r.id), { nhac: r.n, nhac_luc: r.luc });
   const td = new Map((thamDinh.results as any[]).map((r) => [r.eo_id, r.ai as string]));
   return {
@@ -123,6 +127,8 @@ export interface DongDh {
   dat: number; ve: number; thieu: number; bd: string | null; ton: number;
   gd: string | null; gd_tre: boolean; tt: string; ndk: string | null; qua_dk: number; lui: number; ceo: string[];
   loi: number; loi_cho: number; loi_cho_ngay: number; qt: Record<string, number>;
+  /** khoa VI PHAM GOP dang cho giai trinh cua dong (v0.093) - FE dem vi pham khong trung giua cac dong cung PO */
+  vp_cho: string[];
   thuc: number; thuc7: number; thuc_luc: string | null; phan_hoi: number; phan_hoi_luc: string | null; phan_hoi_tt: string | null;
   gt: number; gt_luc: string | null; gt_ai_ma: string | null; gt_loi_ma: string | null; gt_nd: string | null;
   td_luc: string | null; td_loai: string | null; td_ai: string | null; td7: number; im_lang: number;
@@ -167,7 +173,7 @@ function danhGiaDong(r: DongTheoDoi, h: HdDong, gdK: { gd: string | null; tre: b
     id: r.item_id, eo: r.eo_id, po: poMa, ma: r.part_code, ten: r.part_name, kho: r.kho, ncc: r.doi_tac, nguoi: r.nguoi_dat,
     dat: r.so_luong_dat, ve: r.sl_nhap_amis, thieu: r.so_luong_con_thieu, bd, ton,
     gd: gdK.gd, gd_tre: gdK.tre, tt: r.tinh_trang, ndk: r.ngay_du_kien_gan_nhat, qua_dk: quaDk, lui: r.so_lan_lui, ceo,
-    loi: r.so_loi, loi_cho: loiCho, loi_cho_ngay: loiChoNgay, qt,
+    loi: r.so_loi, loi_cho: loiCho, loi_cho_ngay: loiChoNgay, qt, vp_cho: h.vp_cho ? h.vp_cho.split(",") : [],
     thuc, thuc7, thuc_luc: lonNhat(h.push_luc, h.gui_luc, h.lh_luc), phan_hoi: h.nhan ?? 0, phan_hoi_luc: h.nhan_luc ?? null, phan_hoi_tt: h.nhan_tt ?? h.lh_kq ?? null,
     gt: h.gt ?? 0, gt_luc: h.gt_luc ?? null, gt_ai_ma: h.gt_ai_ma ?? null, gt_loi_ma: h.gt_loi_ma ?? null, gt_nd: h.gt_nd ?? null,
     td_luc: tdLuc, td_loai: cuoi?.[1] ?? null, td_ai: cuoi?.[2] ?? null,
@@ -218,19 +224,21 @@ async function tinhTheoPo(env: Env): Promise<TomTatPo> {
     gd.set(eo, x);
   }
   const m = new Map<number, DhPo>();
+  const vpPo = new Set<string>();
   for (const d of dong) {
     const x = m.get(d.eo) ?? { do: 0, vang: 0, qua_dk: 0, chua_dk: 0, loi_cho: 0, ceo: 0, thuc7: 0, thuc: 0, thuc_luc: null, im_lang: 0, td_luc: null, td_loai: null, td_ai: null, ly_do: [], mo: 0 };
     x.mo += 1;
     if (d.muc === "DO") x.do += 1; else if (d.muc === "VANG") x.vang += 1;
     if (d.tt === "QUA_HAN_NDK") x.qua_dk += 1;
     if (d.tt === "TRE_NDK" || d.tt === "CHO_NDK") x.chua_dk += 1;
-    x.loi_cho += d.loi_cho; if (d.ceo.length) x.ceo += 1;
+    for (const k of d.vp_cho) vpPo.add(`${d.eo}#${k}`); if (d.ceo.length) x.ceo += 1;
     x.thuc7 += d.thuc7; x.thuc += d.thuc; x.thuc_luc = lonNhat(x.thuc_luc, d.thuc_luc);
     x.im_lang = Math.max(x.im_lang, d.im_lang);
     if (d.td_luc && (!x.td_luc || d.td_luc > x.td_luc)) { x.td_luc = d.td_luc; x.td_loai = d.td_loai; x.td_ai = d.td_ai; }
     if (d.muc === "DO") for (const l of d.ly_do) { const k = nhomLyDo(l); if (!x.ly_do.includes(k)) x.ly_do.push(k); }
     m.set(d.eo, x);
   }
+  for (const k of vpPo) { const x = m.get(Number(k.split("#")[0])); if (x) x.loi_cho += 1; }
   return { dh: m, gd };
 }
 

@@ -376,6 +376,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
   FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
+- **v0.093 vi phạm gộp** `khoaViPham` (JS) / `VP_SQL` (SQL) ở `lib/maLoi.ts` — PHẢI khớp nhau: R1 `eo|R1`, R3/R4 `eo|qt|ngay_tham_chieu`, TAY `eo|TAY|loi_ma|ngày`.
+  Mọi số đếm lỗi hiển thị dùng khoá này (baoCaoLoi `vp_khoa`/`gomViPham`, dieuHanh `vp_cho` + loi30 + độ phủ, FE ViPham `gomLoi`/`soVp`, `BangLoiTheoBuoc`).
 - **v0.092 tự giải trình** `tuGiaiTrinh` (cuối `danhGiaQuyTac`, `lib/theoDoi.ts`): `tl_giai_trinh.pham_vi = 'AUTO'`, `nhom` `AUTO:KHAC_PHUC` | `AUTO:QUA_HAN`
   (`SO_NGAY_TU_DONG` = 7), người ghi `BOOTSTRAP_ADMIN_EMAIL`, event `AUTO_GIAI_TRINH`. MỌI truy vấn "giải trình thật" phải loại `pham_vi = 'AUTO'`
   (dieuHanh hoạt động cuối / xu hướng / nguyên nhân / độ phủ, baoCaoLoi `tu_dong`). Bảng mã lỗi: `pages/BangMaLoi.tsx` (`/ma-loi`).

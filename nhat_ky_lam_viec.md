@@ -3,6 +3,21 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.093: Gộp vi phạm theo PO + loại lỗi + kỳ
+
+- Yêu cầu (kèm ảnh popup EO-000014 "Mã lỗi & giải trình (1332)"): "tại sao 1 ca lại có nhiều lỗi như vậy? có hợp lý không? nếu cùng 1 lỗi, trên cùng 1 PO thì
+  gộp nó lại thành 1 vi phạm lỗi chung. ví dụ chưa có ngày DK của 3 / 6 đơn trên PO đó, tính 1 lần vi phạm".
+- Nguyên nhân: lỗi ghi theo DÒNG × mỗi lần kiểm tra — PO 327 dòng: R1 326 bản ghi (2 mốc), R3 960 (7 ngày kiểm tra), R4 46 (12 mốc) = 1.332.
+  Toàn hệ thống 1.731 bản ghi = 113 vi phạm nếu gộp (R1 27, R3 55, R4 31).
+- Quy tắc gộp (`lib/maLoi.ts` `khoaViPham` / `VP_SQL`): R1 = 1 PO · R3 = PO + ngày kiểm tra · R4 = PO + ngày DK bị quá · TAY = PO + lỗi gì + ngày ghi.
+  `tl_loi` vẫn ghi theo dòng; đếm / hiển thị / giải trình theo vi phạm. Trạng thái vi phạm: còn dòng chờ → chờ; có giải trình thật → đã giải trình; còn lại tự đóng.
+- Áp dụng: `lib/baoCaoLoi` (`vp_khoa`, `gomViPham`, `trangThaiViPham`; `tongHopTheoMa` đếm vi phạm + `so_ban_ghi`), Bảng mã lỗi, Vi phạm (1 hàng = 1 vi phạm,
+  cột "Số dòng", nút Giải trình của vi phạm nhiều dòng = giải trình chung; thẻ số / theo PO / theo người / theo mã đếm vi phạm), popup PO + đơn hàng (bảng mã lỗi
+  gộp; 2xx gộp theo mã, 3xx gộp theo bước; tab ghi "n vi phạm"; nút Giải trình cả PO đếm vi phạm), Điều hành (`vp_cho` theo dòng → ô "Vi phạm chờ giải trình",
+  theo người, theo PO, lỗi 30 ngày, độ phủ giải trình; cache `dh:goc:v2`), API (`tong_vi_pham`, `vi_pham` mỗi lỗi).
+- Kiểm thử: typecheck + build; local: 3 dòng R3 cùng PO cùng ngày → 1 vi phạm (3 dòng), 2 dòng R1 cùng PO khác hạn → 1 vi phạm; popup PO 12 bản ghi → 4 vi phạm;
+  màn Vi phạm / popup / Điều hành không lỗi trang.
+
 ## 18/11/2026 — v0.092: Bảng mã lỗi + hệ thống tự giải trình lỗi đã khắc phục / quá 7 ngày
 
 - Yêu cầu: "1. tôi cần 1 bảng mã lỗi chi tiết, có giải trình, diễn giải và số lượng lỗi đang đếm. 2. Việc giải trình sẽ không cần thiết nữa nếu lỗi đó đã bị

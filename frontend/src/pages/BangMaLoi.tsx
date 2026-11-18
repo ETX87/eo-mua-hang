@@ -15,7 +15,7 @@ import { I } from "../lib/icons";
  * Bam "Xem lỗi" -> man Vi pham loc dung ma.
  */
 interface Def { ma: string; ten: string; nhom: string; buoc: string | null; giai_trinh: boolean; mo_ta: string; yeu_cau_gt?: string; tu_dong?: string }
-interface Th { ma: string; so_loi: number; cho: number; da_gt: number; tu_khac_phuc: number; tu_qua_han: number; so_po: number; so_dong: number; ty_le_gt: number | null }
+interface Th { ma: string; so_loi: number; so_ban_ghi?: number; cho: number; da_gt: number; tu_khac_phuc: number; tu_qua_han: number; so_po: number; so_dong: number; ty_le_gt: number | null }
 interface Data { bang: Def[]; tong_hop: Th[]; dem_ceo: Record<string, number>; dem_gd: Record<string, { dang: number; dang_tre: number; xong30: number; tre30: number }>; so_ngay_tu_dong: number }
 type Dong = Def & { th?: Th; dem: number | null; phu: string };
 const NHOM: Record<string, { l: string; mau: string }> = {
@@ -34,7 +34,7 @@ export default function BangMaLoi() {
     const th = thBy.get(b.ma);
     if (b.nhom === "CEO") return { ...b, dem: d.dem_ceo[b.ma] ?? 0, phu: "dòng đang ở cấp CEO" };
     if (b.nhom === "GIAI_DOAN") { const g = b.buoc ? d.dem_gd[b.buoc] : undefined; return { ...b, dem: g?.dang_tre ?? 0, phu: g ? `đang trễ · ${soLuong(g.tre30)} trễ / ${soLuong(g.xong30)} qua bước 30 ngày` : "" }; }
-    return { ...b, th, dem: th?.so_loi ?? 0, phu: th?.so_loi ? `${th.so_po} PO · ${th.so_dong} dòng` : "" };
+    return { ...b, th, dem: th?.so_loi ?? 0, phu: th?.so_loi ? `vi phạm · ${th.so_po} PO · ${th.so_dong} dòng` : "" };
   });
   const xemLoi = (ma: string) => nav(`/vi-pham?xem=tat_ca&tt=&ma=${encodeURIComponent(ma)}`);
   const so = (v: number | undefined, mau?: string) => (v ? <b style={{ color: mau }}>{soLuong(v)}</b> : <span className="muted">0</span>);
@@ -70,7 +70,7 @@ export default function BangMaLoi() {
       <PageHeader title="Bảng mã lỗi" />
       <Card>
         <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline", fontSize: 13.5 }}>
-          <span>Lỗi đã ghi nhận <b>{soLuong(tong.loi)}</b></span>
+          <span>Vi phạm đã ghi nhận <b>{soLuong(tong.loi)}</b></span>
           <span>Chờ giải trình <b style={{ color: "var(--danger-ink)" }}>{soLuong(tong.cho)}</b></span>
           <span>Đã giải trình <b style={{ color: "var(--ok-ink)" }}>{soLuong(tong.da)}</b></span>
           <span>Tự đóng do đã khắc phục <b>{soLuong(tong.kp)}</b></span>
@@ -79,7 +79,7 @@ export default function BangMaLoi() {
           <button className="btn sm" onClick={xuat} title="Xuất Excel bảng mã"><I.download width={14} height={14} /></button>
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-          Số lỗi 0xx / 1xx theo phạm vi bạn được xem; 2xx = dòng đang ở cấp CEO; 3xx = dòng đang trễ hạn ở bước đó (toàn hệ thống). Lỗi tự đóng vẫn tính là vi phạm.
+          1 vi phạm = cùng lỗi, cùng PO, cùng kỳ (R1: cả PO · R3: mỗi ngày kiểm tra thứ 2/4 · R4: mỗi mốc ngày DK bị quá), dù nhiều dòng. Số 0xx / 1xx theo phạm vi bạn được xem; 2xx = dòng đang ở cấp CEO; 3xx = dòng đang trễ hạn ở bước đó (toàn hệ thống). Lỗi tự đóng vẫn tính là vi phạm.
         </div>
       </Card>
       <Card pad={false}><DataTable cols={cols} rows={rows} keyOf={(r) => r.ma} pageSize={30} timKiem={false} /></Card>

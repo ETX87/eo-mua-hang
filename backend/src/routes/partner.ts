@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../types";
 import { bumpVersions } from "../lib/dataVersions";
 import { tuDongDienKrf } from "../lib/krfGoiY";
-import { dsLoiDayDu, tongHopTheoMa, dsCaCeo } from "../lib/baoCaoLoi";
+import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, gomViPham } from "../lib/baoCaoLoi";
 import { layBangMaLoi } from "../lib/maLoi";
 import { danhGiaQuyTac } from "../lib/theoDoi";
 
@@ -136,7 +136,9 @@ app.get("/ca-ceo", docKey, async (c) => {
 app.get("/loi/tong-hop", docKey, async (c) => {
   await danhGiaQuyTac(c.env).catch(() => {});
   const { rows, bang } = await dsLoiDayDu(c.env);
-  return c.json({ tong_loi: rows.length, cho_giai_trinh: rows.filter((r) => r.trang_thai === "CHO_GIAI_TRINH").length, theo_ma: tongHopTheoMa(rows, bang) });
+  const vp = gomViPham(rows);
+  // v0.093: dem theo VI PHAM GOP (PO + loai + ky); so_ban_ghi = so dong bi anh huong
+  return c.json({ tong_vi_pham: vp.length, cho_giai_trinh: vp.filter((v) => v.tt === "CHO").length, so_ban_ghi: rows.length, theo_ma: tongHopTheoMa(rows, bang) });
 });
 app.get("/loi", docKey, async (c) => {
   const q = (k: string) => (c.req.query(k) ?? "").trim();
@@ -147,7 +149,7 @@ app.get("/loi", docKey, async (c) => {
   const loc = rows.filter((r) => (!ma.length || ma.includes(r.ma_loi)) && (!po.length || po.includes(String(r.approval_code ?? "").toUpperCase()) || po.includes(String(r.eo_code).toUpperCase()))
     && (!tt.length || tt.includes(r.trang_thai)) && (!tu || String(r.han ?? r.created_at).slice(0, 10) >= tu) && (!den || String(r.han ?? r.created_at).slice(0, 10) <= den));
   const out = loc.slice(offset, offset + limit).map((r) => ({
-    id: r.id, ma_loi: r.ma_loi, ten_loi: r.ten_ma, buoc: r.buoc, quy_tac: r.quy_tac, trang_thai: r.trang_thai, muc_do: r.muc, han: r.han,
+    id: r.id, vi_pham: r.vp_khoa, ma_loi: r.ma_loi, ten_loi: r.ten_ma, buoc: r.buoc, quy_tac: r.quy_tac, trang_thai: r.trang_thai, muc_do: r.muc, han: r.han,
     ngay_tham_chieu: r.ngay_tham_chieu, lan_thu: r.lan_thu, so_lan: r.so_lan, tuoi_ngay: r.tuoi_ngay,
     po: r.approval_code ?? r.eo_code, eo_code: r.eo_code, item_id: r.eo_item_id, ma_lk: r.part_code, ten_lk: r.part_name, kho: r.kho, doi_tac: r.doi_tac,
     nguoi_dat: r.nguoi_dat, nguoi_bi_gan: r.nguoi_vp, so_nhac: r.so_nhac, cap_ceo: r.ceo,

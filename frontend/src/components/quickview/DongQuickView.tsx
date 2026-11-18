@@ -127,7 +127,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             <button className={`qv-tab ${tab === "gd" ? "on" : ""}`} onClick={() => setTab("gd")}>Chi tiết giai đoạn</button>
             <button className={`qv-tab ${tab === "kh" ? "on" : ""}`} onClick={() => setTab("kh")}>Kế hoạch & hàng về ({(ls.data.ke_hoach ?? []).length} · {(ls.data.phieu_nhap ?? []).length})</button>
             <button className={`qv-tab ${tab === "loi" ? "on" : ""}`} onClick={() => setTab("loi")} style={{ color: loi.some((l) => l.trang_thai === "CHO_GIAI_TRINH") ? "var(--danger-ink)" : undefined }}>
-              Mã lỗi & giải trình ({loi.length})</button>
+              Mã lỗi & giải trình ({new Set(loi.map((l) => l.vp_khoa ?? l.id)).size})</button>
             <button className={`qv-tab ${tab === "ncc" ? "on" : ""}`} onClick={() => setTab("ncc")}>Trao đổi NCC ({luongSuKien(ls.data).filter((e) => e.loai !== "NGAY").length})</button>
           </div>
           <div className="qv-scroll">

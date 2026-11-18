@@ -25,7 +25,7 @@ interface Dong {
   id: number; eo: number; po: string; ma: string; ten: string; kho: string; ncc: string | null; nguoi: string | null;
   dat: number; ve: number; thieu: number; bd: string | null; ton: number;
   gd: string | null; gd_tre: boolean; tt: string; ndk: string | null; qua_dk: number; lui: number; ceo: string[];
-  loi: number; loi_cho: number; loi_cho_ngay: number; qt: Record<string, number>;
+  loi: number; loi_cho: number; loi_cho_ngay: number; qt: Record<string, number>; vp_cho: string[];
   thuc: number; thuc7: number; thuc_luc: string | null; phan_hoi: number; phan_hoi_luc: string | null; phan_hoi_tt: string | null;
   gt: number; gt_luc: string | null; gt_ai_ma: string | null; gt_loi_ma: string | null; gt_nd: string | null;
   td_luc: string | null; td_loai: string | null; td_ai: string | null; td7: number; im_lang: number;
@@ -114,7 +114,7 @@ export default function DieuHanh() {
   const nguoiNhac = theoNguoi.filter((x) => x.dong > 0).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho)[0];
   if (nguoiNhac && nguoiNhac.do > 0) ketLuan.push({
     icon: "👤", mau: "#B91C1C", onClick: () => { setPv({ ...pv, nguoi: [nguoiNhac.ai] }); setTieuChi("DO"); setTab("nong"); },
-    txt: <>Cần nhắc ngay: <b>{ten(nguoiNhac.ai)}</b> — giữ {soLuong(nguoiNhac.dong)} dòng, <b>{soLuong(nguoiNhac.do)} đỏ</b>, {soLuong(nguoiNhac.loi_cho)} lỗi chờ giải trình,
+    txt: <>Cần nhắc ngay: <b>{ten(nguoiNhac.ai)}</b> — giữ {soLuong(nguoiNhac.dong)} dòng, <b>{soLuong(nguoiNhac.do)} đỏ</b>, {soLuong(nguoiNhac.loi_cho)} vi phạm chờ giải trình,
       chỉ <b>{pctTxt(nguoiNhac.td7_dong, nguoiNhac.dong)}</b> dòng có tác động 7 ngày qua{nguoiNhac.im_lang7 ? `, ${soLuong(nguoiNhac.im_lang7)} dòng im lặng ≥ 7 ngày` : ""}.</>,
   });
   const nccXau = theoNcc.filter((x) => x.do > 0).sort((a, b) => b.do - a.do)[0];
@@ -190,7 +190,7 @@ export default function DieuHanh() {
         <O l="Chưa có ngày DK" v={soLuong(dem((x) => x.tt === "TRE_NDK" || x.tt === "CHO_NDK"))} sub={`${dem((x) => x.tt === "TRE_NDK")} đã trễ hạn`} mau={MUC.VANG.mau} on={tieuChi === "CHUA_DK"} onClick={() => chonTc("CHUA_DK")} />
         <O l={`Im lặng ≥ ${d.nguong.im_lang_do} ngày`} v={soLuong(dem((x) => x.im_lang >= d.nguong.im_lang_do))} sub="không ai tác động" mau={MUC.DO.mau} on={tieuChi === "IM_LANG"} onClick={() => chonTc("IM_LANG")} />
         <O l="Không thúc NCC 7 ngày" v={soLuong(dem((x) => x.thuc7 === 0))} sub="push / mail / gọi = 0" on={tieuChi === "KHONG_THUC"} onClick={() => chonTc("KHONG_THUC")} />
-        <O l="Lỗi chờ giải trình" v={soLuong(dongPv.reduce((s, x) => s + x.loi_cho, 0))} sub={`${dem((x) => x.loi_cho > 0)} dòng · đã GT ${pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}`} mau={MUC.DO.mau} on={tieuChi === "LOI_CHO"} onClick={() => chonTc("LOI_CHO")} />
+        <O l="Vi phạm chờ giải trình" v={soLuong(new Set(dongPv.flatMap((x) => x.vp_cho ?? [])).size)} sub={`${dem((x) => x.loi_cho > 0)} dòng · đã GT ${pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}`} mau={MUC.DO.mau} on={tieuChi === "LOI_CHO"} onClick={() => chonTc("LOI_CHO")} />
         <O l="Cấp CEO" v={soLuong(dem((x) => x.ceo.length > 0))} mau={MUC.DO.mau} on={tieuChi === "CEO"} onClick={() => chonTc("CEO")} />
         <O l="Duyệt đang treo" v={soLuong(duyetPv.length)} sub={duyetPv.length ? `lâu nhất ${thoiGianCho(Math.max(...duyetPv.map((x) => x.gio)))}` : "không có"} mau={duyetPv.length ? MUC.VANG.mau : undefined} on={tab === "duyet"} onClick={() => setTab("duyet")} />
       </div>
@@ -346,8 +346,8 @@ function DiemNong({ rows, dmTen, empty }: { rows: Dong[]; dmTen: (loai: string, 
 interface Nguoi { ai: string; po: number; dong: number; thieu: number; do: number; vang: number; qua_dk: number; chua_dk: number; ceo: number; loi_cho: number; loi_cho_max: number;
   loi30: number; loi30_cho: number; td7_dong: number; thuc7: number; im_lang7: number; nhac: number; td_luc: string | null; duyet: number; duyet_max: number }
 function gomNguoi(dong: Dong[], loi30: Data["loi30"], duyet: Duyet[], imLangDo: number): Nguoi[] {
-  const m = new Map<string, Nguoi & { _po: Set<number> }>();
-  const lay = (ai: string) => { let x = m.get(ai); if (!x) { x = { ai, po: 0, dong: 0, thieu: 0, do: 0, vang: 0, qua_dk: 0, chua_dk: 0, ceo: 0, loi_cho: 0, loi_cho_max: 0, loi30: 0, loi30_cho: 0, td7_dong: 0, thuc7: 0, im_lang7: 0, nhac: 0, td_luc: null, duyet: 0, duyet_max: 0, _po: new Set() }; m.set(ai, x); } return x; };
+  const m = new Map<string, Nguoi & { _po: Set<number>; _vp: Set<string> }>();
+  const lay = (ai: string) => { let x = m.get(ai); if (!x) { x = { ai, po: 0, dong: 0, thieu: 0, do: 0, vang: 0, qua_dk: 0, chua_dk: 0, ceo: 0, loi_cho: 0, loi_cho_max: 0, loi30: 0, loi30_cho: 0, td7_dong: 0, thuc7: 0, im_lang7: 0, nhac: 0, td_luc: null, duyet: 0, duyet_max: 0, _po: new Set(), _vp: new Set() }; m.set(ai, x); } return x; };
   for (const d of dong) {
     const x = lay(d.nguoi ?? "");
     x._po.add(d.eo); x.dong += 1; x.thieu += d.thieu;
@@ -355,7 +355,7 @@ function gomNguoi(dong: Dong[], loi30: Data["loi30"], duyet: Duyet[], imLangDo: 
     if (d.tt === "QUA_HAN_NDK") x.qua_dk += 1;
     if (d.tt === "TRE_NDK" || d.tt === "CHO_NDK") x.chua_dk += 1;
     if (d.ceo.length) x.ceo += 1;
-    x.loi_cho += d.loi_cho; x.loi_cho_max = Math.max(x.loi_cho_max, d.loi_cho_ngay);
+    for (const k of d.vp_cho ?? []) x._vp.add(k); x.loi_cho_max = Math.max(x.loi_cho_max, d.loi_cho_ngay);
     if (d.td7 > 0) x.td7_dong += 1;
     x.thuc7 += d.thuc7; x.nhac += d.nhac;
     if (d.im_lang >= imLangDo) x.im_lang7 += 1;
@@ -363,7 +363,8 @@ function gomNguoi(dong: Dong[], loi30: Data["loi30"], duyet: Duyet[], imLangDo: 
   }
   for (const l of loi30) { const x = lay(l.ai ?? ""); x.loi30 += l.n; x.loi30_cho += l.cho; }
   for (const p of duyet) { if (!p.ai) continue; const x = lay(p.ai); x.duyet += 1; x.duyet_max = Math.max(x.duyet_max, p.gio); }
-  return [...m.values()].map(({ _po, ...x }) => ({ ...x, po: _po.size })).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho || b.dong - a.dong);
+  // v0.093: loi cho = VI PHAM GOP (PO + loai + ky) khong trung giua cac dong
+  return [...m.values()].map(({ _po, _vp, ...x }) => ({ ...x, po: _po.size, loi_cho: _vp.size })).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho || b.dong - a.dong);
 }
 function BangNguoi({ rows, quanLy, onNhac, onXem }: { rows: Nguoi[]; quanLy: boolean; onNhac: (ai: string) => void; onXem: (ai: string, tieuChi: string) => void }) {
   const L = (ai: string, tc: string, v: ReactNode, mau?: string) => <span className="cell-link" style={{ color: mau, fontWeight: 700 }} onClick={(e) => { e.stopPropagation(); onXem(ai, tc); }}>{v}</span>;
@@ -375,7 +376,7 @@ function BangNguoi({ rows, quanLy, onNhac, onXem }: { rows: Nguoi[]; quanLy: boo
     { key: "qua_dk", header: "Quá DK", loc: "so", gt: (r) => r.qua_dk, align: "right", render: (r) => r.qua_dk ? L(r.ai, "QUA_DK", soLuong(r.qua_dk), MUC.DO.mau) : <span className="muted">0</span> },
     { key: "chua_dk", header: "Chưa có DK", loc: "so", gt: (r) => r.chua_dk, align: "right", render: (r) => r.chua_dk ? L(r.ai, "CHUA_DK", soLuong(r.chua_dk)) : <span className="muted">0</span> },
     { key: "ceo", header: "Cấp CEO", loc: "so", gt: (r) => r.ceo, align: "right", render: (r) => r.ceo ? L(r.ai, "CEO", soLuong(r.ceo), MUC.DO.mau) : <span className="muted">0</span> },
-    { key: "loi_cho", header: "Lỗi chờ GT", loc: "so", gt: (r) => r.loi_cho, align: "right", render: (r) => r.loi_cho ? <>{L(r.ai, "LOI_CHO", soLuong(r.loi_cho), MUC.DO.mau)}<div className="muted" style={{ fontSize: 11 }}>lâu nhất {r.loi_cho_max} ng</div></> : <span className="muted">0</span> },
+    { key: "loi_cho", header: "Vi phạm chờ GT", loc: "so", gt: (r) => r.loi_cho, align: "right", render: (r) => r.loi_cho ? <>{L(r.ai, "LOI_CHO", soLuong(r.loi_cho), MUC.DO.mau)}<div className="muted" style={{ fontSize: 11 }}>lâu nhất {r.loi_cho_max} ng</div></> : <span className="muted">0</span> },
     { key: "gt_pct", header: "Giải trình 30 ng", loc: "so", gt: (r) => (r.loi30 ? Math.round(((r.loi30 - r.loi30_cho) / r.loi30) * 100) : null), align: "right",
       render: (r) => r.loi30 ? <span title={`${r.loi30} lỗi phát sinh 30 ngày, ${r.loi30 - r.loi30_cho} đã giải trình`} style={{ fontWeight: 700, color: r.loi30_cho / r.loi30 > 0.7 ? "var(--danger-ink)" : undefined }}>{pctTxt(r.loi30 - r.loi30_cho, r.loi30)}<div className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{r.loi30 - r.loi30_cho}/{r.loi30} lỗi</div></span> : <span className="muted">—</span> },
     { key: "td7", header: "Quyết liệt 7 ng", loc: "so", gt: (r) => (r.dong ? Math.round((r.td7_dong / r.dong) * 100) : null), align: "right",

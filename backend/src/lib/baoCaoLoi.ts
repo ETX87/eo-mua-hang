@@ -1,7 +1,7 @@
 import type { Env } from "../types";
 import { todayVN } from "./vnTime";
 import { layDongTheoDoi } from "./theoDoi";
-import { layBangMaLoi, maCuaLoi, maCeo, type BangMaLoi } from "./maLoi";
+import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, type BangMaLoi } from "./maLoi";
 
 /**
  * Danh sach LOI day du + tong hop theo MA LOI ER.MH (v0.091) - dung chung: man Vi pham (routes/viPham, loc theo pham vi nguoi xem),
@@ -56,7 +56,7 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
     const nn = nnBy.get(l.eo_item_id);
     const m = maCuaLoi(bang, l, l.doi_tac);
     rows.push({
-      ...l, nguoi_vp: (l.ai_email || l.nguoi_dat) as string | null, ma_loi: m.ma, ten_ma: m.ten, buoc: m.buoc,
+      ...l, nguoi_vp: (l.ai_email || l.nguoi_dat) as string | null, vp_khoa: khoaViPham(l), ma_loi: m.ma, ten_ma: m.ten, buoc: m.buoc,
       so_lan: soLan, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, qua_lau: cho && tuoi >= QUA_LAU_NGAY, muc,
       gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
       gt_ai_ma: gt?.ai_ma ?? null, gt_ai_email: gt?.ai_email ?? null, gt_loi_ma: gt?.loi_ma ?? null,
@@ -71,22 +71,39 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
 }
 
 /** Tong hop theo ma loi: so loi, cho / da giai trinh, so dong / PO, top nguoi bi gan, top nguyen nhan (Ai theo giai trinh). */
+/** Trang thai 1 VI PHAM GOP tu cac dong cua no (lib/maLoi khoaViPham). */
+export function trangThaiViPham(ds: any[]): "CHO" | "DA_GT" | "TU_KHAC_PHUC" | "TU_QUA_HAN" {
+  if (ds.some((r) => r.trang_thai === "CHO_GIAI_TRINH")) return "CHO";
+  if (ds.some((r) => !r.tu_dong)) return "DA_GT";
+  return ds.every((r) => r.tu_dong === "QUA_HAN") ? "TU_QUA_HAN" : "TU_KHAC_PHUC";
+}
+/** Gom loi theo khoa vi pham -> danh sach vi pham (dai dien = dong cho / moi nhat). */
+export function gomViPham(rows: any[]) {
+  const m = new Map<string, any[]>();
+  for (const r of rows) { const k = r.vp_khoa; m.set(k, [...(m.get(k) ?? []), r]); }
+  return [...m.entries()].map(([k, ds]) => ({ khoa: k, ds, tt: trangThaiViPham(ds), x: ds.find((r) => r.trang_thai === "CHO_GIAI_TRINH") ?? ds[ds.length - 1] }));
+}
+
+/**
+ * Tong hop theo ma loi - DEM THEO VI PHAM GOP (v0.093): so_loi = so vi pham (PO + loai + ky), cho / da_gt / tu dong theo trang thai vi pham;
+ * so_ban_ghi = so dong bi anh huong (ban ghi tl_loi), so_dong / so_po phu.
+ */
 export function tongHopTheoMa(rows: any[], bang: BangMaLoi) {
-  const m = new Map<string, { ma: string; ten: string; nhom: string; buoc: string | null; so_loi: number; cho: number; da_gt: number; qua_lau: number; tu_khac_phuc: number; tu_qua_han: number;
+  const m = new Map<string, { ma: string; ten: string; nhom: string; buoc: string | null; so_loi: number; so_ban_ghi: number; cho: number; da_gt: number; qua_lau: number; tu_khac_phuc: number; tu_qua_han: number;
     _dong: Set<number>; _po: Set<number>; _nguoi: Map<string, number>; _ai: Map<string, number>; moi_nhat: string | null }>();
   for (const d of bang.ds.filter((x) => x.nhom === "HE_THONG" || x.nhom === "TAY")) {
-    m.set(d.ma, { ma: d.ma, ten: d.ten, nhom: d.nhom, buoc: d.buoc, so_loi: 0, cho: 0, da_gt: 0, qua_lau: 0, tu_khac_phuc: 0, tu_qua_han: 0, _dong: new Set(), _po: new Set(), _nguoi: new Map(), _ai: new Map(), moi_nhat: null });
+    m.set(d.ma, { ma: d.ma, ten: d.ten, nhom: d.nhom, buoc: d.buoc, so_loi: 0, so_ban_ghi: 0, cho: 0, da_gt: 0, qua_lau: 0, tu_khac_phuc: 0, tu_qua_han: 0, _dong: new Set(), _po: new Set(), _nguoi: new Map(), _ai: new Map(), moi_nhat: null });
   }
-  for (const r of rows) {
-    const x = m.get(r.ma_loi);
+  for (const v of gomViPham(rows)) {
+    const x = m.get(v.x.ma_loi);
     if (!x) continue;
-    x.so_loi += 1;
-    if (r.trang_thai === "CHO_GIAI_TRINH") x.cho += 1; else if (r.tu_dong === "QUA_HAN") x.tu_qua_han += 1; else if (r.tu_dong) x.tu_khac_phuc += 1; else x.da_gt += 1;
-    if (r.qua_lau) x.qua_lau += 1;
-    x._dong.add(r.eo_item_id); x._po.add(r.eo_id);
-    const ng = r.nguoi_vp ?? ""; x._nguoi.set(ng, (x._nguoi.get(ng) ?? 0) + 1);
-    if (r.gt_ai_ma && !r.tu_dong) x._ai.set(r.gt_ai_ma, (x._ai.get(r.gt_ai_ma) ?? 0) + 1);
-    const t = r.han ?? r.created_at; if (t && (!x.moi_nhat || t > x.moi_nhat)) x.moi_nhat = t;
+    x.so_loi += 1; x.so_ban_ghi += v.ds.length;
+    if (v.tt === "CHO") x.cho += 1; else if (v.tt === "DA_GT") x.da_gt += 1; else if (v.tt === "TU_QUA_HAN") x.tu_qua_han += 1; else x.tu_khac_phuc += 1;
+    if (v.ds.some((r: any) => r.qua_lau)) x.qua_lau += 1;
+    for (const r of v.ds) { x._dong.add(r.eo_item_id); x._po.add(r.eo_id); const t = r.han ?? r.created_at; if (t && (!x.moi_nhat || t > x.moi_nhat)) x.moi_nhat = t; }
+    const ng = v.x.nguoi_vp ?? ""; x._nguoi.set(ng, (x._nguoi.get(ng) ?? 0) + 1);
+    const gt = v.ds.find((r: any) => r.gt_ai_ma && !r.tu_dong);
+    if (gt) x._ai.set(gt.gt_ai_ma, (x._ai.get(gt.gt_ai_ma) ?? 0) + 1);
   }
   const top = (mp: Map<string, number>) => [...mp.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, n]) => ({ k, n }));
   return [...m.values()].map(({ _dong, _po, _nguoi, _ai, ...x }) => ({
