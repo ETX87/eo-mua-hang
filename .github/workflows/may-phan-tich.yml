@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   issues: read
+  id-token: write          # xác thực Google (chỉ đọc dữ liệu) — thiếu dòng này thì bước xác thực hỏng, app không chạy (MAY-00522, 18/11)
 jobs:
   phan-tich:
     if: github.event.label.name == 'may:phan-tich' || github.event.label.name == 'may:y-tuong'
@@ -82,6 +83,8 @@ jobs:
           ls -la .may/tep || true
       - name: Xác thực Google (chỉ ĐỌC dữ liệu thật của app)
         if: steps.ma.outputs.ma != '' && vars.GCP_WIF_PROVIDER != '' && vars.GCP_SA != ''
+        # Không đọc được dữ liệu thì app vẫn viết (chỉ thiếu số liệu thật) — không được chặn cả lượt.
+        continue-on-error: true
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
