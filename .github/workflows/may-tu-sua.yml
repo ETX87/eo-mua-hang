@@ -22,7 +22,7 @@ jobs:
       group: may-${{ github.event.issue.number }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -34,6 +34,21 @@ jobs:
         run: |
           MA=$(printf '%s' "$TIEU_DE" | grep -oE 'MAY-[0-9]{5}' | head -1)
           echo "ma=$MA" >> "$GITHUB_OUTPUT"
+      - name: Mức làm việc + phần làm dở của lượt trước
+        id: muc
+        # GĐ 18/11/2026 (MAY-00496 hết 80 bước 2 lần): việc Giám đốc ĐÃ DUYỆT BRD (trọn gói) được 150 bước; việc thường 80.
+        # Lượt trước bị cắt giữa chừng thì phần đã sửa nằm ở nhánh may/<mã>-do-dang → lượt này làm tiếp, không làm lại từ đầu.
+        if: steps.ma.outputs.ma != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SO: ${{ github.event.issue.number }}
+          MA: ${{ steps.ma.outputs.ma }}
+        run: |
+          BUOC=80
+          if { gh api "repos/$GITHUB_REPOSITORY/issues/$SO" --jq '.body // ""'; gh api "repos/$GITHUB_REPOSITORY/issues/$SO/comments?per_page=100" --paginate --jq '.[].body // ""'; } 2>/dev/null | grep -qE 'DUYỆT BRD LÀ DUYỆT TRỌN GÓI|BRD đã duyệt'; then BUOC=150; fi
+          DD="may/$(printf '%s' "$MA" | tr 'A-Z' 'a-z')-do-dang"
+          if gh api "repos/$GITHUB_REPOSITORY/branches/$DD" >/dev/null 2>&1; then echo "do_dang=$DD" >> "$GITHUB_OUTPUT"; fi
+          echo "buoc=$BUOC" >> "$GITHUB_OUTPUT"; echo "Mức: $BUOC bước"
       - name: Báo Mây — đang sửa
         if: steps.ma.outputs.ma != ''
         env:
@@ -54,6 +69,8 @@ jobs:
           service_account: ${{ vars.GCP_SA }}
       - name: Claude Code sửa theo issue
         id: claude
+        # Giới hạn giờ ở MỨC BƯỚC (nhỏ hơn của job) để khi hết giờ các bước sau vẫn chạy: lưu phần làm dở + báo Mây lý do cụ thể.
+        timeout-minutes: 55
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,11 +83,12 @@ jobs:
           claude_args: |
             --allowedTools "Read,Edit,Write,Glob,Grep,TodoWrite,Bash,mcp__github_file_ops__commit_files,mcp__github_file_ops__delete_files,mcp__github_comment__update_claude_comment"
             --disallowedTools "Bash(firebase deploy*),Bash(firebase firestore:delete*),Bash(gcloud iam*),Bash(gcloud projects*),Bash(gcloud functions deploy*),Bash(gcloud run deploy*),Bash(gcloud firestore import*),Bash(gcloud firestore export*),Bash(gcloud firestore databases*),Bash(gcloud firestore delete*),Bash(gcloud storage rm*),Bash(gcloud storage cp*),Bash(rm -rf *),Bash(git push --force*),WebFetch,WebSearch"
-            --max-turns 80
+            --max-turns ${{ steps.muc.outputs.buoc || '80' }}
           prompt: |
             REPO: ${{ github.repository }} · ISSUE: #${{ github.event.issue.number }} · MÃ BÁO CÁO: ${{ steps.ma.outputs.ma }}
 
-            Bạn là AI sửa lỗi của app này, nhận việc từ Trợ lý Mây. Làm đúng thứ tự:
+            Bạn là AI sửa lỗi của app này, nhận việc từ Trợ lý Mây. Lượt này có tối đa ${{ steps.muc.outputs.buoc || '80' }} bước làm việc. Làm đúng thứ tự:
+            0. ${{ steps.muc.outputs.do_dang != '' && format('LƯỢT TRƯỚC BỊ CẮT GIỮA CHỪNG — phần đã sửa ở nhánh `{0}`. Lấy về và LÀM TIẾP (git fetch origin {0} && git checkout -B may/<mã chữ thường> origin/{0}), đọc `.may-do-dang.md` để biết đã làm gì / còn gì. KHÔNG làm lại từ đầu.', steps.muc.outputs.do_dang) || 'Việc lớn thì chia phần; xong mỗi phần ghi 1–2 dòng vào `.may-do-dang.md` (đã làm / còn lại) để nếu bị cắt giữa chừng lượt sau làm tiếp được.' }}
             1. Đọc CLAUDE.md, TONG_HOP_LOGIC.md (nếu có) và nội dung issue #${{ github.event.issue.number }} (kể cả ảnh/bình luận bổ sung).
                Nếu thân issue có mục "CHỈ ĐẠO CỦA GIÁM ĐỐC — LÀM ĐÚNG CHÍNH XÁC": đó là yêu cầu bắt buộc, ưu tiên cao nhất — làm đúng và chỉ đúng từng ý, không tự thêm/bớt/đổi cách làm; ý nào mơ hồ thì bình luận "MÂY: CẦN NGƯỜI" + câu hỏi rồi dừng.
                Nếu có mục "Giám đốc duyệt — AI tự quyết cách làm": tự chọn cách hợp lý nhất trong phạm vi báo cáo và ghi rõ lựa chọn trong mô tả PR.
@@ -98,9 +116,39 @@ jobs:
                  Luật: ≤ 20 thao tác; chỉ GHI GỘP trường (không xoá tài liệu/trường); đường dẫn + tên trường + kiểu giá trị lấy từ dữ liệu thật
                  (đã `doc` bản ghi mẫu cùng loại bằng may-du-lieu.mjs) và đúng mã của app (vd khoá tài liệu là gmail chữ thường thì ghi đúng như vậy);
                  ngày giờ dạng ISO "2026-11-18T09:00:00Z". Cần email của NGƯỜI BÁO (vd cấp quyền cho chính người xin) mà không có thì ghi đúng chữ {{email_nguoi_bao}} — Mây tự thay, KHÔNG hỏi lại. JSON KHÔNG chứa chú thích. Gmail/tên người chỉ được nằm trong khối này (Mây cần để ghi), không chép ra chỗ khác.
+      - name: Lưu phần làm dở (bị cắt giữa chừng) + lý do cụ thể
+        id: dodang
+        # Không mở PR cho phần dở dang (CI xanh là tự triển khai — không được đưa bản chưa xong lên). Đẩy sang nhánh may/<mã>-do-dang.
+        if: always() && steps.ma.outputs.ma != '' && steps.claude.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MA: ${{ steps.ma.outputs.ma }}
+          BUOC: ${{ steps.muc.outputs.buoc }}
+          NHANH_CHINH: ${{ github.event.repository.default_branch }}
+          KQ: ${{ steps.claude.outcome }}
+        run: |
+          F="$RUNNER_TEMP/claude-execution-output.json"
+          LY=$(node -e '
+            const fs = require("fs"); let r = null
+            try { const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); r = (Array.isArray(j) ? j : [j]).reverse().find((x) => x && x.type === "result") } catch {}
+            const phut = r && r.duration_ms ? Math.round(r.duration_ms / 60000) : null
+            if (r && /max_turns/.test(r.subtype || "")) console.log(`App hết lượt làm việc (${r.num_turns || "?"}/${process.env.BUOC || "?"} bước${phut ? ", " + phut + " phút" : ""}) khi chưa xong`)
+            else if (!r && process.env.KQ === "cancelled") console.log("App hết giờ (quá 55 phút) khi chưa xong")
+            else if (r && r.is_error) console.log("App gặp lỗi khi đang làm (" + (r.subtype || "lỗi") + ")")
+            else console.log("App dừng giữa chừng (" + (process.env.KQ || "không rõ") + ")")' "$F" 2>/dev/null || echo "App dừng giữa chừng")
+          DD="may/$(printf '%s' "$MA" | tr 'A-Z' 'a-z')-do-dang"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git add -A -- . ':!.may-pr.md' ':!**/node_modules/**' ':!node_modules' ':!**/dist/**' ':!**/build/**' 2>/dev/null || true
+          git -c user.name="may-bot" -c user.email="may-bot@users.noreply.github.com" commit -q -m "$MA: phần làm dở — lượt #$GITHUB_RUN_NUMBER bị cắt giữa chừng" 2>/dev/null || true
+          git fetch -q origin "$NHANH_CHINH" 2>/dev/null || true
+          SO_TEP=$(git diff --name-only "origin/$NHANH_CHINH...HEAD" 2>/dev/null | grep -vc '^\.may-do-dang\.md$' || true)
+          if [ "${SO_TEP:-0}" -gt 0 ] && git push -q --force origin "HEAD:refs/heads/$DD"; then
+            LY="$LY. Đã lưu phần làm dở ($SO_TEP tệp) — lượt sau làm tiếp, không làm lại từ đầu"
+          else LY="$LY. Chưa sửa được tệp nào"; fi
+          echo "$LY"; echo "ly_do=$LY" >> "$GITHUB_OUTPUT"
       - name: Mở PR từ nhánh may/<mã>
         id: pr
-        if: always() && steps.ma.outputs.ma != ''
+        if: always() && steps.ma.outputs.ma != '' && steps.claude.outcome == 'success'
         env:
           # Token mặc định của workflow (token Claude App đã bị thu hồi khi bước Claude kết thúc).
           # Kiểm tra PR chạy theo sự kiện PUSH nhánh may/** (Claude đẩy) nên không cần PR do App tạo.
@@ -122,6 +170,8 @@ jobs:
             PR=$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$NHANH" --base "$NHANH_CHINH" --title "$TIEU_DE" --body "$MOTA")
           fi
           echo "url=$PR" >> "$GITHUB_OUTPUT"; echo "PR: $PR"
+          # Đã xong trọn → bỏ nhánh làm dở của các lượt trước (nếu có).
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/may/$(printf '%s' "$MA" | tr 'A-Z' 'a-z')-do-dang" >/dev/null 2>&1 || true
       - name: Báo Mây — kết quả
         if: always() && steps.ma.outputs.ma != ''
         env:
@@ -129,6 +179,7 @@ jobs:
           MA: ${{ steps.ma.outputs.ma }}
           PR: ${{ steps.pr.outputs.url }}
           KET_LUAN: ${{ steps.claude.outputs.conclusion }}
+          LY_DO_DANG: ${{ steps.dodang.outputs.ly_do }}
           SO: ${{ github.event.issue.number }}
           APP: ${{ vars.MAY_APP_ID }}
           KHOA: ${{ secrets.MAY_WEBHOOK_SECRET }}
@@ -136,6 +187,8 @@ jobs:
           if [ -n "$PR" ]; then SK=pr_mo; else SK=that_bai; fi
           # Không có PR → gửi kèm kết luận cuối của Claude (bình luận bot mới nhất, 600 ký tự) để Mây/Giám đốc biết VÌ SAO, không chỉ "claude: success".
           GC="claude: $KET_LUAN"
+          # Bị cắt giữa chừng → lý do cụ thể bằng lời thường (hết bước / hết giờ / lỗi, đã lưu phần làm dở chưa) thay cho "claude: ".
+          [ -n "$LY_DO_DANG" ] && GC="$LY_DO_DANG"
           if [ -z "$PR" ]; then
             KL=$(gh api "repos/$GITHUB_REPOSITORY/issues/$SO/comments?per_page=100" --jq '[.[] | select(.user.type=="Bot")] | last | .body // ""' 2>/dev/null | tr -d '\r' | head -c 600)
             [ -n "$KL" ] && GC="$GC · $KL"
