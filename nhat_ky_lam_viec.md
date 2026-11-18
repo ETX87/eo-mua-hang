@@ -3,6 +3,12 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.096: Chụp lại ảnh hướng dẫn HTML theo tên giai đoạn mới
+
+- Yêu cầu: "Chụp lại" (ảnh hướng dẫn sau khi đổi tên G5 "Chờ ngày DK", G6 "Chờ giao hàng").
+- Chụp lại toàn bộ ảnh `frontend/public/huong-dan/img` bằng `../huong-dan/_build/shots-v086.mjs` (dữ liệu demo, Gmail che bằng địa chỉ mẫu); sửa kịch bản ảnh 12 bấm mốc "Chờ giao hàng".
+- Kiểm thử: soát ảnh Điều hành (khung G6 Chờ giao hàng) và popup đơn hàng (bảng giai đoạn G5 Chờ ngày DK / G6 Chờ giao hàng).
+
 ## 18/11/2026 — v0.095: Đối tác của PO, giải trình hàng loạt, R1 lặp thứ 3 / thứ 6, đổi tên giai đoạn
 
 - Yêu cầu: "1. 1 đơn PO sẽ thêm 1 cột đánh giá đặt hàng cho đối tác nào… nhiều đối tác khác nhau => Nhiều đối tác… 2. Cho phép giải trình PO hàng loạt cho riêng
