@@ -75,6 +75,8 @@ jobs:
             Ở chế độ này BỎ QUA toàn bộ phần hướng dẫn BRD bên dưới.
 
             ══ NẾU NHÃN LÀ `may:phan-tich` — VIẾT BRD ══
+            Mục "⚠️ CHỈ ĐẠO CỦA GIÁM ĐỐC" (nếu có) là ưu tiên CAO NHẤT: khác hướng đã duyệt chỗ nào thì theo chỉ đạo; BRD phải có
+            đủ từng ý của chỉ đạo trong Phạm vi, Quy tắc nghiệp vụ, Tiêu chí nghiệm thu; ý nào không làm được thì ghi rõ vì sao.
             Nếu có bình luận "Giám đốc đã DUYỆT hướng giải quyết" thì BRD làm ĐÚNG hướng đó, dạng logic ngắn gọn, không mở rộng;
             mục "Cần Giám đốc bổ sung" chỉ ghi điều thật sự cần (không có ghi "Không").
 
