@@ -37,9 +37,9 @@ const R1_24H_TU = "2026-11-08";
 
 const CO_DINH: MaLoiDef[] = [
   { ma: "ER.MH-001", khoa: "R1_24", nhom: "HE_THONG", buoc: "G5", giai_trinh: true, ten: "Không có ngày dự kiến trong 24h (Karofi / Livotec / Korihome)",
-    mo_ta: "Sau khi dòng bắt đầu (PO ban hành / dòng thêm sau BH được duyệt) 24 giờ làm việc vẫn chưa có ngày dự kiến. Giải trình bắt buộc ảnh." },
+    mo_ta: "Sau khi dòng bắt đầu (PO ban hành / dòng thêm sau BH được duyệt) 24 giờ làm việc vẫn chưa có ngày dự kiến. Vẫn chưa có → ghi lại mỗi thứ 3 và thứ 6. Giải trình bắt buộc ảnh." },
   { ma: "ER.MH-002", khoa: "R1_48", nhom: "HE_THONG", buoc: "G5", giai_trinh: true, ten: "Không có ngày dự kiến trong 48h (đối tác khác)",
-    mo_ta: "Sau khi dòng bắt đầu 48 giờ làm việc vẫn chưa có ngày dự kiến. Giải trình bắt buộc ảnh." },
+    mo_ta: "Sau khi dòng bắt đầu 48 giờ làm việc vẫn chưa có ngày dự kiến. Vẫn chưa có → ghi lại mỗi thứ 3 và thứ 6. Giải trình bắt buộc ảnh." },
   { ma: "ER.MH-003", khoa: "R3", nhom: "HE_THONG", buoc: "G4", giai_trinh: true, ten: "Không thúc / push đối tác (thứ 2 / thứ 4)",
     mo_ta: "Hết thứ 2 / thứ 4, dòng chưa có ngày dự kiến mà trong kỳ không có push, mail với NCC (CC hộp theo dõi) hay ghi nhận gọi / Zalo. Mỗi ngày kiểm tra = 1 lỗi." },
   { ma: "ER.MH-004", khoa: "R4", nhom: "HE_THONG", buoc: "G6", giai_trinh: true, ten: "Quá ngày dự kiến không cập nhật ngày mới",
@@ -51,8 +51,8 @@ const CO_DINH: MaLoiDef[] = [
   { ma: "ER.MH-302", khoa: "G2", nhom: "GIAI_DOAN", buoc: "G2", giai_trinh: false, ten: "Trễ hạn G2 Thẩm định", mo_ta: "Người thẩm định — 24 giờ làm việc." },
   { ma: "ER.MH-303", khoa: "G3", nhom: "GIAI_DOAN", buoc: "G3", giai_trinh: false, ten: "Trễ hạn G3 Duyệt mua & ban hành", mo_ta: "Người duyệt mua — 24 giờ làm việc." },
   { ma: "ER.MH-304", khoa: "G4", nhom: "GIAI_DOAN", buoc: "G4", giai_trinh: false, ten: "Trễ hạn G4 Gửi đơn cho NCC (mail)", mo_ta: "NV đặt hàng — 24 giờ làm việc." },
-  { ma: "ER.MH-305", khoa: "G5", nhom: "GIAI_DOAN", buoc: "G5", giai_trinh: false, ten: "Trễ hạn G5 Có ngày dự kiến", mo_ta: "NV đặt hàng — 24 giờ làm việc (lỗi thật ghi theo 001 / 002)." },
-  { ma: "ER.MH-306", khoa: "G6", nhom: "GIAI_DOAN", buoc: "G6", giai_trinh: false, ten: "Trễ hạn G6 Chờ sản xuất & giao", mo_ta: "NCC — hạn theo ngày dự kiến lần đầu." },
+  { ma: "ER.MH-305", khoa: "G5", nhom: "GIAI_DOAN", buoc: "G5", giai_trinh: false, ten: "Trễ hạn G5 Chờ ngày DK", mo_ta: "NV đặt hàng — 24 giờ làm việc (lỗi thật ghi theo 001 / 002)." },
+  { ma: "ER.MH-306", khoa: "G6", nhom: "GIAI_DOAN", buoc: "G6", giai_trinh: false, ten: "Trễ hạn G6 Chờ giao hàng", mo_ta: "NCC — hạn theo ngày dự kiến lần đầu." },
   { ma: "ER.MH-307", khoa: "G7", nhom: "GIAI_DOAN", buoc: "G7", giai_trinh: false, ten: "Trễ hạn G7 Nhập kho & lên hệ thống", mo_ta: "Kho / Kế toán — 24 giờ làm việc." },
   { ma: "ER.MH-308", khoa: "G8", nhom: "GIAI_DOAN", buoc: "G8", giai_trinh: false, ten: "Trễ hạn G8 Giao bù đến đủ", mo_ta: "NCC + NV theo dõi — 168 giờ làm việc." },
 ];
@@ -100,7 +100,7 @@ export function ganMaLoi<T extends { quy_tac: string; loi_ma: string | null; han
 /**
  * VI PHAM GOP (v0.093, yeu cau lanh dao 2026-11-18: "cung 1 loi tren cung 1 PO gop thanh 1 vi pham chung" - vd 3/6 dong chua co ngay DK = 1 lan).
  * tl_loi van ghi theo DONG (biet dong nao) nhung DEM / HIEN / GIAI TRINH theo khoa vi pham:
- *   R1  = PO (1 PO chua co ngay du kien = 1 vi pham, du bao nhieu dong / bao nhieu moc han)
+ *   R1  = PO (1 PO chua co ngay du kien = 1 vi pham, du bao nhieu dong / bao nhieu moc han); R1 lap lai thu 3 / thu 6 (v0.095) = PO + ngay do
  *   R3  = PO + ngay kiem tra (thu 2 / thu 4)
  *   R4  = PO + ngay du kien bi qua
  *   TAY = PO + loi gi + ngay ghi
@@ -108,9 +108,9 @@ export function ganMaLoi<T extends { quy_tac: string; loi_ma: string | null; han
  * khoaViPham (JS) va VP_SQL (SQL, alias bang tl_loi) phai khop nhau.
  */
 export const khoaViPham = (l: { eo_id: number; quy_tac: string; ngay_tham_chieu?: string | null; han?: string | null; loi_ma?: string | null; created_at?: string | null }) =>
-  l.quy_tac === "R1" ? `${l.eo_id}|R1`
+  l.quy_tac === "R1" ? (l.ngay_tham_chieu ? `${l.eo_id}|R1|${l.ngay_tham_chieu}` : `${l.eo_id}|R1`)
     : l.quy_tac === "TAY" ? `${l.eo_id}|TAY|${l.loi_ma ?? ""}|${String(l.created_at ?? "").slice(0, 10)}`
       : `${l.eo_id}|${l.quy_tac}|${l.ngay_tham_chieu ?? String(l.han ?? "").slice(0, 10)}`;
 export const VP_SQL = (a = "l") =>
-  `CASE ${a}.quy_tac WHEN 'R1' THEN ${a}.eo_id || '|R1' WHEN 'TAY' THEN ${a}.eo_id || '|TAY|' || COALESCE(${a}.loi_ma, '') || '|' || substr(${a}.created_at, 1, 10)
+  `CASE ${a}.quy_tac WHEN 'R1' THEN ${a}.eo_id || '|R1' || CASE WHEN ${a}.ngay_tham_chieu IS NOT NULL THEN '|' || ${a}.ngay_tham_chieu ELSE '' END WHEN 'TAY' THEN ${a}.eo_id || '|TAY|' || COALESCE(${a}.loi_ma, '') || '|' || substr(${a}.created_at, 1, 10)
    ELSE ${a}.eo_id || '|' || ${a}.quy_tac || '|' || COALESCE(${a}.ngay_tham_chieu, substr(${a}.han, 1, 10)) END`;

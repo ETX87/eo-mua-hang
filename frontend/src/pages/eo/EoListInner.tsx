@@ -14,6 +14,7 @@ import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
 import { useGoiYDong, LY_DO_CHUAN } from "../../lib/goiY";
 import { ChonNhieu, noiDs, tachDs } from "../../components/ChonNhieu";
 import { actionsFor, ApprovalActionModal } from "./eoActions";
+import { GiaiTrinhHangLoatModal } from "./GiaiTrinhHangLoat";
 
 interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
@@ -24,6 +25,7 @@ interface EoRow {
   /** canh bao dieu hanh theo PO (backend lib/dieuHanh tomTatTheoPo, v0.084) - chi PO co dong dang mo trong pham vi theo doi */
   dh?: { do: number; vang: number; qua_dk: number; chua_dk: number; loi_cho: number; ceo: number; thuc7: number; thuc: number; thuc_luc: string | null;
     im_lang: number; td_luc: string | null; td_loai: string | null; td_ai: string | null; ly_do: string[]; mo: number } | null;
+  doi_tac_po?: string | null;
   /** so dong dang o tung giai doan (backend lib/dieuHanh, v0.086) - cot Tien trinh */
   gd?: GdPo | null;
 }
@@ -74,6 +76,7 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Tổng SL đặt", get: (r) => r.tong_sl },
   { header: "Ngày ban hành", get: (r) => ngay(r.issued_at) },
   { header: "Người duyệt mua", get: (r) => ten(r.final_approver_email) },
+  { header: "Đối tác", get: (r) => r.doi_tac_po ?? "" },
   { header: "Dòng đỏ", get: (r) => r.dh?.do ?? "" },
   { header: "Dòng vàng", get: (r) => r.dh?.vang ?? "" },
   { header: "Lý do đỏ", get: (r) => r.dh?.ly_do.join("; ") ?? "" },
@@ -107,6 +110,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const limit = 20;
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [gtLoat, setGtLoat] = useState(false);
   const soItDung = [kho, doiTac, lyDo].filter((x) => x.trim()).length;
 
   const filterParams = () => {
@@ -167,6 +171,9 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           <b style={{ color: r.dh.im_lang >= 7 ? "var(--danger-ink)" : r.dh.im_lang >= 3 ? "var(--warn-ink)" : "var(--ok-ink)" }}>Im lặng {r.dh.im_lang} ng</b>
           <div className="muted" style={{ fontSize: 11 }}>{r.dh.td_loai ? `${r.dh.td_loai}${r.dh.td_ai ? ` · ${ten(r.dh.td_ai)}` : ""}` : "chưa tác động"}</div></span>),
     },
+    // v0.095: doi tac cua PO (moi dong cung 1 doi tac -> ten; khac nhau -> "Nhieu doi tac") - loc chon nhieu de vd chi PO Karofi
+    { key: "doi_tac_po", header: "Đối tác", loc: "chon", maxW: 140, render: (r) => r.doi_tac_po
+      ? <span style={{ fontWeight: r.doi_tac_po === "Nhiều đối tác" ? 400 : 700, color: r.doi_tac_po === "Nhiều đối tác" ? "var(--text-muted)" : undefined }}>{r.doi_tac_po}</span> : <span className="muted">—</span> },
     { key: "created_by", header: "Người tạo", loc: "chon", nhanChon: (v) => ten(v), maxW: 110, render: (r) => ten(r.created_by) },
     { key: "created_at", header: "Ngày tạo", loc: "ngay", render: (r) => ngay(r.created_at) },
     { key: "so_dong", header: "Dòng · SL", loc: "so", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
@@ -194,7 +201,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   ];
 
   // v0.084 (yeu cau lanh dao): cot trang thai / canh bao / hanh dong dat sat ma PO - nhin ngay khong can cuon ngang; thong tin phu ra sau
-  const THU_TU_COT = ["eo_code", "trang_thai", "canh_bao", "ton", "pct", "loi_cho", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
+  const THU_TU_COT = ["eo_code", "doi_tac_po", "trang_thai", "canh_bao", "ton", "pct", "loi_cho", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
   cols.sort((a, b) => (THU_TU_COT.indexOf(a.key) + 1 || 99) - (THU_TU_COT.indexOf(b.key) + 1 || 99));
 
   const datChip = (k: string) => { setChip(k); setOffset(0); };
@@ -285,6 +292,8 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         {(q || soItDung > 0 || soCotLoc(loc) > 0 || sap) && <RefreshFiltersBtn onClick={reset} />}
         <div style={{ flex: 1 }} />
         {list.data && <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}><b style={{ color: "var(--text)" }}>{soLuong(list.data.total)}</b> EO</span>}
+        {!compact && <button className="btn sm" onClick={() => setGtLoat(true)}
+          title="Giải trình hàng loạt các vi phạm chờ giải trình của MỌI PO đang lọc (vd lọc cột Đối tác = Karofi)">✎ Giải trình hàng loạt</button>}
         <button className="btn sm" style={{ padding: "0 9px" }} disabled={exporting} onClick={doExport} title="Xuất Excel các EO đang lọc (Lọc / sắp xếp từng cột: bấm phễu / tiêu đề cột)">
           <I.download width={14} height={14} />{exporting ? " Đang xuất..." : ""}</button>
         {actions}
@@ -293,6 +302,8 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.id} onRowClick={(r) => qv.openEo(r.id)} empty="Chưa có EO nào khớp bộ lọc"
         ngoai loc={loc} onLoc={(l) => { setLoc(l); setOffset(0); }} sap={sap} onSap={(s) => { setSap(s); setOffset(0); }}
         tuyChon={list.data?.tuy_chon} tongGoc={list.data?.tong_truoc_loc} tongSauLoc={list.data?.total} />
+      {gtLoat && <GiaiTrinhHangLoatModal params={filterParams()} onClose={() => setGtLoat(false)}
+        moTa={[chipDang?.l, loc.doi_tac_po?.chon?.length ? `đối tác ${loc.doi_tac_po.chon.join(", ")}` : "", q.trim() ? `tìm "${q.trim()}"` : ""].filter(Boolean).join(" · ")} />}
       {duyet && <ApprovalActionModal act={duyet} onClose={() => setDuyet(null)} onDone={() => { setDuyet(null); ["eo-list", "eo-dem", "inbox-count", "inbox"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); }} />}
 
       {list.data && (

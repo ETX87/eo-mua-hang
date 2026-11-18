@@ -13,7 +13,7 @@ import { ngay, ngayGio, ten } from "../lib/format";
  * Moi dong: Buoc · Ma loi · Ten · (Ma LK) · Han · Trang thai · Giai trinh (Ai · Loi gi · noi dung · ai ghi · luc) · nut Giai trinh.
  * Bang du lieu dung chung DataTable (loc + sap xep tren tieu de kieu Excel).
  */
-const TEN_GD: Record<string, string> = { G1: "Lập & trình EO", G2: "Thẩm định", G3: "Duyệt mua & BH", G4: "Gửi đơn NCC", G5: "Có ngày dự kiến", G6: "Chờ SX & giao", G7: "Nhập kho", G8: "Giao bù đến đủ" };
+const TEN_GD: Record<string, string> = { G1: "Lập & trình EO", G2: "Thẩm định", G3: "Duyệt mua & BH", G4: "Gửi đơn NCC", G5: "Chờ ngày DK", G6: "Chờ giao hàng", G7: "Nhập kho", G8: "Giao bù đến đủ" };
 const THU_TU = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"];
 const CEO: Record<string, [string, string | null]> = { LUI: ["ER.MH-201", "G6"], XA: ["ER.MH-202", "G6"], LOI: ["ER.MH-203", null] };
 type TT = "CHO" | "DA_GT" | "TU_KP" | "TU_QH" | "CEO" | "TRE_DANG" | "TRE_XONG";

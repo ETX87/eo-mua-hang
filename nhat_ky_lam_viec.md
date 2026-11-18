@@ -3,6 +3,22 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.095: Đối tác của PO, giải trình hàng loạt, R1 lặp thứ 3 / thứ 6, đổi tên giai đoạn
+
+- Yêu cầu: "1. 1 đơn PO sẽ thêm 1 cột đánh giá đặt hàng cho đối tác nào… nhiều đối tác khác nhau => Nhiều đối tác… 2. Cho phép giải trình PO hàng loạt cho riêng
+  đối tác Karofi… filter danh sách đối tác karofi => ấn nút giải trình hàng loạt => hiện UI các lỗi cần giải trình => tích chọn để giải trình hàng loạt. 3. Mốc giải
+  trình 24h/48h chưa có ngày dự kiến sẽ đẩy lại vào mỗi thứ 3 thứ 6 hàng tuần. (nếu đã có ngày dự kiến thì thôi… thêm giải trình tự động đã có ngày dự kiến)"
+  + "4. đổi tên Giai đoạn "Có ngày dự kiến" => "Chờ ngày DK", "Chờ sản xuất & giao" => "Chờ giao hàng"".
+- (1) Đơn PO: cột **Đối tác** (`doi_tac_po` ở `routes/eo.ts`, cache `eo:ds-v3`): mọi dòng hiệu lực cùng 1 đối tác → tên, khác nhau → "Nhiều đối tác"; lọc chọn nhiều, Excel.
+- (2) Nút **Giải trình hàng loạt** ở Đơn PO (`pages/eo/GiaiTrinhHangLoat.tsx`): lấy MỌI PO đang lọc (mọi trang) → vi phạm chờ giải trình (gộp) → tab theo loại lỗi →
+  tick → `GiaiTrinhNhieuModal` (giải trình chung cùng loại).
+- (3) **R1 lặp lại**: đã trễ 24h/48h mà vẫn chưa có ngày DK → mỗi thứ 3 / thứ 6 sau hạn ghi lại 1 lỗi R1 (khoá `R1:<dòng>:<ngày>`, vi phạm gộp = PO + ngày),
+  tính từ `app_settings.r1_lap_tu` (mặc định 2026-11-18, không hồi tố). Có ngày DK → dừng ghi + lỗi đang chờ tự giải trình "đã có ngày dự kiến" (đã có từ v0.092).
+  Đồng bộ R1 theo mốc hiện tại chỉ áp lỗi R1 đầu tiên. Production lúc làm: 105 dòng / 14 PO đang trễ chưa có ngày DK.
+- (4) Đổi tên giai đoạn G5 "Chờ ngày DK", G6 "Chờ giao hàng" (backend `lib/giaiDoan`, mã lỗi, FE, cấu hình hạn, hướng dẫn — ảnh hướng dẫn cũ còn tên cũ).
+- Kiểm thử: typecheck + build; local: dòng thử không có kế hoạch → R1 ghi lại 03/06/10/13/17-11 (thứ 3/6), cũ > 7 ngày tự đóng; nhập ngày DK → 2 lỗi chờ tự giải trình
+  "đã có ngày dự kiến"; Đơn PO cột Đối tác (1 tên / Nhiều đối tác), Giải trình hàng loạt hiện vi phạm của PO đang lọc; dọn dữ liệu thử.
+
 ## 18/11/2026 — v0.094: Cột "Ngày đặt hàng" trong file Excel danh sách linh kiện
 
 - Yêu cầu: "file tải excel trong danh sách linh kiện mua hàng thêm ngày đặt hàng" + "ngày đặt hàng chính là ngày PO được duyệt".

@@ -23,8 +23,8 @@ export const GIAI_DOAN = [
   { k: "G2", l: "Thẩm định", vai_tro: "Người thẩm định" },
   { k: "G3", l: "Duyệt mua & ban hành", vai_tro: "Người duyệt mua" },
   { k: "G4", l: "Gửi đơn cho NCC (mail)", vai_tro: "NV đặt hàng" },
-  { k: "G5", l: "Có ngày dự kiến", vai_tro: "NV đặt hàng" },
-  { k: "G6", l: "Chờ sản xuất & giao", vai_tro: "Nhà cung cấp" },
+  { k: "G5", l: "Chờ ngày DK", vai_tro: "NV đặt hàng" },
+  { k: "G6", l: "Chờ giao hàng", vai_tro: "Nhà cung cấp" },
   { k: "G7", l: "Nhập kho & lên hệ thống", vai_tro: "Kho / Kế toán" },
   { k: "G8", l: "Giao bù đến đủ", vai_tro: "NCC + NV theo dõi" },
 ] as const;

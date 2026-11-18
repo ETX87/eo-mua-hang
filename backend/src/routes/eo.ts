@@ -33,6 +33,8 @@ interface DongEo {
   /** DONE (2026-11-08): da ban hanh, co dong song va moi dong song ve >= SL dat (ket thuc som = SL dat ve SL da ve) */
   xong: boolean;
   ma_lk: string | null; lk: string; kho: string[]; ncc: string[]; ly_do: string[];
+  /** v0.095 doi tac CUA PO: moi dong hieu luc cung 1 doi tac -> ten; nhieu doi tac -> "Nhiều đối tác"; khong co dong -> null */
+  doi_tac_po: string | null;
   /** canh bao dieu hanh (lib/dieuHanh, v0.084) - gan luc request, KHONG nam trong cache eo:ds */
   dh?: DhPo | null;
   /** so dong dang o tung giai doan (v0.086, cot Tien trinh) */
@@ -52,7 +54,8 @@ async function dsEo(env: Env): Promise<DongEo[]> {
               SUM(i.line_status = 'ACTIVE') so_dong_song,
               GROUP_CONCAT(CASE WHEN i.line_status = 'ACTIVE' THEN i.part_code END, char(31)) lk_song,
               GROUP_CONCAT(i.part_code || ' ' || COALESCE(i.part_code_goc, '') || ' ' || COALESCE(i.part_name, ''), char(31)) lk,
-              GROUP_CONCAT(i.warehouse, char(31)) kho, GROUP_CONCAT(i.supplier, char(31)) ncc, GROUP_CONCAT(i.reason, char(31)) ly_do
+              GROUP_CONCAT(i.warehouse, char(31)) kho, GROUP_CONCAT(i.supplier, char(31)) ncc, GROUP_CONCAT(i.reason, char(31)) ly_do,
+              GROUP_CONCAT(CASE WHEN i.line_status = 'ACTIVE' THEN i.supplier END, char(31)) ncc_song
        FROM eo_item i LEFT JOIN ve ON ve.id = i.id GROUP BY i.eo_id)
      SELECT e.id, e.eo_code, e.approval_code, e.tieu_de, e.loai_hinh, e.phong_ban, e.trang_thai, e.final_approver_email,
             e.created_by, e.created_at, e.issued_at, it.*
@@ -68,6 +71,7 @@ async function dsEo(env: Env): Promise<DongEo[]> {
       xong: r.trang_thai === "ISSUED" && (r.so_dong_song ?? 0) > 0 && (r.so_dong_chua_du ?? 0) === 0,
       ma_lk: song.length ? song.slice(0, 4).join(", ") : null, lk: tachDs(r.lk).join(" "),
       kho: tachDs(r.kho), ncc: tachDs(r.ncc), ly_do: tachDs(r.ly_do),
+      doi_tac_po: ((ds) => (ds.length === 1 ? ds[0] : ds.length > 1 ? "Nhiều đối tác" : null))(tachDs(r.ncc_song).length ? tachDs(r.ncc_song) : tachDs(r.ncc)),
     };
   });
 }
@@ -127,6 +131,7 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   issued: { kieu: "ngay", gt: (r) => r.issued_at },
   pct: { kieu: "so", gt: pct },
   final: { kieu: "chon", gt: (r) => r.final_approver_email },
+  doi_tac_po: { kieu: "chon", gt: (r) => r.doi_tac_po },
   canh_bao: { kieu: "so", gt: (r) => r.dh?.do ?? null, sap: (r) => (r.dh ? r.dh.do * 10000 + r.dh.vang : null) },
   loi_cho: { kieu: "so", gt: (r) => r.dh?.loi_cho ?? null },
   thuc: { kieu: "so", gt: (r) => r.dh?.thuc7 ?? null, sap: (r) => (r.dh ? r.dh.thuc7 * 100000 + r.dh.thuc : null) },
@@ -158,7 +163,7 @@ async function nguCanh(c: any): Promise<NguCanh> {
 /** Danh sach EO (cache) + canh bao dieu hanh theo PO (lib/dieuHanh - loi thi bo qua, khong lam hong danh sach). */
 async function dsEoDh(env: Env): Promise<DongEo[]> {
   const [ds, dh] = await Promise.all([
-    cachedReport(env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(env)),
+    cachedReport(env.DB, "eo:ds-v3", ["eo", "amis"], () => dsEo(env)), // v3 (v0.095): doi_tac_po
     tomTatTheoPo(env).catch((e) => { console.error("dieuHanh", e); return { dh: new Map<number, DhPo>(), gd: new Map<number, GdPo>() }; }),
   ]);
   return ds.map((r) => ({ ...r, dh: dh.dh.get(r.id) ?? null, gd: dh.gd.get(r.id) ?? null }));

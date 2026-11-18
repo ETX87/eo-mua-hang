@@ -6,7 +6,7 @@ import { ngayGio } from "./format";
  */
 export const GD_CHINH = [
   { k: "G1", l: "Lập & trình EO" }, { k: "G2", l: "Thẩm định" }, { k: "G3", l: "Duyệt mua & ban hành" },
-  { k: "G5", l: "Có ngày dự kiến" }, { k: "G6", l: "Chờ sản xuất & giao" }, { k: "G8", l: "Giao bù đến đủ" },
+  { k: "G5", l: "Chờ ngày DK" }, { k: "G6", l: "Chờ giao hàng" }, { k: "G8", l: "Giao bù đến đủ" },
 ] as const;
 
 /** Gio lam viec -> "5 giờ" / "2.5 ngày" (1 ngay = 24 gio lam viec). */

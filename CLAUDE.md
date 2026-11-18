@@ -376,6 +376,9 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
   FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
+- **v0.095** R1 lặp thứ 3/6: vòng lặp sau `add(R1)` trong `danhGiaQuyTac`, khoá `R1:<item>:<ngày>`, mốc `app_settings.r1_lap_tu` (`R1_LAP_TU_MAC_DINH`); khối đồng bộ R1
+  "theo mốc hiện tại" CHỈ lấy `khoa = 'R1:' || eo_item_id` (không sửa hạn lỗi lặp). `khoaViPham` R1 có ngày → `eo|R1|ngày`. Đơn PO `doi_tac_po` (cache `eo:ds-v3`),
+  Giải trình hàng loạt `pages/eo/GiaiTrinhHangLoat.tsx`. Tên G5 "Chờ ngày DK", G6 "Chờ giao hàng".
 - **v0.094 Ngày đặt hàng** = ngày PO duyệt mua (`issued_at`) / dòng sau BH = `post_issue_approved_at`: `/so-don-hang` trường `ngay_dat_hang` (hậu tố cache dòng `|gd3`),
   Excel popup PO (`xuatDongEo`) + LK đặt (luôn kèm cột). Khác `ngayDatCua` FE (mốc tính tồn: dòng sau BH = ngày tạo dòng).
 - **v0.093 vi phạm gộp** `khoaViPham` (JS) / `VP_SQL` (SQL) ở `lib/maLoi.ts` — PHẢI khớp nhau: R1 `eo|R1`, R3/R4 `eo|qt|ngay_tham_chieu`, TAY `eo|TAY|loi_ma|ngày`.

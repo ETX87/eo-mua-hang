@@ -22,7 +22,7 @@ const NHOM: Record<string, { l: string; mau: string }> = {
   HE_THONG: { l: "Hệ thống ghi · phải GT", mau: "#DC2626" }, TAY: { l: "Ghi khi giải trình", mau: "#2563EB" },
   CEO: { l: "Cấp CEO", mau: "#7F1D1D" }, GIAI_DOAN: { l: "Trễ hạn bước · chỉ đo", mau: "#B45309" },
 };
-const TEN_GD: Record<string, string> = { G1: "Lập & trình", G2: "Thẩm định", G3: "Duyệt mua", G4: "Gửi đơn NCC", G5: "Có ngày DK", G6: "Chờ SX & giao", G7: "Nhập kho", G8: "Giao bù" };
+const TEN_GD: Record<string, string> = { G1: "Lập & trình", G2: "Thẩm định", G3: "Duyệt mua", G4: "Gửi đơn NCC", G5: "Chờ ngày DK", G6: "Chờ giao hàng", G7: "Nhập kho", G8: "Giao bù" };
 
 export default function BangMaLoi() {
   const nav = useNavigate();

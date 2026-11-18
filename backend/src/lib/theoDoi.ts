@@ -25,6 +25,8 @@ const DONG = TRANG_THAI_DONG;
 const EVAL_GAP_MS = 10 * 60_000;
 /** R1: so gio LAM VIEC tu luc dong bat dau den han phai co ngay du kien (2026-11-05: 24 -> 48). */
 export const GIO_R1 = 48;
+/** v0.095: R1 lap lai moi thu 3 / thu 6 khi van chua co ngay du kien - tinh tu ngay nay (app_settings 'r1_lap_tu' de doi). */
+export const R1_LAP_TU_MAC_DINH = "2026-11-18";
 /** R1 nhom Karofi / Livotec / Korihome (lib/chuanHoa laNhomR1_24h): 24h - chi dong BAT DAU tu app_settings 'r1_24h_tu' (2026-11-08),
  *  dong cu giu 48h (khong ghi loi hoi to). */
 export const GIO_R1_NHOM = 24;
@@ -326,6 +328,8 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
   try {
     const rows = (await layDongTheoDoi(env, "dang_mo")).filter((r) => r.ap_dung);
     const today = todayVN();
+    // R1 lap lai thu 3 / thu 6 ap dung tu ngay nay (khong ghi hoi to) - app_settings 'r1_lap_tu'
+    const r1LapTu = ((await db.prepare("SELECT value FROM app_settings WHERE key = 'r1_lap_tu'").first<{ value: string }>())?.value || R1_LAP_TU_MAC_DINH).slice(0, 10);
     const mailRs = rows.length
       ? (await db.prepare(`SELECT eo_item_id, d FROM (${MAIL_DONG_BO_THEO_DONG}) WHERE eo_item_id IN (SELECT value FROM json_each(?))`)
           .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; d: string }>()).results
@@ -351,6 +355,20 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       const veTruoc = (moc: string) => !!r.ngay_ve_du && r.ngay_ve_du <= moc.slice(0, 10);
       if (viPhamR1(r)) {
         add(r, "R1", `R1:${r.item_id}`, r.han_ngay_du_kien!, null, "KHONG_NDK_24H");
+        // v0.095 R1 LAP LAI (yeu cau 2026-11-18): da tre 24h/48h ma VAN chua co ngay du kien -> moi THU 3 / THU 6 sau han ghi lai 1 loi R1
+        // (khoa R1:<item>:<ngay>, han = het ngay do). Co ngay du kien -> het ghi + loi dang cho tu giai trinh (tuGiaiTrinh KHAC_PHUC). Chi ngay >= r1LapTu.
+        const hanNgay = r.han_ngay_du_kien!.slice(0, 10);
+        const d = parseVN(`${hanNgay} 00:00:00`);
+        for (d.setUTCDate(d.getUTCDate() + 1); fmtVN(d).slice(0, 10) < today; d.setUTCDate(d.getUTCDate() + 1)) {
+          const dow = d.getUTCDay();
+          if (dow !== 2 && dow !== 5) continue;
+          const x = fmtVN(d).slice(0, 10);
+          if (x < r1LapTu) continue;
+          const hetNgay = `${x} 23:59:59`;
+          if (r.lan_dau_co_ndk && r.lan_dau_co_ndk <= hetNgay) break;
+          if (daVe(r, x)) break;
+          add(r, "R1", `R1:${r.item_id}:${x}`, hetNgay, x, "KHONG_NDK_24H");
+        }
       }
       // R4
       if (r.han_cap_nhat_lai && now > r.han_cap_nhat_lai && r.ngay_du_kien_gan_nhat && !daVe(r, r.han_cap_nhat_lai)) {
@@ -375,7 +393,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
     }
     // Dong bo loi R1 DANG CHO voi moc hien tai (doi 24h -> 48h 2026-11-05): het vi pham -> bo (ghi event_log); con -> cap nhat han.
     const r1Cho = rows.length
-      ? (await db.prepare("SELECT id, eo_item_id, eo_id, han FROM tl_loi WHERE quy_tac = 'R1' AND trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?))")
+      ? (await db.prepare("SELECT id, eo_item_id, eo_id, han FROM tl_loi WHERE quy_tac = 'R1' AND khoa = 'R1:' || eo_item_id AND trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?))")
           .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ id: number; eo_item_id: number; eo_id: number; han: string | null }>()).results
       : [];
     const dongBy = new Map(rows.map((r) => [r.item_id, r]));
