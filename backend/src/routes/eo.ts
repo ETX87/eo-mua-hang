@@ -89,6 +89,25 @@ const CHIP_EO: Record<string, (r: DongEo, n: NguCanh) => boolean> = {
   po_im_lang: (r) => (r.dh?.im_lang ?? 0) >= IM_LANG_DO,
   po_loi_cho: (r) => (r.dh?.loi_cho ?? 0) > 0,
 };
+/**
+ * Cac MOC TIEN TRINH cua 1 PO (v0.088, loc cot "Tien trinh" - khop FE components/TienTrinhPo): PO chua ban hanh theo trang thai duyet;
+ * da ban hanh = MOI moc dang co dong o (G4 gop G5, G7 gop G8) -> loc "Chờ hàng" ra moi PO con dong o G6. Thu tu = MOC_PO (sap theo moc som nhat).
+ */
+export const MOC_PO = ["G1", "G2", "G3", "G5", "G6", "G8", "XONG", "TU_CHOI", "DA_HUY"];
+function mocPo(r: DongEo): string[] {
+  if (r.trang_thai === "REJECTED") return ["TU_CHOI"];
+  if (r.trang_thai === "CANCELLED") return ["DA_HUY"];
+  if (r.trang_thai === "DRAFT") return ["G1"];
+  if (r.trang_thai === "IN_REVIEW") return ["G2"];
+  if (r.trang_thai === "WAITING_FINAL_APPROVAL") return ["G3"];
+  if (r.xong) return ["XONG"];
+  const ds = new Set<string>();
+  for (const [k, n] of Object.entries(r.gd?.dem ?? {})) {
+    if (!n || k === "HUY" || k === "XONG") continue;
+    ds.add(k === "G4" ? "G5" : k === "G7" ? "G8" : k);
+  }
+  return ds.size ? MOC_PO.filter((k) => ds.has(k)) : ["XONG"];
+}
 const pct = (r: DongEo) => (r.trang_thai === "ISSUED" && r.tong_sl ? Math.round((r.sl_ve / r.tong_sl) * 100) : null);
 const tonTt = (r: DongEo) => r.trang_thai === "ISSUED" ? (r.so_dong_chua_du > 0 ? "Còn dòng chưa về đủ" : "Đã về đủ")
   : ["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(r.trang_thai) ? "Chờ duyệt" : "";
@@ -99,7 +118,7 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   loai_hinh: { kieu: "chon", gt: (r) => r.loai_hinh },
   phong_ban: { kieu: "chon", gt: (r) => r.phong_ban },
   ma_lk: { kieu: "chu", gt: (r) => r.lk, sap: (r) => r.ma_lk },
-  trang_thai: { kieu: "chon", gt: (r) => (r.xong ? "DONE" : r.trang_thai) },
+  trang_thai: { kieu: "chon", gt: mocPo, sap: (r) => MOC_PO.indexOf(mocPo(r)[0]) },
   ton: { kieu: "chon", gt: tonTt, sap: (r) => (tonTt(r) === "Còn dòng chưa về đủ" ? r.issued_at : tonTt(r) === "Chờ duyệt" ? r.created_at : null) },
   created_by: { kieu: "chon", gt: (r) => r.created_by },
   created_at: { kieu: "ngay", gt: (r) => r.created_at },
@@ -115,7 +134,8 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
 interface GtLoc { q?: string; chon?: string[]; tu?: string; den?: string }
 function khop(kieu: string, v: unknown, g: GtLoc): boolean {
   if (kieu === "chu") { const h = boDau(v); return boDau(g.q).split(/\s+/).filter(Boolean).every((t) => h.includes(t)); }
-  if (kieu === "chon") return !g.chon?.length || g.chon.includes(String(v ?? ""));
+  // gia tri mang (vd moc tien trinh: PO co dong o nhieu moc) -> khop khi CO 1 gia tri duoc chon
+  if (kieu === "chon") return !g.chon?.length || (Array.isArray(v) ? v : [v]).some((x) => g.chon!.includes(String(x ?? "")));
   if (kieu === "ngay") { const d = String(v ?? "").slice(0, 10); return !!d && (!g.tu || d >= g.tu) && (!g.den || d <= g.den); }
   const n = v == null ? NaN : Number(v);
   return !Number.isNaN(n) && (!g.tu || n >= Number(g.tu)) && (!g.den || n <= Number(g.den));
@@ -186,6 +206,7 @@ app.get("/", async (c) => {
   const tuyChon: Record<string, string[]> = {};
   for (const [k, cot] of Object.entries(COT_EO)) {
     if (cot.kieu !== "chon") continue;
+    if (k === "trang_thai") { tuyChon[k] = MOC_PO; continue; } // luon du moi moc, dung thu tu quy trinh
     tuyChon[k] = [...new Set(goc.map((r) => String(cot.gt(r) ?? "")))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, "vi")));
   }
   const trang = rows.slice(offset, offset + limit).map(({ lk, kho: _k, ncc: _n, ly_do: _l, ...r }) => {

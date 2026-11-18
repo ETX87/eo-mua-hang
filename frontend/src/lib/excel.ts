@@ -81,14 +81,24 @@ function valid(y: number, mo: number, d: number): string {
 }
 
 /** Ghi file mau / file xuat nhieu sheet tu mang 2 chieu. */
-export function writeBook(filename: string, sheets: { name: string; rows: unknown[][]; widths?: number[] }[]) {
+type BookSheet = { name: string; rows: unknown[][]; widths?: number[] };
+
+function makeBook(sheets: BookSheet[]) {
   const wb = XLSX.utils.book_new();
   for (const s of sheets) {
     const ws = XLSX.utils.aoa_to_sheet(s.rows);
     if (s.widths) ws["!cols"] = s.widths.map((w) => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31));
   }
-  XLSX.writeFile(wb, filename);
+  return wb;
+}
+
+export function writeBook(filename: string, sheets: BookSheet[]) {
+  XLSX.writeFile(makeBook(sheets), filename);
+}
+
+export function bookBase64(sheets: BookSheet[]): string {
+  return XLSX.write(makeBook(sheets), { bookType: "xlsx", type: "base64" });
 }
 
 // ---- tuan CN-T7, nhan 'Yyy-Wnn' (khop backend lib/week.ts)

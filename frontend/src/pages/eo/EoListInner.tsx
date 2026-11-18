@@ -53,6 +53,11 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
 const CHIP_MAC_DINH = "con_ton";
+/** Nhan gia tri loc cot Tien trinh (backend routes/eo.ts MOC_PO, v0.088): PO da ban hanh khop moi moc dang co dong o. */
+const NHAN_MOC: Record<string, string> = {
+  G1: "1 · Lập (nháp / bị trả về)", G2: "2 · Thẩm định", G3: "3 · Duyệt mua (kể cả dòng thêm sau BH chờ duyệt)", G5: "5 · Chờ có ngày dự kiến",
+  G6: "6 · Chờ hàng (sản xuất & giao)", G8: "8 · Giao bù đến đủ", XONG: "✓ Đủ hàng", TU_CHOI: "Từ chối", DA_HUY: "Đã hủy",
+};
 const TAT_CA = "tat_ca";
 
 const EXPORT_COLS: ExportCol<EoRow>[] = [
@@ -130,7 +135,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     { key: "phong_ban", header: "Phòng ban", loc: "chon", maxW: 115, render: (r) => r.phong_ban || "" },
     { key: "ma_lk", header: "Mã linh kiện", loc: "chu", maxW: 150, render: (r) => r.ma_lk ? <span title={r.ma_lk}>{r.ma_lk}{r.so_dong > 4 ? ", …" : ""}</span> : <span className="muted">—</span> },
     // v0.086: "Đã ban hành" chi la 1 giai doan -> luong tien trinh gon (moc dang xu ly + so dong + tre); loc / sap van theo trang thai duyet
-    { key: "trang_thai", header: "Tiến trình", loc: "chon", nhanChon: (v) => STATUS_META[v]?.label ?? v, render: (r) => <TienTrinhPo trangThai={r.trang_thai} xong={r.xong} gd={r.gd} /> },
+    { key: "trang_thai", header: "Tiến trình", loc: "chon", nhanChon: (v) => NHAN_MOC[v] ?? v, render: (r) => <TienTrinhPo trangThai={r.trang_thai} xong={r.xong} gd={r.gd} /> },
     {
       // ton: EO da ban hanh con dong chua ve du -> tinh tu ngay ban hanh; EO dang cho duyet -> tinh tu ngay tao
       key: "ton", header: "Tồn", loc: "chon", render: (r) => r.trang_thai === "ISSUED"

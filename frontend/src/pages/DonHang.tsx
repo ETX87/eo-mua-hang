@@ -13,7 +13,7 @@ import { MocTon, MOC_TON, mocCua, soNgayTon, khopTim } from "../lib/tonDong";
 import { GdBadge, gioTxt } from "../lib/giaiDoan";
 import { TienTrinhGon, ceoTxt } from "../components/TienTrinh";
 import { BaNgay, ChuGiaiNgay } from "../lib/ngay";
-import { TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, LienHeDoiTacModal, type Dong } from "./theodoi/shared";
+import { TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, BAT_TAO_MAIL_NHAC, type MailNhac, LienHeDoiTacModal, type Dong } from "./theodoi/shared";
 import { KrfGoiYModal, useGoiYKrf } from "./theodoi/KrfGoiY";
 import { BangLoiModal } from "./theodoi/BangLoi";
 import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
@@ -246,7 +246,7 @@ function DanhSach() {
   // thao tac dong (tu man Theo doi cu)
   const [modal, setModal] = useState<{ loai: "ndk" | "gt" | "ls"; dong: Dong } | null>(null);
   const [chon, setChon] = useState<Set<number>>(new Set());
-  const [pushKq, setPushKq] = useState<any[] | null>(null);
+  const [pushKq, setPushKq] = useState<MailNhac | null>(null);
   const [busy, setBusy] = useState(false);
   const [hop, setHop] = useState<"" | "krf" | "kh" | "loi">("");
   const krf = useGoiYKrf();
@@ -313,7 +313,7 @@ function DanhSach() {
   const [lh, setLh] = useState<number[] | null>(null); // ghi nhan nhac doi tac (goi dien / tin nhan)
   const taoPush = async () => {
     if (!idPush.length) return alert("Các dòng đã chọn đều đã đóng — không còn gì để push.");
-    if (!confirm(`Tạo file push đối tác cho ${idPush.length} dòng còn mở? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
+    if (!confirm(`Tạo mail nhắc cho ${idPush.length} dòng còn mở?`)) return;
     setBusy(true);
     try {
       setPushKq(await taoPushDoiTac(idPush));
@@ -449,13 +449,13 @@ function DanhSach() {
           {chon.size > 0 && <>
             <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}>Đã chọn {soLuong(chon.size)}<span role="button" title="Bỏ chọn tất cả" style={{ cursor: "pointer" }} onClick={() => setChon(new Set())}>×</span></span>
             <button className="btn sm primary" onClick={() => setGtChung(true)} title="1 nội dung giải trình cho mọi dòng đã chọn (cùng nguyên nhân)"><I.edit width={14} height={14} /> Giải trình chung</button>
-            <button className="btn sm" disabled={busy || !idPush.length} onClick={taoPush} title="Mỗi đối tác 1 file + tiêu đề mail chuẩn (chỉ dòng còn mở)"><I.send width={14} height={14} /> Push ({idPush.length})</button>
+            {BAT_TAO_MAIL_NHAC && <button className="btn sm" disabled={busy || !idPush.length} onClick={taoPush} title="Gộp các dòng đã chọn vào một file Excel đính kèm mail nhắc"><I.send width={14} height={14} /> Tạo mail nhắc ({idPush.length})</button>}
             <button className="btn sm" disabled={!idPush.length} onClick={() => setLh(idPush)} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn (không mail) — tính như đã push (R3)">📞 Đã nhắc đối tác ({idPush.length})</button>
           </>}
           <Popover align="right" width={290} title="Công cụ: push đối tác, ngày KRF từ mail, kế hoạch hàng về…"
             label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
             {(dong) => <>
-              <MenuItem icon={<I.send width={14} height={14} />} disabled={!idPush.length || busy} onClick={() => { dong(); taoPush(); }} title="Tick các dòng còn mở ở cột Thao tác rồi bấm — mỗi đối tác 1 file + tiêu đề mail chuẩn">Tạo file push đối tác ({idPush.length})</MenuItem>
+              {BAT_TAO_MAIL_NHAC && <MenuItem icon={<I.send width={14} height={14} />} disabled={!idPush.length || busy} onClick={() => { dong(); taoPush(); }} title="Gộp các dòng đã chọn vào một file Excel đính kèm mail nhắc">Tạo mail nhắc ({idPush.length})</MenuItem>}
               <MenuItem icon={<I.calendar width={14} height={14} />} onClick={() => { dong(); setHop("krf"); }} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết"
                 right={soKrf > 0 ? <b style={{ color: "var(--danger-ink)" }}>{soLuong(soKrf)}</b> : <span className="muted">0</span>}>Ngày KRF từ mail</MenuItem>
               <MenuItem icon={<I.upload width={14} height={14} />} onClick={() => { dong(); setHop("kh"); }} title="Tải file Excel kế hoạch hàng về, điền ngày rồi nhập lại cho nhiều dòng">Kế hoạch hàng về (Excel)</MenuItem>

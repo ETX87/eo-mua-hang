@@ -3,6 +3,21 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.088: Tạm tắt "Tạo mail nhắc", chỉ tính push khi mail đã đồng bộ
+
+- Yêu cầu: "tiếp nhận lại các công việc đang dang dở" → "hãy phân tích xem hướng nào phù hợp, nếu máy người dùng không có outlook thì sao?"
+  → "tạm thời tắt tính năng này đi. để người dùng tự gửi mail thủ công".
+- Phân tích: người dùng đăng nhập bằng Gmail cá nhân, nhiều máy có thể không có Outlook → bản nháp `.eml` không mở được (Gmail web không nhận .eml
+  thành nháp), trình hỗ trợ cài máy cũng cần Outlook. Tạo nháp Gmail qua API cần quyền Gmail bị Google hạn chế (thẩm định bảo mật). Hướng khả thi
+  khi mở lại: liên kết soạn thư Gmail (To/CC/tiêu đề/nội dung, Excel tải kèm để kéo vào) + `.eml` cho máy có Outlook; hoặc hệ thống tự gửi.
+- Đã làm (gồm phần dở từ phiên trước): một đợt push gộp mọi dòng chọn + 1 Excel, popup To/CC theo đối tác (`localStorage`), bản nháp `.eml`;
+  backend chỉ tính đợt push là "đã thúc" khi có mail đồng bộ khớp mã push (`lib/mailNhacDongBo.ts`, R3 / Việc cần làm / Điều hành).
+  Rồi **ẩn nút "Tạo mail nhắc"** ở Đơn hàng (thanh chọn + menu Công cụ), popup PO, popup LK bằng cờ `BAT_TAO_MAIL_NHAC = false`. Nút "📞 Đã nhắc
+  đối tác" giữ nguyên. Hướng dẫn HTML (người đặt hàng mục 6) đổi sang cách tự gửi mail: CC theodoimuahang@gmail.com + mã 3TDO / mã LK.
+- Kiểm thử: typecheck + build; local: tick 2 dòng ở Đơn hàng chỉ còn "Giải trình chung" / "📞 Đã nhắc đối tác", menu Công cụ không còn
+  "Tạo mail nhắc", không lỗi console.
+- Còn mở: chọn hướng khi bật lại tính năng; repo chưa có remote `etx87`.
+
 ## 18/11/2026 — v0.087: Sửa thanh trên của hướng dẫn HTML
 
 - Production phục vụ `/huong-dan/dat-hang.html` thành `/huong-dan/dat-hang` (Cloudflare bỏ đuôi .html) → thanh trên không gạch chân trang đang xem. `hd.js` so tên trang không đuôi.

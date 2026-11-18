@@ -56,7 +56,10 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 - Quy tắc: **R1** — dòng mới phải có ngày dự kiến trong 48 giờ làm việc; **R3** — thứ 2/4 phải có mail cập nhật với NCC; **R4** —
   quá ngày dự kiến chưa về; lùi ngày nhiều lần → **cấp CEO**. Giờ làm việc bỏ Chủ nhật.
 - Lỗi ghi vào `tl_loi` (chạy nền tối đa 10 phút/lần, idempotent); hết vi phạm thì tự xoá lỗi R1. Lỗi R3 đang chờ tự xoá khi dòng có mail /
-  gọi-Zalo ghi nhận / đợt push trong kỳ của nó (kể cả mail đồng bộ muộn hoặc lỗi ghi trước khi R3 tính mail), có ghi nhật ký.
+  gọi-Zalo ghi nhận trong kỳ của nó (kể cả mail đồng bộ muộn hoặc lỗi ghi trước khi R3 tính mail), có ghi nhật ký. Mail chỉ được tính khi đã
+  đồng bộ qua hộp thư theo dõi (khớp dòng hoặc mã push); tạo đợt / tải Excel / bản nháp chưa tính.
+- **Nút "Tạo mail nhắc" đang tạm tắt** (v0.088, cờ `BAT_TAO_MAIL_NHAC` ở `pages/theodoi/shared.tsx`): người mua tự soạn mail cho NCC, CC
+  hộp theo dõi + ghi mã 3TDO / mã LK. API tạo đợt push và luồng đồng bộ mail giữ nguyên.
 - Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ ≥ 7 ngày) / TB / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
 - Nhắc nhở: hệ thống tự nhắc khi ghi lỗi mới; quản lý nhắc tay.
 
@@ -78,7 +81,7 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   - **VÀNG**: đang chờ ngày DK · có lỗi chờ giải trình · im lặng ≥ 3 ngày · ngày DK trong 2 ngày tới · tồn > 30 ngày.
   - **XANH**: còn lại. Mỗi mức kèm lý do bằng chữ.
 - **Tác động** (việc của người mua hàng) = thêm / sửa / xoá đợt kế hoạch, đợt push, mail gửi NCC gắn dòng, ghi nhận gọi / Zalo, giải trình.
-  **Im lặng** = số ngày từ tác động cuối (hoặc từ ngày bắt đầu) đến hôm nay. **Thúc NCC** = push + mail gửi + liên hệ; **phản hồi NCC** = mail nhận.
+  **Im lặng** = số ngày từ tác động cuối (hoặc từ ngày bắt đầu) đến hôm nay. **Thúc NCC** = đợt push đã có mail đồng bộ + mail gửi + liên hệ; **phản hồi NCC** = mail nhận.
 - **Người phụ trách**: dòng đã ban hành = người lập PO; G2 = người thẩm định; G3 = người duyệt mua; G6 / G8 = NCC; G7 = Kho / Kế toán.
   Lỗi hệ thống vẫn gán mặc định cho người lập PO; nguyên nhân thật đọc từ giải trình (Ai + Lỗi gì), luôn hiện kèm **độ phủ giải trình**.
 - Màn **Điều hành** (`/dieu-hanh`): kết luận nhanh (câu tự sinh), ô sức khoẻ, luồng giai đoạn ngang (đang ở / trễ / lỗi, 30 ngày đúng hạn),

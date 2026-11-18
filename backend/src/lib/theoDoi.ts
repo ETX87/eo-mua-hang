@@ -1,3 +1,4 @@
+import { MAIL_DONG_BO_THEO_DONG } from "./mailNhacDongBo";
 import type { Env } from "../types";
 import { computeTienDo01, TRANG_THAI_DONG } from "../routes/reports";
 import { cachedReport } from "./reportCache";
@@ -10,7 +11,7 @@ import { laNhomR1_24h } from "./chuanHoa";
  *  R1  tu luc dong bat dau (EO ban hanh / dong them sau ban hanh duoc duyet) -> 48h LAM VIEC (bo Chu nhat, tu 2026-11-05; truoc la 24h) phai co
  *      ngay du kien (co it nhat 1 item_plan, ke ca da xoa mem). Tre -> loi.
  *  R3  Thu 2 / thu 4 (ngay X, dong bat dau truoc X): het ngay X ma dong van chua tung co ngay du kien va khong nam
- *      trong dot push doi tac (tl_push_item ngay X) / khong co mail (tl_mail) / lien he ghi tay (tl_lien_he) trong ky -> loi.
+ *      co mail dong bo hoac lien he ghi tay trong ky -> loi.
  *  R4  Ngay du kien gan nhat D < hom nay, dong chua du hang: tu 00:00 ngay D+1 + 24h lam viec phai nhap ngay moi
  *      (ngay du kien gan nhat > D). Qua han -> loi (khoa theo D, moi lan qua han 1 loi).
  *  Cap CEO (1 trong 3): lui ngay du kien >= 3 lan | ngay du kien gan nhat - ngay dat >= 30 ngay ma chua du | >= 3 loi.
@@ -325,15 +326,8 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
   try {
     const rows = (await layDongTheoDoi(env, "dang_mo")).filter((r) => r.ap_dung);
     const today = todayVN();
-    const pushRs = rows.length
-      ? (await db.prepare("SELECT eo_item_id, ngay FROM tl_push_item WHERE eo_item_id IN (SELECT value FROM json_each(?))")
-          .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; ngay: string }>()).results
-      : [];
-    const pushed = new Set(pushRs.map((p) => `${p.eo_item_id}|${p.ngay}`));
-    // R3 (2026-11-05): mail voi doi tac cua dong (tl_mail, app theodoimuahang - GUI hoac NHAN) trong ky = da push.
-    // Ky cua thu 2 / thu 4 X = sau ngay kiem tra truoc (X-5 voi thu 2, X-2 voi thu 4) den het ngay X.
     const mailRs = rows.length
-      ? (await db.prepare("SELECT DISTINCT eo_item_id, substr(thoi_gian, 1, 10) d FROM tl_mail WHERE thoi_gian IS NOT NULL AND eo_item_id IN (SELECT value FROM json_each(?))")
+      ? (await db.prepare(`SELECT eo_item_id, d FROM (${MAIL_DONG_BO_THEO_DONG}) WHERE eo_item_id IN (SELECT value FROM json_each(?))`)
           .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; d: string }>()).results
       : [];
     // 2026-11-13 (migration 0023): nhac doi tac khong qua mail (goi dien / Zalo / tin nhan) ghi nhan tay = nhu co mail trong ky
@@ -375,7 +369,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           if (veTruoc(x) || daVe(r, x)) break; // hang da ve -> het nghia vu push
           const kyTu = fmtVN(new Date(d.getTime() - (dow === 1 ? 5 : 2) * 86400_000)).slice(0, 10);
           const coMail = (mailBy.get(r.item_id) ?? []).some((m) => m > kyTu && m <= x);
-          if (!pushed.has(`${r.item_id}|${x}`) && !coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
+          if (!coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
         }
       }
     }
@@ -433,17 +427,14 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
         await bumpVersions(db, ["theo_doi"]);
       }
     }
-    // R3 DANG CHO ma dong CO mail voi NCC (tl_mail GUI/NHAN) / lien he ghi tay / dot push TRONG KY cua no -> tu bo (2026-11-18, soat mail:
-    // 141 loi ghi truoc khi R3 tinh mail (2026-11-05) + mail / thu cu dong bo muon). Ky = (kyR3Tu(X), X] - khop kyR3Tu: thu 2 lui 5 ngay, thu 4 lui 2.
-    // Tinh trong SQL, moi dong (ke ca da dong). Ghi event_log nhu cac lan tu bo loi khac.
+    // Bo loi R3 dang cho khi mail dong bo dong bo muon hoac co lien he ghi tay trong ky.
     const boR3 = (await db.prepare(
-      `WITH r AS (SELECT id, eo_item_id, ngay_tham_chieu x,
+      `WITH mail_dong_bo AS (${MAIL_DONG_BO_THEO_DONG}), r AS (SELECT id, eo_item_id, ngay_tham_chieu x,
                   date(ngay_tham_chieu, CASE strftime('%w', ngay_tham_chieu) WHEN '1' THEN '-5 days' ELSE '-2 days' END) tu
                   FROM tl_loi WHERE quy_tac = 'R3' AND trang_thai = 'CHO_GIAI_TRINH' AND ngay_tham_chieu IS NOT NULL)
        SELECT r.id FROM r WHERE
-         EXISTS (SELECT 1 FROM tl_mail m WHERE m.eo_item_id = r.eo_item_id AND m.thoi_gian IS NOT NULL AND substr(m.thoi_gian, 1, 10) > r.tu AND substr(m.thoi_gian, 1, 10) <= r.x)
-         OR EXISTS (SELECT 1 FROM tl_lien_he h WHERE h.eo_item_id = r.eo_item_id AND substr(h.ngay_lien_he, 1, 10) > r.tu AND substr(h.ngay_lien_he, 1, 10) <= r.x)
-         OR EXISTS (SELECT 1 FROM tl_push_item p WHERE p.eo_item_id = r.eo_item_id AND p.ngay = r.x)`,
+         EXISTS (SELECT 1 FROM mail_dong_bo m WHERE m.eo_item_id = r.eo_item_id AND m.d > r.tu AND m.d <= r.x)
+         OR EXISTS (SELECT 1 FROM tl_lien_he h WHERE h.eo_item_id = r.eo_item_id AND substr(h.ngay_lien_he, 1, 10) > r.tu AND substr(h.ngay_lien_he, 1, 10) <= r.x)`,
     ).all<{ id: number }>()).results.map((x) => x.id);
     if (boR3.length) {
       const ids = JSON.stringify(boR3);

@@ -19,7 +19,7 @@ import {
 } from "../../pages/eo/eoActions";
 import { gopTrung, gopLienTiep, khoaMail, lietKe } from "../../lib/gopTrung";
 import { NhatKyGop } from "../NhatKyGop";
-import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, LienHeDoiTacModal } from "../../pages/theodoi/shared";
+import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, BAT_TAO_MAIL_NHAC, type MailNhac, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
 import { Kho, khoGon } from "../../lib/kho";
 import { DataTable, type Col } from "../DataTable";
@@ -67,7 +67,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   // 1 modal thao tac tai 1 thoi diem; mo len tren popup (Modal zIndex > qv-overlay)
   const [md, setMd] = useState<{ k: string; x?: any } | null>(null);
   const [chon, setChon] = useState<Set<number>>(new Set());
-  const [pushKq, setPushKq] = useState<any[] | null>(null);
+  const [pushKq, setPushKq] = useState<MailNhac | null>(null);
   const [lh, setLh] = useState<number[] | null>(null); // ghi nhan nhac doi tac (goi dien / tin nhan)
   const [err, setErr] = useState("");
   const [tim, setTim] = useState(""); // tim nhanh trong tab dang mo
@@ -99,7 +99,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       out.push({ at: moi, nhom: "loi", h: `Lỗi: ${QUY_TAC[l.quy_tac] ?? l.quy_tac}${ds.length > 1 ? ` × ${ds.length} lần` : ""} · ${new Set(ids).size > 1 ? `${new Set(ids).size} dòng` : lk(ids)}`, ai: l.ai_email,
         text: `${l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}${new Set(ids).size > 1 ? ` — ${lk(ids)}` : ""}${ds.length > 1 ? ` · từ ${ngay(ds.map((y) => String(y.han || y.created_at)).sort()[0])} đến ${ngay(moi)}` : ""}` });
     }
-    for (const p of b?.push ?? []) out.push({ at: p.created_at, nhom: "mail", h: `Tạo push ${p.ma_push} · ${p.doi_tac}`, ai: p.created_by, text: `${p.so_dong} dòng · ${p.trang_thai === "DA_TAO" ? "đã tạo file" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"}` });
+    for (const p of b?.push ?? []) out.push({ at: p.created_at, nhom: "mail", h: `Tạo push ${p.ma_push} · ${p.doi_tac}`, ai: p.created_by, text: `${p.so_dong} dòng · ${p.trang_thai === "DA_TAO" ? "chưa gửi" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"}` });
     for (const { x: m, ds } of gopTrung((b?.mail ?? []) as any[], khoaMail)) {
       const ids = idsThu(ds).filter((x) => itemBy.has(x));
       out.push({ at: m.thoi_gian || m.synced_at, nhom: "mail", h: `${m.huong === "GUI" ? "✉ Gửi" : "✉ Nhận"}: ${m.tieu_de ?? ""}`, ai: m.huong === "GUI" ? m.den : m.tu, loai: m.huong === "GUI" ? "✉ Gửi mail" : "✉ Nhận mail",
@@ -131,7 +131,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const tatCa = chonDuoc.length > 0 && chonDuoc.every((r: any) => chon.has(r.id));
   const doiChon = (rid: number) => setChon((s) => { const n = new Set(s); if (n.has(rid)) n.delete(rid); else n.add(rid); return n; });
   const push = async () => {
-    if (!chon.size || !confirm(`Tạo file push đối tác cho ${chon.size} dòng? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
+    if (!chon.size || !confirm(`Tạo mail nhắc cho ${chon.size} dòng?`)) return;
     setErr(""); setBusy(true);
     try { setPushKq(await taoPushDoiTac([...chon])); setChon(new Set()); qc.invalidateQueries(); }
     catch (e: any) { setErr(e?.body?.error === "READ_ONLY" ? "Bạn không có quyền push một số dòng đã chọn." : "Lỗi tạo push."); }
@@ -288,7 +288,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
               <div className="qv-toolbar">
                 <button className="btn sm" title="Tải Excel mọi dòng linh kiện của EO (kèm kế hoạch, hàng về, theo dõi)" onClick={() => xuatDongEo(eo, d.items, d.plans, b)}><I.download width={13} height={13} /> Tải danh sách linh kiện</button>
                 {P.issued && coChon && <>
-                  <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
+                  {BAT_TAO_MAIL_NHAC && <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Tạo mail nhắc ({chon.size})</button>}
                   <button className="btn sm" disabled={!chon.size} onClick={() => setLh([...chon])} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn — tính như đã push (R3)">📞 Đã nhắc đối tác</button>
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
@@ -352,14 +352,14 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             )}
             {tab === "mail" && (
               <>
-                {coChon && <div className="qv-toolbar"><span className="muted" style={{ fontSize: 12 }}>Tạo push mới: tab <b>Linh kiện</b> → tick dòng còn thiếu → <b>Push đối tác</b>.</span>
+                {coChon && BAT_TAO_MAIL_NHAC && <div className="qv-toolbar"><span className="muted" style={{ fontSize: 12 }}>Tạo push mới: tab <b>Linh kiện</b> → tick dòng còn thiếu → <b>Tạo mail nhắc</b>.</span>
                   <button className="btn sm" onClick={() => setTab("lk")}>Chọn dòng để push</button></div>}
                 <div className="qv-sec">Đợt push đối tác</div>
                 <table className="tbl tbl-dense">
                   <thead><tr><th>Mã push</th><th>Đối tác</th><th style={{ textAlign: "right" }}>Dòng</th><th>Trạng thái</th><th>Người tạo</th><th>Lúc</th></tr></thead>
                   <tbody>
                     {(b?.push ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa push đối tác.</td></tr>}
-                    {(b?.push ?? []).filter(k).map((p: any) => <tr key={p.id}><td style={{ fontFamily: "monospace" }}>{p.ma_push}</td><td><Clip w={160}>{p.doi_tac}</Clip></td><td style={{ textAlign: "right" }}>{p.so_dong}</td><td><span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Đã tạo file" : p.trang_thai === "DA_GUI" ? "Đã gửi" : "Đã phản hồi"}</span></td><td>{ten(p.created_by)}</td><td>{ngayGio(p.created_at)}</td></tr>)}
+                    {(b?.push ?? []).filter(k).map((p: any) => <tr key={p.id}><td style={{ fontFamily: "monospace" }}>{p.ma_push}</td><td><Clip w={160}>{p.doi_tac}</Clip></td><td style={{ textAlign: "right" }}>{p.so_dong}</td><td><span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Chưa gửi" : p.trang_thai === "DA_GUI" ? "Đã gửi" : "Đã phản hồi"}</span></td><td>{ten(p.created_by)}</td><td>{ngayGio(p.created_at)}</td></tr>)}
                   </tbody>
                 </table>
                 <div className="qv-sec">Luồng mail theodoimuahang@gmail.com</div>

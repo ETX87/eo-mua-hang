@@ -13,7 +13,7 @@ import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, EoLink, DongLink, useQuickView } from "./QuickView";
 import { quyenEo, QtyModal, KetThucSomMaModal } from "../../pages/eo/eoActions";
-import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, LienHeDoiTacModal } from "../../pages/theodoi/shared";
+import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, BAT_TAO_MAIL_NHAC, type MailNhac, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { Kho } from "../../lib/kho";
 
 /**
@@ -37,7 +37,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const [md, setMd] = useState<{ k: string; x?: any } | null>(null);
   const [chon, setChon] = useState<Set<number>>(new Set());
-  const [pushKq, setPushKq] = useState<any[] | null>(null);
+  const [pushKq, setPushKq] = useState<MailNhac | null>(null);
   const [lh, setLh] = useState<number[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -103,7 +103,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   const quyen = (r: any) => quyenEo({ created_by: tdBy.get(r.item_id)?.nguoi_dat ?? null, trang_thai: r.trang_thai_eo }, me.data);
   const xong = () => { setMd(null); qc.invalidateQueries(); };
   const push = async () => {
-    if (!chon.size || !confirm(`Tạo file push đối tác cho ${chon.size} dòng? (mỗi đối tác 1 file + tiêu đề mail chuẩn)`)) return;
+    if (!chon.size || !confirm(`Tạo mail nhắc cho ${chon.size} dòng?`)) return;
     setErr(""); setBusy(true);
     try { setPushKq(await taoPushDoiTac([...chon])); setChon(new Set()); qc.invalidateQueries(); }
     catch (e: any) { setErr(e?.body?.error === "READ_ONLY" ? "Bạn không có quyền push một số dòng đã chọn." : "Lỗi tạo push."); }
@@ -159,7 +159,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
           </div>
           {tab === "eo" && d.dong.some(chonDuoc) && (
             <div className="qv-toolbar">
-              <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Push đối tác ({chon.size})</button>
+              {BAT_TAO_MAIL_NHAC && <button className="btn sm primary" disabled={!chon.size || busy} onClick={push}><I.send width={13} height={13} /> Tạo mail nhắc ({chon.size})</button>}
               <button className="btn sm" disabled={!chon.size} onClick={() => setLh([...chon])} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn — tính như đã push (R3)">📞 Đã nhắc đối tác</button>
               <button className="btn sm" onClick={() => setChon(new Set(dong.filter(chonDuoc).map((r: any) => r.item_id)))}>Chọn mọi dòng còn thiếu</button>
               {chon.size > 0 && <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>}

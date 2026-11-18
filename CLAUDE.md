@@ -122,8 +122,18 @@ idempotent, chạy sau request API tối đa 10 phút/lần — đọc `tl_state
 json_each, tra mã LK- 1 lần) — không lặp truy vấn theo dòng: D1 giới hạn 1.000 truy vấn / request (1 thư KRF có thể 100+ dòng).
 Payload > 20.000 ký tự → bỏ (không cắt chuỗi JSON). Đọc mail theo EO (`xemNhanh`) gom 1 thư = 1 dòng trong SQL (`item_ids`), dùng UNION
 thay OR. Giải trình (`POST /theo-doi/giai-trinh`, `cung_loai` mặc định true) đóng MỌI lỗi cùng quy tắc đang chờ của dòng — R3 ghi mỗi
-thứ 2/4 chỉ cần giải trình 1 lần; FE hiện 1 dòng "× n lần". R3 (v0.057): có `tl_mail` của dòng (GUI/NHAN) trong kỳ (sau ngày
-kiểm tra trước → hết ngày thứ 2/4) = đã push, không ghi lỗi. **v0.085**: `danhGiaQuyTac` tự xoá lỗi R3 ĐANG CHỜ khi dòng có `tl_mail` / `tl_lien_he` trong kỳ hoặc `tl_push_item` đúng ngày (SQL, kỳ khớp `kyR3Tu`; event `XOA_LOI_THEO_DOI`) — mail đồng bộ muộn / lỗi ghi trước khi R3 tính mail. Hiệu năng đo bằng `npx wrangler d1 insights eo-mua-hang-db --timePeriod 7d`. Domain version `theo_doi` (DVBH tag có).
+thứ 2/4 chỉ cần giải trình 1 lần; FE hiện 1 dòng "× n lần". R3 dùng mail `tl_mail` đã đồng bộ qua hộp thư theo dõi, khớp mã push hoặc dòng, và `tl_lien_he` trong kỳ (sau ngày kiểm tra trước đến hết thứ 2/4). `danhGiaQuyTac` tự xoá lỗi R3 đang chờ nếu mail hoặc liên hệ về muộn đúng kỳ (event `XOA_LOI_THEO_DOI`). Tạo đợt / tải Excel / mở bản nháp chưa tính. Domain version `theo_doi` (DVBH tag có).
+**Tạo mail nhắc**: một đợt và một Excel cho toàn bộ lựa chọn, hiển thị To/CC từng đối tác trong popup. Lưu theo tài khoản và đối tác bằng `localStorage`, mặc định To từ `tl_mail.den`, luôn CC `theodoimuahang@gmail.com`. Xác nhận tạo `.eml` có sẵn file đính kèm để mở Outlook. Tự mở tùy cài đặt trình duyệt và ứng dụng mặc định của Windows. Người dùng tự bấm gửi. Luồng xác nhận và cấu hình được mô tả trong `../THEO_DOI_LINH_KIEN_DAT.md` mục 2.
+
+### Bàn giao Tạo mail nhắc (18/11/2026)
+
+- **v0.088: TẠM TẮT nút "Tạo mail nhắc"** theo yêu cầu chủ hệ thống (ẩn ở Đơn hàng, popup PO, popup LK qua cờ `BAT_TAO_MAIL_NHAC = false` trong `frontend/src/pages/theodoi/shared.tsx`). Người dùng tự gửi mail thủ công. Phân tích hướng mở lại ở `nhat_ky_lam_viec.md` mục v0.088. Các ghi chú dưới đây là trạng thái code khi tắt.
+
+- **Chưa đạt yêu cầu mở Outlook từ một cú bấm.** Ở Đơn hàng, nút **Tạo mail nhắc** tạo đợt và mở popup để sửa To/CC theo từng đối tác. Nút **Xác nhận và mở Outlook** hiện chỉ lưu To/CC theo tài khoản và đối tác trong `localStorage`, sau đó tạo và tải bản nháp `.eml` bằng liên kết download. Mã dùng chung nằm trong `frontend/src/pages/theodoi/shared.tsx` (`PushKetQua`).
+- **Kết quả kiểm thử:** Bấm trực tiếp trên Chrome với Worker và D1 cục bộ. Chọn hai dòng, xác nhận, Chrome tải một `.eml` có đúng To/CC và một Excel chứa đủ hai dòng. Outlook không tự mở trong lần thử. Mở tệp thử thủ công bằng **Open with → Outlook (classic)** thì hiện cửa sổ soạn thư có nút Send, đúng To/CC, tiêu đề, nội dung và tệp đính kèm. Chưa triển khai production, chưa gửi thư thật.
+- **Yêu cầu cần triển khai tiếp:** Sau khi sửa To/CC và bấm xác nhận trên web, Outlook mở ngay cửa sổ soạn thư có To/CC, tiêu đề, nội dung và một Excel đính kèm, không cần người dùng tìm hoặc mở tệp tải xuống. Người dùng tự bấm Gửi. Kiểm thử từ nút trên web đến cửa sổ soạn thư Outlook thực tế. Mở thủ công tệp `.eml` chưa đạt tiêu chí này.
+- **Xác nhận đã nhắc:** Luôn CC `theodoimuahang@gmail.com`. Đợt vẫn **Chưa gửi** khi tạo bản nháp hoặc mở Outlook. Luồng hộp thư theo dõi xác nhận khi mail đồng bộ qua `POST /api/partner/mail-events` khớp mã nhắc hoặc dòng. Đã thử thành công với dữ liệu mail mô phỏng gửi vào API cục bộ. Kiểm thử Outlook có thể dừng ở cửa sổ soạn thư.
+
 **Ngày KRF từ mail** (v0.047, `lib/krfGoiY.ts`): app `theodoimuahang` (`../../thu ky mua hang`, Worker cùng tên) đọc mail
 theodoimuahang@gmail.com theo **mã 3TDO + mã LK** (không dùng mẫu MH-PUSH / EO-PUSH cũ) và đẩy `tl_mail` mỗi dòng 1 bản ghi, `payload.dong` =
 {ngay_can, dap_ung, ngay_dap_ung, note, ton_kho…} (cột "KRF đáp ứng" của file/bảng KRF trả lời). `GET /theo-doi/goi-y-krf` = dòng đang

@@ -47,9 +47,9 @@ app.post("/mail-events", async (c) => {
   // 1 ban ghi / dong (app doc mail tach theo ma 3TDO + ma LK); payload qua 20.000 ky tu -> bo (truoc day cat ngang chuoi JSON -> hong JSON)
   type Dong = [string, string | null, number | null, string, string | null, string | null, string | null, string | null, string | null, string | null, string | null];
   const dong: Dong[] = [];
-  const pushCapNhat = new Map<string, "GUI" | "NHAN">();
+  const pushCapNhat = new Set<string>();
   for (const e of hopLe) {
-    const maPush = (e.ma_push ?? /PUSH-\d{6}-\d{4}/.exec(`${e.tieu_de ?? ""}`)?.[0]) || null;
+    const maPush = (e.ma_push ?? /PUSH-\d{6}-\d{4,}\b/.exec(`${e.tieu_de ?? ""}`)?.[0]) || null;
     const itemIds: number[] = [];
     for (const d of e.id_dong ?? []) {
       const m = /^EOI-(\d+)$/.exec(String(d).trim());
@@ -62,7 +62,7 @@ app.post("/mail-events", async (c) => {
       dong.push([targets.length > 1 ? `${e.ext_id}#${i}` : e.ext_id, maPush, itemId, e.huong, e.doi_tac ?? null, e.tu ?? null, e.den ?? null,
         e.tieu_de ?? null, (e.tom_tat ?? "").slice(0, 2000) || null, e.thoi_gian ?? null, pl && pl.length <= 20000 ? pl : null]);
     }
-    if (maPush && pushCapNhat.get(maPush) !== "NHAN") pushCapNhat.set(maPush, e.huong);
+    if (maPush) pushCapNhat.add(maPush);
   }
   // ext_id da co (chong trung, UNIQUE) -> biet chinh xac dong nao MOI (de tu dong dien ngay KRF chi cho thu moi)
   const daCo = new Set<string>();
@@ -87,10 +87,14 @@ app.post("/mail-events", async (c) => {
     i = j;
   }
   if (pushCapNhat.size) {
-    await db.batch([...pushCapNhat].map(([maPush, huong]) => db.prepare(
-      `UPDATE tl_push SET trang_thai = CASE WHEN ? = 'NHAN' THEN 'DA_PHAN_HOI' WHEN trang_thai = 'DA_TAO' THEN 'DA_GUI' ELSE trang_thai END
-       WHERE ma_push = ?`,
-    ).bind(huong, maPush)));
+    await db.prepare(
+      `UPDATE tl_push SET trang_thai = CASE
+         WHEN EXISTS (SELECT 1 FROM tl_mail m WHERE m.ma_push = tl_push.ma_push AND m.huong = 'NHAN') THEN 'DA_PHAN_HOI'
+         WHEN EXISTS (SELECT 1 FROM tl_mail m WHERE m.ma_push = tl_push.ma_push) THEN 'DA_GUI'
+         ELSE 'DA_TAO'
+       END
+       WHERE ma_push IN (SELECT value FROM json_each(?))`,
+    ).bind(JSON.stringify([...pushCapNhat])).run();
   }
   // Thu KRF tra loi co ngay "KRF dap ung" cho dong nay -> tu dong dien ngay NM cam ket (lib/krfGoiY.ts, chi dong khop chac, chi thu MOI).
   const krfDong = new Set<number>();

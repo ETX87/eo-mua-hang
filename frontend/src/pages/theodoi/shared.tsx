@@ -5,7 +5,7 @@ import { api } from "../../api/client";
 import { Modal, Spinner } from "../../components/ui";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
-import { normKey, writeBook } from "../../lib/excel";
+import { bookBase64, normKey, writeBook } from "../../lib/excel";
 import { NGAY, NhanNgay } from "../../lib/ngay";
 import { krfMoiNhat } from "./KrfGoiY";
 import { Kho } from "../../lib/kho";
@@ -472,7 +472,7 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
           ))}
           <H>Push đối tác ({d.push.length})</H>
           {d.push.length === 0 ? <div className="muted">Chưa push.</div> : d.push.map((p: any) => (
-            <div key={p.ma_push} style={{ padding: "4px 0" }}><b>{p.ma_push}</b> · {p.doi_tac} · {ngayGio(p.created_at)} · {ten(p.created_by)} · <span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Đã tạo file" : p.trang_thai === "DA_GUI" ? "Đã gửi mail" : "Đối tác đã phản hồi"}</span></div>
+            <div key={p.ma_push} style={{ padding: "4px 0" }}><b>{p.ma_push}</b> · {p.doi_tac} · {ngayGio(p.created_at)} · {ten(p.created_by)} · <span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Chưa gửi" : p.trang_thai === "DA_GUI" ? "Đã gửi mail" : "Đối tác đã phản hồi"}</span></div>
           ))}
           <H>Mail ({mailGop.length} thư)</H>
           {mailGop.length === 0 ? <div className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</div> : mailGop.map(({ x: m, ds }: any) => (
@@ -496,42 +496,165 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
   );
 }
 
-/** Tao dot push doi tac cho cac dong (moi doi tac 1 file Excel chuan tai ve may) -> tra danh sach dot de hien PushKetQua. */
-export async function taoPushDoiTac(ids: number[]): Promise<any[]> {
-  const r = await api.post<any>("/theo-doi/push", { eo_item_ids: ids });
-  for (const d of r.dot) {
-    writeBook(d.ten_file, [{
-      name: "PUSH",
-      rows: [
-        ["Mã push", d.ma_push, "", "Đối tác", d.doi_tac, "", "Vui lòng điền 3 cột vàng và giữ nguyên tên file + mã push khi trả lời"],
-        [],
-        ["ID dòng", "Mã phê duyệt", "Mã EO", "Mã linh kiện", "Tên linh kiện", "Kho nhận", "SL đặt", "SL còn thiếu", "Ngày đặt",
-          "Ngày nhà máy cam kết giao (NCC điền)", "SL giao (NCC điền)", "Ghi chú NCC"],
-        ...d.rows.map((x: Dong) => [x.id_dat_lk, x.ma_phe_duyet ?? "", x.eo_code, x.part_code, x.part_name, x.kho, x.so_luong_dat, x.so_luong_con_thieu, ngay(x.bat_dau), "", "", ""]),
-      ],
-      widths: [16, 14, 14, 16, 36, 24, 9, 11, 11, 22, 16, 30],
-    }]);
-  }
+export interface MailNhac {
+  ma_push: string;
+  tieu_de: string;
+  ten_file: string;
+  rows: Dong[];
+  tai_khoan: string;
+  nguoi_nhan: { doi_tac: string; den: string | null }[];
+}
+
+// Tạm tắt nút "Tạo mail nhắc" (18/11/2026): người dùng tự soạn mail, CC hộp theo dõi + ghi mã 3TDO / mã LK. Bật lại = true.
+export const BAT_TAO_MAIL_NHAC = false;
+
+export async function taoPushDoiTac(ids: number[]): Promise<MailNhac> {
+  const r = await api.post<{ dot: MailNhac }>("/theo-doi/push", { eo_item_ids: ids });
   return r.dot;
 }
 
-export function PushKetQua({ dot, onClose }: { dot: any[]; onClose: () => void }) {
-  const copy = (t: string) => navigator.clipboard?.writeText(t);
+const CC_THEO_DOI = "theodoimuahang@gmail.com";
+const EMAIL = /[\w.!#$%&'*+/=?^`{|}~-]+@[\w-]+(?:\.[\w-]+)+/g;
+
+function emailList(value: string) {
+  return [...new Set((value.match(EMAIL) ?? []).map((email) => email.toLowerCase()))];
+}
+
+function utf8Base64(value: string) {
+  return btoa(Array.from(new TextEncoder().encode(value), (byte) => String.fromCharCode(byte)).join(""));
+}
+
+function wrapBase64(value: string) {
+  return value.match(/.{1,76}/g)?.join("\r\n") ?? "";
+}
+
+type NguoiNhanNhac = { to: string; cc: string };
+type NguoiNhanTheoDoiTac = NguoiNhanNhac & { doiTac: string; ten: string };
+
+function khoaNguoiNhan(taiKhoan: string, doiTac: string) {
+  return `eomua:mail-nhac:v1:${encodeURIComponent(taiKhoan.toLowerCase())}:${encodeURIComponent(doiTac)}`;
+}
+
+function docNguoiNhan(key: string): NguoiNhanNhac | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+    return typeof saved?.to === "string" && typeof saved?.cc === "string" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function tachDiaChi(value: string) {
+  return value.split(/[\s,;]+/).filter(Boolean);
+}
+
+export function PushKetQua({ dot, onClose }: { dot: MailNhac; onClose: () => void }) {
+  const [nguoiNhan, setNguoiNhan] = useState<NguoiNhanTheoDoiTac[]>(() => {
+    const doiTac = new Map<string, string>();
+    for (const row of dot.rows) {
+      const ten = row.doi_tac?.trim() || "";
+      doiTac.set(ten.toLowerCase(), ten);
+    }
+    return Array.from(doiTac, ([key, ten]) => {
+      const lichSu = dot.nguoi_nhan.find((r) => r.doi_tac === key)?.den ?? "";
+      const saved = key ? docNguoiNhan(khoaNguoiNhan(dot.tai_khoan, key)) : null;
+      return { doiTac: key, ten, ...(saved ?? {
+        to: emailList(lichSu).filter((e) => e !== CC_THEO_DOI).join(", "), cc: "",
+      }) };
+    });
+  });
+  const [loi, setLoi] = useState("");
+  const suaNguoiNhan = (doiTac: string, field: keyof NguoiNhanNhac, value: string) => {
+    setNguoiNhan((ds) => ds.map((r) => r.doiTac === doiTac ? { ...r, [field]: value } : r));
+    setLoi("");
+  };
+  const [body, setBody] = useState(
+    "Kính gửi anh/chị,\n\nEm gửi danh sách linh kiện 3T đang thiếu hàng trong file đính kèm. Nhờ anh/chị hỗ trợ kiểm tra và phản hồi ngày dự kiến giao, số lượng có thể giao và ghi chú (nếu có) trong file.\n\nKhi phản hồi, vui lòng giữ nguyên mã nhắc trong tiêu đề và CC hộp thư theo dõi.\n\nEm cảm ơn anh/chị.",
+  );
+  const sheets = [{
+    name: "PUSH",
+    rows: [
+      ["Mã push", dot.ma_push],
+      [],
+      ["ID dòng", "Mã phê duyệt", "Mã EO", "Mã linh kiện", "Tên linh kiện", "Đối tác", "Kho nhận", "SL đặt", "SL còn thiếu", "Ngày đặt",
+        "Ngày nhà máy cam kết giao (NCC điền)", "SL giao (NCC điền)", "Ghi chú NCC"],
+      ...dot.rows.map((x) => [x.id_dat_lk, x.ma_phe_duyet ?? "", x.eo_code, x.part_code, x.part_name, x.doi_tac, x.kho, x.so_luong_dat, x.so_luong_con_thieu, ngay(x.bat_dau), "", "", ""]),
+    ],
+    widths: [16, 14, 14, 16, 36, 24, 24, 9, 11, 11, 22, 16, 30],
+  }];
+  const downloadDraft = () => {
+    const allAddresses = nguoiNhan.flatMap((r) => [...tachDiaChi(r.to), ...tachDiaChi(r.cc)]);
+    if (allAddresses.some((email) => emailList(email)[0] !== email.toLowerCase())) {
+      setLoi("Kiểm tra địa chỉ email. Dùng dấu phẩy hoặc chấm phẩy để phân tách.");
+      return;
+    }
+    const recipients = emailList(nguoiNhan.map((r) => r.to).join(", ")).filter((e) => e !== CC_THEO_DOI);
+    if (!recipients.length) {
+      setLoi("Nhập ít nhất một địa chỉ To.");
+      return;
+    }
+    const cc = nguoiNhan.map((r) => r.cc).join(", ");
+    try {
+      for (const r of nguoiNhan) {
+        if (!r.doiTac) continue;
+        localStorage.setItem(khoaNguoiNhan(dot.tai_khoan, r.doiTac), JSON.stringify({
+          to: emailList(r.to).filter((e) => e !== CC_THEO_DOI).join(", "),
+          cc: emailList(r.cc).filter((e) => e !== CC_THEO_DOI).join(", "),
+        }));
+      }
+      setLoi("");
+    } catch {
+      setLoi("Trình duyệt không lưu được To/CC cho lần sau. Vẫn có thể mở bản nháp lần này.");
+    }
+    const boundary = `mh-${dot.ma_push}`;
+    const eml = [
+      "X-Unsent: 1",
+      "MIME-Version: 1.0",
+      `To: ${recipients.join(",\r\n ")}`,
+      `Cc: ${[CC_THEO_DOI, ...emailList(cc).filter((e) => e !== CC_THEO_DOI && !recipients.includes(e))].join(",\r\n ")}`,
+      `Subject: ${(dot.tieu_de.match(/.{1,14}/gu) ?? []).map((part) => `=?UTF-8?B?${utf8Base64(part)}?=`).join("\r\n ")}`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      wrapBase64(utf8Base64(body.replace(/\r?\n/g, "\r\n"))),
+      `--${boundary}`,
+      "Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${dot.ten_file}"`,
+      "",
+      wrapBase64(bookBase64(sheets)),
+      `--${boundary}--`,
+      "",
+    ].join("\r\n");
+    const url = URL.createObjectURL(new Blob([eml], { type: "message/rfc822" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `MH-PUSH_${dot.ma_push}.eml`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   return (
-    <Modal title="Đã tạo file push đối tác" onClose={onClose} wide footer={<button className="btn primary" onClick={onClose}>Xong</button>}>
-      <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
-        File Excel đã tải về máy. Gửi mail cho đối tác từ <b>theodoimuahang@gmail.com</b> (hoặc CC địa chỉ này), giữ <b>nguyên tiêu đề</b> và
-        <b> tên file</b> — hệ thống nhận diện luồng mail theo mã push.
+    <Modal title="Mail nhắc giao hàng" onClose={onClose} wide footer={<>
+      <button className="btn" onClick={() => writeBook(dot.ten_file, sheets)}>Tải Excel</button>
+      <button className="btn primary" onClick={downloadDraft}>Xác nhận và mở Outlook</button>
+    </>}>
+      <div className="muted" style={{ marginBottom: 10 }}>
+        Bản nháp đính kèm {dot.ten_file} ({dot.rows.length} dòng). Nếu Outlook chưa tự mở, mở tệp .eml vừa tải.
       </div>
-      {dot.map((d) => (
-        <div key={d.ma_push} className="card card-pad" style={{ marginBottom: 8, fontSize: 13 }}>
-          <b>{d.doi_tac}</b> · {d.rows.length} dòng · file <code>{d.ten_file}</code>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
-            <input className="input" readOnly value={d.tieu_de} onFocus={(e) => e.target.select()} />
-            <button className="btn sm" onClick={() => copy(d.tieu_de)}>Copy tiêu đề</button>
-          </div>
-        </div>
-      ))}
+      {nguoiNhan.length > 1 && <p>Mọi người nhận sẽ thấy toàn bộ danh sách Excel. Kiểm tra To/CC trước khi xác nhận.</p>}
+      {nguoiNhan.map((r) => <fieldset key={r.doiTac} className="card card-pad" style={{ marginBottom: 8 }}>
+        <legend>{r.ten || "Dòng chưa có đối tác"}</legend>
+        <label>To <input className="input" value={r.to} onChange={(e) => suaNguoiNhan(r.doiTac, "to", e.target.value)} /></label>
+        <label>CC <input className="input" value={r.cc} onChange={(e) => suaNguoiNhan(r.doiTac, "cc", e.target.value)} /></label>
+      </fieldset>)}
+      <p className="muted">Luôn CC {CC_THEO_DOI} để xác nhận qua hộp thư theo dõi.</p>
+      {loi && <p role="alert">{loi}</p>}
+      <label>Tiêu đề <input className="input" readOnly value={dot.tieu_de} /></label>
+      <label>Nội dung <textarea className="input" rows={8} value={body} onChange={(e) => setBody(e.target.value)} /></label>
     </Modal>
   );
 }

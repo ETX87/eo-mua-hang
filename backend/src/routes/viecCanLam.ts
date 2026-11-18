@@ -1,8 +1,9 @@
+import { MAIL_DONG_BO_THEO_DONG } from "../lib/mailNhacDongBo";
 import { Hono } from "hono";
 import type { Env, AppVariables, AppUser } from "../types";
 import { versionTag } from "../lib/dataVersions";
 import { todayVN, nowVN } from "../lib/vnTime";
-import { layDongTheoDoi, type DongTheoDoi } from "../lib/theoDoi";
+import { kyR3Tu, layDongTheoDoi, type DongTheoDoi } from "../lib/theoDoi";
 import { canImportAmis, canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { dvbhEnabled } from "../lib/dvbhSync";
 
@@ -79,15 +80,18 @@ app.get("/", async (c) => {
     ];
     if (dow === 1 || dow === 3) {
       const ids = rows.filter((r) => !r.co_ngay_du_kien).map((r) => r.item_id);
-      let chuaPush = 0;
-      if (ids.length) {
-        const p = await db.prepare(
-          "SELECT COUNT(DISTINCT eo_item_id) n FROM tl_push_item WHERE ngay = ? AND eo_item_id IN (SELECT value FROM json_each(?))",
-        ).bind(today, JSON.stringify(ids)).first<{ n: number }>();
-        chuaPush = ids.length - (p?.n ?? 0);
-      }
-      chiTiet.push({ label: "Cần push đối tác hôm nay", count: chuaPush });
-      ids.forEach((id) => viec.add(id));
+      const daNhac = ids.length ? (await db.prepare(
+        `WITH nhac AS (
+           ${MAIL_DONG_BO_THEO_DONG}
+           UNION
+           SELECT eo_item_id, substr(ngay_lien_he, 1, 10) d FROM tl_lien_he
+         )
+         SELECT DISTINCT eo_item_id FROM nhac WHERE d > ? AND d <= ? AND eo_item_id IN (SELECT value FROM json_each(?))`,
+      ).bind(kyR3Tu(today), today, JSON.stringify(ids)).all<{ eo_item_id: number }>()).results : [];
+      const daNhacIds = new Set(daNhac.map((r) => r.eo_item_id));
+      const chuaNhac = ids.filter((id) => !daNhacIds.has(id));
+      chiTiet.push({ label: "Cần push đối tác hôm nay", count: chuaNhac.length });
+      chuaNhac.forEach((id) => viec.add(id));
     }
     if (viec.size) out.push({ key: "theo_doi", to: "/don-hang?nhom=can_xl", label: "Linh kiện đặt cần xử lý", count: viec.size, chi_tiet: chiTiet.filter((x) => x.count > 0) });
     const ceo = rows.filter((r) => r.ceo_ly_do.length > 0);

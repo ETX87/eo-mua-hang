@@ -462,7 +462,7 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
         ))}
         {theoQt.get("R3") && tongQt && theoQt.get("R3")!.n / tongQt > 0.5 && (
           <div style={{ fontSize: 11.5, background: "#FEF3C7", borderRadius: 6, padding: "6px 8px", marginTop: 4 }}>
-            R3 chiếm hơn nửa số lỗi: hệ thống chỉ coi là "đã push" khi có đợt push, mail NCC <b>gắn được dòng</b> hoặc ghi nhận gọi/Zalo. Mail thúc NCC không ghi mã PO + mã LK
+            R3 chiếm hơn nửa số lỗi: hệ thống chỉ coi là "đã push" khi hộp thư theo dõi đồng bộ mail <b>khớp mã nhắc hoặc gắn được dòng</b>, hoặc có ghi nhận gọi/Zalo. Mail thúc NCC không ghi mã PO + mã LK
             sẽ không được nhận — cần soát cách gửi mail trước khi kết luận nhân viên không thúc.
           </div>
         )}

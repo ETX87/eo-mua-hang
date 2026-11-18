@@ -58,9 +58,15 @@ async function docGoc(env: Env): Promise<Goc> {
   const [kh, push, mail, nhanTt, lh, gt, loi, nhac, items, eos, thamDinh, loi30, loiNgay, gtNgay, nhacNgay, nn, dm] = await db.batch([
     db.prepare(`SELECT eo_item_id id, MAX(t) luc, ai, SUM(t >= ?1) n7 FROM (SELECT eo_item_id, COALESCE(updated_at, created_at) t, COALESCE(updated_by, created_by) ai FROM item_plan
                 UNION ALL SELECT eo_item_id, deleted_at, deleted_by FROM item_plan WHERE deleted_at IS NOT NULL) GROUP BY eo_item_id`).bind(d7),
-    db.prepare(`SELECT pi.eo_item_id id, COUNT(*) n, SUM(pi.ngay >= ?1) n7, MAX(p.created_at) luc, p.created_by ai FROM tl_push_item pi JOIN tl_push p ON p.id = pi.push_id GROUP BY pi.eo_item_id`).bind(d7),
+    db.prepare(`SELECT pi.eo_item_id id, COUNT(*) n, SUM(substr(m.xac_nhan_luc, 1, 10) >= ?1) n7, MAX(m.xac_nhan_luc) luc, p.created_by ai
+      FROM tl_push_item pi JOIN tl_push p ON p.id = pi.push_id
+      JOIN (SELECT ma_push, MIN(thoi_gian) xac_nhan_luc FROM tl_mail WHERE ma_push IS NOT NULL AND thoi_gian IS NOT NULL GROUP BY ma_push) m ON m.ma_push = p.ma_push
+      GROUP BY pi.eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, SUM(huong = 'GUI') gui, SUM(huong = 'GUI' AND thoi_gian >= ?1) gui7, MAX(CASE WHEN huong = 'GUI' THEN thoi_gian END) gui_luc,
-                SUM(huong = 'NHAN') nhan, MAX(CASE WHEN huong = 'NHAN' THEN thoi_gian END) nhan_luc FROM tl_mail WHERE eo_item_id IS NOT NULL GROUP BY eo_item_id`).bind(d7),
+                SUM(huong = 'NHAN') nhan, MAX(CASE WHEN huong = 'NHAN' THEN thoi_gian END) nhan_luc FROM tl_mail m WHERE eo_item_id IS NOT NULL AND NOT (huong = 'GUI' AND EXISTS (
+                  SELECT 1 FROM tl_push p JOIN tl_push_item pi ON pi.push_id = p.id
+                  WHERE p.ma_push = m.ma_push AND pi.eo_item_id = m.eo_item_id
+                )) GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, MAX(thoi_gian) luc, substr(COALESCE(NULLIF(tom_tat, ''), tieu_de), 1, 160) tt FROM tl_mail WHERE huong = 'NHAN' AND eo_item_id IS NOT NULL GROUP BY eo_item_id`),
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(ngay_lien_he >= ?1) n7, MAX(ngay_lien_he) luc, created_by ai, substr(kenh || ': ' || ket_qua, 1, 160) kq FROM tl_lien_he GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(created_at >= ?1) n7, MAX(created_at) luc, created_by ai, ai_ma, loi_ma, substr(noi_dung, 1, 200) nd FROM tl_giai_trinh GROUP BY eo_item_id`).bind(d7),

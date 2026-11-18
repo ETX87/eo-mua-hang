@@ -183,7 +183,7 @@ app.post("/ap-dung-krf", async (c) => {
   return c.json(await apDungKrf(c.env, c.get("user"), b.eo_item_ids));
 });
 
-// POST /push { eo_item_ids: number[] } - tao dot push doi tac (1 dot / doi tac) -> FE dung du lieu tra ve de tao file
+// POST /push { eo_item_ids: number[] } - tao mot dot nhac cho toan bo cac dong da chon.
 // POST /lien-he { eo_item_ids, kenh, ngay (YYYY-MM-DD), gio?, nguoi_lien_he?, ket_qua, hinh_anh? } (2026-11-13, migration 0023)
 // Ghi nhan da nhac doi tac KHONG qua mail (goi dien / Zalo / tin nhan / gap) cho 1 hoac nhieu dong - R3 tinh nhu da push trong ky.
 // Quyen nhu push (canEditPlan tung dong). Ngay lien he: khong sau hom nay, khong qua 7 ngay truoc. Ghi muon -> bo loi R3 DANG CHO
@@ -259,32 +259,38 @@ app.post("/push", async (c) => {
     .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ id: number; created_by: string }>();
   if (metas.results.some((m) => !canEditPlan(u, m))) return c.json({ error: "READ_ONLY" }, 403);
 
-  const groups = new Map<string, typeof rows>();
-  for (const r of rows) {
-    const k = r.doi_tac?.trim() || "(Chưa có đối tác)";
-    groups.set(k, [...(groups.get(k) ?? []), r]);
+  if (rows.length !== ids.length || rows.some((r) => r.so_luong_con_thieu <= 0)) {
+    return c.json({ error: "ITEM_NOT_FOUND", message: "Danh sách đã thay đổi. Tải lại và chọn các dòng còn thiếu hàng." }, 409);
   }
+  const db = c.env.DB;
+  const doiTac = [...new Set(rows.map((r) => r.doi_tac?.trim()).filter(Boolean))].join(", ");
+  const autoTo = await db.prepare(
+    `WITH doi_tac AS (SELECT DISTINCT LOWER(TRIM(value)) ten FROM json_each(?))
+     SELECT d.ten AS doi_tac, (
+       SELECT m.den FROM tl_mail m
+       WHERE m.huong = 'GUI' AND LOWER(TRIM(m.doi_tac)) = d.ten AND TRIM(m.den) <> ''
+       ORDER BY m.thoi_gian DESC, m.id DESC LIMIT 1
+     ) AS den FROM doi_tac d`,
+  ).bind(JSON.stringify(rows.map((r) => r.doi_tac?.trim()).filter(Boolean))).all<{ doi_tac: string; den: string | null }>();
   const now = nowVN();
   const today = todayVN();
-  const yymmdd = today.slice(2).replace(/-/g, "");
-  const out = [];
-  for (const [doiTac, list] of groups) {
-    const seq = await c.env.DB.prepare(
-      "UPDATE id_counters SET gia_tri_hien_tai = gia_tri_hien_tai + 1 WHERE ten_bang = 'tl_push' RETURNING gia_tri_hien_tai",
-    ).first<{ gia_tri_hien_tai: number }>();
-    const ma = `PUSH-${yymmdd}-${String(seq?.gia_tri_hien_tai ?? 1).padStart(4, "0")}`;
-    const tieuDe = `[MH-PUSH][${ma}] ${doiTac} - Đề nghị xác nhận ngày giao hàng (${list.length} dòng)`;
-    const tenFile = `MH-PUSH_${ma}.xlsx`;
-    const p = await c.env.DB.prepare(
-      "INSERT INTO tl_push (ma_push, doi_tac, so_dong, tieu_de, ten_file, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
-    ).bind(ma, doiTac, list.length, tieuDe, tenFile, u.email, now).first<{ id: number }>();
-    await c.env.DB.prepare(
-      "INSERT OR IGNORE INTO tl_push_item (push_id, eo_item_id, ngay) SELECT ?, value, ? FROM json_each(?)",
-    ).bind(p!.id, today, JSON.stringify(list.map((r) => r.item_id))).run();
-    out.push({ ma_push: ma, doi_tac: doiTac, tieu_de: tieuDe, ten_file: tenFile, rows: list });
-  }
-  await bumpVersions(c.env.DB, ["theo_doi"]);
-  return c.json({ ok: true, dot: out });
+  const seq = await db.prepare(
+    "UPDATE id_counters SET gia_tri_hien_tai = gia_tri_hien_tai + 1 WHERE ten_bang = 'tl_push' RETURNING gia_tri_hien_tai",
+  ).first<{ gia_tri_hien_tai: number }>();
+  if (!seq) throw new Error("Missing tl_push counter");
+  const ma = `PUSH-${today.slice(2).replace(/-/g, "")}-${String(seq.gia_tri_hien_tai).padStart(4, "0")}`;
+  const tieuDe = `[MH-PUSH][${ma}] Danh sách linh kiện 3T - Nhờ hỗ trợ xác nhận ngày giao hàng`;
+  const tenFile = `MH-PUSH_${ma}.xlsx`;
+  await db.batch([
+    db.prepare(
+      "INSERT INTO tl_push (ma_push, doi_tac, so_dong, tieu_de, ten_file, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).bind(ma, doiTac, rows.length, tieuDe, tenFile, u.email, now),
+    db.prepare(
+      "INSERT INTO tl_push_item (push_id, eo_item_id, ngay) SELECT p.id, j.value, ? FROM tl_push p, json_each(?) j WHERE p.ma_push = ?",
+    ).bind(today, JSON.stringify(rows.map((r) => r.item_id)), ma),
+  ]);
+  await bumpVersions(db, ["theo_doi"]);
+  return c.json({ ok: true, dot: { ma_push: ma, tieu_de: tieuDe, ten_file: tenFile, rows, nguoi_nhan: autoTo.results, tai_khoan: u.email } });
 });
 
 export default app;
