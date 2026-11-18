@@ -3,6 +3,14 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — Bật API đọc (không đổi code)
+
+- Yêu cầu: "Tạo khoá ngay" (khoá cho API đọc v0.091).
+- Tạo khoá ngẫu nhiên, lưu ở file ngoài repo (thư mục cha, không đưa vào git), đặt secret `DOC_API_KEY` cho Worker `muahang` (`wrangler secret put`).
+- Kiểm thử production: khoá sai 401; `/api/partner/ma-loi` 21 mã; `/ca-ceo` 154 dòng; `/loi/tong-hop` 1.731 lỗi (1.707 chờ giải trình) — 001: 113, 002: 433, 003: 1.116, 004: 69 — 0,36 giây;
+  `/loi?ma=ER.MH-004` 69 lỗi.
+- Còn mở: chủ hệ thống chọn hệ thống sẽ gọi API và chuyển khoá cho bên đó.
+
 ## 18/11/2026 — v0.091: 6 yêu cầu quản trị của lãnh đạo (mã lỗi theo bước, theo mã, Ca tồn CEO, API, trạng thái gắn bước, trao đổi NCC)
 
 - Yêu cầu: rà 6 yêu cầu của lãnh đạo ("1. Trạng thái phải ghi rõ gắn với bước nào 2. Chưa rõ luồng trao đổi và push đối tác 3. Bảng mã lỗi từng bước đâu?
