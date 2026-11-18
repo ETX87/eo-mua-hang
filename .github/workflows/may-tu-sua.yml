@@ -97,7 +97,7 @@ jobs:
                  ```
                  Luật: ≤ 20 thao tác; chỉ GHI GỘP trường (không xoá tài liệu/trường); đường dẫn + tên trường + kiểu giá trị lấy từ dữ liệu thật
                  (đã `doc` bản ghi mẫu cùng loại bằng may-du-lieu.mjs) và đúng mã của app (vd khoá tài liệu là gmail chữ thường thì ghi đúng như vậy);
-                 ngày giờ dạng ISO "2026-11-18T09:00:00Z". JSON KHÔNG chứa chú thích. Gmail/tên người chỉ được nằm trong khối này (Mây cần để ghi), không chép ra chỗ khác.
+                 ngày giờ dạng ISO "2026-11-18T09:00:00Z". Cần email của NGƯỜI BÁO (vd cấp quyền cho chính người xin) mà không có thì ghi đúng chữ {{email_nguoi_bao}} — Mây tự thay, KHÔNG hỏi lại. JSON KHÔNG chứa chú thích. Gmail/tên người chỉ được nằm trong khối này (Mây cần để ghi), không chép ra chỗ khác.
       - name: Mở PR từ nhánh may/<mã>
         id: pr
         if: always() && steps.ma.outputs.ma != ''
