@@ -6,6 +6,7 @@ import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
 import DieuHanh from "./pages/DieuHanh";
+import CaCeo from "./pages/CaCeo";
 import EoList from "./pages/eo/EoList";
 import EoForm from "./pages/eo/EoForm";
 import KeHoachTuan from "./pages/KeHoachTuan";
@@ -52,6 +53,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/dieu-hanh" element={<DieuHanh />} />
+        <Route path="/ca-ceo" element={<CaCeo />} />
         <Route path="/eo" element={<EoList />} />
         <Route path="/eo/new" element={<EoForm key="create" mode="create" />} />
         {/* chi tiet EO = popup tren man Quan ly EO; /approvals -> chip "Cho toi duyet" (v0.051) */}
@@ -64,7 +66,7 @@ export default function App() {
         <Route path="/theo-doi" element={<ChuyenHuong to="/don-hang" />} />
         <Route path="/so-don-hang" element={<ChuyenHuong to="/don-hang" />} />
         <Route path="/reports/tien-do-don-hang" element={<ChuyenHuong to="/don-hang" />} />
-        <Route path="/canh-bao-ceo" element={<ChuyenHuong to="/don-hang" them="nhom=CEO" />} />
+        <Route path="/canh-bao-ceo" element={<ChuyenHuong to="/ca-ceo" />} />
         <Route path="/plans" element={<ChuyenHuong to="/don-hang" them="nhom=VE_TUAN" />} />
         <Route path="/plans/tuan" element={<ChuyenHuong to="/don-hang/ke-hoach-tuan" />} />
         <Route path="/reports/giai-doan" element={<ChuyenHuong to="/don-hang" them="tab=bao-cao&bc=giai-doan" />} />

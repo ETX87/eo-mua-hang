@@ -3,6 +3,28 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.091: 6 yêu cầu quản trị của lãnh đạo (mã lỗi theo bước, theo mã, Ca tồn CEO, API, trạng thái gắn bước, trao đổi NCC)
+
+- Yêu cầu: rà 6 yêu cầu của lãnh đạo ("1. Trạng thái phải ghi rõ gắn với bước nào 2. Chưa rõ luồng trao đổi và push đối tác 3. Bảng mã lỗi từng bước đâu?
+  Trong từng đơn hàng phải có bảng mã lỗi từng bước - Giải trình 4. Tổng hợp lỗi - giải trình ở 1 khu vực - theo mã lỗi - chi tiết 5. Ca tồn CEO tách riêng menu
+  6. API app mua hàng có ca tồn CEO, tổng hợp lỗi - giải trình theo mã lỗi và chi tiết") → đánh giá đạt / chưa → "Làm theo đề xuất".
+- Mã lỗi ER.MH trong app (theo `../MA_LOI_HE_THONG.md`): `lib/maLoi.ts` (bảng mã 001–004, 101–199 theo danh mục LOI, 201–203, 301–308; tính lúc đọc từ
+  `tl_loi` — R1 tách 001/002 theo đối tác nhóm 24h + hạn sau 08/11). `lib/baoCaoLoi.ts` (danh sách lỗi đầy đủ + tổng hợp theo mã + ca CEO) dùng chung
+  màn Vi phạm, Ca tồn CEO, API đọc; `/theo-doi/dong/:id` và `/xem/eo/:id/bo-sung` trả thêm `ma_loi` / `ten_ma` / `buoc`.
+- (3) Tab **Mã lỗi & giải trình** ở popup đơn hàng + popup PO (`components/BangLoiTheoBuoc.tsx`): Bước · Mã · Lỗi · (Mã LK) · Hạn · Trạng thái · Giải trình,
+  gồm lỗi phải giải trình, cảnh báo CEO 2xx, trễ hạn bước 3xx; nút Giải trình trên dòng.
+- (4) Vi phạm: cách xem **Theo mã lỗi** (mọi trạng thái, % giải trình, nguyên nhân theo giải trình) → "Xem chi tiết"; bộ lọc Mã lỗi (chọn nhiều); cột Mã lỗi · bước.
+- (5) Menu **Ca tồn CEO** (`/ca-ceo`, `routes/caCeo.ts`, `pages/CaCeo.tsx`): mã 201/202/203 + diễn giải, thúc NCC, NCC trả lời, giải trình, im lặng;
+  `/canh-bao-ceo` chuyển về đây, số đỏ "Ca tồn CEO" ở menu.
+- (6) API đọc `/api/partner/ma-loi`, `/ca-ceo`, `/loi/tong-hop`, `/loi?ma=&po=&trang_thai=&tu=&den=` — khoá secret `DOC_API_KEY` (chưa đặt → 503).
+- (1) Đầu popup PO = luồng tiến trình (thay "Đã ban hành"), đầu popup đơn hàng = giai đoạn hiện tại (G6 · Chờ SX & giao, trễ hạn), cột "Tình trạng đơn" ở LK đặt
+  có tiền tố bước (G6 · Hàng chưa về). (2) Tab **Trao đổi NCC** ở popup đơn hàng (`components/LuongTraoDoiNcc.tsx`): đường ngang 3T thúc / NCC trả lời /
+  cập nhật ngày DK, tóm tắt "NCC chưa trả lời n ngày", Xem chi tiết.
+- Hướng dẫn HTML: bảng mã lỗi, Vào đâu để… (4 dòng mới), người đặt hàng (trao đổi NCC, mã lỗi trong đơn), lãnh đạo (Ca tồn CEO, Theo mã lỗi, API); 4 ảnh mới.
+- Kiểm thử: typecheck + build; local: bảng mã 21 mã, lỗi R1 → 002/G5, R3 → 003/G4, ghi tay NCC báo trễ → 102/G6; API đọc: khoá sai 401, chưa đặt 503,
+  tổng hợp + chi tiết lọc nhiều mã đúng; 5 màn mới / tab mới mở không lỗi trang.
+- Còn mở: đặt secret `DOC_API_KEY` trên production + báo hệ thống nào dùng; dữ liệu demo chưa có ca CEO nên màn Ca tồn CEO mới thử trạng thái rỗng.
+
 ## 18/11/2026 — v0.090: Bộ lọc mặc định cho chọn nhiều
 
 - Yêu cầu: "các công vụ filter mặc định luôn cho phép tích chọn nhiều lựa chọn khi tìm kiếm. => fix lại và lưu nguyên tắc chung này lại"

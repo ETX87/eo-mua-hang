@@ -8,6 +8,7 @@ import { layGiaiDoan } from "../lib/giaiDoan";
 import { requireAdmin } from "../middleware/guards";
 import { uploadPublicFile } from "../lib/googleDrive";
 import { danhGiaQuyTac, layDongTheoDoi, kyR3Tu } from "../lib/theoDoi";
+import { layBangMaLoi, ganMaLoi } from "../lib/maLoi";
 import { apDungKrf, layGoiYKrf } from "../lib/krfGoiY";
 
 // /api/theo-doi - man "Theo doi linh kien dat" + "Canh bao CEO" (quy tac: lib/theoDoi.ts, migrations/0012).
@@ -80,8 +81,9 @@ app.get("/dong/:itemId", async (c) => {
     ).bind(id).all(),
     db.prepare("SELECT id, nhom, kenh, ngay_lien_he, nguoi_lien_he, ket_qua, hinh_anh, created_by, created_at FROM tl_lien_he WHERE eo_item_id = ? ORDER BY ngay_lien_he DESC, id DESC").bind(id).all(),
   ]);
+  const bang = await layBangMaLoi(db);
   return c.json({
-    loi: loi.results, giai_trinh: gt.results, push: push.results, mail: mail.results, ngay_du_kien: plans.results,
+    loi: ganMaLoi(bang, loi.results as any[], () => (item as any)?.supplier ?? null), giai_trinh: gt.results, push: push.results, mail: mail.results, ngay_du_kien: plans.results,
     item, ke_hoach: keHoach.results, phieu_nhap: nhap.results, lien_he: lienHe.results,
   });
 });

@@ -32,7 +32,7 @@ npm run deploy            # build + wrangler deploy
 
 - `assets.run_worker_first: ["/api/*"]` **load-bearing** — không xóa.
 - Worker `muahang` (https://muahang.dichvu3t.workers.dev), D1 `eo-mua-hang-db` — `database_id` đã điền (production thật).
-- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`, `DVBH_API_KEY`,
+- Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`, `DVBH_API_KEY`, `DOC_API_KEY` (API đọc v0.091, chưa đặt),
   `THEODOI_MUAHANG_API_KEY` (chưa đặt — khi app theo-doi-mua-hang sẵn sàng).
 - Service Binding `DVBH` → Worker `dvbh` (app DVBH, repo `../../cloudflare smarttrade base`).
 - Bump `frontend/src/version.ts` (`+0.001`, sửa tay chuỗi) trước mỗi deploy.
@@ -372,6 +372,10 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   `trang_thai`). Bộ lọc cá nhân Đơn PO: localStorage `eo-loc-luu` / `eo-loc-mac-dinh`.
 - **Hướng dẫn HTML** `frontend/public/huong-dan/*.html` (tĩnh, `hd.css` + `hd.js` dựng thanh trên / mục lục / phóng ảnh), ảnh `img/*.jpg` chụp từ local
   dữ liệu DEMO bằng `../huong-dan/_build/shots-v086.mjs` — đổi giao diện thì chụp lại (`node shots-v086.mjs [ten-anh]`, cần dev server 5176 + worker 8790).
+- **v0.091 mã lỗi ER.MH** `lib/maLoi.ts` (`layBangMaLoi`, `maCuaLoi`, `ganMaLoi`; TAY theo danh mục LOI, mã mới cấp 106+ theo thứ tự) + `lib/baoCaoLoi.ts`
+  (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
+  `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
+  FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
 - `nhomLyDo` (gom lý do đỏ) có 2 bản: backend `lib/dieuHanh.ts` + FE `pages/DieuHanh.tsx` — sửa cả hai.
 
 ## 2 giao diện theo mã linh kiện (v0.072, `components/quickview/QuickView.tsx`)

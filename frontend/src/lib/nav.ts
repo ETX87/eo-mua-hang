@@ -16,6 +16,8 @@ export const NAV: NavItem[] = [
   { to: "/", label: "Tổng quan", icon: "home" },
   // Dieu hanh (v0.084, ../QUAN_TRI_DIEU_HANH.md): ton <-> nguoi <-> hanh dong <-> nguyen nhan cho lanh dao - backend routes/dieuHanh.ts
   { to: "/dieu-hanh", label: "Điều hành", icon: "trend" },
+  // Ca ton CEO (v0.091, yeu cau lanh dao tach rieng menu) - backend routes/caCeo.ts
+  { to: "/ca-ceo", label: "Ca tồn CEO", icon: "shield" },
   // "Đơn PO" (truoc ten "Quan ly EO", doi 2026-11-07): Danh sach EO, Viec can duyet, trang Chi tiet EO (popup)
   { to: "/eo", label: "Đơn PO", icon: "clipboard" },
   // Quan ly don hang gop: Theo doi LK dat, So don hang, Canh bao CEO, Ke hoach hang ve / tuan, 3 bao cao (../UI_GOP_2_MAN_HINH.md)

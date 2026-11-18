@@ -84,6 +84,7 @@ export default function ViPham() {
   const [tim, setTim] = useState("");
   // bo loc chon NHIEU (nguyen tac 2026-11-18): [] = khong loc
   const [muc, setMuc] = useState<string[]>([]); const [qt, setQt] = useState<string[]>([]); const [nguoi, setNguoi] = useState<string[]>(sp.get("nguoi") ? [sp.get("nguoi")!] : []);
+  const [maLoi, setMaLoi] = useState<string[]>(sp.get("ma") ? sp.get("ma")!.split("|") : []);
   const [kho, setKho] = useState<string[]>([]); const [doiTac, setDoiTac] = useState<string[]>([]); const [tu, setTu] = useState(""); const [den, setDen] = useState("");
   const [chiTiet, setChiTiet] = useState<Nhom | null>(null);
   const [md, setMd] = useState<{ k: "gt"; x: L } | { k: "po"; eo: number } | { k: "nhac"; ids: number[]; ten: string } | { k: "ndk"; x: L } | { k: "nhieu"; nhom: Nhom[] } | null>(null);
@@ -93,13 +94,11 @@ export default function ViPham() {
 
   // tap goc theo "Cua toi / Toan bo" - the so dem tren tap nay, bo loc + trang thai ap sau
   const goc = useMemo(() => (d?.rows ?? []).filter((l) => xem !== "cua_toi" || l.cua_toi), [d, xem]);
-  const loc = useMemo(() => {
-    const kd = KPI_DEF.find((x) => x.k === kpi);
+  // locChung = moi bo loc TRU trang thai / the so (dung cho "Theo ma loi": % giai trinh tinh tren moi trang thai)
+  const locChung = useMemo(() => {
     const w = boDau(tim).split(/\s+/).filter(Boolean);
     return goc.filter((l) => {
-      if (kd) { if (!kd.loc(l, d!)) return false; }
-      else if (tt === "cho" && !cho(l)) return false;
-      else if (tt === "da" && cho(l)) return false;
+      if (maLoi.length && !maLoi.includes(l.ma_loi)) return false;
       if (muc.length && !muc.includes(l.muc)) return false;
       if (qt.length && !qt.includes(l.quy_tac)) return false;
       if (nguoi.length && !nguoi.includes(l.nguoi_vp ?? "")) return false;
@@ -109,12 +108,16 @@ export default function ViPham() {
       if (tu && moc < tu) return false;
       if (den && moc > den) return false;
       if (w.length) {
-        const h = boDau(`${l.eo_code} ${l.approval_code ?? ""} ${l.part_code} ${l.part_name ?? ""} ${l.kho} ${l.doi_tac ?? ""} ${l.nguoi_vp ?? ""} ${l.nguoi_dat} ${QUY_TAC[l.quy_tac] ?? ""} ${l.gt_noi_dung ?? ""}`);
+        const h = boDau(`${l.eo_code} ${l.approval_code ?? ""} ${l.part_code} ${l.part_name ?? ""} ${l.kho} ${l.doi_tac ?? ""} ${l.nguoi_vp ?? ""} ${l.nguoi_dat} ${QUY_TAC[l.quy_tac] ?? ""} ${l.ma_loi ?? ""} ${l.ten_ma ?? ""} ${l.gt_noi_dung ?? ""}`);
         if (!w.every((x) => h.includes(x))) return false;
       }
       return true;
     });
-  }, [goc, kpi, tt, muc, qt, nguoi, kho, doiTac, tu, den, tim, d]);
+  }, [goc, maLoi, muc, qt, nguoi, kho, doiTac, tu, den, tim]);
+  const loc = useMemo(() => {
+    const kd = KPI_DEF.find((x) => x.k === kpi);
+    return locChung.filter((l) => (kd ? kd.loc(l, d!) : tt === "cho" ? cho(l) : tt === "da" ? !cho(l) : true));
+  }, [locChung, kpi, tt, d]);
   const nhom = useMemo(() => gomLoi(loc).sort((a, b) => (Number(cho(b.x)) - Number(cho(a.x))) || (MUC[b.x.muc].thu - MUC[a.x.muc].thu) || b.x.tuoi_ngay - a.x.tuoi_ngay), [loc]);
 
   if (q.isLoading || !d) return <><PageHeader title="Vi phạm & giải trình" /><Spinner /></>;
@@ -122,8 +125,8 @@ export default function ViPham() {
   const choCua = goc.filter(cho);
   const poCho = new Set(choCua.map((l) => l.eo_id)).size;
   const ds = (k: "nguoi_vp" | "kho" | "doi_tac") => [...new Set(goc.map((l) => l[k]).filter(Boolean))].sort() as string[];
-  const coLoc = !!(muc.length || qt.length || nguoi.length || kho.length || doiTac.length || tu || den || tim || kpi);
-  const xoaLoc = () => { setMuc([]); setQt([]); setNguoi([]); setKho([]); setDoiTac([]); setTu(""); setDen(""); setTim(""); set("kpi", ""); };
+  const coLoc = !!(maLoi.length || muc.length || qt.length || nguoi.length || kho.length || doiTac.length || tu || den || tim || kpi);
+  const xoaLoc = () => { setMaLoi([]); setMuc([]); setQt([]); setNguoi([]); setKho([]); setDoiTac([]); setTu(""); setDen(""); setTim(""); set("kpi", ""); };
   const xong = (msg?: string) => { setMd(null); if (msg) setThongBao(msg); qc.invalidateQueries({ queryKey: ["vi-pham"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["tl-dong"] }); qc.invalidateQueries({ queryKey: ["theo-doi"] }); };
   const khoaNhom = (n: Nhom) => `${n.x.eo_item_id}|${n.x.quy_tac}|${n.x.trang_thai}`;
   const nhomChon = nhom.filter((n) => chon.has(khoaNhom(n)) && cho(n.x));
@@ -153,6 +156,7 @@ export default function ViPham() {
       </div> },
     { key: "muc", header: "Mức độ", render: (n) => <MucBadge m={n.x.muc} /> },
     { key: "tt", header: "Trạng thái", render: (n) => <TrangThai l={n.x} /> },
+    { key: "ma", header: "Mã lỗi · bước", render: (n) => <span style={{ whiteSpace: "nowrap" }} title={n.x.ten_ma}><b style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{n.x.ma_loi}</b>{n.x.buoc ? <div className="muted" style={{ fontSize: 11 }}>{n.x.buoc}</div> : null}</span> },
     { key: "loi", header: "Lỗi", maxW: 230, render: (n) => <span title={QT_DAI[n.x.quy_tac]}><b>{QUY_TAC[n.x.quy_tac] ?? n.x.quy_tac}</b>{n.x.loi_ma && n.x.quy_tac === "TAY" ? ` · ${tenDm("LOI", n.x.loi_ma)}` : ""}</span> },
     { key: "lan", header: "Số lần", align: "center", render: (n) => n.ds.length > 1 || n.x.so_lan > 1
       ? <span className="badge final" title={`Lỗi này lặp ${n.x.so_lan} lần trên dòng (mỗi lần vi phạm ghi 1 lỗi): ${lietKe(n.ds.map((y) => ngay(y.ngay_tham_chieu ?? y.han)), 8)}`}>× {n.ds.length}{n.x.so_lan > n.ds.length ? ` / ${n.x.so_lan}` : ""}</span> : <span className="muted">1</span> },
@@ -211,7 +215,32 @@ export default function ViPham() {
     { key: "tb", header: "TB ngày đến khi giải trình", align: "right", render: (p) => p.tb ?? "—" },
   ];
 
+  // ------ theo MA LOI (v0.091): tong hop tren MOI trang thai (bo qua o "Chờ / Đã giải trình") -> bam "Xem chi tiết" = loc ma + Theo loi
+  const THU_MA = (m: string) => (m.startsWith("ER.MH-") ? Number(m.slice(6)) : 999);
+  const theoMa = gopTrung(locChung, (l) => l.ma_loi ?? l.quy_tac).map(({ x, ds }) => {
+    const choN = ds.filter(cho).length, da = ds.length - choN;
+    const dem = (f: (l: L) => string | null) => { const m = new Map<string, number>(); for (const l of ds) { const k = f(l); if (k) m.set(k, (m.get(k) ?? 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+    return { x, ds, cho: choN, da, pct: ds.length ? Math.round((da / ds.length) * 100) : 0, qua_lau: ds.filter((l) => l.qua_lau).length,
+      po: new Set(ds.map((l) => l.eo_id)).size, dong: new Set(ds.map((l) => l.eo_item_id)).size, nguoi: dem((l) => l.nguoi_vp), ai: dem((l) => l.gt_ai_ma) };
+  }).sort((a, b) => THU_MA(a.x.ma_loi ?? "") - THU_MA(b.x.ma_loi ?? ""));
+  const xemMa = (ma: string) => { setMaLoi([ma]); set("tt", ""); set("kpi", ""); set("kieu", ""); };
+  const colsMa: Col<(typeof theoMa)[number]>[] = [
+    { key: "act", header: "", render: (p) => <button className="btn sm" onClick={(e) => { e.stopPropagation(); xemMa(p.x.ma_loi); }}>Xem chi tiết</button> },
+    { key: "ma", header: "Mã lỗi", loc: "chu", gt: (p) => p.x.ma_loi, render: (p) => <b style={{ fontFamily: "ui-monospace, monospace" }}>{p.x.ma_loi}</b> },
+    { key: "ten", header: "Tên lỗi", loc: "chu", gt: (p) => p.x.ten_ma, maxW: 280, render: (p) => p.x.ten_ma },
+    { key: "buoc", header: "Bước", loc: "chon", gt: (p) => p.x.buoc ?? "", render: (p) => p.x.buoc ?? <span className="muted">—</span> },
+    { key: "tong", header: "Tổng lỗi", loc: "so", gt: (p) => p.ds.length, align: "right", render: (p) => <b>{soLuong(p.ds.length)}</b> },
+    { key: "cho", header: "Chờ GT", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "var(--danger-ink)" }}>{soLuong(p.cho)}</b> : <span className="muted">0</span> },
+    { key: "da", header: "Đã GT", loc: "so", gt: (p) => p.da, align: "right", render: (p) => soLuong(p.da) },
+    { key: "pct", header: "% giải trình", loc: "so", gt: (p) => p.pct, align: "right", render: (p) => <b style={{ color: p.pct < 30 ? "var(--danger-ink)" : p.pct < 70 ? "#B45309" : "var(--ok-ink)" }}>{p.pct}%</b> },
+    { key: "lau", header: `Chờ ≥ ${d.qua_lau_ngay} ngày`, loc: "so", gt: (p) => p.qua_lau, align: "right", render: (p) => p.qua_lau || <span className="muted">0</span> },
+    { key: "po", header: "Số PO · dòng", loc: "so", gt: (p) => p.po, align: "right", render: (p) => <>{p.po}<span className="muted"> · {p.dong}</span></> },
+    { key: "nguoi", header: "Bị gán nhiều nhất", maxW: 200, render: (p) => p.nguoi.slice(0, 3).map(([k, n]) => `${ten(k)} (${n})`).join(", ") || "—" },
+    { key: "ai", header: "Nguyên nhân theo giải trình", maxW: 220, render: (p) => p.ai.length ? p.ai.slice(0, 3).map(([k, n]) => `${tenDm("AI", k)} (${n})`).join(", ") : <span className="muted">chưa có giải trình</span> },
+  ];
+
   const xuat = () => exportRowsToXlsx(loc, [
+    { header: "Mã lỗi", get: (l) => l.ma_loi }, { header: "Tên mã lỗi", get: (l) => l.ten_ma }, { header: "Bước", get: (l) => l.buoc },
     { header: "Mức độ", get: (l) => MUC[l.muc]?.l }, { header: "Trạng thái", get: (l) => cho(l) ? "Chờ giải trình" : "Đã giải trình" },
     { header: "Lỗi", get: (l) => QUY_TAC[l.quy_tac] ?? l.quy_tac }, { header: "Lần thứ", get: (l) => `${l.lan_thu}/${l.so_lan}` },
     { header: "Mã phê duyệt", get: (l) => l.approval_code }, { header: "Mã EO", get: (l) => l.eo_code },
@@ -268,6 +297,7 @@ export default function ViPham() {
           <select className="select" style={{ width: "auto" }} value={kpi ? "" : tt} disabled={!!kpi} onChange={(e) => set("tt", e.target.value)} title="Trạng thái">
             <option value="cho">Chờ giải trình</option><option value="da">Đã giải trình</option><option value="">Mọi trạng thái</option>
           </select>
+          <Sel v={maLoi} on={setMaLoi} l="Mã lỗi" opts={[...new Map(goc.map((l) => [l.ma_loi, `${l.ma_loi} · ${l.ten_ma}`])).entries()].sort((a, b) => THU_MA(a[0]) - THU_MA(b[0]))} />
           <Sel v={muc} on={setMuc} l="Mức độ" opts={Object.entries(MUC).sort((a, b) => b[1].thu - a[1].thu).map(([k, m]) => [k, m.l])} />
           <Sel v={qt} on={setQt} l="Loại lỗi" opts={Object.entries(QUY_TAC).map(([k, t]) => [k, t])} />
           <Sel v={nguoi} on={setNguoi} l="Người vi phạm" opts={ds("nguoi_vp").map((x) => [x, ten(x)])} />
@@ -289,11 +319,11 @@ export default function ViPham() {
 
       {/* 4. Cach xem */}
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
-        {[["loi", `Theo lỗi (${nhom.length})`], ["po", `Theo PO (${theoPo.length})`], ["nguoi", `Theo người (${theoNguoi.length})`]].map(([k, t]) => (
+        {[["loi", `Theo lỗi (${nhom.length})`], ["ma", `Theo mã lỗi (${theoMa.length})`], ["po", `Theo PO (${theoPo.length})`], ["nguoi", `Theo người (${theoNguoi.length})`]].map(([k, t]) => (
           <button key={k} className={`qv-chip ${kieu === k ? "on" : ""}`} style={{ fontSize: 13, padding: "5px 14px" }} onClick={() => set("kieu", k === "loi" ? "" : k)}>{t}</button>
         ))}
         <span className="muted" style={{ fontSize: 12 }}>
-          {kieu === "loi" ? "Lỗi lặp cùng loại trên 1 linh kiện gộp 1 dòng (× n lần) — tick nhiều lỗi cùng loại để giải trình chung 1 lần." : kieu === "po" ? "Giải trình cả PO: 1 nội dung cho mọi linh kiện trong PO." : "Xếp theo số lỗi chờ — bấm “Xem lỗi” để lọc theo người."}
+          {kieu === "ma" ? "Tổng hợp mọi trạng thái theo mã ER.MH (không theo ô Chờ / Đã giải trình) — bấm “Xem chi tiết” để xem từng lỗi của mã." : kieu === "loi" ? "Lỗi lặp cùng loại trên 1 linh kiện gộp 1 dòng (× n lần) — tick nhiều lỗi cùng loại để giải trình chung 1 lần." : kieu === "po" ? "Giải trình cả PO: 1 nội dung cho mọi linh kiện trong PO." : "Xếp theo số lỗi chờ — bấm “Xem lỗi” để lọc theo người."}
         </span>
         <div style={{ flex: 1 }} />
         {kieu === "loi" && idsChon.length > 0 && <>
@@ -308,7 +338,8 @@ export default function ViPham() {
       {thongBao && <div className="qv-alert ok" style={{ display: "block", marginBottom: 8 }}>{thongBao} <span role="button" style={{ cursor: "pointer", marginLeft: 8 }} onClick={() => setThongBao("")}>×</span></div>}
 
       <Card pad={false}>
-        {kieu === "po" ? <DataTable cols={colsPo} rows={theoPo} keyOf={(p) => p.x.eo_id} pageSize={15} timKiem={false} onRowClick={(p) => qv.openEo(p.x.eo_id)} empty="Không có lỗi theo bộ lọc." />
+        {kieu === "ma" ? <DataTable cols={colsMa} rows={theoMa} keyOf={(p) => p.x.ma_loi ?? p.x.quy_tac} pageSize={20} timKiem={false} onRowClick={(p) => xemMa(p.x.ma_loi)} empty="Không có lỗi theo bộ lọc." />
+          : kieu === "po" ? <DataTable cols={colsPo} rows={theoPo} keyOf={(p) => p.x.eo_id} pageSize={15} timKiem={false} onRowClick={(p) => qv.openEo(p.x.eo_id)} empty="Không có lỗi theo bộ lọc." />
           : kieu === "nguoi" ? <DataTable cols={colsNguoi} rows={theoNguoi} keyOf={(p) => p.x.nguoi_vp ?? "-"} pageSize={15} timKiem={false} empty="Không có lỗi theo bộ lọc." />
           : <DataTable cols={colsLoi} rows={nhom} keyOf={khoaNhom} pageSize={15} timKiem={false} onRowClick={(n) => setChiTiet(n)}
               empty={xem === "cua_toi" && tt === "cho" && !coLoc ? "✓ Bạn không có lỗi chờ giải trình." : "Không có lỗi theo bộ lọc."} />}

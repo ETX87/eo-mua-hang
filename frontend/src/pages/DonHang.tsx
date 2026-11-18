@@ -78,7 +78,8 @@ function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Rec
     { k: "phan_loai", l: "Thời điểm thêm", nhom: "Linh kiện", get: (r) => r.phan_loai_thoi_diem_dat, maxW: 150 },
     { k: "ngay_tao", l: "Ngày tạo dòng", nhom: "Linh kiện", get: (r) => ngay(r.ngay_tao) },
     // ---- tien do
-    { k: "trang_thai_don_hang", l: "Tình trạng đơn", nhom: "Tiến độ", get: (r) => r.trang_thai_don_hang, render: (r) => <span className={`badge ${TT_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span> },
+    { k: "trang_thai_don_hang", l: "Tình trạng đơn", nhom: "Tiến độ", get: (r) => r.trang_thai_don_hang, render: (r) => <span className={`badge ${TT_MAU[r.trang_thai_don_hang] ?? "nhap"}`} title={r.gd_hien_tai_ten ? `Đang ở bước ${r.gd_hien_tai} ${r.gd_hien_tai_ten}` : undefined}>
+      {/* v0.091: tinh trang gan voi buoc dang xu ly */}{r.gd_hien_tai && !["XONG", "HUY"].includes(r.gd_hien_tai) ? `${r.gd_hien_tai} · ` : ""}{r.trang_thai_don_hang}</span> },
     { k: "canh_bao", l: "Cảnh báo", nhom: "Tiến độ", get: (r) => r.canh_bao, render: (r) => r.canh_bao ? <span style={{ color: r.canh_bao === "Quá dự kiến" ? "var(--danger-ink)" : undefined, fontSize: 12 }}>{r.canh_bao}</span> : "" },
     { k: "ton", l: "Tồn (từ ngày đặt)", nhom: "Tiến độ", get: (r) => MO.includes(r.trang_thai_don_hang) ? Math.floor(soNgayTon(ngayDatCua(r)) ?? 0) : "", render: (r) => MO.includes(r.trang_thai_don_hang) ? <MocTon tu={ngayDatCua(r)} nho /> : <span className="muted">—</span> },
     { k: "ngay_nm", l: "Ngày NM cam kết", nhom: "Tiến độ", get: (r) => ngay(r.ngay_nm_cam_ket) },

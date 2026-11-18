@@ -21,6 +21,7 @@ import soDonHangRoutes from "./routes/soDonHang";
 import partnerRoutes from "./routes/partner";
 import viPhamRoutes from "./routes/viPham";
 import dieuHanhRoutes from "./routes/dieuHanh";
+import caCeoRoutes from "./routes/caCeo";
 import { danhGiaQuyTac } from "./lib/theoDoi";
 import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
 
@@ -75,6 +76,7 @@ app.route("/api/xem", xemNhanhRoutes);
 app.route("/api/so-don-hang", soDonHangRoutes);
 app.route("/api/vi-pham", viPhamRoutes);
 app.route("/api/dieu-hanh", dieuHanhRoutes);
+app.route("/api/ca-ceo", caCeoRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 

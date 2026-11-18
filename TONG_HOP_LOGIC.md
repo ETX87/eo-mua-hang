@@ -94,11 +94,22 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   bộ lọc cá nhân lưu trên máy (★ Đã lưu, ☆ mặc định khi mở) · cột Cảnh báo (n đỏ / n vàng + lý do), Lỗi chờ GT, Thúc NCC (7 ngày / lần cuối), Hoạt động cuối (im lặng) đặt sát mã PO; nhóm nhanh
   "PO có dòng ĐỎ", "PO im lặng ≥ 7 ngày", "PO có lỗi chờ giải trình"; lọc / sắp xếp các cột này phía server.
 
+## 8c. Mã lỗi ER.MH, Ca tồn CEO (v0.091)
+
+- Mọi lỗi / cảnh báo có mã (`../MA_LOI_HE_THONG.md`): **001/002** chưa có ngày DK 24h (nhóm Karofi/Livotec/Korihome) / 48h — bước G5 · **003** không thúc NCC thứ 2/4 — G4 ·
+  **004** quá ngày DK không cập nhật — G6 · **101–199** lỗi ghi khi giải trình (NCC không phản hồi / báo trễ / hết hàng → G6, đặt sai → G1, chậm duyệt → G3) ·
+  **201–203** cấp CEO (lùi ≥ 3 lần / DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi) · **301–308** trễ hạn bước G1–G8 (chỉ đo). Mã tính lúc đọc, không lưu DB.
+- Mỗi đơn hàng / PO có bảng mã lỗi theo bước kèm giải trình; Vi phạm tổng hợp theo mã (mọi trạng thái, % giải trình, nguyên nhân theo giải trình).
+- Menu **Ca tồn CEO**: dòng đang mở cấp CEO + mã 201–203 + hành động (thúc NCC, NCC trả lời, giải trình, im lặng).
+- Trạng thái luôn gắn bước: Đơn PO / popup PO = luồng tiến trình; popup đơn hàng = giai đoạn hiện tại; LK đặt "Tình trạng đơn" có tiền tố bước.
+- Luồng trao đổi NCC theo dòng: 3T thúc (mail gửi có CC hộp theo dõi, push, gọi/Zalo) ↔ NCC trả lời (mail NCC) ↔ cập nhật ngày DK.
+
 ## 9. Kết nối hệ khác
 
 | Hệ | Chiều | Nội dung |
 |---|---|---|
 | DVBH | Đẩy đi | Mỗi dòng EO = 1 PO (tiến độ, kế hoạch, phiếu AMIS) — chạy sau request khi dữ liệu đổi, cách nhau ≥ 2 phút, chỉ gửi dòng đổi |
+| Hệ khác (DVBH, báo cáo…) | Cho đọc | API `/api/partner/ma-loi`, `/ca-ceo`, `/loi/tong-hop`, `/loi` (khoá `DOC_API_KEY`) |
 | Thư ký mua hàng (`theodoimuahang`) | Nhận | Sự kiện mail NCC theo dòng (`/api/partner/mail-events`, ghi theo lô, chống trùng) |
 | ETX nhân sự | Nhận | Bấm tay đồng bộ nhân sự |
 

@@ -1,5 +1,6 @@
 import { layGiaiDoan } from "../lib/giaiDoan";
 import { Hono } from "hono";
+import { layBangMaLoi, ganMaLoi } from "../lib/maLoi";
 import type { Env, AppVariables } from "../types";
 import { cachedReport } from "../lib/reportCache";
 import { computeTienDo01, TRANG_THAI_DONG } from "./reports";
@@ -28,7 +29,7 @@ app.get("/eo/:id/bo-sung", async (c) => {
   if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
 
   const [loi, gt, push, mail, nhap, khongKhop, choDuyet, postIssue, traVe] = await Promise.all([
-    db.prepare("SELECT * FROM tl_loi WHERE eo_id = ? ORDER BY COALESCE(han, created_at) DESC").bind(id).all<any>(),
+    db.prepare("SELECT l.*, i.supplier doi_tac, i.part_code FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id WHERE l.eo_id = ? ORDER BY COALESCE(l.han, l.created_at) DESC").bind(id).all<any>(),
     db.prepare("SELECT * FROM tl_giai_trinh WHERE eo_id = ? ORDER BY id DESC").bind(id).all<any>(),
     db.prepare(
       `SELECT p.*, GROUP_CONCAT(pi.eo_item_id) item_ids FROM tl_push p JOIN tl_push_item pi ON pi.push_id = p.id
@@ -97,8 +98,9 @@ app.get("/eo/:id/bo-sung", async (c) => {
   const chuaKh = dem((r) => !r.ap_dung && r.tinh_trang !== "DONG" && !r.co_ngay_du_kien);
   if (chuaKh) cb.push({ muc: "info", text: `${chuaKh} dòng đang mở chưa có kế hoạch hàng về` });
 
+  const bang = await layBangMaLoi(db);
   return c.json({
-    theo_doi: td, loi: loi.results, giai_trinh: gt.results, push: push.results, mail: mail.results,
+    theo_doi: td, loi: ganMaLoi(bang, loi.results, (l: any) => l.doi_tac), giai_trinh: gt.results, push: push.results, mail: mail.results,
     phieu_nhap: nhap.results, phieu_khong_khop: khongKhop.results, cho_duyet: choDuyet.results, canh_bao: cb,
   });
 });

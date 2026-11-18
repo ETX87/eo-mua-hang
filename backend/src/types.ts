@@ -19,6 +19,8 @@ export interface Env {
   DVBH?: Fetcher;
   // App "theo-doi-mua-hang" day luong mail ve POST /api/partner/mail-events (routes/partner.ts).
   THEODOI_MUAHANG_API_KEY?: string;
+  /** v0.091: API DOC cho he khac (ca CEO, tong hop / chi tiet loi theo ma) - header X-API-Key; chua dat -> 503 */
+  DOC_API_KEY?: string;
 }
 
 export type VaiTro = "Admin" | "KH cung ung" | "Ke toan" | "Kho" | "Theo doi tien do" | "View";

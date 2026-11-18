@@ -5,6 +5,8 @@ import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
+import { dsLoiDayDu, tongHopTheoMa, QUA_LAU_NGAY, RAT_LAU_NGAY } from "../lib/baoCaoLoi";
+import { layBangMaLoi } from "../lib/maLoi";
 
 /**
  * /api/vi-pham - man "Vi pham & giai trinh" (FE pages/ViPham.tsx, migrations/0016). Moi dong = 1 loi (tl_loi) kem:
@@ -19,8 +21,7 @@ import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-export const QUA_LAU_NGAY = 3;
-export const RAT_LAU_NGAY = 7;
+export { QUA_LAU_NGAY, RAT_LAU_NGAY };
 
 const soNgay = (a: string, b: string) => Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
 
@@ -36,65 +37,27 @@ app.get("/", async (c) => {
   const u = c.get("user");
   const db = c.env.DB;
   await danhGiaQuyTac(c.env).catch((e) => console.error("danhGiaQuyTac", e));
-  const [loiRs, gtRs, nnRs, dong] = await Promise.all([
-    db.prepare(
-      `SELECT l.id, l.eo_item_id, l.eo_id, l.quy_tac, l.han, l.ngay_tham_chieu, l.ai_ma, l.ai_email, l.loi_ma, l.trang_thai,
-              l.giai_trinh_id, l.created_at, i.part_code, i.part_name, i.warehouse kho, i.supplier doi_tac, i.line_status,
-              e.eo_code, e.approval_code, e.created_by nguoi_dat
-       FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id JOIN eo e ON e.id = l.eo_id ORDER BY l.id`,
-    ).all<any>(),
-    db.prepare(
-      `SELECT id, substr(noi_dung, 1, 400) noi_dung, pham_vi, created_by, created_at, hinh_anh IS NOT NULL AND hinh_anh <> '[]' co_anh
-       FROM tl_giai_trinh WHERE id IN (SELECT giai_trinh_id FROM tl_loi WHERE giai_trinh_id IS NOT NULL)`,
-    ).all<any>(),
-    db.prepare("SELECT eo_item_id, COUNT(*) n, SUM(kenh = 'TAY') tay, MAX(created_at) moi FROM tl_nhac_nho GROUP BY eo_item_id").all<any>(),
-    layDongTheoDoi(c.env, "tat_ca"),
-  ]);
+  // v0.091: danh sach loi day du (kem ma ER.MH) dung chung lib/baoCaoLoi - route chi loc pham vi nguoi xem
+  const { rows: tatCa } = await dsLoiDayDu(c.env);
   const pv = phamVi(u);
-  const today = todayVN();
-  const gtBy = new Map(gtRs.results.map((g: any) => [g.id, g]));
-  const nnBy = new Map(nnRs.results.map((n: any) => [n.eo_item_id, n]));
-  const dongBy = new Map(dong.map((d) => [d.item_id, d]));
-  // lan thu / so lan cung loai tren 1 dong (theo han)
-  const nhomLoai = new Map<string, any[]>();
-  for (const l of loiRs.results) {
-    const k = `${l.eo_item_id}|${l.quy_tac}`;
-    nhomLoai.set(k, [...(nhomLoai.get(k) ?? []), l]);
-  }
-  for (const ds of nhomLoai.values()) ds.sort((a, b) => String(a.han ?? a.created_at).localeCompare(String(b.han ?? b.created_at)) || a.id - b.id);
-
-  const rows = [];
-  for (const l of loiRs.results) {
-    const nguoiVp: string | null = l.ai_email || l.nguoi_dat;
-    if (!pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: nguoiVp, kho: l.kho })) continue;
-    // PO ban hanh truoc moc bo qua (app_settings theo_doi_bo_qua_truoc) khong con trong layDongTheoDoi -> khong tinh vi pham
-    if (!dongBy.has(l.eo_item_id)) continue;
-    const ds = nhomLoai.get(`${l.eo_item_id}|${l.quy_tac}`)!;
-    const soLan = ds.length;
-    const lanThu = ds.indexOf(l) + 1;
-    const cho = l.trang_thai === "CHO_GIAI_TRINH";
-    const gt = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
-    const moc = (l.han ?? l.created_at) as string;
-    const tuoi = cho ? soNgay(moc, today) : gt ? soNgay(moc, gt.created_at) : 0;
-    const d = dongBy.get(l.eo_item_id);
-    const ceo = !!d && d.ceo_ly_do.length > 0;
-    const muc = ceo ? "CEO" : soLan >= 3 || (cho && tuoi >= RAT_LAU_NGAY) ? "CAO" : soLan >= 2 || (cho && tuoi >= QUA_LAU_NGAY) ? "TB" : "THAP";
-    const nn = nnBy.get(l.eo_item_id);
-    rows.push({
-      ...l, nguoi_vp: nguoiVp, cua_toi: nguoiVp === u.email || l.nguoi_dat === u.email,
-      so_lan: soLan, lan_thu: lanThu, tuoi_ngay: tuoi, qua_lau: cho && tuoi >= QUA_LAU_NGAY, muc,
-      gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
-      so_nhac: nn?.n ?? 0, so_nhac_tay: nn?.tay ?? 0, nhac_gan_nhat: nn?.moi ?? null,
-      ceo, ceo_ly_do: d?.ceo_ly_do ?? [], so_lan_lui: d?.so_lan_lui ?? 0, tinh_trang: d?.tinh_trang ?? null,
-      ngay_du_kien: d?.ngay_du_kien_gan_nhat ?? null, so_luong_dat: d?.so_luong_dat ?? null, sl_ve: d?.sl_nhap_amis ?? null,
-    });
-  }
+  const rows = tatCa.filter((l) => pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: l.nguoi_vp, kho: l.kho }))
+    .map((l) => ({ ...l, cua_toi: l.nguoi_vp === u.email || l.nguoi_dat === u.email }));
   const st = await db.prepare("SELECT danh_gia_luc FROM tl_state WHERE id = 1").first<{ danh_gia_luc: string | null }>();
   return c.json({
     rows, tat_ca: pv.tatCa, quan_ly: xemToanBoTheoDoi(u), co_the_gt: canEditPlan(u), me: u.email, vai_tro: u.vai_tro,
     qua_lau_ngay: QUA_LAU_NGAY, rat_lau_ngay: RAT_LAU_NGAY, danh_gia_luc: st?.danh_gia_luc ?? null,
   });
 });
+
+// GET /ma-loi - bang ma loi ER.MH (v0.091) + tong hop theo ma trong pham vi nguoi xem (Vi pham > Theo ma loi)
+app.get("/ma-loi", async (c) => {
+  const u = c.get("user");
+  const { rows, bang } = await dsLoiDayDu(c.env);
+  const pv = phamVi(u);
+  return c.json({ bang: bang.ds, tong_hop: tongHopTheoMa(rows.filter((l) => pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: l.nguoi_vp, kho: l.kho })), bang) });
+});
+// GET /bang-ma - chi bang ma (popup, huong dan)
+app.get("/bang-ma", async (c) => c.json((await layBangMaLoi(c.env.DB)).ds));
 
 // GET /po/:eoId - du lieu form "Giai trinh ca PO": loi dang cho cua EO + cac dong dang mo (ghi loi moi cho ca PO)
 app.get("/po/:eoId", async (c) => {

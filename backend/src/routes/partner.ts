@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import type { Env } from "../types";
 import { bumpVersions } from "../lib/dataVersions";
 import { tuDongDienKrf } from "../lib/krfGoiY";
+import { dsLoiDayDu, tongHopTheoMa, dsCaCeo } from "../lib/baoCaoLoi";
+import { layBangMaLoi } from "../lib/maLoi";
+import { danhGiaQuyTac } from "../lib/theoDoi";
 
 /**
  * /api/partner - API cho he ngoai, KHONG dung session (mount TRUOC verifySessionMiddleware o index.ts).
@@ -110,6 +113,47 @@ app.post("/mail-events", async (c) => {
     return null;
   });
   return c.json({ received: evs.length, inserted: them, krf_tu_dong: tuDong ? { them: tuDong.them, sua: tuDong.sua } : null });
+});
+
+// ============================================================ API DOC (v0.091) - he khac lay ca ton CEO, tong hop / chi tiet loi theo ma ER.MH
+// Xac thuc: header X-API-Key = secret DOC_API_KEY (chua dat -> 503 NOT_CONFIGURED). Chi doc, khong ghi.
+//  GET /ma-loi                    bang ma loi ER.MH (001-004, 101-199, 201-203, 301-308)
+//  GET /ca-ceo                    dong dang mo cap CEO kem ma 201-203 + dien giai
+//  GET /loi/tong-hop              tong hop theo ma: so loi, cho / da giai trinh, % giai trinh, so dong / PO, nguoi bi gan, nguyen nhan (Ai)
+//  GET /loi?ma=&po=&trang_thai=&tu=&den=&limit=&offset=   chi tiet tung loi + giai trinh (ma / po nhieu gia tri noi "|"; tu/den theo han YYYY-MM-DD)
+const docKey = async (c: any, next: () => Promise<void>) => {
+  const key = c.env.DOC_API_KEY;
+  if (!key) return c.json({ error: "NOT_CONFIGURED" }, 503);
+  if (!eqConst(c.req.header("X-API-Key") ?? "", key)) return c.json({ error: "INVALID_API_KEY" }, 401);
+  await next();
+};
+app.get("/ma-loi", docKey, async (c) => c.json({ ma_loi: (await layBangMaLoi(c.env.DB)).ds }));
+app.get("/ca-ceo", docKey, async (c) => {
+  await danhGiaQuyTac(c.env).catch(() => {});
+  const rows = await dsCaCeo(c.env);
+  return c.json({ so_dong: rows.length, rows });
+});
+app.get("/loi/tong-hop", docKey, async (c) => {
+  await danhGiaQuyTac(c.env).catch(() => {});
+  const { rows, bang } = await dsLoiDayDu(c.env);
+  return c.json({ tong_loi: rows.length, cho_giai_trinh: rows.filter((r) => r.trang_thai === "CHO_GIAI_TRINH").length, theo_ma: tongHopTheoMa(rows, bang) });
+});
+app.get("/loi", docKey, async (c) => {
+  const q = (k: string) => (c.req.query(k) ?? "").trim();
+  const ds = (k: string) => q(k).split("|").map((x) => x.trim().toUpperCase()).filter(Boolean);
+  const ma = ds("ma"), po = ds("po"), tt = ds("trang_thai"), tu = q("tu"), den = q("den");
+  const limit = Math.min(Math.max(1, Number(q("limit")) || 500), 2000), offset = Math.max(0, Number(q("offset")) || 0);
+  const { rows } = await dsLoiDayDu(c.env);
+  const loc = rows.filter((r) => (!ma.length || ma.includes(r.ma_loi)) && (!po.length || po.includes(String(r.approval_code ?? "").toUpperCase()) || po.includes(String(r.eo_code).toUpperCase()))
+    && (!tt.length || tt.includes(r.trang_thai)) && (!tu || String(r.han ?? r.created_at).slice(0, 10) >= tu) && (!den || String(r.han ?? r.created_at).slice(0, 10) <= den));
+  const out = loc.slice(offset, offset + limit).map((r) => ({
+    id: r.id, ma_loi: r.ma_loi, ten_loi: r.ten_ma, buoc: r.buoc, quy_tac: r.quy_tac, trang_thai: r.trang_thai, muc_do: r.muc, han: r.han,
+    ngay_tham_chieu: r.ngay_tham_chieu, lan_thu: r.lan_thu, so_lan: r.so_lan, tuoi_ngay: r.tuoi_ngay,
+    po: r.approval_code ?? r.eo_code, eo_code: r.eo_code, item_id: r.eo_item_id, ma_lk: r.part_code, ten_lk: r.part_name, kho: r.kho, doi_tac: r.doi_tac,
+    nguoi_dat: r.nguoi_dat, nguoi_bi_gan: r.nguoi_vp, so_nhac: r.so_nhac, cap_ceo: r.ceo,
+    giai_trinh: r.gt_luc ? { luc: r.gt_luc, boi: r.gt_boi, ai_ma: r.gt_ai_ma, ai_email: r.gt_ai_email, loi_ma: r.gt_loi_ma, noi_dung: r.gt_noi_dung, pham_vi: r.gt_pham_vi, co_anh: r.gt_co_anh } : null,
+  }));
+  return c.json({ total: loc.length, limit, offset, rows: out });
 });
 
 export default app;

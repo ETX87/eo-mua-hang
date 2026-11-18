@@ -13,6 +13,8 @@ import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, DongLink, PartLink, useQuickView } from "./QuickView";
 import { QuyTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
+import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
+import { TienTrinhPo } from "../TienTrinhPo";
 import {
   quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
   actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, KetThucSomModal, SuaThongTinDongModal, KetThucSomPoModal, xuatDongEo,
@@ -47,7 +49,7 @@ const nhomCua = (t: string): Nhom =>
   /SUBMIT|APPROVE|REJECT|REVIEW|ISSUE|RECALL|REQUEST_UPDATE|CANCEL_EO/.test(t) ? "duyet"
     : /PLAN/.test(t) ? "kehoach" : /GIAI_TRINH/.test(t) ? "loi" : "capnhat";
 
-type Tab = "lk" | "kh" | "duyet" | "file" | "mail";
+type Tab = "lk" | "kh" | "duyet" | "file" | "mail" | "loi";
 /** Dong cua EO nhan 1 thu: backend (xemNhanh) da gom 1 thu = 1 ban ghi kem item_ids "1,2,3"; ban ghi tung dong (cu) dung eo_item_id. */
 const idsThu = (ds: any[]): number[] => ds.flatMap((y) => String(y.item_ids ?? y.eo_item_id ?? "").split(",").filter(Boolean).map(Number));
 
@@ -222,6 +224,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     { k: "duyet", l: `Quy trình duyệt (${d.submissions.length})` },
     { k: "file", l: `Tài liệu (${d.files.length})` },
     { k: "mail", l: `Mail & push (${mailGop.length + (b?.push ?? []).length})` },
+    { k: "loi", l: `Mã lỗi & giải trình (${(b?.loi ?? []).length})` },
   ];
 
   return (
@@ -242,7 +245,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
             <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}>{eo.eo_code}</span>
-            <StatusBadge status={poDone ? "DONE" : eo.trang_thai} />
+            {/* v0.091: trang thai gan voi buoc (luong tien trinh gon nhu cot Tien trinh o Don PO) */}
+            <TienTrinhPo trangThai={eo.trang_thai} xong={poDone} gd={gdPo(sdh.data?.rows ?? [])} />
             {eo.approval_code ? <span className="badge issued">{eo.approval_code}</span> : <span className="badge nhap">Chưa ban hành</span>}
             <Clip w="min(60vw, 720px)" style={{ fontSize: 15, fontWeight: 600 }}>{eo.tieu_de || "(không tiêu đề)"}</Clip>
           </div>
@@ -350,6 +354,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   myEmail={me.data?.email} preIssue={!["ISSUED", "CANCELLED"].includes(eo.trang_thai)} />
               </div>
             )}
+            {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId) => qv.openDong(itemId)} />}
             {tab === "mail" && (
               <>
                 {coChon && BAT_TAO_MAIL_NHAC && <div className="qv-toolbar"><span className="muted" style={{ fontSize: 12 }}>Tạo push mới: tab <b>Linh kiện</b> → tick dòng còn thiếu → <b>Tạo mail nhắc</b>.</span>
@@ -420,4 +425,15 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       {lh && <LienHeDoiTacModal ids={lh} nhan={`${eo.approval_code || eo.eo_code} · ${lh.length} dòng`} onClose={() => setLh(null)} onSaved={(kq) => { setLh(null); setChon(new Set()); qc.invalidateQueries(); alert(`Đã ghi nhận nhắc đối tác cho ${kq.so_dong} dòng${kq.bo_loi_r3 ? ` — bỏ ${kq.bo_loi_r3} lỗi R3 (không push) của kỳ đó` : ""}.`); }} />}
     </>
   );
+}
+
+/** So dong dang o tung giai doan cua PO (tu /so-don-hang?eo_id) - dau vao TienTrinhPo. */
+function gdPo(rows: any[]) {
+  const dem: Record<string, number> = {}, tre: Record<string, number> = {};
+  for (const r of rows) {
+    if (!r.gd_hien_tai) continue;
+    dem[r.gd_hien_tai] = (dem[r.gd_hien_tai] ?? 0) + 1;
+    if (r.gd_tre && !["XONG", "HUY"].includes(r.gd_hien_tai)) tre[r.gd_hien_tai] = (tre[r.gd_hien_tai] ?? 0) + 1;
+  }
+  return { dem, tre };
 }

@@ -10,6 +10,9 @@ import { NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink, useQuickView } from "./QuickView";
 import { QuyTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong, LienHeDoiTacModal } from "../../pages/theodoi/shared";
+import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
+import { LuongTraoDoiNcc, luongSuKien } from "../LuongTraoDoiNcc";
+import { GdBadge } from "../../lib/giaiDoan";
 import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
 
@@ -18,7 +21,7 @@ import { Kho } from "../../lib/kho";
  * thoi gian, han, loi) + ke hoach & hang ve + lich su theo doi. Mo tu Quan ly don hang (bam dong) / popup EO (nut tien trinh).
  * Du lieu: GET /theo-doi/dong/:id (dong, ke hoach, AMIS, loi, mail...) + GET /so-don-hang?eo_id= (giai doan, chi so theo doi).
  */
-type Tab = "gd" | "kh";
+type Tab = "gd" | "kh" | "loi" | "ncc";
 
 export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id: number; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
   const qc = useQueryClient();
@@ -74,7 +77,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             {(r.ceo_ly_do ?? []).length > 0 && <span className="badge reject" title={ceoTxt(r.ceo_chi_tiet, r.ceo_ly_do)}>Cấp CEO</span>}
           </div>
           <div className="muted qv-meta" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 12, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden" }}>
-            <span>EO <EoLink id={it.eo_id}>{it.approval_code || it.eo_code}</EoLink>{it.approval_code ? ` (${it.eo_code})` : ""} {r.trang_thai_eo && <StatusBadge status={r.trang_thai_eo} />}</span>
+            <span>EO <EoLink id={it.eo_id}>{it.approval_code || it.eo_code}</EoLink>{it.approval_code ? ` (${it.eo_code})` : ""} {r.trang_thai_eo && (r.trang_thai_eo === "ISSUED" && r.gd_hien_tai ? <GdBadge r={r} /> : <StatusBadge status={r.trang_thai_eo} />)}</span>
             <span>Kho <b><Kho t={it.warehouse} /></b></span>
             <span>Đối tác <b>{it.supplier || "—"}</b></span>
             <span>Người đặt <b>{ten(r.nguoi_dat ?? it.created_by)}</b></span>
@@ -123,6 +126,9 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           <div className="qv-tabs">
             <button className={`qv-tab ${tab === "gd" ? "on" : ""}`} onClick={() => setTab("gd")}>Chi tiết giai đoạn</button>
             <button className={`qv-tab ${tab === "kh" ? "on" : ""}`} onClick={() => setTab("kh")}>Kế hoạch & hàng về ({(ls.data.ke_hoach ?? []).length} · {(ls.data.phieu_nhap ?? []).length})</button>
+            <button className={`qv-tab ${tab === "loi" ? "on" : ""}`} onClick={() => setTab("loi")} style={{ color: loi.some((l) => l.trang_thai === "CHO_GIAI_TRINH") ? "var(--danger-ink)" : undefined }}>
+              Mã lỗi & giải trình ({loi.length})</button>
+            <button className={`qv-tab ${tab === "ncc" ? "on" : ""}`} onClick={() => setTab("ncc")}>Trao đổi NCC ({luongSuKien(ls.data).filter((e) => e.loai !== "NGAY").length})</button>
           </div>
           <div className="qv-scroll">
             {tab === "gd" && (
@@ -153,6 +159,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
                 </tbody>
               </table>
             )}
+            {tab === "loi" && <BangLoiTheoBuoc loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} rows={r.item_id ? [r] : []} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} />}
+            {tab === "ncc" && <LuongTraoDoiNcc d={ls.data} />}
             {tab === "kh" && (
               <>
                 <div className="qv-sec">Kế hoạch hàng về</div>

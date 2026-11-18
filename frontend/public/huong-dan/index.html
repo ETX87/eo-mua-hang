@@ -47,8 +47,25 @@ App ghi lại toàn bộ: ai lập đơn, ai duyệt, đã gửi nhà cung cấp
 <tr><td><b>Giải trình</b> lỗi</td><td>LK đặt › tick dòng › <span class="nut">Giải trình chung</span> · Vi phạm &amp; giải trình · popup đơn hàng › <span class="nut">Giải trình</span></td><td><a href="dat-hang.html#giai-trinh">Giải trình</a></td></tr>
 <tr><td><b>Xác định vấn đề tồn</b></td><td>Điều hành (Kết luận nhanh, ô ĐỎ, Điểm nóng) · Đơn PO nhóm <span class="nut">PO có dòng ĐỎ</span></td><td><a href="lanh-dao.html">Lãnh đạo / quản lý</a></td></tr>
 <tr><td><b>Nhắc</b> nhân viên giải trình</td><td>Điều hành › Theo người › <span class="nut">🔔 Nhắc</span></td><td><a href="lanh-dao.html#nhac">Nhắc nhở</a></td></tr>
+<tr><td><b>Bảng mã lỗi từng bước</b> của 1 đơn hàng / PO + giải trình</td><td>Bấm dòng → popup → tab <span class="nut">Mã lỗi &amp; giải trình</span></td><td><a href="dat-hang.html#ma-loi-don">Mã lỗi trong đơn</a></td></tr>
+<tr><td><b>Luồng trao đổi</b> với NCC (đã thúc, NCC trả lời, ngày hẹn)</td><td>Popup đơn hàng → tab <span class="nut">Trao đổi NCC</span></td><td><a href="dat-hang.html#trao-doi">Trao đổi NCC</a></td></tr>
+<tr><td><b>Tổng hợp lỗi – giải trình theo mã lỗi</b></td><td>Vi phạm &amp; giải trình → <span class="nut">Theo mã lỗi</span> → Xem chi tiết</td><td><a href="lanh-dao.html#theo-ma">Theo mã lỗi</a></td></tr>
+<tr><td><b>Ca tồn CEO</b></td><td>Menu <span class="nut">Ca tồn CEO</span></td><td><a href="lanh-dao.html#ceo">Ca tồn CEO</a></td></tr>
 <tr><td><b>Lưu bộ lọc</b> của riêng tôi</td><td>Đơn PO › <span class="nut">★ Đã lưu</span> › Lưu bộ lọc hiện tại (☆ = mặc định khi mở)</td><td><a href="dat-hang.html#loc-luu">Bộ lọc đã lưu</a></td></tr>
 <tr><td>Nhập phiếu nhập kho <b>AMIS</b></td><td>Nhập AMIS › <span class="nut">Nhập</span></td><td><a href="ke-toan.html">Kế toán</a></td></tr>
+</table>
+
+<h2 id="ma-loi">Bảng mã lỗi ER.MH</h2>
+<p>Mọi lỗi / cảnh báo trên app có 1 mã. Xem trong từng đơn hàng / PO ở tab <span class="nut">Mã lỗi &amp; giải trình</span>, tổng hợp ở <b>Vi phạm &amp; giải trình › Theo mã lỗi</b>.</p>
+<table class="bang">
+<tr><th>Mã</th><th>Bước</th><th>Lỗi</th><th>Phải giải trình?</th></tr>
+<tr><td>ER.MH-001</td><td>G5</td><td>Không có ngày dự kiến trong 24h (Karofi / Livotec / Korihome)</td><td>Có (kèm ảnh)</td></tr>
+<tr><td>ER.MH-002</td><td>G5</td><td>Không có ngày dự kiến trong 48h (đối tác khác)</td><td>Có (kèm ảnh)</td></tr>
+<tr><td>ER.MH-003</td><td>G4</td><td>Không thúc / push đối tác thứ 2 / thứ 4</td><td>Có</td></tr>
+<tr><td>ER.MH-004</td><td>G6</td><td>Quá ngày dự kiến không cập nhật ngày mới</td><td>Có (kèm ảnh)</td></tr>
+<tr><td>ER.MH-101…199</td><td>theo lỗi</td><td>Lỗi ghi khi giải trình: 101 NCC không phản hồi · 102 NCC báo trễ · 103 NCC hết hàng (G6) · 104 Đặt sai mã / SL (G1) · 105 Chậm duyệt (G3) · 199 Khác</td><td>Đã kèm giải trình</td></tr>
+<tr><td>ER.MH-201 / 202 / 203</td><td>G6 / —</td><td>Cấp CEO: lùi ngày DK ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi</td><td>Không (cảnh báo) — xem menu <b>Ca tồn CEO</b></td></tr>
+<tr><td>ER.MH-301…308</td><td>G1…G8</td><td>Trễ hạn từng bước (chỉ đo, chưa phải giải trình)</td><td>Không</td></tr>
 </table>
 
 <h2>Quy tắc cảnh báo (ai cũng cần biết)</h2>
