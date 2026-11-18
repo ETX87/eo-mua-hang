@@ -39,6 +39,7 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 ## 4. Kế hoạch hàng về & 3 loại ngày
 
 - `item_plan`: `NGAY` (ngày về cụ thể) hoặc `TUAN` (đơn KH tháng KRF theo tuần). Tổng SL kế hoạch ≤ SL đặt. Import Excel tất cả-hoặc-không.
+- **Ngày đặt hàng** của 1 dòng = ngày PO được duyệt mua (ban hành); dòng thêm sau ban hành = ngày dòng đó được duyệt. Có trong file Excel danh sách linh kiện (popup PO, LK đặt).
 - 3 loại ngày của 1 dòng: **Ngày hàng về** (thực tế, chỉ từ phiếu AMIS — không có đường nhập tay), **Ngày dự kiến** (ước tính, dùng
   cho quy tắc vi phạm), **Ngày nhà máy cam kết** (NCC xác nhận; trống thì lấy theo ngày dự kiến).
 - **Ngày KRF từ mail**: app Thư ký mua hàng đọc mail NCC theo mã 3TDO + mã LK, gửi sự kiện sang; dòng khớp chắc (đúng 1 dòng mang

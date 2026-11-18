@@ -28,7 +28,7 @@ export async function xayDongSdh(env: Env): Promise<{ rows: any[]; sla: Record<s
     cachedReport(db, "rep:so-don-hang-them", ["eo", "theo_doi"], async () => {
       const [eo, it, nm, loi] = await Promise.all([
         db.prepare("SELECT id, phong_ban, tieu_de, created_by FROM eo").all<any>(),
-        db.prepare("SELECT id, don_gia_du_kien, created_after_issue FROM eo_item").all<any>(),
+        db.prepare("SELECT id, don_gia_du_kien, created_after_issue, post_issue_approved_at FROM eo_item").all<any>(),
         db.prepare(
           `SELECT p.eo_item_id, p.factory_committed_date nm FROM item_plan p
            WHERE p.deleted_at IS NULL AND p.factory_committed_date IS NOT NULL
@@ -55,6 +55,8 @@ export async function xayDongSdh(env: Env): Promise<{ rows: any[]; sla: Record<s
     return {
       ...r, phong_ban: e.phong_ban ?? null, tieu_de: e.tieu_de ?? null, nguoi_tao: e.created_by ?? null,
       don_gia_du_kien: i.don_gia_du_kien ?? null, sau_ban_hanh: i.created_after_issue === 1,
+      // v0.094 "Ngày đặt hàng" = ngay PO duoc duyet mua (ban hanh); dong them sau BH = ngay dong duoc duyet; chua duyet -> null
+      ngay_dat_hang: r.trang_thai_eo !== "ISSUED" ? null : i.created_after_issue === 1 ? (i.post_issue_approved_at ?? null) : (r.ngay_ban_hanh ?? null),
       ngay_nm_cam_ket: nmBy.get(r.item_id) ?? null, so_loi: l?.n ?? 0, so_loi_cho_gt: l?.cho ?? 0,
       gd_hien_tai: g?.gd_hien_tai ?? null, gd_hien_tai_ten: g?.gd_hien_tai_ten ?? null, gd_bat_dau: g?.gd_bat_dau ?? null,
       gd_gio: g?.gd_gio ?? null, gd_tre: g?.gd_tre ?? null, g4_trang_thai: g?.g4_trang_thai ?? null,

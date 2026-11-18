@@ -63,6 +63,8 @@ function cotDefs(giaiDoan: { k: string; l: string; vai_tro: string }[], sla: Rec
     { k: "nguoi_tao", l: "Người tạo EO", nhom: "EO", get: (r) => r.nguoi_tao, render: (r) => ten(r.nguoi_tao) },
     { k: "nguoi_duyet_cuoi", l: "Người duyệt mua", nhom: "EO", get: (r) => r.nguoi_duyet_cuoi, render: (r) => ten(r.nguoi_duyet_cuoi) },
     { k: "ngay_ban_hanh", l: "Ngày ban hành", nhom: "EO", get: (r) => ngay(r.ngay_ban_hanh) },
+    // v0.094: ngay dat hang = ngay PO duoc duyet mua (ban hanh) / ngay dong them sau BH duoc duyet (backend xayDongSdh ngay_dat_hang)
+    { k: "ngay_dat", l: "Ngày đặt hàng", nhom: "EO", get: (r) => ngay(r.ngay_dat_hang) },
     // ---- dong linh kien
     { k: "part_code", l: "Mã linh kiện", nhom: "Linh kiện", get: (r) => r.part_code, render: (r) => <><DongLink id={r.item_id} ma={r.part_code} />{r.part_code_goc && <div className="muted" style={{ fontSize: 10.5 }}>thay từ {r.part_code_goc}</div>}</> },
     { k: "part_name", l: "Tên linh kiện", nhom: "Linh kiện", get: (r) => r.part_name, maxW: 200 },
@@ -124,6 +126,7 @@ const LOC_COT: Record<string, LocMot> = {
   trang_thai_eo: { loc: "chon", nhan: ST }, loai_hinh: { loc: "chon" }, phong_ban: { loc: "chon" },
   nguoi_tao: { loc: "chon", nhan: (v) => ten(v) }, nguoi_duyet_cuoi: { loc: "chon", nhan: (v) => ten(v) },
   ngay_ban_hanh: { loc: "ngay", gt: (r) => r.ngay_ban_hanh },
+  ngay_dat: { loc: "ngay", gt: (r) => r.ngay_dat_hang ?? null },
   part_code: { loc: "chu", gt: (r) => `${r.part_code ?? ""} ${r.part_code_goc ?? ""}` }, part_name: { loc: "chu" },
   kho: { loc: "chon", nhan: (v) => (khoGon(v) !== v ? `${khoGon(v)} — ${v}` : v) }, doi_tac: { loc: "chon" }, so_luong_dat: { loc: "so" }, don_gia: { loc: "so" },
   ly_do_ps: { loc: "chon" }, ghi_chu: { loc: "chu" }, id_crm: { loc: "chu" }, id_dat_hang: { loc: "chu" }, id_dat_lk: { loc: "chu" },
@@ -366,7 +369,13 @@ function DanhSach() {
     setLuu(moi); localStorage.setItem(KEY_LOC, JSON.stringify(moi));
   };
   const xoaLuu = (l: string) => { const moi = luu.filter((x) => x.l !== l); setLuu(moi); localStorage.setItem(KEY_LOC, JSON.stringify(moi)); };
-  const xuat = () => exportRowsToXlsx(rows, hien.map((d) => ({ header: d.l, get: d.get })), "LK_dat.xlsx", "LK dat");
+  // v0.094: file Excel luon co "Ngày đặt hàng" (chen sau ma phe duyet neu dang khong hien cot nay)
+  const xuat = () => {
+    const ds = [...hien];
+    const nd = defs.find((x) => x.k === "ngay_dat");
+    if (nd && !ds.some((x) => x.k === "ngay_dat")) ds.splice(Math.max(0, ds.findIndex((x) => x.k === "ma_phe_duyet")) + 1, 0, nd);
+    exportRowsToXlsx(rows, ds.map((d) => ({ header: d.l, get: d.get })), "LK_dat.xlsx", "LK dat");
+  };
   const xoaHet = () => { setLoc({ ...LOC_TRONG, nhom: NHOM_MAC_DINH }); setLocCot({}); setSap(null); };
 
   const S = ({ v, onChange, children, w = 160, title }: { v: string; onChange: (v: string) => void; children: ReactNode; w?: number; title?: string }) => (

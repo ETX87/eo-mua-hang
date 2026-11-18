@@ -3,6 +3,16 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.094: Cột "Ngày đặt hàng" trong file Excel danh sách linh kiện
+
+- Yêu cầu: "file tải excel trong danh sách linh kiện mua hàng thêm ngày đặt hàng" + "ngày đặt hàng chính là ngày PO được duyệt".
+- Định nghĩa: Ngày đặt hàng = ngày PO được duyệt mua (ban hành, `eo.issued_at`); dòng thêm sau ban hành = ngày dòng đó được duyệt (`post_issue_approved_at`);
+  chưa duyệt / PO chưa ban hành → trống.
+- Popup PO › "Tải danh sách linh kiện" (`xuatDongEo`): thêm cột cạnh "Ngày ban hành". LK đặt: trường `ngay_dat_hang` (backend `xayDongSdh`, đổi hậu tố
+  cache theo dòng `|gd3` để dựng lại), cột chọn được "Ngày đặt hàng" (lọc từ – đến), file Excel luôn có cột này (chèn sau Mã phê duyệt nếu đang ẩn).
+- Kiểm thử: typecheck; local tải 2 file thật (bắt nội dung file) — EO-000008: 2 dòng trước BH = 13/10/2026 (ngày duyệt mua), dòng sau BH chờ duyệt = trống;
+  LK_dat.xlsx có cột ở vị trí 2.
+
 ## 18/11/2026 — v0.093: Gộp vi phạm theo PO + loại lỗi + kỳ
 
 - Yêu cầu (kèm ảnh popup EO-000014 "Mã lỗi & giải trình (1332)"): "tại sao 1 ca lại có nhiều lỗi như vậy? có hợp lý không? nếu cùng 1 lỗi, trên cùng 1 PO thì

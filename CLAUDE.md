@@ -376,6 +376,8 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
   FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
+- **v0.094 Ngày đặt hàng** = ngày PO duyệt mua (`issued_at`) / dòng sau BH = `post_issue_approved_at`: `/so-don-hang` trường `ngay_dat_hang` (hậu tố cache dòng `|gd3`),
+  Excel popup PO (`xuatDongEo`) + LK đặt (luôn kèm cột). Khác `ngayDatCua` FE (mốc tính tồn: dòng sau BH = ngày tạo dòng).
 - **v0.093 vi phạm gộp** `khoaViPham` (JS) / `VP_SQL` (SQL) ở `lib/maLoi.ts` — PHẢI khớp nhau: R1 `eo|R1`, R3/R4 `eo|qt|ngay_tham_chieu`, TAY `eo|TAY|loi_ma|ngày`.
   Mọi số đếm lỗi hiển thị dùng khoá này (baoCaoLoi `vp_khoa`/`gomViPham`, dieuHanh `vp_cho` + loi30 + độ phủ, FE ViPham `gomLoi`/`soVp`, `BangLoiTheoBuoc`).
 - **v0.092 tự giải trình** `tuGiaiTrinh` (cuối `danhGiaQuyTac`, `lib/theoDoi.ts`): `tl_giai_trinh.pham_vi = 'AUTO'`, `nhom` `AUTO:KHAC_PHUC` | `AUTO:QUA_HAN`

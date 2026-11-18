@@ -892,6 +892,8 @@ export async function xuatDongEo(eo: any, items: any[], plans: any[], boSung?: a
     { header: "Phòng ban", get: () => eo.phong_ban ?? "" },
     { header: "Người tạo EO", get: () => eo.created_by },
     { header: "Ngày ban hành", get: () => d(eo.issued_at) },
+    // v0.094: ngay dat hang = ngay PO duoc duyet mua (ban hanh); dong them sau BH = ngay dong duoc duyet (post_issue_approved_at); chua duyet -> trong
+    { header: "Ngày đặt hàng", get: (r) => (eo.trang_thai !== "ISSUED" ? "" : d(r.i.created_after_issue ? r.i.post_issue_approved_at : eo.issued_at)) },
     { header: "ID dòng", get: (r) => r.i.legacy_id || `EOI-${r.i.id}` },
     { header: "Mã linh kiện", get: (r) => r.i.part_code },
     { header: "Mã đã duyệt ban đầu (nếu thay mã)", get: (r) => r.i.part_code_goc ?? "" },
