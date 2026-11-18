@@ -118,6 +118,8 @@ jobs:
               • Sau khung dưới đây, thêm mục cuối `## Chi tiết` (KHÔNG giới hạn chữ): bảng số liệu / danh sách đầy đủ để Giám đốc
                 bấm mở xem khi cần (Giám đốc chỉ thấy phần chính trước).
             Đúng khung:
+              **Làn:** nhanh | thường | đầy đủ — <lý do 1 câu> (theo mục "Ba làn xử lý của Trợ lý Mây" trong CLAUDE.md;
+                ghi **nhanh** thì Mây chuyển ngay sang làn nhanh — app xử lý trọn, không đợi duyệt)
               **Độ lớn:** Nhỏ | Lớn
               ## Tình hình hiện tại
               - (app đang làm gì ở phần liên quan; vì sao người dùng gặp vấn đề — dựa trên mã, không đoán)
