@@ -151,7 +151,7 @@ app.get("/loi", docKey, async (c) => {
     ngay_tham_chieu: r.ngay_tham_chieu, lan_thu: r.lan_thu, so_lan: r.so_lan, tuoi_ngay: r.tuoi_ngay,
     po: r.approval_code ?? r.eo_code, eo_code: r.eo_code, item_id: r.eo_item_id, ma_lk: r.part_code, ten_lk: r.part_name, kho: r.kho, doi_tac: r.doi_tac,
     nguoi_dat: r.nguoi_dat, nguoi_bi_gan: r.nguoi_vp, so_nhac: r.so_nhac, cap_ceo: r.ceo,
-    giai_trinh: r.gt_luc ? { luc: r.gt_luc, boi: r.gt_boi, ai_ma: r.gt_ai_ma, ai_email: r.gt_ai_email, loi_ma: r.gt_loi_ma, noi_dung: r.gt_noi_dung, pham_vi: r.gt_pham_vi, co_anh: r.gt_co_anh } : null,
+    giai_trinh: r.gt_luc ? { luc: r.gt_luc, boi: r.gt_boi, ai_ma: r.gt_ai_ma, ai_email: r.gt_ai_email, loi_ma: r.gt_loi_ma, noi_dung: r.gt_noi_dung, pham_vi: r.gt_pham_vi, co_anh: r.gt_co_anh, tu_dong: r.tu_dong } : null,
   }));
   return c.json({ total: loc.length, limit, offset, rows: out });
 });

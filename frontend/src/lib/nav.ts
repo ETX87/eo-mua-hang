@@ -26,7 +26,11 @@ export const NAV: NavItem[] = [
     { to: "/don-hang?tab=bao-cao", label: "Báo cáo", icon: "trend" },
   ] },
   // Vi pham & giai trinh (2026-11-04): loi R1/R3/R4/tay, muc do, lap, nhac nho, giai trinh ca PO - backend routes/viPham.ts
-  { to: "/vi-pham", label: "Vi phạm & giải trình", icon: "bell" },
+  { to: "/vi-pham", label: "Vi phạm & giải trình", icon: "bell", children: [
+    { to: "/vi-pham", label: "Danh sách", icon: "list" },
+    // Bang ma loi ER.MH (v0.092): ten, loi gi, yeu cau giai trinh, tu dong khi nao + so dang dem
+    { to: "/ma-loi", label: "Bảng mã lỗi", icon: "tag" },
+  ] },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },
 
   { to: "/admin/users", label: "Người dùng", icon: "user", section: "CÀI ĐẶT", adminOnly: true },

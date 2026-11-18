@@ -31,8 +31,9 @@ app.get("/", async (c) => {
   ]);
   // do phu giai trinh (moi loi trong pham vi theo doi, moi thoi diem) - kem moi so "nguyen nhan" de khong ket luan tu mau qua nho
   const phu = await db.prepare(
-    `SELECT COUNT(*) n, SUM(l.trang_thai = 'DA_GIAI_TRINH') gt FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE COALESCE(e.issued_at, e.created_at) >= ?`,
-  ).bind(goc.bo_qua).first<{ n: number; gt: number }>();
+    `SELECT COUNT(*) n, SUM(l.trang_thai = 'DA_GIAI_TRINH' AND COALESCE(g.pham_vi, '') <> 'AUTO') gt, SUM(g.pham_vi = 'AUTO') tu_dong
+     FROM tl_loi l JOIN eo e ON e.id = l.eo_id LEFT JOIN tl_giai_trinh g ON g.id = l.giai_trinh_id WHERE COALESCE(e.issued_at, e.created_at) >= ?`,
+  ).bind(goc.bo_qua).first<{ n: number; gt: number; tu_dong: number }>();
   const now = nowVN();
   const gio = (t: string) => Math.max(0, Math.round((Date.parse(now.replace(" ", "T") + "Z") - Date.parse(String(t).replace(" ", "T") + "Z")) / 3600_000));
   return c.json({
@@ -43,7 +44,7 @@ app.get("/", async (c) => {
     xu_huong: xuHuong(goc),
     loi30: goc.loi30,
     nguyen_nhan: goc.nguyen_nhan,
-    do_phu: { tong_loi: phu?.n ?? 0, da_gt: phu?.gt ?? 0 },
+    do_phu: { tong_loi: phu?.n ?? 0, da_gt: phu?.gt ?? 0, tu_dong: phu?.tu_dong ?? 0 },
     dm: goc.dm,
     duyet: [...duyet.results, ...sauBh.results].map((r: any) => ({ ...r, gio: gio(r.tu) })),
     quan_ly: xemToanBoTheoDoi(c.get("user")),

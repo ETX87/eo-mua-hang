@@ -100,6 +100,10 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   **004** quá ngày DK không cập nhật — G6 · **101–199** lỗi ghi khi giải trình (NCC không phản hồi / báo trễ / hết hàng → G6, đặt sai → G1, chậm duyệt → G3) ·
   **201–203** cấp CEO (lùi ≥ 3 lần / DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi) · **301–308** trễ hạn bước G1–G8 (chỉ đo). Mã tính lúc đọc, không lưu DB.
 - Mỗi đơn hàng / PO có bảng mã lỗi theo bước kèm giải trình; Vi phạm tổng hợp theo mã (mọi trạng thái, % giải trình, nguyên nhân theo giải trình).
+- **Tự giải trình** (chạy nền ≤ 10 phút / lần): lỗi R1 / R3 / R4 đang chờ được hệ thống tự đóng ("Auto giải trình vi phạm do …") khi **đã khắc phục sau đó**
+  (R3: có mail / push / gọi-Zalo với NCC sau ngày kiểm tra · R1: dòng đã có ngày dự kiến · R4: đã nhập ngày dự kiến mới · hoặc đã có giải trình thật cùng lỗi)
+  hoặc **quá 7 ngày** không giải trình (ghi nhận vi phạm). Lỗi tự đóng vẫn tính vi phạm (số lỗi, ngưỡng CEO) nhưng không tính là giải trình thật trong mọi thống kê.
+- **Bảng mã lỗi** (menu Vi phạm › Bảng mã lỗi): tên, lỗi gì, yêu cầu giải trình, tự giải trình khi nào, số đang đếm theo từng mã.
 - Menu **Ca tồn CEO**: dòng đang mở cấp CEO + mã 201–203 + hành động (thúc NCC, NCC trả lời, giải trình, im lặng).
 - Trạng thái luôn gắn bước: Đơn PO / popup PO = luồng tiến trình; popup đơn hàng = giai đoạn hiện tại; LK đặt "Tình trạng đơn" có tiền tố bước.
 - Luồng trao đổi NCC theo dòng: 3T thúc (mail gửi có CC hộp theo dõi, push, gọi/Zalo) ↔ NCC trả lời (mail NCC) ↔ cập nhật ngày DK.

@@ -5,7 +5,8 @@ import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
-import { dsLoiDayDu, tongHopTheoMa, QUA_LAU_NGAY, RAT_LAU_NGAY } from "../lib/baoCaoLoi";
+import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_NGAY, RAT_LAU_NGAY } from "../lib/baoCaoLoi";
+import { layDongDieuHanh, thongKeGiaiDoan } from "../lib/dieuHanh";
 import { layBangMaLoi } from "../lib/maLoi";
 
 /**
@@ -54,7 +55,13 @@ app.get("/ma-loi", async (c) => {
   const u = c.get("user");
   const { rows, bang } = await dsLoiDayDu(c.env);
   const pv = phamVi(u);
-  return c.json({ bang: bang.ds, tong_hop: tongHopTheoMa(rows.filter((l) => pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: l.nguoi_vp, kho: l.kho })), bang) });
+  // v0.092 (Bang ma loi): so dang dem cua nhom CEO (2xx, dong dang mo) + tre han buoc (3xx: dang tre / tre 30 ngay) - toan he thong
+  const [ceo, dh] = await Promise.all([dsCaCeo(c.env), layDongDieuHanh(c.env)]);
+  const demCeo: Record<string, number> = {};
+  for (const r of ceo) for (const m of r.ma_ceo) demCeo[m.ma] = (demCeo[m.ma] ?? 0) + 1;
+  const demGd = Object.fromEntries(thongKeGiaiDoan(dh.goc, dh.gd).map((g) => [g.k, { dang: g.dang, dang_tre: g.dang_tre, xong30: g.xong30, tre30: g.tre30 }]));
+  return c.json({ bang: bang.ds, tong_hop: tongHopTheoMa(rows.filter((l) => pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: l.nguoi_vp, kho: l.kho })), bang),
+    dem_ceo: demCeo, dem_gd: demGd, so_ngay_tu_dong: 7 });
 });
 // GET /bang-ma - chi bang ma (popup, huong dan)
 app.get("/bang-ma", async (c) => c.json((await layBangMaLoi(c.env.DB)).ds));

@@ -3,6 +3,24 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.092: Bảng mã lỗi + hệ thống tự giải trình lỗi đã khắc phục / quá 7 ngày
+
+- Yêu cầu: "1. tôi cần 1 bảng mã lỗi chi tiết, có giải trình, diễn giải và số lượng lỗi đang đếm. 2. Việc giải trình sẽ không cần thiết nữa nếu lỗi đó đã bị
+  ghi nhận và quá 7 ngày không giải trình (tính vi phạm rồi) hoặc cùng lỗi đó, đã có giải trình gần nhất rồi. ví dụ không push mail tuần 1 - tuần 2, tuần 3
+  đã push mail hoặc giải trình => tuần 1,2 không cần giải trình nữa cho đỡ rách => tự động giải trình luôn (dạng "auto giải trình vi phạm do lý do...)";
+  làm rõ: "mục 1. ý là mô tả mã lỗi đó tên là gì, lỗi gì.. chứ không phải thông tin giải trình chi tiết của từng lỗi".
+- (1) Màn **Bảng mã lỗi** (`/ma-loi`, menu con của Vi phạm, `pages/BangMaLoi.tsx`): mỗi mã ER.MH — nhóm, bước, tên + lỗi gì, yêu cầu giải trình, tự giải trình khi nào,
+  số đang đếm (0xx/1xx: tổng · chờ · đã giải trình · tự đóng do khắc phục · tự đóng do quá 7 ngày; 2xx: dòng đang cấp CEO; 3xx: dòng đang trễ bước), "Xem lỗi", Excel.
+  `lib/maLoi.ts` thêm `yeu_cau_gt` / `tu_dong`; `GET /vi-pham/ma-loi` trả thêm `dem_ceo`, `dem_gd`.
+- (2) **Tự giải trình** (`tuGiaiTrinh` cuối `danhGiaQuyTac`, ≤ 10 phút/lần): lỗi R1/R3/R4 đang chờ → `tl_giai_trinh` pham_vi `AUTO`, nhóm `AUTO:KHAC_PHUC` (R3 có mail /
+  push / gọi-Zalo sau ngày kiểm tra · R1 dòng đã có ngày DK · R4 đã nhập ngày DK mới > ngày bị quá · đã có giải trình thật cùng lỗi sau hạn) hoặc `AUTO:QUA_HAN`
+  (quá 7 ngày từ hạn — ghi nhận vi phạm); nội dung "Auto giải trình vi phạm do …", người ghi = tài khoản hệ thống, event `AUTO_GIAI_TRINH`.
+  Vẫn tính vi phạm (số lỗi, ngưỡng CEO) nhưng KHÔNG tính là giải trình thật: Điều hành (độ phủ, hoạt động cuối, giải trình gần nhất, xu hướng, nguyên nhân),
+  Vi phạm (% giải trình, thẻ "Đã giải trình 7 ngày", trạng thái mới "Tự đóng"), tổng hợp theo mã, API (`giai_trinh.tu_dong`); lịch sử dòng hiện "Hệ thống · Tự giải trình".
+- Đo trước trên production (chỉ đọc): 1.707 lỗi chờ → 642 đã khắc phục (R3 408, R1 234) + 948 quá 7 ngày (R3 652, R1 248, R4 48) → còn ~117 lỗi phải giải trình.
+- Kiểm thử: typecheck + build; local: R3 có push sau đó → tự đóng "đã khắc phục", R3 cũ không ai xử lý → "quá 7 ngày", R3 hôm qua → vẫn chờ; event ghi "Hệ thống";
+  màn Bảng mã lỗi / Vi phạm / popup không lỗi trang.
+
 ## 18/11/2026 — Bật API đọc (không đổi code)
 
 - Yêu cầu: "Tạo khoá ngay" (khoá cho API đọc v0.091).

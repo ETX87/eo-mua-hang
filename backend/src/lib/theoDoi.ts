@@ -475,10 +475,80 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       ]).catch((e) => console.error("nhac nho tu dong", e));
       await bumpVersions(db, ["theo_doi"]);
     }
+    await tuGiaiTrinh(env, now).catch((e) => console.error("tu giai trinh", e));
     await db.prepare("UPDATE tl_state SET danh_gia_luc = ?, running_until = NULL, so_loi_moi = ? WHERE id = 1").bind(nowVN(), moi).run();
   } catch (err) {
     await db.prepare("UPDATE tl_state SET running_until = NULL WHERE id = 1").run();
     throw err;
   }
   return moi;
+}
+
+/**
+ * TU GIAI TRINH (v0.092, yeu cau lanh dao 2026-11-18): loi DANG CHO khong can giai trinh nua -> he thong tu dong, ghi 1 ban ghi tl_giai_trinh
+ * pham_vi 'AUTO' (nhom = 'AUTO:<ly do>', noi dung "Auto giải trình vi phạm do …"), loi chuyen DA_GIAI_TRINH. Van TINH la vi pham (giu trong tl_loi,
+ * so loi, nguong CEO) nhung KHONG tinh la "giai trinh that" (dieuHanh do phu, Vi pham % giai trinh, hoat dong cuoi loai pham_vi AUTO). Thu tu ly do:
+ *  KHAC_PHUC  da khac phuc sau do:  R3 - co mail / goi-Zalo / push voi NCC SAU ngay kiem tra · R1 - dong da co ngay du kien ·
+ *             R4 - da nhap ngay du kien moi > ngay bi qua · moi quy tac - da co giai trinh THAT cung loi tren dong sau han loi nay
+ *  QUA_HAN    qua SO_NGAY_TU_DONG ngay (tinh tu han) khong giai trinh -> ghi nhan vi pham, khong can giai trinh nua
+ * Nguoi ghi = BOOTSTRAP_ADMIN_EMAIL (FK users, giong tu dien ngay KRF); event AUTO_GIAI_TRINH user_email NULL (FE hien "Hệ thống").
+ */
+export const SO_NGAY_TU_DONG = 7;
+async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
+  const db = env.DB;
+  if (!env.BOOTSTRAP_ADMIN_EMAIL) return 0;
+  const rs = (await db.prepare(
+    `WITH l AS (SELECT * FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND quy_tac <> 'TAY'),
+     k AS (
+       SELECT l.id, l.quy_tac,
+         CASE WHEN l.quy_tac = 'R3' THEN (SELECT MIN(d) FROM (
+                SELECT substr(m.thoi_gian, 1, 10) d FROM tl_mail m WHERE m.eo_item_id = l.eo_item_id AND substr(m.thoi_gian, 1, 10) > l.ngay_tham_chieu
+                UNION ALL SELECT substr(h.ngay_lien_he, 1, 10) FROM tl_lien_he h WHERE h.eo_item_id = l.eo_item_id AND substr(h.ngay_lien_he, 1, 10) > l.ngay_tham_chieu
+                UNION ALL SELECT p.ngay FROM tl_push_item p WHERE p.eo_item_id = l.eo_item_id AND p.ngay > l.ngay_tham_chieu))
+              WHEN l.quy_tac = 'R1' THEN (SELECT substr(MIN(p.created_at), 1, 10) FROM item_plan p WHERE p.eo_item_id = l.eo_item_id)
+              WHEN l.quy_tac = 'R4' THEN (SELECT substr(MIN(p.created_at), 1, 10) FROM item_plan p WHERE p.eo_item_id = l.eo_item_id AND p.deleted_at IS NULL AND p.planned_date > l.ngay_tham_chieu)
+         END khac_phuc,
+         (SELECT substr(MIN(g.created_at), 1, 10) FROM tl_loi l2 JOIN tl_giai_trinh g ON g.id = l2.giai_trinh_id
+          WHERE l2.eo_item_id = l.eo_item_id AND l2.quy_tac = l.quy_tac AND l2.id <> l.id AND COALESCE(g.pham_vi, '') <> 'AUTO' AND g.created_at > COALESCE(l.han, l.created_at)) gt_cung,
+         date(COALESCE(l.han, l.created_at)) <= date(?1, '-${SO_NGAY_TU_DONG} days') qua_han
+       FROM l)
+     SELECT id, quy_tac, khac_phuc, gt_cung, qua_han FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1`,
+  ).bind(now.slice(0, 10)).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number }>()).results;
+  if (!rs.length) return 0;
+  const dmy = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+  const KP: Record<string, string> = {
+    R3: "đã thúc NCC sau đó (mail / push / gọi-Zalo ngày %)", R1: "dòng đã có ngày dự kiến (nhập ngày %)", R4: "đã cập nhật ngày dự kiến mới (ngày %)",
+  };
+  const ds = rs.map((r) => r.khac_phuc
+    ? [r.id, `Auto giải trình vi phạm do ${KP[r.quy_tac].replace("%", dmy(r.khac_phuc))} — không cần giải trình nữa.`, "AUTO:KHAC_PHUC"]
+    : r.gt_cung
+      ? [r.id, `Auto giải trình vi phạm do đã có giải trình cùng lỗi ngày ${dmy(r.gt_cung)} — không cần giải trình lại.`, "AUTO:KHAC_PHUC"]
+      : [r.id, `Auto giải trình vi phạm do quá ${SO_NGAY_TU_DONG} ngày không giải trình — ghi nhận vi phạm, không cần giải trình nữa.`, "AUTO:QUA_HAN"]);
+  let xong = 0;
+  for (let i = 0; i < ds.length; i += 250) {
+    const lo = JSON.stringify(ds.slice(i, i + 250));
+    const ids = JSON.stringify(ds.slice(i, i + 250).map((x) => x[0]));
+    const res = await db.batch([
+      db.prepare(
+        `INSERT INTO tl_giai_trinh (eo_item_id, eo_id, loi_id, ai_ma, ai_email, loi_ma, noi_dung, created_by, created_at, pham_vi, nhom)
+         SELECT l.eo_item_id, l.eo_id, l.id, COALESCE(l.ai_ma, 'NGUOI_DAT'), l.ai_email, COALESCE(l.loi_ma, 'KHAC'), json_extract(v.value, '$[1]'), ?1, ?2, 'AUTO', json_extract(v.value, '$[2]')
+         FROM json_each(?3) v JOIN tl_loi l ON l.id = json_extract(v.value, '$[0]') AND l.trang_thai = 'CHO_GIAI_TRINH'`,
+      ).bind(env.BOOTSTRAP_ADMIN_EMAIL, now, lo),
+      db.prepare(
+        `UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH',
+           giai_trinh_id = (SELECT MAX(g.id) FROM tl_giai_trinh g WHERE g.loi_id = tl_loi.id AND g.pham_vi = 'AUTO')
+         WHERE trang_thai = 'CHO_GIAI_TRINH' AND id IN (SELECT value FROM json_each(?1))
+           AND EXISTS (SELECT 1 FROM tl_giai_trinh g WHERE g.loi_id = tl_loi.id AND g.pham_vi = 'AUTO')`,
+      ).bind(ids),
+      db.prepare(
+        `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, after_json, metadata_json, user_email, created_at)
+         SELECT 'eo', g.eo_id, g.eo_id, 'AUTO_GIAI_TRINH', json_object('so_loi', COUNT(*), 'khac_phuc', SUM(g.nhom = 'AUTO:KHAC_PHUC'), 'qua_han', SUM(g.nhom = 'AUTO:QUA_HAN')),
+                json_object('loi_ids', json_group_array(g.loi_id)), NULL, ?1
+         FROM tl_giai_trinh g WHERE g.pham_vi = 'AUTO' AND g.created_at = ?1 AND g.loi_id IN (SELECT value FROM json_each(?2)) GROUP BY g.eo_id`,
+      ).bind(now, ids),
+    ]);
+    xong += res[1].meta.changes ?? 0;
+  }
+  if (xong) await bumpVersions(db, ["theo_doi"]);
+  return xong;
 }

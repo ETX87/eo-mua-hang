@@ -48,6 +48,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Số trên Tổng quan phải khớp danh sách khi bấm vào.
 - Bộ lọc cá nhân lưu trên máy người dùng (Đơn PO: ★ Đã lưu, đặt 1 bộ làm mặc định khi mở).
 - Hướng dẫn sử dụng HTML theo vai trò ở `/huong-dan/` (nút 📘 Hướng dẫn), có ảnh minh hoạ thao tác.
+- Bảng mã lỗi (`/ma-loi`): mỗi mã có tên, diễn giải lỗi gì, yêu cầu giải trình, khi nào tự giải trình, số lượng đang đếm.
+- Lỗi đang chờ không cần giải trình nữa khi đã khắc phục sau đó hoặc quá 7 ngày → hệ thống tự giải trình (vẫn tính vi phạm, tách khỏi "đã giải trình").
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
 - Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.
 - API đọc có khoá cho hệ khác: ca tồn CEO, tổng hợp lỗi theo mã, chi tiết lỗi + giải trình, bảng mã.

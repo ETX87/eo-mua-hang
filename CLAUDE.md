@@ -376,6 +376,9 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
   FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
+- **v0.092 tự giải trình** `tuGiaiTrinh` (cuối `danhGiaQuyTac`, `lib/theoDoi.ts`): `tl_giai_trinh.pham_vi = 'AUTO'`, `nhom` `AUTO:KHAC_PHUC` | `AUTO:QUA_HAN`
+  (`SO_NGAY_TU_DONG` = 7), người ghi `BOOTSTRAP_ADMIN_EMAIL`, event `AUTO_GIAI_TRINH`. MỌI truy vấn "giải trình thật" phải loại `pham_vi = 'AUTO'`
+  (dieuHanh hoạt động cuối / xu hướng / nguyên nhân / độ phủ, baoCaoLoi `tu_dong`). Bảng mã lỗi: `pages/BangMaLoi.tsx` (`/ma-loi`).
 - `nhomLyDo` (gom lý do đỏ) có 2 bản: backend `lib/dieuHanh.ts` + FE `pages/DieuHanh.tsx` — sửa cả hai.
 
 ## 2 giao diện theo mã linh kiện (v0.072, `components/quickview/QuickView.tsx`)

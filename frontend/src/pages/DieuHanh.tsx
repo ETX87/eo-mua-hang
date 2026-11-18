@@ -37,7 +37,7 @@ interface Data {
   luc: string; hom_nay: string; bo_qua_truoc: string; nguong: { im_lang_do: number; im_lang_vang: number; loi_cho_do: number };
   dong: Dong[]; giai_doan: Gd[]; xu_huong: { tuan: string; loi: number; gt: number; nhac: number }[];
   loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number }[];
-  nguyen_nhan: { ai_ma: string; loi_ma: string; n: number }[]; do_phu: { tong_loi: number; da_gt: number };
+  nguyen_nhan: { ai_ma: string; loi_ma: string; n: number }[]; do_phu: { tong_loi: number; da_gt: number; tu_dong?: number };
   dm: { loai: string; ma: string; ten: string }[]; duyet: Duyet[]; quan_ly: boolean;
 }
 
@@ -125,7 +125,7 @@ export default function DieuHanh() {
   });
   ketLuan.push({
     icon: gtPct < 0.3 ? "⚠️" : "✅", mau: gtPct < 0.3 ? "#B45309" : undefined, onClick: () => setTab("nn"),
-    txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>)
+    txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>){d.do_phu.tu_dong ? <> · hệ thống tự đóng <b>{soLuong(d.do_phu.tu_dong)}</b> (đã khắc phục / quá 7 ngày — vẫn tính vi phạm)</> : null}
       {gtPct < 0.3 ? " — chưa đủ cơ sở kết luận nguyên nhân, phải ép giải trình trước." : "."}</>,
   });
   if (duyetPv.length) {

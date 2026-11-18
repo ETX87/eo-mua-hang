@@ -7,6 +7,7 @@ import { Spinner } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
 import DieuHanh from "./pages/DieuHanh";
 import CaCeo from "./pages/CaCeo";
+import BangMaLoi from "./pages/BangMaLoi";
 import EoList from "./pages/eo/EoList";
 import EoForm from "./pages/eo/EoForm";
 import KeHoachTuan from "./pages/KeHoachTuan";
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/dieu-hanh" element={<DieuHanh />} />
         <Route path="/ca-ceo" element={<CaCeo />} />
+        <Route path="/ma-loi" element={<BangMaLoi />} />
         <Route path="/eo" element={<EoList />} />
         <Route path="/eo/new" element={<EoForm key="create" mode="create" />} />
         {/* chi tiet EO = popup tren man Quan ly EO; /approvals -> chip "Cho toi duyet" (v0.051) */}

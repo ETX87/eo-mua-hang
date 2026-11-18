@@ -457,7 +457,9 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
           <H>Giải trình ({d.giai_trinh.length})</H>
           {d.giai_trinh.length === 0 ? <div className="muted">Chưa có.</div> : d.giai_trinh.map((g: any) => (
             <div key={g.id} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-              <b>{ten(g.created_by)}</b> · {ngayGio(g.created_at)} · Ai: {tenDm("AI", g.ai_ma)}{g.ai_email ? ` (${ten(g.ai_email)})` : ""} · Lỗi: {tenDm("LOI", g.loi_ma)}
+              {/* v0.092: tu giai trinh (pham_vi AUTO) - nguoi ghi la tai khoan he thong, hien "Hệ thống" */}
+              {g.pham_vi === "AUTO" ? <><b>Hệ thống</b> · {ngayGio(g.created_at)} · <span className="badge nhap">Tự giải trình</span></>
+                : <><b>{ten(g.created_by)}</b> · {ngayGio(g.created_at)} · Ai: {tenDm("AI", g.ai_ma)}{g.ai_email ? ` (${ten(g.ai_email)})` : ""} · Lỗi: {tenDm("LOI", g.loi_ma)}</>}
               <div>{g.noi_dung}</div>
               {(() => { try { return (JSON.parse(g.hinh_anh || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } })()}
             </div>

@@ -16,9 +16,10 @@ import { ngay, ngayGio, ten } from "../lib/format";
 const TEN_GD: Record<string, string> = { G1: "Lập & trình EO", G2: "Thẩm định", G3: "Duyệt mua & BH", G4: "Gửi đơn NCC", G5: "Có ngày dự kiến", G6: "Chờ SX & giao", G7: "Nhập kho", G8: "Giao bù đến đủ" };
 const THU_TU = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"];
 const CEO: Record<string, [string, string | null]> = { LUI: ["ER.MH-201", "G6"], XA: ["ER.MH-202", "G6"], LOI: ["ER.MH-203", null] };
-type TT = "CHO" | "DA_GT" | "CEO" | "TRE_DANG" | "TRE_XONG";
+type TT = "CHO" | "DA_GT" | "TU_KP" | "TU_QH" | "CEO" | "TRE_DANG" | "TRE_XONG";
 const NHAN_TT: Record<TT, { l: string; cls: string }> = {
   CHO: { l: "Chờ giải trình", cls: "reject" }, DA_GT: { l: "Đã giải trình", cls: "issued" }, CEO: { l: "Cấp CEO", cls: "reject" },
+  TU_KP: { l: "Tự đóng · đã khắc phục", cls: "nhap" }, TU_QH: { l: "Tự đóng · vi phạm (quá 7 ngày)", cls: "final" },
   TRE_DANG: { l: "Đang trễ hạn (chỉ đo)", cls: "final" }, TRE_XONG: { l: "Xong · trễ hạn (chỉ đo)", cls: "nhap" },
 };
 interface Muc { k: string; buoc: string; ma: string; ten: string; ma_lk: string; item_id: number | null; han: string | null; tt: TT; chi_tiet: string;
@@ -36,8 +37,8 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh }
     for (const l of loi) {
       const g = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
       out.push({ k: `l${l.id}`, buoc: l.buoc ?? "", ma: l.ma_loi ?? l.quy_tac, ten: l.ten_ma ?? l.quy_tac, ma_lk: l.part_code ?? lkBy.get(l.eo_item_id) ?? "", item_id: l.eo_item_id,
-        han: l.han ?? null, tt: l.trang_thai === "CHO_GIAI_TRINH" ? "CHO" : "DA_GT", chi_tiet: l.ngay_tham_chieu ? `ngày kiểm tra / mốc ${ngay(l.ngay_tham_chieu)}` : "",
-        gt_ai: g ? tenDm("AI", g.ai_ma) : "", gt_loi: g ? tenDm("LOI", g.loi_ma) : "", gt_nd: g?.noi_dung ?? "", gt_boi: g?.created_by ?? null, gt_luc: g?.created_at ?? null });
+        han: l.han ?? null, tt: l.trang_thai === "CHO_GIAI_TRINH" ? "CHO" : g?.pham_vi === "AUTO" ? (g.nhom === "AUTO:QUA_HAN" ? "TU_QH" : "TU_KP") : "DA_GT", chi_tiet: l.ngay_tham_chieu ? `ngày kiểm tra / mốc ${ngay(l.ngay_tham_chieu)}` : "",
+        gt_ai: g && g.pham_vi !== "AUTO" ? tenDm("AI", g.ai_ma) : g ? "Hệ thống" : "", gt_loi: g && g.pham_vi !== "AUTO" ? tenDm("LOI", g.loi_ma) : g ? "Tự giải trình" : "", gt_nd: g?.noi_dung ?? "", gt_boi: g?.pham_vi === "AUTO" ? null : g?.created_by ?? null, gt_luc: g?.created_at ?? null });
     }
     for (const r of rows) {
       for (const c of r.ceo_chi_tiet ?? []) {
@@ -59,7 +60,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh }
   // tom tat theo buoc (1 dong chip): so loi phai giai trinh / cho / tre han
   const tomTat = THU_TU.concat("").map((b) => {
     const x = ds.filter((m) => m.buoc === b);
-    return { b, n: x.filter((m) => m.tt === "CHO" || m.tt === "DA_GT").length, cho: x.filter((m) => m.tt === "CHO").length, tre: x.filter((m) => m.tt.startsWith("TRE")).length, ceo: x.filter((m) => m.tt === "CEO").length };
+    return { b, n: x.filter((m) => ["CHO", "DA_GT", "TU_KP", "TU_QH"].includes(m.tt)).length, cho: x.filter((m) => m.tt === "CHO").length, tre: x.filter((m) => m.tt.startsWith("TRE")).length, ceo: x.filter((m) => m.tt === "CEO").length };
   }).filter((x) => x.n || x.tre || x.ceo);
 
   const cols: Col<Muc>[] = [

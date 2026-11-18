@@ -23,7 +23,7 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
        FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id JOIN eo e ON e.id = l.eo_id ORDER BY l.id`,
     ).all<any>(),
     db.prepare(
-      `SELECT id, substr(noi_dung, 1, 400) noi_dung, pham_vi, ai_ma, ai_email, loi_ma, created_by, created_at, hinh_anh IS NOT NULL AND hinh_anh <> '[]' co_anh
+      `SELECT id, substr(noi_dung, 1, 400) noi_dung, pham_vi, nhom, ai_ma, ai_email, loi_ma, created_by, created_at, hinh_anh IS NOT NULL AND hinh_anh <> '[]' co_anh
        FROM tl_giai_trinh WHERE id IN (SELECT giai_trinh_id FROM tl_loi WHERE giai_trinh_id IS NOT NULL)`,
     ).all<any>(),
     db.prepare("SELECT eo_item_id, COUNT(*) n, SUM(kenh = 'TAY') tay, MAX(created_at) moi FROM tl_nhac_nho GROUP BY eo_item_id").all<any>(),
@@ -60,6 +60,8 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
       so_lan: soLan, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, qua_lau: cho && tuoi >= QUA_LAU_NGAY, muc,
       gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
       gt_ai_ma: gt?.ai_ma ?? null, gt_ai_email: gt?.ai_email ?? null, gt_loi_ma: gt?.loi_ma ?? null,
+      /** v0.092: dong tu dong (AUTO:KHAC_PHUC = da khac phuc sau do · AUTO:QUA_HAN = qua 7 ngay khong giai trinh) */
+      tu_dong: gt?.pham_vi === "AUTO" ? (gt.nhom === "AUTO:QUA_HAN" ? "QUA_HAN" : "KHAC_PHUC") : null,
       so_nhac: nn?.n ?? 0, so_nhac_tay: nn?.tay ?? 0, nhac_gan_nhat: nn?.moi ?? null,
       ceo, ceo_ly_do: d.ceo_ly_do, so_lan_lui: d.so_lan_lui, tinh_trang: d.tinh_trang,
       ngay_du_kien: d.ngay_du_kien_gan_nhat, so_luong_dat: d.so_luong_dat, sl_ve: d.sl_nhap_amis,
@@ -70,20 +72,20 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
 
 /** Tong hop theo ma loi: so loi, cho / da giai trinh, so dong / PO, top nguoi bi gan, top nguyen nhan (Ai theo giai trinh). */
 export function tongHopTheoMa(rows: any[], bang: BangMaLoi) {
-  const m = new Map<string, { ma: string; ten: string; nhom: string; buoc: string | null; so_loi: number; cho: number; da_gt: number; qua_lau: number;
+  const m = new Map<string, { ma: string; ten: string; nhom: string; buoc: string | null; so_loi: number; cho: number; da_gt: number; qua_lau: number; tu_khac_phuc: number; tu_qua_han: number;
     _dong: Set<number>; _po: Set<number>; _nguoi: Map<string, number>; _ai: Map<string, number>; moi_nhat: string | null }>();
   for (const d of bang.ds.filter((x) => x.nhom === "HE_THONG" || x.nhom === "TAY")) {
-    m.set(d.ma, { ma: d.ma, ten: d.ten, nhom: d.nhom, buoc: d.buoc, so_loi: 0, cho: 0, da_gt: 0, qua_lau: 0, _dong: new Set(), _po: new Set(), _nguoi: new Map(), _ai: new Map(), moi_nhat: null });
+    m.set(d.ma, { ma: d.ma, ten: d.ten, nhom: d.nhom, buoc: d.buoc, so_loi: 0, cho: 0, da_gt: 0, qua_lau: 0, tu_khac_phuc: 0, tu_qua_han: 0, _dong: new Set(), _po: new Set(), _nguoi: new Map(), _ai: new Map(), moi_nhat: null });
   }
   for (const r of rows) {
     const x = m.get(r.ma_loi);
     if (!x) continue;
     x.so_loi += 1;
-    if (r.trang_thai === "CHO_GIAI_TRINH") x.cho += 1; else x.da_gt += 1;
+    if (r.trang_thai === "CHO_GIAI_TRINH") x.cho += 1; else if (r.tu_dong === "QUA_HAN") x.tu_qua_han += 1; else if (r.tu_dong) x.tu_khac_phuc += 1; else x.da_gt += 1;
     if (r.qua_lau) x.qua_lau += 1;
     x._dong.add(r.eo_item_id); x._po.add(r.eo_id);
     const ng = r.nguoi_vp ?? ""; x._nguoi.set(ng, (x._nguoi.get(ng) ?? 0) + 1);
-    if (r.gt_ai_ma) x._ai.set(r.gt_ai_ma, (x._ai.get(r.gt_ai_ma) ?? 0) + 1);
+    if (r.gt_ai_ma && !r.tu_dong) x._ai.set(r.gt_ai_ma, (x._ai.get(r.gt_ai_ma) ?? 0) + 1);
     const t = r.han ?? r.created_at; if (t && (!x.moi_nhat || t > x.moi_nhat)) x.moi_nhat = t;
   }
   const top = (mp: Map<string, number>) => [...mp.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, n]) => ({ k, n }));

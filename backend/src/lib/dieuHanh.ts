@@ -69,7 +69,7 @@ async function docGoc(env: Env): Promise<Goc> {
                 )) GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, MAX(thoi_gian) luc, substr(COALESCE(NULLIF(tom_tat, ''), tieu_de), 1, 160) tt FROM tl_mail WHERE huong = 'NHAN' AND eo_item_id IS NOT NULL GROUP BY eo_item_id`),
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(ngay_lien_he >= ?1) n7, MAX(ngay_lien_he) luc, created_by ai, substr(kenh || ': ' || ket_qua, 1, 160) kq FROM tl_lien_he GROUP BY eo_item_id`).bind(d7),
-    db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(created_at >= ?1) n7, MAX(created_at) luc, created_by ai, ai_ma, loi_ma, substr(noi_dung, 1, 200) nd FROM tl_giai_trinh GROUP BY eo_item_id`).bind(d7),
+    db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(created_at >= ?1) n7, MAX(created_at) luc, created_by ai, ai_ma, loi_ma, substr(noi_dung, 1, 200) nd FROM tl_giai_trinh WHERE COALESCE(pham_vi, '') <> 'AUTO' GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT eo_item_id id, COUNT(*) n, SUM(trang_thai = 'CHO_GIAI_TRINH') cho, MIN(CASE WHEN trang_thai = 'CHO_GIAI_TRINH' THEN COALESCE(han, created_at) END) cho_tu,
                 SUM(quy_tac = 'R1') r1, SUM(quy_tac = 'R3') r3, SUM(quy_tac = 'R4') r4, SUM(quy_tac = 'TAY') tay FROM tl_loi GROUP BY eo_item_id`),
     db.prepare("SELECT eo_item_id id, COUNT(*) n, MAX(created_at) luc FROM tl_nhac_nho GROUP BY eo_item_id"),
@@ -82,9 +82,9 @@ async function docGoc(env: Env): Promise<Goc> {
                 FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN eo_item i ON i.id = l.eo_item_id
                 WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1, 2, 3`).bind(d30, boQua),
     db.prepare(`SELECT substr(l.created_at, 1, 10) d, COUNT(*) n FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1`).bind(d60, boQua),
-    db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_giai_trinh WHERE created_at >= ?1 GROUP BY 1").bind(d60),
+    db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_giai_trinh WHERE created_at >= ?1 AND COALESCE(pham_vi, '') <> 'AUTO' GROUP BY 1").bind(d60),
     db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_nhac_nho WHERE created_at >= ?1 GROUP BY 1").bind(d60),
-    db.prepare("SELECT ai_ma, loi_ma, COUNT(*) n FROM tl_giai_trinh GROUP BY 1, 2 ORDER BY n DESC"),
+    db.prepare("SELECT ai_ma, loi_ma, COUNT(*) n FROM tl_giai_trinh WHERE COALESCE(pham_vi, '') <> 'AUTO' GROUP BY 1, 2 ORDER BY n DESC"),
     db.prepare("SELECT loai, ma, ten FROM tl_danh_muc"),
   ]);
   const hd: Record<number, HdDong> = {};

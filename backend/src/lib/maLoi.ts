@@ -16,7 +16,22 @@ export interface MaLoiDef {
   giai_trinh: boolean; mo_ta: string;
   /** khoa trong DB: loi_ma (TAY) / quy_tac (he thong) / ma CEO (LUI/XA/LOI) / giai doan */
   khoa: string;
+  /** v0.092: yeu cau giai trinh + khi nao he thong tu dong (dien sau, theo nhom / khoa - YEU_CAU) */
+  yeu_cau_gt?: string; tu_dong?: string;
 }
+const YEU_CAU: Record<string, [string, string]> = {
+  R1_24: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến, hoặc quá 7 ngày không giải trình (vẫn tính vi phạm)."],
+  R1_48: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến, hoặc quá 7 ngày không giải trình (vẫn tính vi phạm)."],
+  R3: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung (không bắt buộc ảnh).", "Tự đóng khi sau đó có mail (CC hộp theo dõi) / push / gọi-Zalo với NCC, hoặc quá 7 ngày không giải trình (vẫn tính vi phạm)."],
+  R4: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng.", "Tự đóng khi đã nhập ngày dự kiến mới muộn hơn ngày bị quá, hoặc quá 7 ngày không giải trình (vẫn tính vi phạm)."],
+  TAY: ["Không — lỗi được ghi kèm giải trình ngay lúc giải trình.", "—"],
+  CEO: ["Không giải trình riêng mã này — giải trình các lỗi 0xx / 1xx của dòng; theo dõi ở menu Ca tồn CEO.", "Hết khi dòng về đủ / kết thúc sớm / hủy, hoặc không còn chạm ngưỡng."],
+  GIAI_DOAN: ["Không — chỉ đo để báo cáo đúng / trễ hạn từng bước.", "—"],
+};
+const dienYeuCau = (d: MaLoiDef): MaLoiDef => {
+  const [y, t] = YEU_CAU[d.khoa] ?? YEU_CAU[d.nhom] ?? ["", ""];
+  return { ...d, yeu_cau_gt: y, tu_dong: t };
+};
 
 const R1_24H_TU = "2026-11-08";
 
@@ -62,7 +77,7 @@ export async function layBangMaLoi(db: D1Database): Promise<BangMaLoi> {
       mo_ta: "Lỗi ghi khi giải trình (chọn ở \"Lỗi gì\") — vẫn tính vào tổng lỗi và ngưỡng cấp CEO." });
   }
   if (!tay.some((x) => x.khoa === "KHAC")) tay.push({ ma: "ER.MH-199", khoa: "KHAC", nhom: "TAY", buoc: null, giai_trinh: true, ten: "Khác", mo_ta: "Lỗi ghi khi giải trình." });
-  const ds = [...CO_DINH.filter((x) => x.nhom === "HE_THONG"), ...tay.sort((a, b) => a.ma.localeCompare(b.ma)), ...CO_DINH.filter((x) => x.nhom !== "HE_THONG")];
+  const ds = [...CO_DINH.filter((x) => x.nhom === "HE_THONG"), ...tay.sort((a, b) => a.ma.localeCompare(b.ma)), ...CO_DINH.filter((x) => x.nhom !== "HE_THONG")].map(dienYeuCau);
   return { ds, tay: new Map(tay.map((x) => [x.khoa, x])), theoMa: new Map(ds.map((x) => [x.ma, x])) };
 }
 
