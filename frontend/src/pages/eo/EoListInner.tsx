@@ -6,7 +6,7 @@ import { useQuickView } from "../../components/quickview/QuickView";
 import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, soCotLoc, type Col, type LocCot, type SapCot } from "../../components/DataTable";
 import { StatusBadge, TypeBadge, Popover } from "../../components/ui";
 import { I } from "../../lib/icons";
-import { soLuong, ngay, ten } from "../../lib/format";
+import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../../lib/format";
 import { STATUS_META } from "../../lib/nav";
 import { MocTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
@@ -19,6 +19,9 @@ interface EoRow {
   created_by: string; created_at: string; so_dong: number; tong_sl: number; final_approver_email: string | null;
   issued_at: string | null; ma_lk: string | null; so_dong_sau_bh: number; so_dong_chua_du: number; sl_ve: number;
   so_dong_cho_duyet: number; phieu_cho_toi_id: number | null; phieu_cho_toi_buoc: string | null; xong?: boolean;
+  /** canh bao dieu hanh theo PO (backend lib/dieuHanh tomTatTheoPo, v0.084) - chi PO co dong dang mo trong pham vi theo doi */
+  dh?: { do: number; vang: number; qua_dk: number; chua_dk: number; loi_cho: number; ceo: number; thuc7: number; thuc: number; thuc_luc: string | null;
+    im_lang: number; td_luc: string | null; td_loai: string | null; td_ai: string | null; ly_do: string[]; mo: number } | null;
 }
 interface DsEo { rows: EoRow[]; total: number; tong_truoc_loc: number; tuy_chon: Record<string, string[]>; limit: number; offset: number }
 
@@ -35,6 +38,10 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "da_ban_hanh", l: "Đã ban hành (còn chờ hàng)" },
   { k: "done", l: "Đủ hàng (DONE)", title: "Đã ban hành, mọi dòng đã về đủ SL đặt (kể cả dòng kết thúc sớm)" },
   { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
+  // v0.084 bang dieu hanh (../QUAN_TRI_DIEU_HANH.md): muc DO / im lang / loi cho giai trinh theo dong LK dang mo
+  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 7 ngày / im lặng ≥ 7 ngày" },
+  { k: "po_im_lang", l: "PO im lặng ≥ 7 ngày", title: "Có dòng đang mở 7 ngày không ai tác động (cập nhật kế hoạch, push, mail NCC, gọi/Zalo, giải trình)" },
+  { k: "po_loi_cho", l: "PO có lỗi chờ giải trình" },
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
 const CHIP_MAC_DINH = "con_ton";
@@ -53,6 +60,13 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Tổng SL đặt", get: (r) => r.tong_sl },
   { header: "Ngày ban hành", get: (r) => ngay(r.issued_at) },
   { header: "Người duyệt mua", get: (r) => ten(r.final_approver_email) },
+  { header: "Dòng đỏ", get: (r) => r.dh?.do ?? "" },
+  { header: "Dòng vàng", get: (r) => r.dh?.vang ?? "" },
+  { header: "Lý do đỏ", get: (r) => r.dh?.ly_do.join("; ") ?? "" },
+  { header: "Lỗi chờ GT", get: (r) => r.dh?.loi_cho ?? "" },
+  { header: "Thúc NCC 7 ngày", get: (r) => r.dh?.thuc7 ?? "" },
+  { header: "Im lặng (ngày)", get: (r) => r.dh?.im_lang ?? "" },
+  { header: "Hoạt động cuối", get: (r) => (r.dh?.td_luc ? `${r.dh.td_loai} · ${ten(r.dh.td_ai)} · ${ngayGio(r.dh.td_luc)}` : "") },
 ];
 
 /** actions: nut them o cuoi thanh loc (vd "Tao EO" o trang Danh sach EO - trang khong co dong tieu de rieng). */
@@ -110,6 +124,30 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         ? (r.so_dong_chua_du > 0 ? <><MocTon tu={r.issued_at} nho /><div className="muted" style={{ fontSize: 11 }}>{r.so_dong_chua_du} dòng chưa đủ</div></> : <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ về đủ</span>)
         : ["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(r.trang_thai) ? <><MocTon tu={r.created_at} nho /><div className="muted" style={{ fontSize: 11 }}>chờ duyệt</div></> : <span className="muted">—</span>,
     },
+    {
+      // v0.084: canh bao dieu hanh - so dong DO / VANG + ly do (re chuot); bam -> man Dieu hanh loc PO? (mo popup PO de xem tung dong)
+      key: "canh_bao", header: "Cảnh báo", loc: "so", render: (r) => !r.dh ? <span className="muted">—</span> : (
+        <span title={[r.dh.ly_do.length ? `Đỏ vì: ${r.dh.ly_do.join("; ")}` : "", `${r.dh.mo} dòng đang mở · quá DK ${r.dh.qua_dk} · chưa có DK ${r.dh.chua_dk} · cấp CEO ${r.dh.ceo}`].filter(Boolean).join("\n")}
+          style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
+          {r.dh.do > 0 && <span style={{ background: "#FEE2E2", color: "#DC2626", fontWeight: 800, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.do} đỏ</span>}
+          {r.dh.vang > 0 && <span style={{ background: "#FEF3C7", color: "#B45309", fontWeight: 700, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.vang} vàng</span>}
+          {!r.dh.do && !r.dh.vang && <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ ổn</span>}
+          {(r.dh.qua_dk > 0 || r.dh.ceo > 0) && <div className="muted" style={{ fontSize: 10.5, width: "100%" }}>{r.dh.qua_dk ? `quá DK ${r.dh.qua_dk}` : ""}{r.dh.qua_dk && r.dh.ceo ? " · " : ""}{r.dh.ceo ? `CEO ${r.dh.ceo}` : ""}</div>}
+        </span>),
+    },
+    { key: "loi_cho", header: "Lỗi chờ GT", loc: "so", align: "right", render: (r) => r.dh?.loi_cho ? <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.dh.loi_cho)}</b> : <span className="muted">{r.dh ? "0" : "—"}</span> },
+    {
+      key: "thuc", header: "Thúc NCC", loc: "so", align: "right", render: (r) => !r.dh ? <span className="muted">—</span> : (
+        <span title={`Push + mail gửi NCC + gọi/Zalo: 7 ngày ${r.dh.thuc7} · tổng ${r.dh.thuc}${r.dh.thuc_luc ? ` · lần cuối ${ngayGio(r.dh.thuc_luc)}` : ""}`}>
+          <b style={{ color: r.dh.thuc7 ? "var(--ok-ink)" : "var(--danger-ink)" }}>{r.dh.thuc7}</b><span className="muted"> /7ng</span>
+          <div className="muted" style={{ fontSize: 11 }}>{r.dh.thuc_luc ? tuBayGio(r.dh.thuc_luc) : "chưa thúc"}</div></span>),
+    },
+    {
+      key: "im_lang", header: "Hoạt động cuối", loc: "so", maxW: 150, render: (r) => !r.dh ? <span className="muted">—</span> : (
+        <span title={r.dh.td_luc ? `${r.dh.td_loai} · ${ten(r.dh.td_ai) || "—"} · ${ngayGio(r.dh.td_luc)}\nIm lặng lâu nhất trong các dòng: ${r.dh.im_lang} ngày` : "Chưa có tác động nào"}>
+          <b style={{ color: r.dh.im_lang >= 7 ? "var(--danger-ink)" : r.dh.im_lang >= 3 ? "var(--warn-ink)" : "var(--ok-ink)" }}>Im lặng {r.dh.im_lang} ng</b>
+          <div className="muted" style={{ fontSize: 11 }}>{r.dh.td_loai ? `${r.dh.td_loai}${r.dh.td_ai ? ` · ${ten(r.dh.td_ai)}` : ""}` : "chưa tác động"}</div></span>),
+    },
     { key: "created_by", header: "Người tạo", loc: "chon", nhanChon: (v) => ten(v), maxW: 110, render: (r) => ten(r.created_by) },
     { key: "created_at", header: "Ngày tạo", loc: "ngay", render: (r) => ngay(r.created_at) },
     { key: "so_dong", header: "Dòng · SL", loc: "so", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
@@ -135,6 +173,10 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       ),
     },
   ];
+
+  // v0.084 (yeu cau lanh dao): cot trang thai / canh bao / hanh dong dat sat ma PO - nhin ngay khong can cuon ngang; thong tin phu ra sau
+  const THU_TU_COT = ["eo_code", "trang_thai", "canh_bao", "ton", "pct", "loi_cho", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
+  cols.sort((a, b) => (THU_TU_COT.indexOf(a.key) + 1 || 99) - (THU_TU_COT.indexOf(b.key) + 1 || 99));
 
   const datChip = (k: string) => { setChip(k); setOffset(0); };
   const reset = () => { setQ(""); setLoc({}); setSap(null); setKho(""); setDoiTac(""); setLyDo(""); setOffset(0); };

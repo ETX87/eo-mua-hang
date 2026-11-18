@@ -9,6 +9,7 @@ import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
 import { cachedReport } from "../lib/reportCache";
 import { layBoChuan, chuanHoaDong } from "../lib/chuanHoa";
+import { tomTatTheoPo, IM_LANG_DO, type DhPo } from "../lib/dieuHanh";
 
 /** Doi tac / ly do PS khong nam trong danh muc chuan (migration 0020) -> 400 kem gia tri sai de FE bao ro. */
 const loiChuan = (loi: { loai: string; gia_tri: string }[]) => ({ error: "GIA_TRI_KHONG_CHUAN", loi });
@@ -31,6 +32,8 @@ interface DongEo {
   /** DONE (2026-11-08): da ban hanh, co dong song va moi dong song ve >= SL dat (ket thuc som = SL dat ve SL da ve) */
   xong: boolean;
   ma_lk: string | null; lk: string; kho: string[]; ncc: string[]; ly_do: string[];
+  /** canh bao dieu hanh (lib/dieuHanh, v0.084) - gan luc request, KHONG nam trong cache eo:ds */
+  dh?: DhPo | null;
 }
 const boDau = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase();
 const tachDs = (s: string | null) => [...new Set(String(s ?? "").split("\u001f").map((x) => x.trim()).filter(Boolean))];
@@ -79,6 +82,10 @@ const CHIP_EO: Record<string, (r: DongEo, n: NguCanh) => boolean> = {
   done: (r) => r.xong,
   sau_bh_cho: (r) => r.trang_thai === "ISSUED" && r.so_dong_cho_duyet > 0,
   tu_choi_huy: (r) => ["REJECTED", "CANCELLED"].includes(r.trang_thai),
+  // v0.084 (bang dieu hanh): PO co dong DO / im lang >= 7 ngay / co loi cho giai trinh - chi dong trong pham vi theo doi
+  po_do: (r) => (r.dh?.do ?? 0) > 0,
+  po_im_lang: (r) => (r.dh?.im_lang ?? 0) >= IM_LANG_DO,
+  po_loi_cho: (r) => (r.dh?.loi_cho ?? 0) > 0,
 };
 const pct = (r: DongEo) => (r.trang_thai === "ISSUED" && r.tong_sl ? Math.round((r.sl_ve / r.tong_sl) * 100) : null);
 const tonTt = (r: DongEo) => r.trang_thai === "ISSUED" ? (r.so_dong_chua_du > 0 ? "Còn dòng chưa về đủ" : "Đã về đủ")
@@ -98,6 +105,10 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   issued: { kieu: "ngay", gt: (r) => r.issued_at },
   pct: { kieu: "so", gt: pct },
   final: { kieu: "chon", gt: (r) => r.final_approver_email },
+  canh_bao: { kieu: "so", gt: (r) => r.dh?.do ?? null, sap: (r) => (r.dh ? r.dh.do * 10000 + r.dh.vang : null) },
+  loi_cho: { kieu: "so", gt: (r) => r.dh?.loi_cho ?? null },
+  thuc: { kieu: "so", gt: (r) => r.dh?.thuc7 ?? null, sap: (r) => (r.dh ? r.dh.thuc7 * 100000 + r.dh.thuc : null) },
+  im_lang: { kieu: "so", gt: (r) => r.dh?.im_lang ?? null },
 };
 interface GtLoc { q?: string; chon?: string[]; tu?: string; den?: string }
 function khop(kieu: string, v: unknown, g: GtLoc): boolean {
@@ -119,8 +130,17 @@ async function nguCanh(c: any): Promise<NguCanh> {
 }
 
 // ------------------------------------------------------------------ GET /dem (so dem tren tung chip)
+/** Danh sach EO (cache) + canh bao dieu hanh theo PO (lib/dieuHanh - loi thi bo qua, khong lam hong danh sach). */
+async function dsEoDh(env: Env): Promise<DongEo[]> {
+  const [ds, dh] = await Promise.all([
+    cachedReport(env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(env)),
+    tomTatTheoPo(env).catch((e) => { console.error("dieuHanh", e); return new Map<number, DhPo>(); }),
+  ]);
+  return ds.map((r) => ({ ...r, dh: dh.get(r.id) ?? null }));
+}
+
 app.get("/dem", async (c) => {
-  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
+  const [ds, n] = await Promise.all([dsEoDh(c.env), nguCanh(c)]);
   const out: Record<string, number> = { tat_ca: ds.length };
   for (const [k, f] of Object.entries(CHIP_EO)) out[k] = ds.filter((r) => f(r, n)).length;
   return c.json(out);
@@ -136,7 +156,7 @@ app.get("/", async (c) => {
   const offset = Math.max(0, Number(g("offset") || 0) || 0);
   let loc: Record<string, GtLoc> = {};
   try { loc = JSON.parse(g("loc") || "{}"); } catch { /* bo qua */ }
-  const [ds, n] = await Promise.all([cachedReport(c.env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(c.env)), nguCanh(c)]);
+  const [ds, n] = await Promise.all([dsEoDh(c.env), nguCanh(c)]);
 
   const chip = CHIP_EO[g("chip")];
   const tu = boDau(g("q")).split(/\s+/).filter(Boolean);

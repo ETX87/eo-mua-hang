@@ -1,6 +1,6 @@
 # Tổng hợp logic — App EO Mua hàng (`muahang`)
 
-> Mô tả logic **đang chạy thật** (theo code + `CLAUDE.md` tới 17/11/2026). `CLAUDE.md` giữ chi tiết kỹ thuật (tên hàm, bảng,
+> Mô tả logic **đang chạy thật** (theo code + `CLAUDE.md` tới 18/11/2026). `CLAUDE.md` giữ chi tiết kỹ thuật (tên hàm, bảng,
 > lý do từng quyết định); file này là bản tóm tắt nghiệp vụ. Logic đổi thì sửa đè đúng mục; lịch sử ở `nhat_ky_lam_viec.md`.
 > Không ghi tài khoản, mật khẩu, khoá. Quyền chi tiết: `../PERMISSION_SPEC.md`; quy tắc theo dõi: `../THEO_DOI_LINH_KIEN_DAT.md`.
 
@@ -69,6 +69,22 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - 4 báo cáo (tiến độ 0.1 là nguồn chung), báo cáo giai đoạn. Tổng quan: tỷ lệ đáp ứng tuần / tháng = Σmin(về, đặt) / Σđặt,
   tồn đọng theo 8 mốc tồn — cùng mốc bỏ qua với theo dõi nên số khớp màn Quản lý đơn hàng.
 - "Việc cần xử lý" + số đỏ menu theo vai trò (`/api/viec-can-lam`).
+
+## 8b. Điều hành cho lãnh đạo (v0.084, `../QUAN_TRI_DIEU_HANH.md`)
+
+- Mỗi dòng LK **đang mở** trong phạm vi theo dõi có **mức cảnh báo**:
+  - **ĐỎ**: cấp CEO · quá ngày dự kiến · trễ hạn chưa có ngày DK · lỗi chờ giải trình ≥ 7 ngày · im lặng ≥ 7 ngày (đơn tồn ≥ 7 ngày).
+  - **VÀNG**: đang chờ ngày DK · có lỗi chờ giải trình · im lặng ≥ 3 ngày · ngày DK trong 2 ngày tới · tồn > 30 ngày.
+  - **XANH**: còn lại. Mỗi mức kèm lý do bằng chữ.
+- **Tác động** (việc của người mua hàng) = thêm / sửa / xoá đợt kế hoạch, đợt push, mail gửi NCC gắn dòng, ghi nhận gọi / Zalo, giải trình.
+  **Im lặng** = số ngày từ tác động cuối (hoặc từ ngày bắt đầu) đến hôm nay. **Thúc NCC** = push + mail gửi + liên hệ; **phản hồi NCC** = mail nhận.
+- **Người phụ trách**: dòng đã ban hành = người lập PO; G2 = người thẩm định; G3 = người duyệt mua; G6 / G8 = NCC; G7 = Kho / Kế toán.
+  Lỗi hệ thống vẫn gán mặc định cho người lập PO; nguyên nhân thật đọc từ giải trình (Ai + Lỗi gì), luôn hiện kèm **độ phủ giải trình**.
+- Màn **Điều hành** (`/dieu-hanh`): kết luận nhanh (câu tự sinh), ô sức khoẻ, luồng giai đoạn ngang (đang ở / trễ / lỗi, 30 ngày đúng hạn),
+  tab Điểm nóng / Theo người / Theo NCC / Nguyên nhân & xu hướng / Duyệt đang treo; lọc phạm vi theo người, NCC, kho.
+  Quản lý (Admin, KH cung ứng, Theo dõi TD) bấm **Nhắc** = nhắc giải trình mọi lỗi chờ của 1 người.
+- **Đơn PO**: cột Cảnh báo (n đỏ / n vàng + lý do), Lỗi chờ GT, Thúc NCC (7 ngày / lần cuối), Hoạt động cuối (im lặng) đặt sát mã PO; nhóm nhanh
+  "PO có dòng ĐỎ", "PO im lặng ≥ 7 ngày", "PO có lỗi chờ giải trình"; lọc / sắp xếp các cột này phía server.
 
 ## 9. Kết nối hệ khác
 

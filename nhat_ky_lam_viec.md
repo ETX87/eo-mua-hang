@@ -3,6 +3,26 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.084: Màn Điều hành cho lãnh đạo + cột cảnh báo ở Đơn PO
+
+- Yêu cầu (nguyên văn, rút gọn): "Lãnh đạo của tôi không hài lòng với các thông tin quản trị trên app mua hàng hiện tại. rất khó quản lý và đánh giá
+  nhanh kết quả mong muốn: 1. Cần xác định app mua hàng có mục đích là gì … kiểm soát được luồng tồn đọng đang ở đâu, do ai, ai đã làm gì, đã thực
+  hiện quyết liệt chưa, tồn bao lâu … đã push đối tác bao nhiêu lần, tại sao vẫn tồn … 2. Các vấn đề cần quan tâm chỉ cần 3-5s là phải nhìn thấy …
+  3. Các trạng thái chung của PO, linh kiện cần hiện thị ở các cột bên ngoài … 4. Các nhắc nhở, vi phạm, lỗi cần xác định theo giai đoạn … => với vai
+  trò 1 vị quản lý khó tính … phân tích => đưa yêu cầu => phản biện lại … đến khi nào 1 vị CEO khó tính … cũng phải hài lòng thì báo cáo kết quả."
+- Phân tích 6 vòng yêu cầu ↔ phản biện, số liệu thật (chỉ đọc) và đặc tả chốt: `../QUAN_TRI_DIEU_HANH.md`. Phát hiện chính: ~1,3% lỗi đã được
+  giải trình; lỗi dồn gần hết về người lập PO do gán mặc định; form push chuẩn gần như không dùng (thúc NCC thực tế qua mail).
+- Backend: `lib/dieuHanh.ts` (mức ĐỎ/VÀNG/XANH + lý do; tác động / im lặng / thúc NCC / phản hồi NCC / giải trình gần nhất theo dòng; thống kê
+  giai đoạn 30 ngày theo người chịu; xu hướng tuần; tóm tắt theo PO ghi nhớ ≤ 5 phút), `routes/dieuHanh.ts` (`GET /api/dieu-hanh`,
+  `POST /api/dieu-hanh/nhac-nguoi`), tách `ghiNhacNho` ở `routes/viPham.ts` dùng chung; `routes/eo.ts` gắn `dh` vào danh sách, chip
+  `po_do` / `po_im_lang` / `po_loi_cho`, cột lọc / sắp `canh_bao` / `loi_cho` / `thuc` / `im_lang`.
+- Frontend: `pages/DieuHanh.tsx` (menu "Điều hành" ngay dưới Tổng quan), `pages/eo/EoListInner.tsx` (4 cột mới, sắp lại cột: trạng thái / cảnh báo
+  đứng ngay sau mã PO, 3 nhóm nhanh mới, xuất Excel kèm cột cảnh báo).
+- Kiểm thử: typecheck + build; chạy local (dữ liệu demo) — màn Điều hành đủ khối, bấm ô / mốc / tab lọc đúng, không lỗi console; API `/eo` chip
+  `po_do`, sắp `canh_bao:desc`, lọc `im_lang` ≥ 10 trả đúng; `nhac-nguoi` với người không có lỗi trả 0.
+- Còn mở (cần chủ hệ thống quyết): chuyển lỗi sang người chịu thật theo giải trình; soát mail NCC không gắn được dòng (ảnh hưởng R3); báo cáo
+  điều hành tự gửi mỗi sáng (app không có cron); ngày lễ trong giờ làm việc.
+
 ## 17/11/2026 — Tạo bộ tài liệu tổng hợp
 
 - Yêu cầu: "dựa theo nguyên tắc tạo 3 file bắt buộc, rà soát toàn bộ các repo và tạo 3 file rồi đẩy lên repo etx87".

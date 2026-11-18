@@ -5,6 +5,7 @@ import { AppShell } from "./components/AppShell";
 import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
+import DieuHanh from "./pages/DieuHanh";
 import EoList from "./pages/eo/EoList";
 import EoForm from "./pages/eo/EoForm";
 import KeHoachTuan from "./pages/KeHoachTuan";
@@ -50,6 +51,7 @@ export default function App() {
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/dieu-hanh" element={<DieuHanh />} />
         <Route path="/eo" element={<EoList />} />
         <Route path="/eo/new" element={<EoForm key="create" mode="create" />} />
         {/* chi tiet EO = popup tren man Quan ly EO; /approvals -> chip "Cho toi duyet" (v0.051) */}

@@ -125,9 +125,13 @@ app.post("/nhac-nho", async (c) => {
   const b = (await c.req.json().catch(() => ({}))) as { loi_ids?: number[]; noi_dung?: string };
   const ids = [...new Set((b.loi_ids ?? []).map(Number).filter((x) => x > 0))];
   if (!ids.length || ids.length > 2000) return c.json({ error: "BAD_INPUT" }, 400);
-  const loiNhan = (b.noi_dung ?? "").trim().slice(0, 500);
+  return c.json({ ok: true, ...(await ghiNhacNho(c.env.DB, u, ids, b.noi_dung)) });
+});
+
+/** Ghi nhac nho TAY cho cac loi DANG CHO (1 thong bao / (nguoi, EO)) - dung chung /vi-pham/nhac-nho + /dieu-hanh/nhac-nguoi. */
+export async function ghiNhacNho(db: D1Database, u: AppUser, ids: number[], noiDung?: string): Promise<{ so_loi: number; so_nguoi: number }> {
+  const loiNhan = (noiDung ?? "").trim().slice(0, 500);
   const now = nowVN();
-  const db = c.env.DB;
   const tenNguoi = u.ho_ten || u.email.split("@")[0];
   const res = await db.batch([
     db.prepare(
@@ -152,8 +156,8 @@ app.post("/nhac-nho", async (c) => {
     ).bind(loiNhan || null, u.email, now, JSON.stringify(ids)).run();
     await bumpVersions(db, ["theo_doi"]);
   }
-  return c.json({ ok: true, so_loi: soLoi, so_nguoi: res[1].meta.changes ?? 0 });
-});
+  return { so_loi: soLoi, so_nguoi: res[1].meta.changes ?? 0 };
+}
 
 /**
  * POST /giai-trinh-po { eo_id, quy_tac?: string[], eo_item_ids?: number[], moi?: boolean, ai_ma, ai_email?, loi_ma, noi_dung, hinh_anh }

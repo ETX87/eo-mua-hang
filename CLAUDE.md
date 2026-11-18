@@ -51,7 +51,7 @@ backend/src/
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
   lib/                       eoAccess (quyền hành động), amisMatch (khớp AMIS↔EO), reportCache + dataVersions,
                              audit (event_log), notify, googleDrive + secretBox, etxNhanSu, week, vnTime, jwt
-  routes/                    auth, users, eo, approvals, plans, amis, reports (4 BC), dashboard, danhMuc
+  routes/                    auth, users, eo, approvals, plans, amis, reports (4 BC), dashboard, dieuHanh, danhMuc
                              (+ Google Drive OAuth), notifications, etxNhanSu
 frontend/src/
   components/                AppShell (sidebar + topbar), DataTable (phân trang 10 dòng), ui
@@ -338,6 +338,18 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (hủy dòng) bắt buộc lý do cả khi EO nháp (chỉ ở FE — form sửa EO nháp xoá dòng vẫn gửi SL 0 không lý do). Thêm đường hủy mới thì cũng bắt buộc.
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
+
+## Điều hành cho lãnh đạo (v0.084, `../QUAN_TRI_DIEU_HANH.md`) — menu "Điều hành" ngay dưới Tổng quan
+
+- `lib/dieuHanh.ts` `layDongDieuHanh`: dòng LK đang mở (`layDongTheoDoi('dang_mo')`) + hoạt động theo dòng (cache `dh:goc:v1`, version eo/amis/theo_doi
+  + ngày: kế hoạch, push, `tl_mail` GUI/NHAN, `tl_lien_he`, giải trình, lỗi, nhắc; lỗi 30 ngày theo người / NCC; giải trình theo Ai × Lỗi; lịch sử)
+  → mức `DO/VANG/XANH` + `ly_do` + `diem`. Ngưỡng `IM_LANG_DO` 7 / `IM_LANG_VANG` 3 / `LOI_CHO_DO` 7 ngày. Truy vấn dùng cột "trần" SQLite (MAX + cột
+  không gộp = dòng của MAX) để lấy người / nội dung lần cuối. Đổi định dạng → đổi hậu tố khoá cache.
+- `GET /api/dieu-hanh` 1 payload cho FE `pages/DieuHanh.tsx` (FE tự gom theo người / NCC / kho). `POST /dieu-hanh/nhac-nguoi` (quyền `xemToanBoTheoDoi`)
+  dùng `ghiNhacNho` (export từ `routes/viPham.ts`, chung với `/vi-pham/nhac-nho`).
+- Đơn PO: `routes/eo.ts` `dsEoDh` gắn `dh` (`tomTatTheoPo`, ghi nhớ trong isolate ≤ 5 phút theo version tag — KHÔNG nằm trong cache `eo:ds-v2`);
+  chip `po_do/po_im_lang/po_loi_cho`, `COT_EO` `canh_bao/loi_cho/thuc/im_lang`. FE sắp thứ tự cột bằng `THU_TU_COT` (cảnh báo sát mã PO).
+- `nhomLyDo` (gom lý do đỏ) có 2 bản: backend `lib/dieuHanh.ts` + FE `pages/DieuHanh.tsx` — sửa cả hai.
 
 ## 2 giao diện theo mã linh kiện (v0.072, `components/quickview/QuickView.tsx`)
 
