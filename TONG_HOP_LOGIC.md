@@ -55,7 +55,8 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 
 - Quy tắc: **R1** — dòng mới phải có ngày dự kiến trong 48 giờ làm việc; **R3** — thứ 2/4 phải có mail cập nhật với NCC; **R4** —
   quá ngày dự kiến chưa về; lùi ngày nhiều lần → **cấp CEO**. Giờ làm việc bỏ Chủ nhật.
-- Lỗi ghi vào `tl_loi` (chạy nền tối đa 10 phút/lần, idempotent); hết vi phạm thì tự xoá lỗi R1.
+- Lỗi ghi vào `tl_loi` (chạy nền tối đa 10 phút/lần, idempotent); hết vi phạm thì tự xoá lỗi R1. Lỗi R3 đang chờ tự xoá khi dòng có mail /
+  gọi-Zalo ghi nhận / đợt push trong kỳ của nó (kể cả mail đồng bộ muộn hoặc lỗi ghi trước khi R3 tính mail), có ghi nhật ký.
 - Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ ≥ 7 ngày) / TB / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
 - Nhắc nhở: hệ thống tự nhắc khi ghi lỗi mới; quản lý nhắc tay.
 

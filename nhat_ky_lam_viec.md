@@ -3,6 +3,18 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.085: Soát mail chưa gắn dòng + tự bỏ lỗi R3 oan
+
+- Yêu cầu: "Soát mail chưa gắn dòng" → sau khi báo kết quả: "Sửa và xoá luôn".
+- Soát (chỉ đọc, chi tiết `../QUAN_TRI_DIEU_HANH.md` mục 4): EO không mất thư nào; hộp theo dõi chỉ nhận 99 thư / tháng (19 thư bỏ đều là quảng cáo);
+  11 thư thật chưa đẩy (3 thư bảng không cột PO xử lý trước tính năng quét mã LK 08/11, 8 thư chỉ ghi tên linh kiện); vài NCC lớn không có mail nào.
+  141 lỗi R3 đang chờ (02/11, 04/11) là oan: dòng có mail trong kỳ nhưng lỗi ghi trước khi R3 tính mail (05/11).
+- Sửa `lib/theoDoi.ts` `danhGiaQuyTac`: lỗi R3 đang chờ có `tl_mail` / `tl_lien_he` trong kỳ (`kyR3Tu`) hoặc `tl_push_item` đúng ngày → xoá + xoá nhắc nhở
+  gắn lỗi + event `XOA_LOI_THEO_DOI` (lý do ghi rõ). Chạy ở lần đánh giá kế tiếp sau deploy → bỏ 141 lỗi trên production.
+- Kiểm thử: typecheck; câu chọn chạy chỉ đọc trên production ra đúng 141 (46 + 95), ~3ms; local: lỗi có mail trong kỳ bị xoá + có event, lỗi không mail giữ nguyên.
+- Còn mở: chạy lại xử lý thư trước 08/11 ở app Thư ký (gắn ~63 dòng, bỏ thêm tối đa ~20 lỗi R3 ngày 09/11); quy trình CC hộp theo dõi + ghi mã;
+  lãnh đạo quyết 672 lỗi R3 26–28/10 (khi đó chưa có dữ liệu mail để chứng minh).
+
 ## 18/11/2026 — v0.084: Màn Điều hành cho lãnh đạo + cột cảnh báo ở Đơn PO
 
 - Yêu cầu (nguyên văn, rút gọn): "Lãnh đạo của tôi không hài lòng với các thông tin quản trị trên app mua hàng hiện tại. rất khó quản lý và đánh giá

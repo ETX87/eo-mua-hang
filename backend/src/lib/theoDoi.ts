@@ -433,6 +433,32 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
         await bumpVersions(db, ["theo_doi"]);
       }
     }
+    // R3 DANG CHO ma dong CO mail voi NCC (tl_mail GUI/NHAN) / lien he ghi tay / dot push TRONG KY cua no -> tu bo (2026-11-18, soat mail:
+    // 141 loi ghi truoc khi R3 tinh mail (2026-11-05) + mail / thu cu dong bo muon). Ky = (kyR3Tu(X), X] - khop kyR3Tu: thu 2 lui 5 ngay, thu 4 lui 2.
+    // Tinh trong SQL, moi dong (ke ca da dong). Ghi event_log nhu cac lan tu bo loi khac.
+    const boR3 = (await db.prepare(
+      `WITH r AS (SELECT id, eo_item_id, ngay_tham_chieu x,
+                  date(ngay_tham_chieu, CASE strftime('%w', ngay_tham_chieu) WHEN '1' THEN '-5 days' ELSE '-2 days' END) tu
+                  FROM tl_loi WHERE quy_tac = 'R3' AND trang_thai = 'CHO_GIAI_TRINH' AND ngay_tham_chieu IS NOT NULL)
+       SELECT r.id FROM r WHERE
+         EXISTS (SELECT 1 FROM tl_mail m WHERE m.eo_item_id = r.eo_item_id AND m.thoi_gian IS NOT NULL AND substr(m.thoi_gian, 1, 10) > r.tu AND substr(m.thoi_gian, 1, 10) <= r.x)
+         OR EXISTS (SELECT 1 FROM tl_lien_he h WHERE h.eo_item_id = r.eo_item_id AND substr(h.ngay_lien_he, 1, 10) > r.tu AND substr(h.ngay_lien_he, 1, 10) <= r.x)
+         OR EXISTS (SELECT 1 FROM tl_push_item p WHERE p.eo_item_id = r.eo_item_id AND p.ngay = r.x)`,
+    ).all<{ id: number }>()).results.map((x) => x.id);
+    if (boR3.length) {
+      const ids = JSON.stringify(boR3);
+      await db.batch([
+        db.prepare(
+          `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, before_json, metadata_json, user_email, created_at)
+           SELECT 'eo', eo_id, eo_id, 'XOA_LOI_THEO_DOI', json_group_array(json_object('id', id, 'khoa', khoa, 'han', han)),
+                  json_object('ly_do', 'Có mail / liên hệ / push với NCC trong kỳ kiểm tra R3 (ghi nhận muộn hoặc lỗi ghi trước khi R3 tính mail) — không phải lỗi không push'), NULL, ?
+           FROM tl_loi WHERE id IN (SELECT value FROM json_each(?)) GROUP BY eo_id`,
+        ).bind(now, ids),
+        db.prepare("DELETE FROM tl_nhac_nho WHERE loi_id IN (SELECT value FROM json_each(?))").bind(ids),
+        db.prepare("DELETE FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND id IN (SELECT value FROM json_each(?))").bind(ids),
+      ]);
+      await bumpVersions(db, ["theo_doi"]);
+    }
     for (let i = 0; i < loi.length; i += 300) {
       const res = await db.prepare(
         `INSERT OR IGNORE INTO tl_loi (eo_item_id, eo_id, quy_tac, khoa, han, ngay_tham_chieu, ai_ma, ai_email, loi_ma, created_at)
