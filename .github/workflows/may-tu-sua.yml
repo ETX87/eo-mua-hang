@@ -113,6 +113,7 @@ jobs:
                  [ { "loai": "ghi", "project": "<project Firebase nếu khác MAY_PROJECT>", "duong_dan": "<collection>/<docId>", "truong": { "<tên trường>": <giá trị> }, "mo_ta": "<lời nôm na>" },
                    { "loai": "deploy", "muc_tieu": "functions", "mo_ta": "Đưa phần máy chủ đang có ở nhánh chính lên" } ]
                  ```
+                 App có mục "Cổng thao tác cho Trợ lý Mây" trong CLAUDE.md → dùng ĐÚNG `loai` + tham số của cổng (vd { "loai": "bat_tat_chuc_danh", "maChucDanh": "CD-255", "active": true, "mo_ta": "…" }), KHÔNG dùng "ghi" đường dẫn; việc cổng chưa mở → "MÂY: CẦN NGƯỜI — HỎI:" nêu loại cần mở thêm.
                  Luật: ≤ 20 thao tác; chỉ GHI GỘP trường (không xoá tài liệu/trường); đường dẫn + tên trường + kiểu giá trị lấy từ dữ liệu thật
                  (đã `doc` bản ghi mẫu cùng loại bằng may-du-lieu.mjs) và đúng mã của app (vd khoá tài liệu là gmail chữ thường thì ghi đúng như vậy);
                  ngày giờ dạng ISO "2026-11-18T09:00:00Z". Cần email của NGƯỜI BÁO (vd cấp quyền cho chính người xin) mà không có thì ghi đúng chữ {{email_nguoi_bao}} — Mây tự thay, KHÔNG hỏi lại. JSON KHÔNG chứa chú thích. Gmail/tên người chỉ được nằm trong khối này (Mây cần để ghi), không chép ra chỗ khác.
