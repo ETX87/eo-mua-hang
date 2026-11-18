@@ -4,11 +4,13 @@
     ["index.html", "Mục lục"], ["dat-hang.html", "Người đặt hàng"], ["duyet.html", "Người duyệt"],
     ["lanh-dao.html", "Lãnh đạo / quản lý"], ["kho.html", "Kho"], ["ke-toan.html", "Kế toán"], ["admin.html", "Admin"],
   ];
-  var hien = location.pathname.split("/").pop() || "index.html";
+  // Cloudflare assets bo duoi .html (/huong-dan/dat-hang) va index (/huong-dan/) -> so theo ten khong duoi
+  var ten = function (x) { return (x || "index").replace(/\.html$/, ""); };
+  var hien = ten(location.pathname.split("/").pop());
   var top = document.createElement("header");
   top.className = "top";
   top.innerHTML = '<a class="ten" href="index.html">📘 Hướng dẫn EO Mua hàng</a><nav>' +
-    trang.map(function (t) { return '<a href="' + t[0] + '"' + (t[0] === hien ? ' style="text-decoration:underline"' : "") + ">" + t[1] + "</a>"; }).join("") +
+    trang.map(function (t) { return '<a href="' + t[0] + '"' + (ten(t[0]) === hien ? ' style="text-decoration:underline"' : "") + ">" + t[1] + "</a>"; }).join("") +
     '<a href="/" title="Mở app">↗ Mở app</a></nav>';
   document.body.prepend(top);
   var muc = document.querySelector("aside.muc");

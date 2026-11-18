@@ -3,6 +3,11 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.087: Sửa thanh trên của hướng dẫn HTML
+
+- Production phục vụ `/huong-dan/dat-hang.html` thành `/huong-dan/dat-hang` (Cloudflare bỏ đuôi .html) → thanh trên không gạch chân trang đang xem. `hd.js` so tên trang không đuôi.
+- Kiểm thử: các trang /huong-dan/* trả 200 trên production (sau chuyển hướng), ảnh + CSS tải được.
+
 ## 18/11/2026 — v0.086: Cột Tiến trình ở Đơn PO, bộ lọc cá nhân, hướng dẫn HTML theo vai trò
 
 - Yêu cầu: "1. Trạng thái của PO "Đã ban hành" chỉ là 1 giai đoạn => thay bằng luồng tiến trình. 2. Cho phép lưu bộ lọc cá nhân trên máy cache
