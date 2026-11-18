@@ -1,0 +1,126 @@
+# ── TRỢ LÝ MÂY · APP CHỦ TƯ VẤN (CHỈ ĐỌC) ──────────────────────────────────────────────────────────
+# Giám đốc chỉ đạo 18/11/2026: app Trợ lý văn phòng gửi YÊU CẦU TƯ VẤN qua Mây → Mây mở / bình luận issue ở kho này, gắn nhãn
+# `may:tu-van` → Claude đọc mã, tài liệu và DỮ LIỆU của chính app (chỉ đọc) rồi trả lời theo KHUÔN JSON ghi trong yêu cầu.
+# KHÔNG sửa mã, không commit, không mở PR, không deploy, không ghi dữ liệu. Kết quả gửi về Mây qua webhook → Mây chuyển nguyên văn.
+# Cần secrets: CLAUDE_CODE_OAUTH_TOKEN, MAY_WEBHOOK_SECRET. Biến: MAY_APP_ID (+ GCP_WIF_PROVIDER, GCP_SA, FIREBASE_PROJECT để đọc dữ liệu).
+name: Mây · App chủ tư vấn
+on:
+  issues:
+    types: [labeled]
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+jobs:
+  tu-van:
+    if: github.event.label.name == 'may:tu-van'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: may-tu-van-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Gom yêu cầu tư vấn (issue + bình luận) và tải tệp đính kèm của lượt mới nhất
+        id: yc
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SO: ${{ github.event.issue.number }}
+        run: |
+          rm -rf .may && mkdir -p .may/tep
+          gh api "repos/$GITHUB_REPOSITORY/issues/$SO" --jq '"# " + .title + "\n\n" + (.body // "")' > .may/yeu-cau.md
+          gh api "repos/$GITHUB_REPOSITORY/issues/$SO/comments?per_page=100" --paginate \
+            --jq '.[] | "\n\n---\n### Bình luận lúc " + .created_at + "\n\n" + (.body // "")' >> .may/yeu-cau.md
+          node -e '
+            const fs = require("fs"); const t = fs.readFileSync(".may/yeu-cau.md", "utf8")
+            const m = [...t.matchAll(/<!-- may-tu-van (\{[\s\S]*?\}) -->/g)].pop()
+            const j = m ? JSON.parse(m[1]) : {}
+            fs.writeFileSync(".may/luot.json", JSON.stringify(j))
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `ma_tu_van=${j.maTuVan || ""}\nluot=${j.luot || ""}\n`)
+            fs.writeFileSync(".may/tep.json", JSON.stringify((j.tep || []).filter((x) => /^https:\/\/firebasestorage\.googleapis\.com\//.test(x.url || "")).slice(0, 10)))'
+          node -e '
+            const fs = require("fs"); const ds = JSON.parse(fs.readFileSync(".may/tep.json", "utf8"))
+            ;(async () => { for (const [i, x] of ds.entries()) { try { const r = await fetch(x.url); if (!r.ok) throw new Error(r.status)
+              const ten = String(x.ten || ("tep-" + i)).replace(/[^\w.\-À-ỹ ]/g, "_").slice(0, 80); fs.writeFileSync(".may/tep/" + ten, Buffer.from(await r.arrayBuffer())); console.log("tải", ten)
+            } catch (e) { console.log("không tải được tệp", i, e.message) } } })()'
+          if ls .may/tep/*.xlsx .may/tep/*.docx >/dev/null 2>&1; then
+            pip install -q openpyxl python-docx >/dev/null 2>&1 || true
+            python3 - <<'PY'
+          import glob, os
+          for f in glob.glob('.may/tep/*.xlsx'):
+              try:
+                  import openpyxl
+                  wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+                  with open(f + '.txt', 'w') as o:
+                      for ws in wb.worksheets:
+                          o.write(f'## Sheet: {ws.title}\n')
+                          for i, row in enumerate(ws.iter_rows(values_only=True)):
+                              if i >= 3000: o.write('… (cắt bớt)\n'); break
+                              o.write('\t'.join('' if v is None else str(v) for v in row) + '\n')
+              except Exception as e: print('xlsx lỗi', f, e)
+          for f in glob.glob('.may/tep/*.docx'):
+              try:
+                  import docx
+                  d = docx.Document(f)
+                  with open(f + '.txt', 'w') as o:
+                      for p in d.paragraphs: o.write(p.text + '\n')
+                      for t in d.tables:
+                          for r in t.rows: o.write('\t'.join(c.text for c in r.cells) + '\n')
+              except Exception as e: print('docx lỗi', f, e)
+          PY
+          fi
+          ls -la .may/tep || true
+      - name: Xác thực Google (chỉ đọc dữ liệu)
+        if: steps.yc.outputs.ma_tu_van != '' && vars.GCP_WIF_PROVIDER != '' && vars.GCP_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA }}
+      - name: Claude Code tư vấn (chỉ đọc)
+        id: claude
+        if: steps.yc.outputs.ma_tu_van != ''
+        uses: anthropics/claude-code-action@v1
+        env:
+          MAY_PROJECT: ${{ vars.FIREBASE_PROJECT }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: |
+            --allowedTools "Read,Glob,Grep,Write,TodoWrite,Bash(node .github/may-du-lieu.mjs:*)"
+            --disallowedTools "Edit,NotebookEdit,WebFetch,WebSearch"
+            --max-turns 60
+          prompt: |
+            KHO: ${{ github.repository }} · YÊU CẦU TƯ VẤN: ${{ steps.yc.outputs.ma_tu_van }} · LƯỢT ${{ steps.yc.outputs.luot }}
+
+            Bạn là người hiểu sâu app này. Một app khác trong công ty (Trợ lý văn phòng) gửi YÊU CẦU TƯ VẤN qua Trợ lý Mây.
+            LẦN CHẠY NÀY CHỈ ĐỌC VÀ TRẢ LỜI: không sửa mã, không commit, không mở PR, không deploy, không ghi dữ liệu.
+
+            1. Đọc `.may/yeu-cau.md`: nội dung đã ĐỦ ngữ cảnh (đề xuất, hội thoại, các lượt trước). Phần cần trả lời là
+               LƯỢT MỚI NHẤT (bình luận cuối có `may-tu-van`), trong đó có câu hỏi và KHUÔN TRẢ LỜI JSON.
+            2. Tệp đính kèm (nếu có) ở `.may/tep/` (Excel / Word đã đổi sang `.txt` cạnh tệp gốc).
+            3. Đọc `CLAUDE.md`, `SRS.md`, `TONG_HOP_LOGIC.md` và mã liên quan để trả lời ĐÚNG theo app đang chạy.
+            4. Cần số liệu thật thì đọc dữ liệu của chính app (CHỈ ĐỌC): `node .github/may-du-lieu.mjs doc|list|query|count …`
+               (cách dùng ở đầu tệp đó; không có quyền thì nói rõ là chưa đọc được dữ liệu). Không chép số điện thoại, CCCD,
+               email cá nhân vào câu trả lời; số liệu tổng hợp thì dùng bảng.
+            5. Ghi câu trả lời vào `.may/tu-van.json` theo ĐÚNG khuôn JSON trong yêu cầu (thường gồm: yKien, tomTat, noiDung
+               (Markdown), dieuKien, cauHoiNguoiDeXuat, soTien, loai, ketLuanGoiY, tep). Không theo được khuôn thì ghi chữ
+               thường vào `.may/tu-van.md`. Không ghi tệp nào khác.
+      - name: Báo Mây — kết quả tư vấn
+        if: always() && steps.yc.outputs.ma_tu_van != ''
+        env:
+          MA_TU_VAN: ${{ steps.yc.outputs.ma_tu_van }}
+          LUOT: ${{ steps.yc.outputs.luot }}
+          APP: ${{ vars.MAY_APP_ID }}
+          KHOA: ${{ secrets.MAY_WEBHOOK_SECRET }}
+          KET_LUAN: ${{ steps.claude.outputs.conclusion }}
+          SO_CHAY: ${{ github.run_number }}
+        run: |
+          node -e '
+            const fs = require("fs"); const doc = (f) => { try { return fs.readFileSync(f, "utf8") } catch { return "" } }
+            const j = doc(".may/tu-van.json").trim(), m = doc(".may/tu-van.md").trim()
+            let b
+            if (j || m) { let kq = j || m; try { if (j) kq = JSON.parse(j) } catch {} ; b = { suKien: "tu_van_xong", maTuVan: process.env.MA_TU_VAN, luot: Number(process.env.LUOT) || 1, ketQua: kq } }
+            else b = { suKien: "tu_van_that_bai", maTuVan: process.env.MA_TU_VAN, luot: Number(process.env.LUOT) || 1, ghiChu: `App chủ chưa trả lời được (claude: ${process.env.KET_LUAN || "không chạy"} · lượt chạy #${process.env.SO_CHAY})` }
+            fs.writeFileSync("/tmp/may.json", JSON.stringify(b)); console.log(b.suKien)'
+          curl -s -X POST "https://tro-ly-may.web.app/api/webhook/$APP" -H "Content-Type: application/json" -H "X-May-Secret: $KHOA" --data-binary @/tmp/may.json
