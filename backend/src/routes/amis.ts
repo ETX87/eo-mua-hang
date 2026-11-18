@@ -1,3 +1,4 @@
+import { dsThamSo } from "../lib/thamSo";
 import { Hono } from "hono";
 import type { Env, AppVariables } from "../types";
 import { nowVN } from "../lib/vnTime";
@@ -265,13 +266,15 @@ app.get("/receipts", async (c) => {
   const onlyVoided = c.req.query("include_voided") === "only";
   const batchId = Number(c.req.query("batch_id")) || null;
   // loc tra cuu cho ke toan (2026-11-08): khoang ngay chung tu, kho, trang thai khop
-  const tu = c.req.query("tu")?.trim(), den = c.req.query("den")?.trim(), kho = c.req.query("kho")?.trim(), khop = c.req.query("khop")?.trim();
+  // kho / khop chon NHIEU (noi "|", lib/thamSo) - json_each de khong vuot 100 bien / cau lenh
+  const tu = c.req.query("tu")?.trim(), den = c.req.query("den")?.trim(), kho = dsThamSo(c.req.query("kho")),
+    khop = dsThamSo(c.req.query("khop")).filter((k) => ["MATCHED_EO", "CODE_ONLY_NO_LINE", "UNMATCHED"].includes(k));
   const where: string[] = [];
   const bind: unknown[] = [];
   if (tu) { where.push("r.doc_date >= ?"); bind.push(tu); }
   if (den) { where.push("r.doc_date <= ?"); bind.push(den); }
-  if (kho) { where.push("r.warehouse_name = ?"); bind.push(kho); }
-  if (khop && ["MATCHED_EO", "CODE_ONLY_NO_LINE", "UNMATCHED"].includes(khop)) { where.push("r.match_status = ?"); bind.push(khop); }
+  if (kho.length) { where.push("r.warehouse_name IN (SELECT value FROM json_each(?))"); bind.push(JSON.stringify(kho)); }
+  if (khop.length) { where.push("r.match_status IN (SELECT value FROM json_each(?))"); bind.push(JSON.stringify(khop)); }
   if (q) { where.push("(r.doc_no LIKE ? OR r.part_code LIKE ? OR r.approval_code_raw LIKE ? OR r.part_name LIKE ?)"); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
   if (onlyVoided) where.push("r.voided_at IS NOT NULL");
   else if (!inclVoided) where.push("r.voided_at IS NULL");

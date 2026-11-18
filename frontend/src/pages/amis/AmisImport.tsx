@@ -13,6 +13,7 @@ import { writeBook } from "../../lib/excel";
 import { Kho } from "../../lib/kho";
 import { EoLink } from "../../components/quickview/QuickView";
 import { cotChungTuAmis } from "./cotAmis";
+import { ChonNhieu, noiDs } from "../../components/ChonNhieu";
 
 const COLS = ["Mã kho", "Tên kho", "Mã hàng", "Tên hàng", "Ngày hạch toán", "Ngày chứng từ", "Số chứng từ", "ĐVT", "Diễn giải", "Số lượng Nhập", "Số lượng Xuất", "Số lượng Tồn", "TK Kho", "TK đối ứng", "Mã phê duyệt"];
 
@@ -76,7 +77,7 @@ function NhapAmis() {
   const [q, setQ] = useState("");
   const [showVoided, setShowVoided] = useState<"" | "1" | "only">("");
   // loc tra cuu phia server (2026-11-08): khoang ngay chung tu, kho, trang thai khop
-  const [tu, setTu] = useState(""); const [den, setDen] = useState(""); const [khoLoc, setKhoLoc] = useState(""); const [khop, setKhop] = useState("");
+  const [tu, setTu] = useState(""); const [den, setDen] = useState(""); const [khoLoc, setKhoLoc] = useState<string[]>([]); const [khop, setKhop] = useState<string[]>([]);
 
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const canEdit = me.data?.vai_tro === "Admin" || me.data?.vai_tro === "Ke toan" || me.data?.la_ke_toan === 1;
@@ -86,7 +87,7 @@ function NhapAmis() {
   const kho = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho") });
   const receipts = useQuery({
     queryKey: ["amis-receipts", q, showVoided, tu, den, khoLoc, khop],
-    queryFn: () => api.get<any[]>(`/amis/receipts?${new URLSearchParams({ q: q.trim(), ...(showVoided ? { include_voided: showVoided } : {}), ...(tu ? { tu } : {}), ...(den ? { den } : {}), ...(khoLoc ? { kho: khoLoc } : {}), ...(khop ? { khop } : {}) })}`),
+    queryFn: () => api.get<any[]>(`/amis/receipts?${new URLSearchParams({ q: q.trim(), ...(showVoided ? { include_voided: showVoided } : {}), ...(tu ? { tu } : {}), ...(den ? { den } : {}), ...(khoLoc.length ? { kho: noiDs(khoLoc) } : {}), ...(khop.length ? { khop: noiDs(khop) } : {}) })}`),
   });
   const validKho = new Set((kho.data ?? []).filter((k) => k.active).map((k) => k.ten_kho));
   const taiFileMau = () => writeBook("Mau_import_AMIS_MISA.xlsx", [
@@ -397,10 +398,10 @@ function NhapAmis() {
           <input className="input tb" type="date" style={{ width: 140 }} title="Ngày chứng từ từ" value={tu} onChange={(e) => setTu(e.target.value)} />
           <span className="muted">→</span>
           <input className="input tb" type="date" style={{ width: 140 }} title="Ngày chứng từ đến" value={den} onChange={(e) => setDen(e.target.value)} />
-          <select className="select tb" style={{ width: 190 }} value={khoLoc} onChange={(e) => setKhoLoc(e.target.value)} title="Kho">
-            <option value="">Mọi kho</option>{(kho.data ?? []).map((k: any) => <option key={k.ten_kho} value={k.ten_kho}>{k.ma_kho ? `${k.ma_kho} — ` : ""}{k.ten_kho}</option>)}</select>
-          <select className="select tb" style={{ width: 170 }} value={khop} onChange={(e) => setKhop(e.target.value)} title="Trạng thái khớp EO">
-            <option value="">Mọi trạng thái khớp</option><option value="MATCHED_EO">Khớp dòng EO</option><option value="CODE_ONLY_NO_LINE">Có mã PO, không khớp dòng</option><option value="UNMATCHED">Không khớp</option></select>
+          <ChonNhieu width={190} placeholder="Mọi kho" title="Kho" value={khoLoc} onChange={setKhoLoc}
+            options={(kho.data ?? []).map((k: any) => ({ v: k.ten_kho, l: `${k.ma_kho ? `${k.ma_kho} — ` : ""}${k.ten_kho}` }))} />
+          <ChonNhieu width={170} placeholder="Mọi trạng thái khớp" title="Trạng thái khớp EO" value={khop} onChange={setKhop}
+            options={[{ v: "MATCHED_EO", l: "Khớp dòng EO" }, { v: "CODE_ONLY_NO_LINE", l: "Có mã PO, không khớp dòng" }, { v: "UNMATCHED", l: "Không khớp" }]} />
           <select className="select tb" style={{ width: 190 }} value={showVoided} onChange={(e) => setShowVoided(e.target.value as any)}>
             <option value="">Chứng từ đang tính</option><option value="1">Tất cả (cả đã hủy)</option><option value="only">Chỉ chứng từ đã hủy</option>
           </select>

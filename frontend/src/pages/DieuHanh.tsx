@@ -8,6 +8,11 @@ import { useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
+import { ChonNhieu } from "../components/ChonNhieu";
+
+/** gia tri trong (NCC chua co...) trong bo loc chon nhieu */
+const TRONG_K = "∅";
+const khopPv = (ds: string[], v: string | null | undefined) => !ds.length || ds.includes(v || TRONG_K);
 
 /**
  * MAN DIEU HANH (v0.084, yeu cau lanh dao 2026-11-18 - ../QUAN_TRI_DIEU_HANH.md): nhin 3-5 giay biet ton o dau, ai giu, ho da lam gi,
@@ -65,13 +70,14 @@ const thoiGianCho = (gio: number) => (gio < 24 ? `${gio} giờ` : `${Math.floor(
 export default function DieuHanh() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["dieu-hanh"], queryFn: () => api.get<Data>("/dieu-hanh"), refetchInterval: 180000 });
-  const [pv, setPv] = useState<{ nguoi: string; ncc: string; kho: string }>({ nguoi: "", ncc: "", kho: "" });
+  // pham vi chon NHIEU (nguyen tac 2026-11-18) - [] = khong loc; gia tri trong = TRONG_K
+  const [pv, setPv] = useState<{ nguoi: string[]; ncc: string[]; kho: string[] }>({ nguoi: [], ncc: [], kho: [] });
   const [tieuChi, setTieuChi] = useState("");
   const [gdChon, setGdChon] = useState("");
   const [tab, setTab] = useState<"nong" | "nguoi" | "ncc" | "nn" | "duyet">("nong");
   const d = q.data;
 
-  const dongPv = useMemo(() => (d?.dong ?? []).filter((x) => (!pv.nguoi || x.nguoi === pv.nguoi) && (!pv.ncc || (x.ncc ?? "") === pv.ncc) && (!pv.kho || x.kho === pv.kho)), [d, pv]);
+  const dongPv = useMemo(() => (d?.dong ?? []).filter((x) => khopPv(pv.nguoi, x.nguoi) && khopPv(pv.ncc, x.ncc) && khopPv(pv.kho, x.kho)), [d, pv]);
   const dongDs = useMemo(() => {
     if (!d) return [];
     const tc = TIEU_CHI[tieuChi];
@@ -80,13 +86,13 @@ export default function DieuHanh() {
 
   if (q.isLoading || !d) return <><PageHeader title="Điều hành mua hàng" /><Spinner text="Đang tổng hợp toàn hệ thống…" /></>;
 
-  const loi30Pv = d.loi30.filter((l) => (!pv.nguoi || l.ai === pv.nguoi) && (!pv.ncc || (l.ncc ?? "") === pv.ncc));
-  const duyetPv = d.duyet.filter((x) => !pv.nguoi || x.ai === pv.nguoi || x.nguoi_tao === pv.nguoi);
+  const loi30Pv = d.loi30.filter((l) => khopPv(pv.nguoi, l.ai) && khopPv(pv.ncc, l.ncc));
+  const duyetPv = d.duyet.filter((x) => khopPv(pv.nguoi, x.ai) || (pv.nguoi.length > 0 && khopPv(pv.nguoi, x.nguoi_tao)));
   const dem = (f: (x: Dong) => boolean) => dongPv.filter(f).length;
   const soPo = (ds: Dong[]) => new Set(ds.map((x) => x.eo)).size;
   const doDs = dongPv.filter((x) => x.muc === "DO");
-  const coLoc = !!(pv.nguoi || pv.ncc || pv.kho || tieuChi || gdChon);
-  const xoaLoc = () => { setPv({ nguoi: "", ncc: "", kho: "" }); setTieuChi(""); setGdChon(""); };
+  const coLoc = !!(pv.nguoi.length || pv.ncc.length || pv.kho.length || tieuChi || gdChon);
+  const xoaLoc = () => { setPv({ nguoi: [], ncc: [], kho: [] }); setTieuChi(""); setGdChon(""); };
   const chonTc = (k: string) => { setTieuChi(tieuChi === k ? "" : k); setTab("nong"); };
   const dmTen = (loai: string, ma: string | null) => d.dm.find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
 
@@ -107,13 +113,13 @@ export default function DieuHanh() {
   if (lyDoTop.length) ketLuan.push({ icon: "🧭", txt: <>Đỏ vì: {lyDoTop.map(([l, n], i) => <span key={l}>{i > 0 && " · "}<b>{l}</b> ({soLuong(n)} dòng)</span>)}.</> });
   const nguoiNhac = theoNguoi.filter((x) => x.dong > 0).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho)[0];
   if (nguoiNhac && nguoiNhac.do > 0) ketLuan.push({
-    icon: "👤", mau: "#B91C1C", onClick: () => { setPv({ ...pv, nguoi: nguoiNhac.ai }); setTieuChi("DO"); setTab("nong"); },
+    icon: "👤", mau: "#B91C1C", onClick: () => { setPv({ ...pv, nguoi: [nguoiNhac.ai] }); setTieuChi("DO"); setTab("nong"); },
     txt: <>Cần nhắc ngay: <b>{ten(nguoiNhac.ai)}</b> — giữ {soLuong(nguoiNhac.dong)} dòng, <b>{soLuong(nguoiNhac.do)} đỏ</b>, {soLuong(nguoiNhac.loi_cho)} lỗi chờ giải trình,
       chỉ <b>{pctTxt(nguoiNhac.td7_dong, nguoiNhac.dong)}</b> dòng có tác động 7 ngày qua{nguoiNhac.im_lang7 ? `, ${soLuong(nguoiNhac.im_lang7)} dòng im lặng ≥ 7 ngày` : ""}.</>,
   });
   const nccXau = theoNcc.filter((x) => x.do > 0).sort((a, b) => b.do - a.do)[0];
   if (nccXau) ketLuan.push({
-    icon: "🏭", onClick: () => { setPv({ ...pv, ncc: nccXau.ncc }); setTab("nong"); },
+    icon: "🏭", onClick: () => { setPv({ ...pv, ncc: [nccXau.ncc ?? TRONG_K] }); setTab("nong"); },
     txt: <>NCC đáng lo nhất: <b>{nccXau.ncc || "(trống)"}</b> — {soLuong(nccXau.do)} dòng đỏ, {soLuong(nccXau.qua_dk)} quá ngày DK, tồn lâu nhất {nccXau.ton_max} ngày,
       phản hồi {soLuong(nccXau.phan_hoi)} / {soLuong(nccXau.thuc)} lần thúc{nccXau.tre_g6 ? `, ${nccXau.tre_g6} dòng giao trễ hẹn 30 ngày qua` : ""}.</>,
   });
@@ -137,11 +143,11 @@ export default function DieuHanh() {
 
   const opts = (vals: (string | null)[], nhan = (v: string) => v) => {
     const m = new Map<string, number>();
-    for (const v of vals) m.set(v ?? "", (m.get(v ?? "") ?? 0) + 1);
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([v, n]) => <option key={v} value={v}>{nhan(v) || "(trống)"} ({n})</option>);
+    for (const v of vals) { const k = v || TRONG_K; m.set(k, (m.get(k) ?? 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([v, n]) => ({ v, l: v === TRONG_K ? "(trống)" : nhan(v), n }));
   };
-  const S = ({ k, children, w }: { k: keyof typeof pv; children: ReactNode; w: number }) => (
-    <select className="select tb" style={{ width: w, borderColor: pv[k] ? "var(--brand-yellow-btn)" : undefined }} value={pv[k]} onChange={(e) => setPv({ ...pv, [k]: e.target.value })}>{children}</select>
+  const S = ({ k, w, ph, o }: { k: keyof typeof pv; w: number; ph: string; o: { v: string; l: string; n: number }[] }) => (
+    <ChonNhieu width={w} placeholder={ph} value={pv[k]} onChange={(v) => setPv({ ...pv, [k]: v })} options={o} />
   );
 
   return (
@@ -149,9 +155,9 @@ export default function DieuHanh() {
       <PageHeader title="Điều hành mua hàng" />
       <FilterBar>
         <b style={{ fontSize: 13 }}>Phạm vi:</b>
-        <S k="nguoi" w={210}><option value="">Mọi người phụ trách</option>{opts(d.dong.map((x) => x.nguoi), (v) => ten(v))}</S>
-        <S k="ncc" w={170}><option value="">Mọi NCC</option>{opts(d.dong.map((x) => x.ncc))}</S>
-        <S k="kho" w={200}><option value="">Mọi kho</option>{opts(d.dong.map((x) => x.kho))}</S>
+        <S k="nguoi" w={210} ph="Mọi người phụ trách" o={opts(d.dong.map((x) => x.nguoi), (v) => ten(v))} />
+        <S k="ncc" w={170} ph="Mọi NCC" o={opts(d.dong.map((x) => x.ncc))} />
+        <S k="kho" w={200} ph="Mọi kho" o={opts(d.dong.map((x) => x.kho))} />
         {tieuChi && <span className="badge reject" style={{ cursor: "pointer" }} onClick={() => setTieuChi("")}>{TIEU_CHI[tieuChi].l} ×</span>}
         {gdChon && <span className="badge review" style={{ cursor: "pointer" }} onClick={() => setGdChon("")}>Giai đoạn {gdChon} ×</span>}
         {coLoc && <button className="btn sm ghost" onClick={xoaLoc}><I.refresh width={13} height={13} /> Xóa lọc</button>}
@@ -190,7 +196,7 @@ export default function DieuHanh() {
       </div>
 
       {/* 3. LUONG GIAI DOAN NGANG */}
-      <LuongGiaiDoan gd={d.giai_doan} dong={dongPv} loi30={loi30Pv} chon={gdChon} onChon={(k) => { setGdChon(gdChon === k ? "" : k); setTab(["G2", "G3"].includes(k) ? "duyet" : "nong"); }} coLoc={!!(pv.nguoi || pv.ncc || pv.kho)} />
+      <LuongGiaiDoan gd={d.giai_doan} dong={dongPv} loi30={loi30Pv} chon={gdChon} onChon={(k) => { setGdChon(gdChon === k ? "" : k); setTab(["G2", "G3"].includes(k) ? "duyet" : "nong"); }} coLoc={!!(pv.nguoi.length || pv.ncc.length || pv.kho.length)} />
 
       {/* 4. TAB CHI TIET */}
       <Card>
@@ -202,8 +208,8 @@ export default function DieuHanh() {
         </div>
         {tab === "nong" && <DiemNong rows={dongDs} dmTen={dmTen}
           empty={["G1", "G2", "G3"].includes(gdChon) ? `${gdChon} là PO chưa ban hành (chưa vào theo dõi hàng về) — người đang giữ xem ở khung giai đoạn phía trên, phiếu chờ duyệt ở tab ⏳ Duyệt đang treo.` : undefined} />}
-        {tab === "nguoi" && <BangNguoi rows={theoNguoi} quanLy={d.quan_ly} onNhac={nhacNguoi} onXem={(ai, tc) => { setPv({ ...pv, nguoi: ai }); setTieuChi(tc); setTab("nong"); }} />}
-        {tab === "ncc" && <BangNcc rows={theoNcc} onXem={(ncc, tc) => { setPv({ ...pv, ncc }); setTieuChi(tc); setTab("nong"); }} />}
+        {tab === "nguoi" && <BangNguoi rows={theoNguoi} quanLy={d.quan_ly} onNhac={nhacNguoi} onXem={(ai, tc) => { setPv({ ...pv, nguoi: [ai] }); setTieuChi(tc); setTab("nong"); }} />}
+        {tab === "ncc" && <BangNcc rows={theoNcc} onXem={(ncc, tc) => { setPv({ ...pv, ncc: [ncc || TRONG_K] }); setTieuChi(tc); setTab("nong"); }} />}
         {tab === "nn" && <NguyenNhan d={d} loi30={loi30Pv} dmTen={dmTen} />}
         {tab === "duyet" && <BangDuyet rows={duyetPv} />}
       </Card>

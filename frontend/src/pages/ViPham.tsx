@@ -13,6 +13,7 @@ import { boDau } from "../lib/tonDong";
 import { GiaiTrinhModal, LichSuDong, NgayHangVeModal, QUY_TAC, TINH_TRANG, useDanhMuc, type Dong } from "./theodoi/shared";
 import { GiaiTrinhNhieuModal, GiaiTrinhPoModal } from "./theodoi/GiaiTrinhPo";
 import { khoGon } from "../lib/kho";
+import { ChonNhieu } from "../components/ChonNhieu";
 
 /**
  * "Vi phạm & giải trình" (/vi-pham) - theo doi rieng mang loi (backend routes/viPham.ts, migrations/0016).
@@ -81,8 +82,9 @@ export default function ViPham() {
   const tt = sp.get("tt") ?? "cho";
   const kpi = sp.get("kpi") || "";
   const [tim, setTim] = useState("");
-  const [muc, setMuc] = useState(""); const [qt, setQt] = useState(""); const [nguoi, setNguoi] = useState(sp.get("nguoi") || "");
-  const [kho, setKho] = useState(""); const [doiTac, setDoiTac] = useState(""); const [tu, setTu] = useState(""); const [den, setDen] = useState("");
+  // bo loc chon NHIEU (nguyen tac 2026-11-18): [] = khong loc
+  const [muc, setMuc] = useState<string[]>([]); const [qt, setQt] = useState<string[]>([]); const [nguoi, setNguoi] = useState<string[]>(sp.get("nguoi") ? [sp.get("nguoi")!] : []);
+  const [kho, setKho] = useState<string[]>([]); const [doiTac, setDoiTac] = useState<string[]>([]); const [tu, setTu] = useState(""); const [den, setDen] = useState("");
   const [chiTiet, setChiTiet] = useState<Nhom | null>(null);
   const [md, setMd] = useState<{ k: "gt"; x: L } | { k: "po"; eo: number } | { k: "nhac"; ids: number[]; ten: string } | { k: "ndk"; x: L } | { k: "nhieu"; nhom: Nhom[] } | null>(null);
   const [chon, setChon] = useState<Set<string>>(new Set());
@@ -98,11 +100,11 @@ export default function ViPham() {
       if (kd) { if (!kd.loc(l, d!)) return false; }
       else if (tt === "cho" && !cho(l)) return false;
       else if (tt === "da" && cho(l)) return false;
-      if (muc && l.muc !== muc) return false;
-      if (qt && l.quy_tac !== qt) return false;
-      if (nguoi && l.nguoi_vp !== nguoi) return false;
-      if (kho && l.kho !== kho) return false;
-      if (doiTac && (l.doi_tac ?? "") !== doiTac) return false;
+      if (muc.length && !muc.includes(l.muc)) return false;
+      if (qt.length && !qt.includes(l.quy_tac)) return false;
+      if (nguoi.length && !nguoi.includes(l.nguoi_vp ?? "")) return false;
+      if (kho.length && !kho.includes(l.kho)) return false;
+      if (doiTac.length && !doiTac.includes(l.doi_tac ?? "")) return false;
       const moc = String(l.han ?? l.created_at).slice(0, 10);
       if (tu && moc < tu) return false;
       if (den && moc > den) return false;
@@ -120,8 +122,8 @@ export default function ViPham() {
   const choCua = goc.filter(cho);
   const poCho = new Set(choCua.map((l) => l.eo_id)).size;
   const ds = (k: "nguoi_vp" | "kho" | "doi_tac") => [...new Set(goc.map((l) => l[k]).filter(Boolean))].sort() as string[];
-  const coLoc = !!(muc || qt || nguoi || kho || doiTac || tu || den || tim || kpi);
-  const xoaLoc = () => { setMuc(""); setQt(""); setNguoi(""); setKho(""); setDoiTac(""); setTu(""); setDen(""); setTim(""); set("kpi", ""); };
+  const coLoc = !!(muc.length || qt.length || nguoi.length || kho.length || doiTac.length || tu || den || tim || kpi);
+  const xoaLoc = () => { setMuc([]); setQt([]); setNguoi([]); setKho([]); setDoiTac([]); setTu(""); setDen(""); setTim(""); set("kpi", ""); };
   const xong = (msg?: string) => { setMd(null); if (msg) setThongBao(msg); qc.invalidateQueries({ queryKey: ["vi-pham"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["tl-dong"] }); qc.invalidateQueries({ queryKey: ["theo-doi"] }); };
   const khoaNhom = (n: Nhom) => `${n.x.eo_item_id}|${n.x.quy_tac}|${n.x.trang_thai}`;
   const nhomChon = nhom.filter((n) => chon.has(khoaNhom(n)) && cho(n.x));
@@ -129,7 +131,7 @@ export default function ViPham() {
   const loaiChon = [...new Set(nhomChon.map((n) => n.x.quy_tac))];
   const coChon = d.quan_ly || d.co_the_gt;
   // "chon tat ca": cac loi CHO cung loai - loai dang loc, khong loc thi loai cua dong dau tien (giai trinh chung chi cho loi cung loai)
-  const loaiTatCa = qt || nhom.find((n) => cho(n.x))?.x.quy_tac;
+  const loaiTatCa = (qt.length === 1 ? qt[0] : "") || nhom.find((n) => cho(n.x))?.x.quy_tac;
   const tatCaCungLoai = nhom.filter((n) => cho(n.x) && n.x.quy_tac === loaiTatCa);
   const choDong = (x: L): Dong => ({ ...x, item_id: x.eo_item_id, ma_phe_duyet: x.approval_code, nguoi_dat: x.nguoi_dat } as any);
 
@@ -195,7 +197,7 @@ export default function ViPham() {
   }).sort((a, b) => b.cho - a.cho || b.ds.length - a.ds.length);
   const colsNguoi: Col<(typeof theoNguoi)[number]>[] = [
     { key: "act", header: "", render: (p) => <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-      <button className="btn sm" onClick={() => { setNguoi(p.x.nguoi_vp ?? ""); set("kieu", "loi"); }}>Xem lỗi</button>
+      <button className="btn sm" onClick={() => { setNguoi(p.x.nguoi_vp ? [p.x.nguoi_vp] : []); set("kieu", "loi"); }}>Xem lỗi</button>
       {p.cho > 0 && d.quan_ly && <button className="btn sm" onClick={() => setMd({ k: "nhac", ids: p.ds.filter(cho).map((l) => l.id), ten: ten(p.x.nguoi_vp) })}>Nhắc</button>}
     </div> },
     { key: "nguoi", header: "Người vi phạm", render: (p) => <b title={p.x.nguoi_vp}>{ten(p.x.nguoi_vp) || "—"}</b> },
@@ -221,10 +223,8 @@ export default function ViPham() {
     { header: "Cấp CEO vì", get: (l) => (l.ceo_ly_do ?? []).join("; ") },
   ], `vi-pham_${new Date().toISOString().slice(0, 10)}.xlsx`, "Vi pham");
 
-  const Sel = ({ v, on, l, opts }: { v: string; on: (x: string) => void; l: string; opts: [string, string][] }) => (
-    <select className="select" style={{ width: "auto", minWidth: 120, maxWidth: 190 }} value={v} onChange={(e) => on(e.target.value)} title={l}>
-      <option value="">{l}: tất cả</option>{opts.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
-    </select>
+  const Sel = ({ v, on, l, opts }: { v: string[]; on: (x: string[]) => void; l: string; opts: [string, string][] }) => (
+    <ChonNhieu width={170} placeholder={`${l}: tất cả`} title={l} value={v} onChange={on} options={opts.map(([k, t]) => ({ v: k, l: t }))} />
   );
 
   return (

@@ -11,7 +11,8 @@ import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../../lib/format";
 import { STATUS_META } from "../../lib/nav";
 import { MocTon } from "../../lib/tonDong";
 import { exportRowsToXlsx, type ExportCol } from "../../lib/exportXlsx";
-import { DL, GoiYDatalists, useGoiYDong } from "../../lib/goiY";
+import { useGoiYDong, LY_DO_CHUAN } from "../../lib/goiY";
+import { ChonNhieu, noiDs, tachDs } from "../../components/ChonNhieu";
 import { actionsFor, ApprovalActionModal } from "./eoActions";
 
 interface EoRow {
@@ -253,11 +254,13 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
             label={<><I.filter width={13} height={13} /> Lọc khác{soItDung ? ` (${soItDung})` : ""}</>}>
             <div style={{ display: "grid", gap: 8 }}>
               <span className="muted" style={{ fontSize: 12 }}>EO có dòng linh kiện:</span>
-              <GoiYDatalists data={goiY.data} />
-              <select className="select" style={{ borderColor: kho ? "var(--brand-yellow-btn)" : undefined }} value={kho} onChange={(e) => { setKho(e.target.value); setOffset(0); }}>
-                <option value="">ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
-              <input className="input" list={DL.doiTac} style={{ borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
-              <input className="input" list={DL.lyDo} style={{ borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
+              {/* chon NHIEU (nguyen tac 2026-11-18) - state van la chuoi noi "|" de bo loc da luu (1 gia tri) cu van dung */}
+              <ChonNhieu width="100%" placeholder="Mọi kho" title="Kho" value={tachDs(kho)} onChange={(v) => { setKho(noiDs(v)); setOffset(0); }}
+                options={(khos.data ?? []).filter((k: any) => k.active !== 0).map((k: any) => k.ten_kho)} />
+              <ChonNhieu width="100%" placeholder="Mọi đối tác" title="Đối tác" value={tachDs(doiTac)} onChange={(v) => { setDoiTac(noiDs(v)); setOffset(0); }}
+                options={goiY.data?.doi_tac ?? []} />
+              <ChonNhieu width="100%" placeholder="Mọi lý do PS" title="Lý do PS" value={tachDs(lyDo)} onChange={(v) => { setLyDo(noiDs(v)); setOffset(0); }}
+                options={goiY.data?.ly_do?.length ? goiY.data.ly_do : LY_DO_CHUAN} />
             </div>
           </Popover>
         )}

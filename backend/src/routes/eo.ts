@@ -1,3 +1,4 @@
+import { dsThamSo } from "../lib/thamSo";
 import { Hono } from "hono";
 import type { Env, AppVariables } from "../types";
 import { nowVN } from "../lib/vnTime";
@@ -184,13 +185,14 @@ app.get("/", async (c) => {
 
   const chip = CHIP_EO[g("chip")];
   const tu = boDau(g("q")).split(/\s+/).filter(Boolean);
-  const kho = g("kho"), doiTac = boDau(g("doi_tac")), lyDo = boDau(g("ly_do"));
+  // nhieu gia tri noi "|" (ChonNhieu FE) - EO co IT NHAT 1 dong khop 1 gia tri duoc chon
+  const kho = dsThamSo(g("kho")), doiTac = dsThamSo(g("doi_tac")).map(boDau), lyDo = dsThamSo(g("ly_do")).map(boDau);
   // tap truoc loc cot (dem "x / y", gia tri cho bo loc "chon")
   const goc = ds.filter((r) => (!chip || chip(r, n))
     && (!tu.length || ((h) => tu.every((t) => h.includes(t)))(boDau(`${r.eo_code} ${r.approval_code ?? ""} ${r.tieu_de ?? ""} ${r.lk}`)))
-    && (!kho || r.kho.includes(kho))
-    && (!doiTac || r.ncc.some((x) => boDau(x) === doiTac))
-    && (!lyDo || r.ly_do.some((x) => boDau(x) === lyDo)));
+    && (!kho.length || r.kho.some((x) => kho.includes(x)))
+    && (!doiTac.length || r.ncc.some((x) => doiTac.includes(boDau(x))))
+    && (!lyDo.length || r.ly_do.some((x) => lyDo.includes(boDau(x)))));
   const cotLoc = Object.entries(loc).filter(([k, v]) => COT_EO[k] && coLoc(v));
   let rows = cotLoc.length ? goc.filter((r) => cotLoc.every(([k, v]) => khop(COT_EO[k].kieu, COT_EO[k].gt(r), v))) : goc;
   const [sk, sh] = g("sap").split(":");

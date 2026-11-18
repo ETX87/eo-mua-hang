@@ -3,6 +3,21 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.090: Bộ lọc mặc định cho chọn nhiều
+
+- Yêu cầu: "các công vụ filter mặc định luôn cho phép tích chọn nhiều lựa chọn khi tìm kiếm. => fix lại và lưu nguyên tắc chung này lại"
+  (ảnh: Đơn PO › Lọc khác › ô "ở kho…" chỉ chọn 1).
+- Thêm component dùng chung `components/ChonNhieu.tsx` (checkbox, tìm không dấu, Chọn tất cả / Bỏ chọn, số đếm, viền vàng + × khi đang lọc).
+- Đổi sang chọn nhiều: Đơn PO › Lọc khác (kho, đối tác, lý do PS — trước là ô chọn 1 / ô gõ tự do), LK đặt (nhóm nhanh = hợp các nhóm, giai đoạn),
+  Điều hành (người phụ trách, NCC, kho), Vi phạm (mức độ, loại lỗi, người, kho, đối tác), Nhập AMIS (kho, trạng thái khớp), Báo cáo giai đoạn (kho, NCC, loại hình).
+  Backend `GET /eo` và `GET /amis/receipts` nhận nhiều giá trị nối "|" (`lib/thamSo.ts`); link và bộ lọc đã lưu 1 giá trị cũ vẫn dùng được.
+- Giữ chọn 1 (không phải lọc giá trị): ô Xem, khoảng ngày theo…, đúng / trễ hạn, EO áp dụng quy tắc, chờ / đã giải trình, chứng từ đã hủy,
+  ETX đang làm / nghỉ, ô nhập trong form.
+- Lưu nguyên tắc chung vào hướng dẫn toàn cục của chủ hệ thống (mục "Bộ lọc: mặc định cho tick CHỌN NHIỀU") + CLAUDE.md dự án.
+- Kiểm thử: typecheck + build; local: `/api/eo` kho HN 5 + HCM 2 = 7 khi chọn cả hai (khớp màn Đơn PO 7 PO), AMIS khớp 4 + không khớp 0 = 4;
+  LK đặt nhóm Thiếu NM + Chưa về = 4 dòng, thêm Về thiếu = 7; giai đoạn G8 = 3, G8 + G6 = 5; mở Điều hành / Vi phạm / Nhập AMIS / Báo cáo giai đoạn
+  đều hiện ô chọn nhiều, mọi API trả 200.
+
 ## 18/11/2026 — v0.089: Giai đoạn hiện tại theo bước mới nhất + lọc đơn thiếu ngày / thiếu hàng
 
 - Yêu cầu: "1. các lk này đều đã qua bước G1 rồi, fix lại lấy theo bước mới nhất. 2. Tôi muốn lọc danh sách các đơn thiếu ngày Nhà máy cam kết

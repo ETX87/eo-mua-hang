@@ -7,6 +7,7 @@ import { PageHeader, Card, Spinner } from "../../components/ui";
 import { soLuong, ten } from "../../lib/format";
 import { gioTxt } from "../../lib/giaiDoan";
 import { khoGon } from "../../lib/kho";
+import { ChonNhieu } from "../../components/ChonNhieu";
 import { taiSoDonHang } from "../../lib/sdhCache";
 
 /**
@@ -61,9 +62,10 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
   const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
   const [tu, setTu] = useState(() => `${homNay.slice(0, 4)}-${String(Math.max(1, Number(homNay.slice(5, 7)) - 2)).padStart(2, "0")}-01`);
   const [den, setDen] = useState("");
-  const [kho, setKho] = useState("");
-  const [doiTac, setDoiTac] = useState("");
-  const [loaiHinh, setLoaiHinh] = useState("");
+  // chon NHIEU (nguyen tac 2026-11-18): [] = khong loc
+  const [kho, setKho] = useState<string[]>([]);
+  const [doiTac, setDoiTac] = useState<string[]>([]);
+  const [loaiHinh, setLoaiHinh] = useState<string[]>([]);
   const [chieu, setChieu] = useState("nguoi_tao");
   const [gdXh, setGdXh] = useState("G5");
 
@@ -75,7 +77,7 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
     const d = (ngayDatCua(r) ?? "").slice(0, 10);
     if (tu && (!d || d < tu)) return false;
     if (den && (!d || d > den)) return false;
-    return (!kho || r.kho === kho) && (!doiTac || r.doi_tac === doiTac) && (!loaiHinh || r.loai_hinh === loaiHinh);
+    return (!kho.length || kho.includes(r.kho)) && (!doiTac.length || doiTac.includes(r.doi_tac)) && (!loaiHinh.length || loaiHinh.includes(r.loai_hinh));
   }), [all, tu, den, kho, doiTac, loaiHinh]);
   const tk = useMemo(() => gds.map((g) => ({ ...thongKe(rows, g.k), l: g.l, vai_tro: g.vai_tro })), [rows, gds]);
 
@@ -97,8 +99,8 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
 
   // G4 song song -> loc rieng g4 (khong phai "giai doan hien tai"); con lai loc giai doan hien tai
   const den2 = (k: string, tre?: boolean) => nav(k === "G4" ? `/don-hang?g4=${tre ? "tre" : "chua"}` : `/don-hang?gd=${k}${tre ? "&tre=tre" : ""}`);
-  const S = ({ v, on, opts, l }: { v: string; on: (v: string) => void; opts: string[]; l: string }) => (
-    <select className="select tb" style={{ width: 170, }} value={v} onChange={(e) => on(e.target.value)}><option value="">{l}</option>{opts.map((x) => <option key={x}>{x}</option>)}</select>
+  const S = ({ v, on, opts, l }: { v: string[]; on: (v: string[]) => void; opts: string[]; l: string }) => (
+    <ChonNhieu width={170} placeholder={l} value={v} onChange={on} options={opts} />
   );
   if (q.isLoading) return <Spinner />;
   const slaTxt = (k: string) => (k === "G6" ? "ngày DK lần đầu" : sla[k] != null ? gioTxt(sla[k]) : "—");

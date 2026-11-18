@@ -38,6 +38,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 
 ## 5. Yêu cầu chung / phi chức năng
 
+- Mọi bộ lọc theo danh sách giá trị cho tick chọn nhiều (checkbox, tìm không dấu, chọn tất cả / bỏ chọn); nhiều giá trị cùng bộ lọc = HOẶC,
+  nhóm nhanh chọn nhiều = hợp các nhóm. Ô chế độ / bộ lọc 2 giá trị đối lập giữ chọn 1.
 - Bảng kiểu Excel (lọc + sắp xếp trên tiêu đề, nhãn "đang lọc n cột · x / y dòng"; cột ngày / số có thêm "Chưa có ngày (ô trống) / Đã có ngày"), thanh thao tác 1 dòng, bộ lọc ít dùng giấu sau "Bộ lọc khác".
 - Mọi nhãn số lượng có giải thích (nút "?" và tooltip thuật ngữ chung).
 - Chống bấm đúp / duyệt đồng thời ở luồng duyệt (không cấp 2 mã 3TDO).

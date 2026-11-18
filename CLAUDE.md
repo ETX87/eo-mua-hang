@@ -200,6 +200,13 @@ tỷ lệ đáp ứng tháng/tuần = Σmin(về, đặt)/Σđặt của dòng �
 chốt 2026-11-04; vi phạm của PO cũ cũng không tính) & ngày đặt (dòng trước BH = ngày ban hành, thêm sau BH = ngày tạo) để số trên Tổng quan = số ở Quản lý đơn hàng (`/don-hang?ton=<mốc>` — lọc mốc tồn chỉ tính dòng `theo_doi`, theo `bat_dau`). `GET /api/dashboard/tim-linh-kien?q=` tra mã/tên không dấu.
 `DataTable` có ô tìm nhanh mặc định (`timKiem={false}` khi trang tự tìm phía server).
 
+**Bộ lọc chọn NHIỀU (v0.090, nguyên tắc chủ hệ thống 2026-11-18)**: mọi bộ lọc theo danh sách giá trị dùng `components/ChonNhieu.tsx`
+(checkbox, tìm không dấu, Chọn tất cả / Bỏ chọn, số đếm, × xoá) — KHÔNG dùng `<select>` 1 giá trị cho bộ lọc. Cùng bộ lọc = HOẶC, khác bộ lọc = VÀ.
+Gửi server: nối "|" (`noiDs` / `tachDs` FE, `dsThamSo` ở `backend/src/lib/thamSo.ts`; SQL dùng `IN (SELECT value FROM json_each(?))`).
+Đang dùng: Đơn PO › Lọc khác (kho / đối tác / lý do — `GET /eo?kho=A|B`), LK đặt (nhóm nhanh = hợp các nhóm, giai đoạn), Điều hành (người / NCC / kho),
+Vi phạm (mức / loại lỗi / người / kho / đối tác), Nhập AMIS (kho, trạng thái khớp — `GET /amis/receipts?kho=&khop=`), Báo cáo giai đoạn.
+Giữ chọn 1: ô chế độ (Xem, khoảng ngày theo…, sắp theo), bộ lọc 2 giá trị (đúng/trễ, chờ/đã giải trình, đang làm/nghỉ), ô nhập trong form.
+
 ## 8 giai đoạn đơn hàng — `backend/src/lib/giaiDoan.ts` (FE nhãn `frontend/src/lib/giaiDoan.tsx`)
 
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & BH · G4 Gửi đơn NCC (mail GUI đầu tiên trong `tl_mail`, CC theodoimuahang —

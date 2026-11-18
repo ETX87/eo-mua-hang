@@ -23,6 +23,7 @@ import ReportTuan from "./reports/ReportTuan";
 import ReportLuyKe from "./reports/ReportLuyKe";
 import { Kho, khoGon } from "../lib/kho";
 import { taiSoDonHang } from "../lib/sdhCache";
+import { ChonNhieu, noiDs, tachDs } from "../components/ChonNhieu";
 
 /**
  * "LK đặt" (/don-hang, truoc la "Quan ly don hang"): MOI dong linh kien tren EO (moi trang thai) - 1 man cho ca xem lan thao tac.
@@ -158,7 +159,7 @@ interface Loc {
 const LOC_TRONG: Loc = { q: "", ngayTheo: "ngay_ban_hanh", tu: "", den: "", trangThaiEo: "", tinhTrang: "", gd: "", tre: "", ton: "", kho: "", doiTac: "", lyDo: "", maLk: "", loaiHinh: "", phongBan: "", nguoiTao: "", sauBh: "", coLoi: "", canhBao: "", g4: "", nhom: "", apDung: "" };
 /** Loc an (nhan tu link Tong quan / bao cao / Viec can xu ly: ?gd= ?ton= ?tinhTrang=...) - hien "Lọc từ liên kết: … ×". */
 const LOC_LIEN_KET: Record<string, (v: string) => string> = {
-  tinhTrang: (v) => `Tình trạng: ${v === "__mo" ? "đang mở" : v}`, gd: (v) => `Giai đoạn ${v}`, ton: (v) => `Tồn ${MOC_TON.find((m) => m.k === v)?.l ?? v}`,
+  tinhTrang: (v) => `Tình trạng: ${v === "__mo" ? "đang mở" : v}`, gd: (v) => `Giai đoạn ${tachDs(v).join(", ")}`, ton: (v) => `Tồn ${MOC_TON.find((m) => m.k === v)?.l ?? v}`,
   g4: (v) => `G4 mail: ${({ da: "đã gửi", chua: "chưa ghi nhận", tre: "trễ" } as any)[v] ?? v}`, canhBao: (v) => v, kho: (v) => `Kho ${v}`,
   doiTac: (v) => `NCC ${v}`, lyDo: (v) => `Lý do ${v}`, maLk: (v) => `Mã LK ${v}`, loaiHinh: (v) => v, phongBan: (v) => v,
   nguoiTao: (v) => `Người tạo ${ten(v)}`, trangThaiEo: (v) => ST(v), sauBh: (v) => (v === "sau" ? "Thêm sau BH" : "Tạo trước BH"),
@@ -268,8 +269,10 @@ function DanhSach() {
   const set = (p: Partial<Loc>) => setLoc((l) => ({ ...l, ...p }));
   const datCot = (c: string[]) => { setCot(c); localStorage.setItem(KEY_COT, JSON.stringify(c)); };
 
-  // base = moi bo loc tru nhom nhanh (de dem so tren tung nhom); rows = base + nhom dang chon
-  const base = useMemo(() => {
+  // base0 = moi bo loc tru nhom nhanh + giai doan (dem so tung giai doan); base = base0 + giai doan (dem so tung nhom);
+  // rows = base + nhom dang chon. Nhom nhanh / giai doan chon NHIEU (noi "|", ChonNhieu) - nhom: HOP cac nhom (thoa 1 nhom bat ky).
+  const gdDs = useMemo(() => tachDs(loc.gd), [loc.gd]);
+  const base0 = useMemo(() => {
     const k = khopTim(loc.q);
     return all.filter((r) => {
       if (loc.tu || loc.den) {
@@ -278,7 +281,6 @@ function DanhSach() {
       }
       if (loc.trangThaiEo && r.trang_thai_eo !== loc.trangThaiEo) return false;
       if (loc.tinhTrang && (loc.tinhTrang === "__mo" ? !MO.includes(r.trang_thai_don_hang) : r.trang_thai_don_hang !== loc.tinhTrang)) return false;
-      if (loc.gd && r.gd_hien_tai !== loc.gd) return false;
       if (loc.tre && (loc.tre === "tre" ? !r.gd_tre : r.gd_tre !== false)) return false;
       // moc ton: cung pham vi & ngay dat voi Theo doi / Bang dieu khien (dong trong pham vi theo doi, bat_dau) -> so khop Tong quan
       if (loc.ton && (!r.theo_doi || !MO.includes(r.trang_thai_don_hang) || mocCua(soNgayTon(r.bat_dau ?? ngayDatCua(r)))?.k !== loc.ton)) return false;
@@ -297,8 +299,9 @@ function DanhSach() {
       return k({ ...r, gd_moc: undefined, gd_gio_tung: undefined, gd_tre_tung: undefined });
     });
   }, [all, loc]);
-  const nhomDang = NHOM.find((n) => n.k === loc.nhom);
-  const rowsNhom = useMemo(() => (nhomDang ? base.filter(nhomDang.f) : base), [base, nhomDang]);
+  const base = useMemo(() => (gdDs.length ? base0.filter((r) => gdDs.includes(r.gd_hien_tai)) : base0), [base0, gdDs]);
+  const nhomDang = useMemo(() => { const ks = tachDs(loc.nhom); return NHOM.filter((n) => ks.includes(n.k)); }, [loc.nhom]);
+  const rowsNhom = useMemo(() => (nhomDang.length ? base.filter((r) => nhomDang.some((n) => n.f(r))) : base), [base, nhomDang]);
   const hien = cot.map((k) => defs.find((d) => d.k === k)).filter(Boolean) as CotDef[];
   // cot du lieu (khong gom cot Thao tac) kem loc / sap kieu Excel -> rows = sau loc cot (xuat Excel, chon tat ca, tong)
   const colsDl: Col<Row>[] = hien.map((d) => {
@@ -354,7 +357,7 @@ function DanhSach() {
   const soItDung = ["tu", "den", "tre", "apDung"].filter((k) => (loc as any)[k]).length;
   const soLoc = Object.entries(loc).filter(([k, v]) => v && k !== "ngayTheo" && k !== "nhom").length + soCotLoc(locCot) + (loc.nhom && loc.nhom !== NHOM_MAC_DINH ? 1 : 0);
   const tong = (f: (r: Row) => number) => rows.reduce((s, r) => s + (f(r) || 0), 0);
-  const demGd = (k: string) => rows.filter((r) => r.gd_hien_tai === k).length;
+  const demGd = (k: string) => base0.filter((r) => r.gd_hien_tai === k).length;
   const luuLoc = () => {
     const l = prompt("Tên bộ lọc (vd: KRF quá hạn của kho 6803):");
     if (!l?.trim()) return;
@@ -403,17 +406,14 @@ function DanhSach() {
     <div>
       <Card>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-          <S v={loc.nhom} onChange={(v) => set({ nhom: v })} w={215} title="Nhóm nhanh (số dòng mỗi nhóm theo bộ lọc hiện tại)">
-            <option value="">Tất cả ({soLuong(base.length)})</option>
-            {NHOM.map((n) => <option key={n.k} value={n.k} title={n.title}>{n.l} ({soLuong(base.filter(n.f).length)})</option>)}
-          </S>
+          <ChonNhieu width={215} placeholder={`Tất cả (${soLuong(base.length)})`} title="Nhóm nhanh — tick nhiều nhóm = dòng thuộc ÍT NHẤT 1 nhóm (số dòng mỗi nhóm theo bộ lọc hiện tại)"
+            value={tachDs(loc.nhom)} onChange={(v) => set({ nhom: noiDs(v) })}
+            options={NHOM.map((n) => ({ v: n.k, l: n.l, n: base.filter(n.f).length }))} />
           <S v={xem} onChange={(v) => setXem(v as CheDoXem)} w={150} title="Cách xem: từng dòng linh kiện / nhóm theo PO (EO) / nhóm theo mã linh kiện">
             <option value="">Xem: từng dòng</option><option value="po">Xem: nhóm theo PO</option><option value="lk">Xem: nhóm theo LK</option>
           </S>
-          <S v={loc.gd} onChange={(v) => set({ gd: v })} w={190} title="Đang ở giai đoạn">
-            <option value="">Mọi giai đoạn</option>
-            {giaiDoan.map((g) => { const n = loc.gd ? 0 : demGd(g.k); return <option key={g.k} value={g.k}>{g.k} {g.l}{n ? ` (${soLuong(n)})` : ""}</option>; })}
-          </S>
+          <ChonNhieu width={190} placeholder="Mọi giai đoạn" title="Đang ở giai đoạn (tick nhiều)" value={gdDs} onChange={(v) => set({ gd: noiDs(v) })}
+            options={giaiDoan.map((g) => ({ v: g.k, l: `${g.k} ${g.l}`, n: demGd(g.k) }))} />
           <input className="input tb" style={{ flex: "1 1 200px", maxWidth: 320 }} placeholder="🔍 Tìm mã EO / 3TDO / mã-tên LK / CRM / ghi chú…" value={loc.q} onChange={(e) => set({ q: e.target.value })} />
           <Popover width={360} active={soItDung > 0} title="Bộ lọc ít dùng: khoảng ngày, đúng / trễ hạn giai đoạn, EO áp dụng quy tắc, đơn của tôi · bộ lọc đã lưu"
             label={<><I.filter width={13} height={13} /> Lọc khác{soItDung ? ` (${soItDung})` : ""}</>}>
