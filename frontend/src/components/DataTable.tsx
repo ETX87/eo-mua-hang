@@ -12,7 +12,8 @@ const chuoiTim = (row: unknown): string => {
 /** Kieu bo loc cot (kieu bang Excel): chu = tim theo tu (khong dau) · chon = tick gia tri · ngay = tu ngay - den ngay · so = tu - den. */
 export type KieuLoc = "chu" | "chon" | "ngay" | "so";
 /** Gia tri loc 1 cot. chon: [] = khong chon gi (khong loc); "" trong danh sach = o trong. */
-export interface GiaTriLoc { q?: string; chon?: string[]; tu?: string; den?: string }
+/** rong (cot ngay / so): "trong" = chi o trong (vd thieu ngay DK), "co" = chi o co gia tri (+ tu - den). Backend routes/eo.ts khop cung quy uoc. */
+export interface GiaTriLoc { q?: string; chon?: string[]; tu?: string; den?: string; rong?: "trong" | "co" }
 export type LocCot = Record<string, GiaTriLoc>;
 export type SapCot = { k: string; tang: boolean } | null;
 export const TRONG = "(Trống)";
@@ -42,7 +43,7 @@ export interface Col<T> {
 
 export const PAGE_SIZE = 10; // quy uoc: moi bang 10 dong / trang
 
-const dangLoc = (g?: GiaTriLoc) => !!g && (!!g.q?.trim() || (g.chon?.length ?? 0) > 0 || !!g.tu || !!g.den);
+const dangLoc = (g?: GiaTriLoc) => !!g && (!!g.q?.trim() || (g.chon?.length ?? 0) > 0 || !!g.tu || !!g.den || !!g.rong);
 export const soCotLoc = (loc?: LocCot) => Object.values(loc ?? {}).filter(dangLoc).length;
 
 /** 1 gia tri co khop bo loc khong (dung chung client: locVaSap, va bang tu loc). */
@@ -55,6 +56,11 @@ export function khopLoc(kieu: KieuLoc, v: unknown, g: GiaTriLoc): boolean {
   if (kieu === "chon") {
     const vs = Array.isArray(v) ? (v.length ? v.map((x) => String(x ?? "")) : [""]) : [String(v ?? "")];
     return vs.some((x) => g.chon!.includes(x));
+  }
+  if ((kieu === "ngay" || kieu === "so") && g.rong) {
+    const trong = v == null || String(v).trim() === "";
+    if (g.rong === "trong") return trong;
+    if (trong) return false;
   }
   if (kieu === "ngay") {
     const d = String(v ?? "").slice(0, 10);
@@ -344,10 +350,16 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
       </>}
       {(kieu === "ngay" || kieu === "so") && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          <div style={{ gridColumn: "1 / -1", display: "flex", gap: 4, marginBottom: 2 }}>
+            {([["", "Tất cả"], ["trong", kieu === "ngay" ? "Chưa có ngày" : "Ô trống"], ["co", kieu === "ngay" ? "Đã có ngày" : "Có giá trị"]] as const).map(([k, l]) => (
+              <button key={k} type="button" className={`btn sm ${(g.rong ?? "") === k ? "primary" : "ghost"}`} style={{ flex: 1, padding: "2px 4px", fontSize: 11.5 }}
+                onClick={() => setG(k === "trong" ? { rong: "trong" } : { ...g, rong: k || undefined })}>{l}</button>
+            ))}
+          </div>
           <label style={{ fontSize: 11.5 }}>{kieu === "ngay" ? "Từ ngày" : "Từ"}
-            <input autoFocus className="input tb" type={kieu === "ngay" ? "date" : "number"} value={g.tu ?? ""} onChange={(e) => setG({ ...g, tu: e.target.value })} /></label>
+            <input autoFocus className="input tb" type={kieu === "ngay" ? "date" : "number"} value={g.tu ?? ""} disabled={g.rong === "trong"} onChange={(e) => setG({ ...g, tu: e.target.value })} /></label>
           <label style={{ fontSize: 11.5 }}>{kieu === "ngay" ? "Đến ngày" : "Đến"}
-            <input className="input tb" type={kieu === "ngay" ? "date" : "number"} value={g.den ?? ""} onChange={(e) => setG({ ...g, den: e.target.value })} /></label>
+            <input className="input tb" type={kieu === "ngay" ? "date" : "number"} value={g.den ?? ""} disabled={g.rong === "trong"} onChange={(e) => setG({ ...g, den: e.target.value })} /></label>
           {kieu === "ngay" && <div className="muted" style={{ gridColumn: "1 / -1", fontSize: 11 }}>1 ngày: chọn cùng ngày ở 2 ô.</div>}
         </div>
       )}

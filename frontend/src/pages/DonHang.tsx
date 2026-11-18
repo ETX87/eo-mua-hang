@@ -185,6 +185,11 @@ const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?
   { k: "CHO_HANG", l: "Có ngày DK, chờ hàng", f: (r) => r.tinh_trang === "CHO_HANG" },
   { k: "VE_TUAN", l: "Dự kiến về tuần này", title: "Đơn còn thiếu có ngày dự kiến gần nhất trong tuần này (Thứ 2 – Chủ nhật)", f: (r) => veTrongTuan(r, 0) },
   { k: "VE_TUAN_SAU", l: "Dự kiến về tuần sau", f: (r) => veTrongTuan(r, 1) },
+  // v0.089: loc nhanh don con cho hang THIEU thong tin (yeu cau 2026-11-18). Loc chi tiet hon: phieu loc cot ngay -> "Chưa có ngày".
+  { k: "THIEU_NM", l: "Thiếu ngày NM cam kết", title: "Đơn còn chờ hàng chưa có ngày nhà máy cam kết", f: (r) => MO.includes(r.trang_thai_don_hang) && !r.ngay_nm_cam_ket },
+  { k: "THIEU_DK", l: "Thiếu ngày dự kiến", title: "Đơn còn chờ hàng chưa có ngày dự kiến", f: (r) => MO.includes(r.trang_thai_don_hang) && !r.ngay_du_kien_gan_nhat },
+  { k: "CHUA_VE", l: "Chưa về hàng nào", title: "Đơn còn chờ hàng chưa có phiếu nhập AMIS nào (về 0)", f: (r) => r.trang_thai_don_hang === "Hàng chưa về" },
+  { k: "VE_THIEU", l: "Về thiếu (chờ giao bù)", title: "Đã về một phần, còn thiếu", f: (r) => r.trang_thai_don_hang === "Chưa đủ hàng" },
 ];
 const KEY_COT = "sdh-cot", KEY_LOC = "sdh-loc-luu", KEY_XEM = "sdh-xem";
 /** 3 che do xem (2026-11-08): tung dong · nhom theo PO (EO) · nhom theo ma linh kien. Luu localStorage. */

@@ -208,6 +208,8 @@ G7 Nhập kho & lên hệ thống (ngày CT AMIS → `amis_receipt.created_at`, 
 (bỏ Chủ nhật, như R1); hạn `app_settings.giai_doan_sla` (JSON giờ, mặc định 24/…/G8 168). Chốt 2026-10-29: CHỈ đo + báo cáo
 đúng/trễ hạn, chưa sinh lỗi giải trình (bật sau 2–4 tuần). `layGiaiDoan(env)` cache mốc, phần "bây giờ" tính lúc request.
 Báo cáo giai đoạn = tab Báo cáo của Quản lý đơn hàng (`/don-hang?tab=bao-cao&bc=giai-doan`).
+**v0.089**: giai đoạn hiện tại = bước MỚI NHẤT đang mở (`ketQuaGd`); EO qua nháp thì G1 luôn đóng (PO cũ không có `eo_submission`). Đổi cách tính
+giai đoạn / theo dõi → đổi khoá `rep:giai-doan:vN` VÀ hậu tố tag ở `lib/dongCache.ts` (`|gdN`), nếu không `dong_cache` giữ kết quả cũ tới hết ngày.
 
 ## 2 màn chính (v0.050–0.051, `../UI_GOP_2_MAN_HINH.md`) — menu: Tổng quan · Đơn PO (Quản lý EO) · LK đặt · Vi phạm · Nhập AMIS · Cài đặt
 

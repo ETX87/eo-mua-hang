@@ -3,6 +3,21 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.089: Giai đoạn hiện tại theo bước mới nhất + lọc đơn thiếu ngày / thiếu hàng
+
+- Yêu cầu: "1. các lk này đều đã qua bước G1 rồi, fix lại lấy theo bước mới nhất. 2. Tôi muốn lọc danh sách các đơn thiếu ngày Nhà máy cam kết
+  hoặc thiếu ngày dự kiến, hoặc thiếu hàng về... thì làm thế nào?"
+- Nguyên nhân G1: `lib/giaiDoan.ts` đóng G1 bằng lần gửi trình ĐẦU TIÊN SAU ngày tạo dòng; production có ~2.950 dòng của PO đã ban hành không có lần
+  trình nào như vậy (~2.075 dòng PO chuyển từ hệ cũ không có `eo_submission`, ~875 dòng tạo sau lần trình) → G1 không bao giờ đóng, và giai đoạn hiện
+  tại lấy "bước ĐẦU TIÊN chưa đóng" nên kẹt ở G1 (trễ hạn hàng trăm ngày).
+- Sửa: PO đã qua nháp thì G1 luôn đóng (lần trình đầu sau tạo dòng → lần trình đầu của PO → ngày ban hành); giai đoạn hiện tại = bước MỚI NHẤT đang
+  mở. Đổi khoá cache `rep:giai-doan:v2` + hậu tố `|gd2` ở tag `dong_cache` để dựng lại mọi dòng.
+- Lọc: LK đặt thêm 4 nhóm nhanh "Thiếu ngày NM cam kết", "Thiếu ngày dự kiến", "Chưa về hàng nào", "Về thiếu (chờ giao bù)" (đơn còn chờ hàng;
+  link `?nhom=THIEU_NM|THIEU_DK|CHUA_VE|VE_THIEU`). Bảng dùng chung `DataTable`: phễu cột ngày / số có "Tất cả / Chưa có ngày (ô trống) / Đã có ngày"
+  (`GiaTriLoc.rong`), backend `routes/eo.ts` (lọc Đơn PO phía server) khớp cùng quy ước.
+- Kiểm thử: typecheck; local giả lập dòng tạo sau lần trình → trước kẹt G1, nay G8 (G1 đóng), trả lại dữ liệu; 4 nhóm mới có số đếm, lọc đúng;
+  phễu "Ngày dự kiến gần nhất" Đã có 7/7 · Chưa có 0/7 (khớp nhóm Thiếu ngày DK = 0); `/api/eo` lọc `issued` trống 7 + có 2 = 9 PO.
+
 ## 18/11/2026 — v0.088: Tạm tắt "Tạo mail nhắc", chỉ tính push khi mail đã đồng bộ
 
 - Yêu cầu: "tiếp nhận lại các công việc đang dang dở" → "hãy phân tích xem hướng nào phù hợp, nếu máy người dùng không có outlook thì sao?"

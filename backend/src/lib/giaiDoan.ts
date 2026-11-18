@@ -108,12 +108,16 @@ async function tinhMoc(env: Env): Promise<{ sla: Record<string, number>; dong: G
       dat("G3", tao, it.post_issue_approved_at ?? null);
       t0 = it.post_issue_approved_at ?? null;
     } else {
-      const sDau = ss.find((s) => s.submitted_at >= tao.slice(0, 19)) ?? null;
-      dat("G1", tao, sDau?.submitted_at ?? null);
+      // EO da qua nhap (dang trinh / ban hanh / huy...) thi G1 CHAC CHAN da xong, ke ca khi khong co lan trinh nao SAU ngay tao dong
+      // (EO chuyen tu he cu khong co eo_submission ~2.075 dong; dong tao lai sau lan trinh ~875 dong - do 2026-11-18) -> truoc day ket G1 mai.
+      const quaNhap = r.trang_thai_eo && r.trang_thai_eo !== "DRAFT";
+      const sDau = ss.find((s) => s.submitted_at >= tao.slice(0, 19)) ?? (quaNhap ? ss[0] ?? null : null);
+      const ketG1: string | null = sDau?.submitted_at ?? (quaNhap ? r.ngay_ban_hanh ?? tao : null);
+      dat("G1", tao, ketG1);
       // G2 tinh tu lan trinh DAU (lan bi tra ve & trinh lai nam trong G2) -> tham dinh xong cua lan duoc duyet;
       // EO da qua buoc tham dinh (cho duyet cuoi / ban hanh) ma khong co tham dinh -> G2 = 0.
       const sDuyet = ss.find((s) => s.status === "APPROVED") ?? ss[ss.length - 1] ?? null;
-      const bdG2 = sDau?.submitted_at ?? null;
+      const bdG2 = ketG1;
       const quaThamDinh = ["WAITING_FINAL_APPROVAL", "ISSUED"].includes(r.trang_thai_eo);
       const rv = sDuyet ? revBy.get(sDuyet.id) : null;
       dat("G2", bdG2, bdG2 && quaThamDinh ? (rv?.t ?? sDuyet?.submitted_at ?? bdG2) : null);
@@ -158,8 +162,10 @@ export function ketQuaGd(x: { gd: Record<string, MocGd>; ket_thuc: string | null
       const moc = m.kt ?? (x.ket_thuc ? null : now);
       tre[k] = m.bd && m.han && moc ? moc > m.han : null;
     }
-    // giai doan hien tai = giai doan dau tien (theo thu tu chinh) da bat dau ma chua ket thuc
-    const cur = x.ket_thuc === "HUY" ? "HUY" : x.ket_thuc === "XONG" ? "XONG" : THU_TU.find((k) => x.gd[k]?.bd && !x.gd[k]?.kt) ?? "G1";
+    // giai doan hien tai = buoc MOI NHAT (theo thu tu chinh) da bat dau ma chua ket thuc - buoc truoc thieu moc ket thuc
+    // (du lieu cu) khong giu dong lai o buoc do. Khong buoc nao dang mo -> buoc moi nhat da bat dau.
+    const cur = x.ket_thuc === "HUY" ? "HUY" : x.ket_thuc === "XONG" ? "XONG"
+      : [...THU_TU].reverse().find((k) => x.gd[k]?.bd && !x.gd[k]?.kt) ?? [...THU_TU].reverse().find((k) => x.gd[k]?.bd) ?? "G1";
     const g4 = x.gd.G4;
     const ten = cur === "XONG" ? "Hoàn tất (về đủ)" : cur === "HUY" ? "Đã hủy" : GIAI_DOAN.find((g) => g.k === cur)!.l;
     return {
@@ -171,7 +177,7 @@ export function ketQuaGd(x: { gd: Record<string, MocGd>; ket_thuc: string | null
 }
 
 export async function layGiaiDoan(env: Env): Promise<{ sla: Record<string, number>; map: Map<number, GdKetQua> }> {
-  const { sla, dong } = await cachedReport(env.DB, "rep:giai-doan", ["eo", "amis", "settings", "theo_doi"], () => tinhMoc(env));
+  const { sla, dong } = await cachedReport(env.DB, "rep:giai-doan:v2", ["eo", "amis", "settings", "theo_doi"], () => tinhMoc(env));
   const now = nowVN();
   const map = new Map<number, GdKetQua>();
   for (const x of dong) map.set(x.item_id, ketQuaGd(x, now));

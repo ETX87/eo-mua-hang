@@ -67,6 +67,9 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & ban hành · G4 Gửi đơn NCC (song song) · G5 Có ngày dự kiến · G6 Chờ SX & giao ·
 G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo giờ làm việc (cấu hình được). Hiện chỉ báo cáo đúng / trễ hạn, chưa sinh lỗi.
+- **Giai đoạn hiện tại = bước MỚI NHẤT đã bắt đầu mà chưa kết thúc** (theo thứ tự G1 → G2 → G3 → G5 → G6 → G8; không bước nào mở → bước mới nhất
+  đã bắt đầu). PO đã qua nháp thì G1 luôn đóng: mốc = lần gửi trình đầu sau khi tạo dòng, không có thì lần trình đầu của PO, không có trình nào
+  (PO chuyển từ hệ cũ) thì ngày ban hành.
 
 ## 8. Báo cáo & tổng quan
 

@@ -131,8 +131,10 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   thuc: { kieu: "so", gt: (r) => r.dh?.thuc7 ?? null, sap: (r) => (r.dh ? r.dh.thuc7 * 100000 + r.dh.thuc : null) },
   im_lang: { kieu: "so", gt: (r) => r.dh?.im_lang ?? null },
 };
-interface GtLoc { q?: string; chon?: string[]; tu?: string; den?: string }
+interface GtLoc { q?: string; chon?: string[]; tu?: string; den?: string; rong?: "trong" | "co" }
 function khop(kieu: string, v: unknown, g: GtLoc): boolean {
+  // cot ngay / so: "trong" = chi o trong (vd chua co ngay), "co" = chi o co gia tri (+ tu - den neu co) - khop DataTable FE
+  if ((kieu === "ngay" || kieu === "so") && g.rong) { const trong = v == null || String(v).trim() === ""; if (g.rong === "trong") return trong; if (trong) return false; }
   if (kieu === "chu") { const h = boDau(v); return boDau(g.q).split(/\s+/).filter(Boolean).every((t) => h.includes(t)); }
   // gia tri mang (vd moc tien trinh: PO co dong o nhieu moc) -> khop khi CO 1 gia tri duoc chon
   if (kieu === "chon") return !g.chon?.length || (Array.isArray(v) ? v : [v]).some((x) => g.chon!.includes(String(x ?? "")));
@@ -140,7 +142,7 @@ function khop(kieu: string, v: unknown, g: GtLoc): boolean {
   const n = v == null ? NaN : Number(v);
   return !Number.isNaN(n) && (!g.tu || n >= Number(g.tu)) && (!g.den || n <= Number(g.den));
 }
-const coLoc = (g?: GtLoc) => !!g && (!!g.q?.trim() || (g.chon?.length ?? 0) > 0 || !!g.tu || !!g.den);
+const coLoc = (g?: GtLoc) => !!g && (!!g.q?.trim() || (g.chon?.length ?? 0) > 0 || !!g.tu || !!g.den || !!g.rong);
 
 async function nguCanh(c: any): Promise<NguCanh> {
   const email = c.get("user").email as string;
