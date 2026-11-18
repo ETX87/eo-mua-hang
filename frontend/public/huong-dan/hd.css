@@ -1,0 +1,40 @@
+/* Huong dan su dung app EO Mua hang (v0.086) - dung chung cho moi trang /huong-dan/*.html */
+:root { --vang: #FCD34D; --vang-dam: #F0B400; --chu: #1F2937; --mo: #6B7280; --vien: #E5E7EB; --nen: #F9FAFB; --do: #DC2626; --xanh: #16A34A; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--chu); background: #fff; line-height: 1.6; font-size: 15px; }
+header.top { background: var(--vang); padding: 14px 28px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 5; box-shadow: 0 1px 6px #0002; }
+header.top a { color: var(--chu); text-decoration: none; font-weight: 700; }
+header.top .ten { font-size: 18px; font-weight: 800; }
+header.top nav { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }
+.khung { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 32px; max-width: 1280px; margin: 0 auto; padding: 24px 28px 80px; }
+aside.muc { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 96px); overflow: auto; font-size: 13.5px; border-right: 1px solid var(--vien); padding-right: 14px; }
+aside.muc b { display: block; margin-bottom: 6px; }
+aside.muc a { display: block; color: var(--chu); text-decoration: none; padding: 3px 0; }
+aside.muc a:hover { color: #B45309; }
+main h1 { font-size: 28px; margin: 0 0 6px; }
+main h2 { font-size: 21px; margin: 42px 0 10px; padding-top: 10px; border-top: 2px solid var(--vang); }
+main h3 { font-size: 16.5px; margin: 24px 0 6px; }
+.phu { color: var(--mo); }
+ol.buoc { padding-left: 0; counter-reset: b; list-style: none; }
+ol.buoc > li { counter-increment: b; position: relative; padding: 4px 0 4px 40px; margin: 4px 0; }
+ol.buoc > li::before { content: counter(b); position: absolute; left: 0; top: 4px; width: 28px; height: 28px; border-radius: 99px; background: var(--vang); font-weight: 800; display: grid; place-items: center; font-size: 14px; }
+figure { margin: 14px 0 22px; }
+figure img { width: 100%; border: 1px solid var(--vien); border-radius: 10px; box-shadow: 0 4px 18px #0001; cursor: zoom-in; }
+figcaption { font-size: 13px; color: var(--mo); margin-top: 6px; }
+.nut { display: inline-block; background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 6px; padding: 0 7px; font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+.do { color: var(--do); font-weight: 700; } .xanh { color: var(--xanh); font-weight: 700; }
+.luu-y { background: #FEF3C7; border-left: 4px solid var(--vang-dam); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+.canh-bao { background: #FEE2E2; border-left: 4px solid var(--do); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+.meo { background: #ECFDF5; border-left: 4px solid var(--xanh); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+table.bang { border-collapse: collapse; width: 100%; margin: 10px 0 18px; font-size: 14px; }
+table.bang th, table.bang td { border: 1px solid var(--vien); padding: 7px 10px; text-align: left; vertical-align: top; }
+table.bang th { background: var(--nen); }
+.the { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 16px 0; }
+.the a { display: block; border: 1px solid var(--vien); border-radius: 12px; padding: 16px; text-decoration: none; color: var(--chu); background: #fff; box-shadow: 0 2px 8px #0000000d; }
+.the a:hover { border-color: var(--vang-dam); box-shadow: 0 4px 16px #F0B40033; }
+.the b { font-size: 17px; display: block; margin-bottom: 4px; }
+kbd { background: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 4px; padding: 0 5px; font-size: 12.5px; }
+#phong { position: fixed; inset: 0; background: #000c; display: none; place-items: center; z-index: 50; cursor: zoom-out; padding: 20px; }
+#phong img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+@media (max-width: 900px) { .khung { grid-template-columns: 1fr; } aside.muc { position: static; border: none; max-height: none; } header.top nav { display: none; } }
+@media print { header.top, aside.muc { display: none; } .khung { display: block; } figure { break-inside: avoid; } }

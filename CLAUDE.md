@@ -349,6 +349,10 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   dùng `ghiNhacNho` (export từ `routes/viPham.ts`, chung với `/vi-pham/nhac-nho`).
 - Đơn PO: `routes/eo.ts` `dsEoDh` gắn `dh` (`tomTatTheoPo`, ghi nhớ trong isolate ≤ 5 phút theo version tag — KHÔNG nằm trong cache `eo:ds-v2`);
   chip `po_do/po_im_lang/po_loi_cho`, `COT_EO` `canh_bao/loi_cho/thuc/im_lang`. FE sắp thứ tự cột bằng `THU_TU_COT` (cảnh báo sát mã PO).
+- v0.086: `tomTatTheoPo` trả `{ dh, gd }` — `gd` = số dòng đang ở từng giai đoạn theo PO → cột **Tiến trình** (`components/TienTrinhPo.tsx`, key cột vẫn
+  `trang_thai`). Bộ lọc cá nhân Đơn PO: localStorage `eo-loc-luu` / `eo-loc-mac-dinh`.
+- **Hướng dẫn HTML** `frontend/public/huong-dan/*.html` (tĩnh, `hd.css` + `hd.js` dựng thanh trên / mục lục / phóng ảnh), ảnh `img/*.jpg` chụp từ local
+  dữ liệu DEMO bằng `../huong-dan/_build/shots-v086.mjs` — đổi giao diện thì chụp lại (`node shots-v086.mjs [ten-anh]`, cần dev server 5176 + worker 8790).
 - `nhomLyDo` (gom lý do đỏ) có 2 bản: backend `lib/dieuHanh.ts` + FE `pages/DieuHanh.tsx` — sửa cả hai.
 
 ## 2 giao diện theo mã linh kiện (v0.072, `components/quickview/QuickView.tsx`)

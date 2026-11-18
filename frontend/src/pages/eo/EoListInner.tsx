@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useQuickView } from "../../components/quickview/QuickView";
 import { DataTable, Pagination, FilterBar, RefreshFiltersBtn, soCotLoc, type Col, type LocCot, type SapCot } from "../../components/DataTable";
-import { StatusBadge, TypeBadge, Popover } from "../../components/ui";
+import { TypeBadge, Popover, MenuItem } from "../../components/ui";
+import { TienTrinhPo, type GdPo } from "../../components/TienTrinhPo";
 import { I } from "../../lib/icons";
 import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../../lib/format";
 import { STATUS_META } from "../../lib/nav";
@@ -22,7 +23,14 @@ interface EoRow {
   /** canh bao dieu hanh theo PO (backend lib/dieuHanh tomTatTheoPo, v0.084) - chi PO co dong dang mo trong pham vi theo doi */
   dh?: { do: number; vang: number; qua_dk: number; chua_dk: number; loi_cho: number; ceo: number; thuc7: number; thuc: number; thuc_luc: string | null;
     im_lang: number; td_luc: string | null; td_loai: string | null; td_ai: string | null; ly_do: string[]; mo: number } | null;
+  /** so dong dang o tung giai doan (backend lib/dieuHanh, v0.086) - cot Tien trinh */
+  gd?: GdPo | null;
 }
+
+/** Bo loc da luu CA NHAN (v0.086) - luu tren may nguoi dung (localStorage), khong dong bo giua cac may. 1 bo loc co the dat "mac dinh khi mo". */
+interface LocLuu { l: string; chip: string; q: string; loc: LocCot; sap: SapCot; kho: string; doiTac: string; lyDo: string }
+const KEY_LUU = "eo-loc-luu", KEY_MAC_DINH = "eo-loc-mac-dinh";
+const docLuu = (): LocLuu[] => { try { return JSON.parse(localStorage.getItem(KEY_LUU) ?? "[]"); } catch { return []; } };
 interface DsEo { rows: EoRow[]; total: number; tong_truoc_loc: number; tuy_chon: Record<string, string[]>; limit: number; offset: number }
 
 /**
@@ -74,16 +82,20 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const nav = useNavigate();
   const qc = useQueryClient();
   const [sp] = useSearchParams();
-  const [chip, setChip] = useState(sp.get("chip") ?? (compact ? TAT_CA : CHIP_MAC_DINH));
+  // bo loc mac dinh ca nhan: chi ap khi vao man khong kem ?chip (link tu noi khac giu dung bo loc cua link)
+  const [luu, setLuu] = useState<LocLuu[]>(docLuu);
+  const [macDinh, setMacDinh] = useState(() => localStorage.getItem(KEY_MAC_DINH) ?? "");
+  const [md] = useState<LocLuu | undefined>(() => (compact || sp.get("chip") ? undefined : docLuu().find((x) => x.l === localStorage.getItem(KEY_MAC_DINH))));
+  const [chip, setChip] = useState(sp.get("chip") ?? md?.chip ?? (compact ? TAT_CA : CHIP_MAC_DINH));
   const [duyet, setDuyet] = useState<{ row: any; action: string } | null>(null);
   const dem = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, number>>("/eo/dem"), enabled: !compact });
   // thuong dung: o tim + nhom nhanh + loc / sap tren tieu de cot. It dung (an, bam "Bộ lọc khác"): kho, doi tac, ly do PS cua dong LK.
-  const [q, setQ] = useState("");
-  const [loc, setLoc] = useState<LocCot>({});
-  const [sap, setSap] = useState<SapCot>(null);
-  const [kho, setKho] = useState("");
-  const [doiTac, setDoiTac] = useState("");
-  const [lyDo, setLyDo] = useState("");
+  const [q, setQ] = useState(md?.q ?? "");
+  const [loc, setLoc] = useState<LocCot>(md?.loc ?? {});
+  const [sap, setSap] = useState<SapCot>(md?.sap ?? null);
+  const [kho, setKho] = useState(md?.kho ?? "");
+  const [doiTac, setDoiTac] = useState(md?.doiTac ?? "");
+  const [lyDo, setLyDo] = useState(md?.lyDo ?? "");
   const goiY = useGoiYDong();
   const khos = useQuery({ queryKey: ["dm-kho"], queryFn: () => api.get<any[]>("/danh-muc/kho"), enabled: !compact });
   const limit = 20;
@@ -117,7 +129,8 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
     { key: "loai_hinh", header: "Loại hình", loc: "chon", render: (r) => <TypeBadge loai={r.loai_hinh} /> },
     { key: "phong_ban", header: "Phòng ban", loc: "chon", maxW: 115, render: (r) => r.phong_ban || "" },
     { key: "ma_lk", header: "Mã linh kiện", loc: "chu", maxW: 150, render: (r) => r.ma_lk ? <span title={r.ma_lk}>{r.ma_lk}{r.so_dong > 4 ? ", …" : ""}</span> : <span className="muted">—</span> },
-    { key: "trang_thai", header: "Trạng thái", loc: "chon", nhanChon: (v) => STATUS_META[v]?.label ?? v, render: (r) => <StatusBadge status={r.xong ? "DONE" : r.trang_thai} /> },
+    // v0.086: "Đã ban hành" chi la 1 giai doan -> luong tien trinh gon (moc dang xu ly + so dong + tre); loc / sap van theo trang thai duyet
+    { key: "trang_thai", header: "Tiến trình", loc: "chon", nhanChon: (v) => STATUS_META[v]?.label ?? v, render: (r) => <TienTrinhPo trangThai={r.trang_thai} xong={r.xong} gd={r.gd} /> },
     {
       // ton: EO da ban hanh con dong chua ve du -> tinh tu ngay ban hanh; EO dang cho duyet -> tinh tu ngay tao
       key: "ton", header: "Tồn", loc: "chon", render: (r) => r.trang_thai === "ISSUED"
@@ -179,6 +192,15 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   cols.sort((a, b) => (THU_TU_COT.indexOf(a.key) + 1 || 99) - (THU_TU_COT.indexOf(b.key) + 1 || 99));
 
   const datChip = (k: string) => { setChip(k); setOffset(0); };
+  const ghiLuu = (ds: LocLuu[]) => { setLuu(ds); localStorage.setItem(KEY_LUU, JSON.stringify(ds)); };
+  const luuHienTai = () => {
+    const l = prompt("Tên bộ lọc (vd: PO đỏ của tôi, Karofi còn tồn…):")?.trim();
+    if (!l) return;
+    ghiLuu([...luu.filter((x) => x.l !== l), { l, chip, q, loc, sap, kho, doiTac, lyDo }]);
+  };
+  const apLuu = (x: LocLuu) => { setChip(x.chip); setQ(x.q); setLoc(x.loc ?? {}); setSap(x.sap ?? null); setKho(x.kho ?? ""); setDoiTac(x.doiTac ?? ""); setLyDo(x.lyDo ?? ""); setOffset(0); };
+  const datMacDinh = (l: string) => { const v = macDinh === l ? "" : l; setMacDinh(v); if (v) localStorage.setItem(KEY_MAC_DINH, v); else localStorage.removeItem(KEY_MAC_DINH); };
+  const xoaLuu = (l: string) => { ghiLuu(luu.filter((x) => x.l !== l)); if (macDinh === l) datMacDinh(l); };
   const reset = () => { setQ(""); setLoc({}); setSap(null); setKho(""); setDoiTac(""); setLyDo(""); setOffset(0); };
 
   const doExport = async () => {
@@ -231,6 +253,24 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
                 <option value="">ở kho…</option>{(khos.data ?? []).filter((k: any) => k.active !== 0).map((k) => <option key={k.ten_kho} value={k.ten_kho}>{k.ten_kho}</option>)}</select>
               <input className="input" list={DL.doiTac} style={{ borderColor: doiTac ? "var(--brand-yellow-btn)" : undefined }} placeholder="Đối tác" value={doiTac} onChange={(e) => { setDoiTac(e.target.value); setOffset(0); }} />
               <input className="input" list={DL.lyDo} style={{ borderColor: lyDo ? "var(--brand-yellow-btn)" : undefined }} placeholder="Lý do PS" value={lyDo} onChange={(e) => { setLyDo(e.target.value); setOffset(0); }} />
+            </div>
+          </Popover>
+        )}
+        {!compact && (
+          <Popover width={320} active={luu.length > 0} title="Bộ lọc cá nhân lưu trên máy này (nhóm nhanh + ô tìm + lọc cột + sắp xếp + lọc khác)"
+            label={<>★ Đã lưu{luu.length ? ` (${luu.length})` : ""}</>}>
+            <div style={{ display: "grid", gap: 2 }}>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 4 }}>Bộ lọc của bạn — lưu trên máy này. ☆ = mở màn là tự áp.</div>
+              {luu.length === 0 && <div className="muted" style={{ fontSize: 12 }}>Chưa có bộ lọc nào.</div>}
+              {luu.map((x) => (
+                <div key={x.l} style={{ display: "flex", alignItems: "center" }}>
+                  <MenuItem onClick={() => apLuu(x)}>{x.l}</MenuItem>
+                  <button className="btn ghost sm" title={macDinh === x.l ? "Bỏ mặc định" : "Đặt làm mặc định khi mở Đơn PO"} style={{ color: macDinh === x.l ? "#D97706" : undefined }}
+                    onClick={() => datMacDinh(x.l)}>{macDinh === x.l ? "★" : "☆"}</button>
+                  <button className="btn ghost sm" title="Xóa bộ lọc đã lưu" onClick={() => xoaLuu(x.l)}><I.x width={12} height={12} /></button>
+                </div>
+              ))}
+              <button className="btn sm ghost" style={{ marginTop: 6 }} onClick={luuHienTai}>＋ Lưu bộ lọc hiện tại</button>
             </div>
           </Popover>
         )}

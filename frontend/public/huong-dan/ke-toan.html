@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kế toán — Hướng dẫn EO Mua hàng</title>
+<link rel="stylesheet" href="hd.css">
+</head>
+<body>
+<div class="khung">
+<aside class="muc"></aside>
+<main>
+<h1>🧾 Hướng dẫn cho Kế toán</h1>
+<p class="phu">Phiếu nhập kho AMIS là nguồn duy nhất của <b>ngày hàng về</b> và <b>SL đã về</b>. Nhập muộn = đơn bị tính tồn / lỗi oan cho người đặt hàng.</p>
+
+<div class="luu-y"><b>Nhập AMIS mỗi ngày làm việc.</b> Ngày chưa có lần nhập, menu Nhập AMIS hiện số đỏ.</div>
+
+<h2>1. Nhập phiếu nhập kho</h2>
+<ol class="buoc">
+<li>Xuất file phiếu nhập kho từ MISA (đúng mẫu: <span class="nut">Tải file mẫu</span>).</li>
+<li>Vào <b>Nhập AMIS</b> → <span class="nut">Nhập</span> → chọn file → xem trước.</li>
+<li>Xác nhận. App tự khớp từng dòng với dòng PO theo <b>mã phê duyệt 3TDO + mã hàng</b> (cả mã gốc và mã thay thế); tải lại file chồng kỳ cũ không bị trùng.</li>
+</ol>
+<figure><img src="img/50-amis.jpg" alt="Nhập AMIS"><figcaption>Nhập &amp; đối chiếu: lọc kho, trạng thái khớp. Bấm mã phê duyệt → popup PO; bấm mã hàng → popup đơn hàng.</figcaption></figure>
+
+<h2>2. Sửa dữ liệu nhập sai</h2>
+<table class="bang">
+<tr><th>Tình huống</th><th>Cách làm</th></tr>
+<tr><td>1 dòng sai</td><td>Hủy dòng (bắt buộc lý do) — dòng không xoá, đánh dấu hủy, có thể khôi phục.</td></tr>
+<tr><td>Cả 1 lần nhập sai</td><td>Hủy theo lô nhập.</td></tr>
+<tr><td>Cả kỳ lệch với MISA</td><td>Nhập chế độ <b>Đồng bộ lại kỳ</b>: dòng trong kỳ + kho mà không còn trong file → hủy (có xem trước).</td></tr>
+<tr><td>Nhập lại đúng chứng từ đã hủy</td><td>Tự khôi phục.</td></tr>
+</table>
+
+<h2>3. Chứng từ chưa khớp</h2>
+<p>Tab <span class="nut">Chứng từ chưa khớp</span>: phiếu có mã 3TDO nhưng không khớp dòng nào (sai mã hàng, sai PO, dòng đã hủy…). Xử lý cùng người đặt hàng:
+sửa mã trong MISA rồi đồng bộ lại, hoặc người đặt hàng sửa mã LK / thay mã tương đương trên PO.</p>
+<figure><img src="img/51-amis-chua-khop.jpg" alt="Chứng từ chưa khớp"><figcaption>Chứng từ chưa khớp.</figcaption></figure>
+
+<h2>4. Giải trình khi lỗi do nhập muộn</h2>
+<p>App đã bỏ qua lỗi nếu ngày chứng từ AMIS ≤ hạn (nhập muộn không gây lỗi oan). Lỗi còn lại do kế toán → người giải trình chọn <b>Ai = Kế toán</b>.</p>
+</main>
+</div>
+<script src="hd.js"></script>
+</body>
+</html>

@@ -19,7 +19,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 |---|---|
 | Tổng quan | Bảng điều khiển quản lý (tỷ lệ đáp ứng tuần / tháng, tồn đọng theo 8 mốc), "Việc cần xử lý" theo vai trò, tra nhanh mã LK |
 | Điều hành (`/dieu-hanh`) | Cho lãnh đạo: nhìn 3–5 giây biết tồn ở đâu, ai giữ, đã làm gì, vì sao còn tồn. Kết luận nhanh (câu tự sinh, bấm được) · ô sức khoẻ (đỏ / vàng / quá DK / chưa DK / im lặng / không thúc NCC / lỗi chờ GT / cấp CEO / duyệt treo) · luồng giai đoạn ngang G1→G8 · tab Điểm nóng, Theo người (độ quyết liệt 7 ngày, tỷ lệ giải trình, nút Nhắc), Theo NCC, Nguyên nhân & xu hướng (độ phủ giải trình), Duyệt đang treo. Lọc phạm vi người / NCC / kho. Chi tiết `../QUAN_TRI_DIEU_HANH.md` |
-| Đơn PO (`/eo`) | Danh sách EO có chip số đếm (mặc định "Còn tồn"; thêm "PO có dòng ĐỎ", "PO im lặng ≥ 7 ngày", "PO có lỗi chờ GT"); cột Trạng thái · Cảnh báo · Tồn · % về · Lỗi chờ GT · Thúc NCC · Hoạt động cuối đặt sát mã PO; lọc cột kiểu Excel, duyệt / từ chối / yêu cầu cập nhật ngay trên dòng; chi tiết EO là popup |
+| Đơn PO (`/eo`) | Danh sách EO có chip số đếm (mặc định "Còn tồn"; thêm "PO có dòng ĐỎ", "PO im lặng ≥ 7 ngày", "PO có lỗi chờ GT"); cột Tiến trình (luồng ngang các giai đoạn, thay nhãn trạng thái) · Cảnh báo · Tồn · % về · Lỗi chờ GT · Thúc NCC · Hoạt động cuối đặt sát mã PO; lọc cột kiểu Excel, duyệt / từ chối / yêu cầu cập nhật ngay trên dòng; chi tiết EO là popup |
 | LK đặt (`/don-hang`) | Mỗi dòng = 1 dòng linh kiện; mặc định nhóm "Còn chờ hàng"; xem theo dòng / theo PO / theo mã LK; nhóm nhanh (Cần xử lý, Trễ 24h, Quá DK, Lỗi chờ giải trình, Cấp CEO…); nhập ngày NM / dự kiến, giải trình chung, push đối tác, ngày KRF từ mail, kế hoạch hàng về Excel, kế hoạch tuần KRF; tab Báo cáo |
 | Vi phạm | Lỗi theo mức độ CEO / CAO / TB / THẤP, "Của tôi / Toàn bộ", xem theo lỗi / PO / người; giải trình (từng lỗi, cả PO, nhiều lỗi cùng loại), nhắc nhở |
 | Nhập AMIS | Import phiếu nhập (thêm / đồng bộ lại kỳ có xem trước), hủy / khôi phục dòng, tab chứng từ chưa khớp EO |
@@ -43,4 +43,6 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Chống bấm đúp / duyệt đồng thời ở luồng duyệt (không cấp 2 mã 3TDO).
 - Mọi thời gian theo giờ Việt Nam; giờ làm việc bỏ Chủ nhật.
 - Số trên Tổng quan phải khớp danh sách khi bấm vào.
+- Bộ lọc cá nhân lưu trên máy người dùng (Đơn PO: ★ Đã lưu, đặt 1 bộ làm mặc định khi mở).
+- Hướng dẫn sử dụng HTML theo vai trò ở `/huong-dan/` (nút 📘 Hướng dẫn), có ảnh minh hoạ thao tác.
 - Thông tin quản trị đọc được trong 3–5 giây: mọi màu cảnh báo có lý do bằng chữ; mọi tỷ lệ nguyên nhân hiện kèm độ phủ giải trình.

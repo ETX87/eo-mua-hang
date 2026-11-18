@@ -9,7 +9,7 @@ import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
 import { cachedReport } from "../lib/reportCache";
 import { layBoChuan, chuanHoaDong } from "../lib/chuanHoa";
-import { tomTatTheoPo, IM_LANG_DO, type DhPo } from "../lib/dieuHanh";
+import { tomTatTheoPo, IM_LANG_DO, type DhPo, type GdPo } from "../lib/dieuHanh";
 
 /** Doi tac / ly do PS khong nam trong danh muc chuan (migration 0020) -> 400 kem gia tri sai de FE bao ro. */
 const loiChuan = (loi: { loai: string; gia_tri: string }[]) => ({ error: "GIA_TRI_KHONG_CHUAN", loi });
@@ -34,6 +34,8 @@ interface DongEo {
   ma_lk: string | null; lk: string; kho: string[]; ncc: string[]; ly_do: string[];
   /** canh bao dieu hanh (lib/dieuHanh, v0.084) - gan luc request, KHONG nam trong cache eo:ds */
   dh?: DhPo | null;
+  /** so dong dang o tung giai doan (v0.086, cot Tien trinh) */
+  gd?: GdPo | null;
 }
 const boDau = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase();
 const tachDs = (s: string | null) => [...new Set(String(s ?? "").split("\u001f").map((x) => x.trim()).filter(Boolean))];
@@ -134,9 +136,9 @@ async function nguCanh(c: any): Promise<NguCanh> {
 async function dsEoDh(env: Env): Promise<DongEo[]> {
   const [ds, dh] = await Promise.all([
     cachedReport(env.DB, "eo:ds-v2", ["eo", "amis"], () => dsEo(env)),
-    tomTatTheoPo(env).catch((e) => { console.error("dieuHanh", e); return new Map<number, DhPo>(); }),
+    tomTatTheoPo(env).catch((e) => { console.error("dieuHanh", e); return { dh: new Map<number, DhPo>(), gd: new Map<number, GdPo>() }; }),
   ]);
-  return ds.map((r) => ({ ...r, dh: dh.get(r.id) ?? null }));
+  return ds.map((r) => ({ ...r, dh: dh.dh.get(r.id) ?? null, gd: dh.gd.get(r.id) ?? null }));
 }
 
 app.get("/dem", async (c) => {

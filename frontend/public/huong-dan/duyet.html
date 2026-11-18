@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Người duyệt — Hướng dẫn EO Mua hàng</title>
+<link rel="stylesheet" href="hd.css">
+</head>
+<body>
+<div class="khung">
+<aside class="muc"></aside>
+<main>
+<h1>✅ Hướng dẫn cho người duyệt</h1>
+<p class="phu">Người thẩm định (bước G2) · người duyệt mua (bước G3). Mỗi PO được gán đích danh người duyệt — chỉ người được gán mới thấy nút duyệt.</p>
+
+<div class="luu-y">Hạn mặc định mỗi bước duyệt: <b>24 giờ làm việc</b>. Quá hạn, phiếu của bạn hiện ở <b>Điều hành › Duyệt đang treo</b> kèm số giờ chờ và tên bạn — lãnh đạo nhìn thấy.</div>
+
+<h2>1. Tìm PO đang chờ bạn duyệt</h2>
+<ol class="buoc">
+<li>Số đỏ cạnh menu <b>Đơn PO</b> = số phiếu đang chờ bạn.</li>
+<li>Vào Đơn PO → bấm nhóm chữ đỏ <span class="nut">Chờ tôi duyệt (n)</span> trên thanh lọc.</li>
+<li>Danh sách chỉ còn PO chờ bạn, nút duyệt nằm ngay trên dòng.</li>
+</ol>
+<figure><img src="img/24-cho-toi-duyet.jpg" alt="Chờ tôi duyệt"><figcaption>Nhóm "Chờ tôi duyệt": nút <b>Đồng ý</b> · <b>Từ chối</b> · <b>Yêu cầu cập nhật</b> ngay trên dòng.</figcaption></figure>
+
+<h2>2. Xem kỹ trước khi duyệt</h2>
+<ol class="buoc">
+<li>Bấm 👁 hoặc bấm dòng → popup PO.</li>
+<li>Tab <b>Linh kiện</b>: mã, SL, kho, đối tác, lý do phát sinh. Bấm mã LK → lịch sử đặt mã đó (có đang đặt trùng ở PO khác không, NCC giao có đúng hẹn không).</li>
+<li>Tab <b>Tài liệu</b>: file đính kèm. Tab <b>Quy trình duyệt</b>: ai đã thẩm định, ý kiến.</li>
+</ol>
+<figure><img src="img/25-popup-po.jpg" alt="Popup PO"><figcaption>Popup PO — kiểm tra từng dòng trước khi duyệt.</figcaption></figure>
+
+<h2>3. Ra quyết định</h2>
+<table class="bang">
+<tr><th>Nút</th><th>Kết quả</th></tr>
+<tr><td><span class="nut">Đồng ý</span></td><td>Thẩm định: sang bước tiếp (khi mọi người thẩm định đã đồng ý → chuyển người duyệt mua). Duyệt mua: <b>ban hành</b>, cấp mã 3TDO-…, bắt đầu theo dõi hàng về.</td></tr>
+<tr><td><span class="nut">Yêu cầu cập nhật</span></td><td>Trả về người lập để sửa (ghi rõ cần sửa gì). PO về nháp.</td></tr>
+<tr><td><span class="nut">Từ chối</span></td><td>Dừng PO (ghi lý do).</td></tr>
+</table>
+<div class="meo">Bấm đúp hoặc 2 người duyệt cùng lúc không tạo 2 mã 3TDO — app tự chặn.</div>
+
+<h2>4. Duyệt dòng thêm sau ban hành</h2>
+<p>Người đặt hàng thêm linh kiện vào PO đã ban hành → dòng chờ <b>người duyệt mua của PO</b>. Trên Đơn PO, dòng PO có nút <span class="nut">n dòng chờ duyệt</span>;
+cột Tiến trình hiện mốc "Duyệt mua · n dòng".</p>
+<ol class="buoc">
+<li>Bấm <span class="nut">n dòng chờ duyệt</span> → popup PO, dòng chờ có nhãn "Chờ … duyệt".</li>
+<li>Duyệt hoặc từ chối từng dòng (từ chối bắt buộc lý do, dòng bị hủy SL 0).</li>
+</ol>
+<figure><img src="img/20-don-po.jpg" alt="Đơn PO"><figcaption>PO có dòng sau ban hành chờ duyệt: nút "1 dòng chờ duyệt" ở cột Thao tác.</figcaption></figure>
+</main>
+</div>
+<script src="hd.js"></script>
+</body>
+</html>

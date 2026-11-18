@@ -282,6 +282,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             {mobile && (viec.data?.tong ?? 0) > 0 && <span style={{ position: "absolute", top: 2, right: 4, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
           </button>
           <div style={{ fontSize: mobile ? 16 : 19, fontWeight: 800, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pageTitle ?? titleFor(loc.pathname)}</div>
+          {/* v0.086: huong dan su dung theo vai tro (frontend/public/huong-dan/*.html, tinh) */}
+          <a className="btn ghost sm" href="/huong-dan/index.html" target="_blank" rel="noopener" title="Hướng dẫn sử dụng theo vai trò (mở tab mới)" style={{ fontWeight: 700 }}>📘 Hướng dẫn</a>
           <NutGiaiThich />
           <NotificationBell />
           <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} compact={mobile} />

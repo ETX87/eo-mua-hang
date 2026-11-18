@@ -3,6 +3,21 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 18/11/2026 — v0.086: Cột Tiến trình ở Đơn PO, bộ lọc cá nhân, hướng dẫn HTML theo vai trò
+
+- Yêu cầu: "1. Trạng thái của PO "Đã ban hành" chỉ là 1 giai đoạn => thay bằng luồng tiến trình. 2. Cho phép lưu bộ lọc cá nhân trên máy cache
+  người dùng ở trạng PO => với từng vai trò, tạo tài liệu hướng dẫn chi tiết dạng html, đầy đủ hình ảnh hướng dẫn, thao tác. tạo, theo dõi, tìm kiếm,
+  giải trình, xác định vấn đề tồn, vào đâu để giải trình, vào đâu để push?"
+- Trước đó cùng ngày (theo yêu cầu "Chạy lại luôn"): sao lưu DB app Thư ký (`../_backup/`, ngoài repo), chạy lại xử lý 99 thư thô + đẩy lại sự kiện sang EO →
+  EO thêm 306 bản ghi mail, số dòng có mail 571 → 614, lỗi R3 chờ 1.106 → 1.102 (ít hơn ước tính ~20 vì thư bảng không cột PO chạm trần 100 dòng / thư).
+- Cột **Tiến trình** (`components/TienTrinhPo.tsx`): luồng ngang Lập → Thẩm định → Duyệt mua → Có ngày DK → Chờ hàng → Giao bù → ✓ Đủ hàng; PO đã ban hành
+  theo số dòng đang ở từng giai đoạn (backend `tomTatTheoPo` trả thêm `gd`, `routes/eo.ts` gắn `gd` vào dòng); lọc / sắp vẫn theo trạng thái duyệt.
+- **Bộ lọc đã lưu cá nhân** ở Đơn PO: nút "★ Đã lưu" (localStorage `eo-loc-luu`), ☆ đặt mặc định khi mở (`eo-loc-mac-dinh`, chỉ áp khi URL không có `?chip`).
+- **Hướng dẫn HTML** `frontend/public/huong-dan/` (index + người đặt hàng / người duyệt / lãnh đạo / kho / kế toán / admin, 32 ảnh dữ liệu demo có khoanh nút),
+  nút "📘 Hướng dẫn" trên thanh trên cùng. Script chụp ảnh: `../huong-dan/_build/shots-v086.mjs` (Puppeteer, local dev).
+- Kiểm thử: typecheck + build; local: cột Tiến trình đúng với PO nháp / thẩm định / duyệt mua / đã ban hành có dòng sau BH chờ duyệt; bộ lọc mặc định tự áp;
+  7 trang hướng dẫn tải đủ ảnh, không lỗi tải.
+
 ## 18/11/2026 — v0.085: Soát mail chưa gắn dòng + tự bỏ lỗi R3 oan
 
 - Yêu cầu: "Soát mail chưa gắn dòng" → sau khi báo kết quả: "Sửa và xoá luôn".

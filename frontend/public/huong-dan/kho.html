@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kho — Hướng dẫn EO Mua hàng</title>
+<link rel="stylesheet" href="hd.css">
+</head>
+<body>
+<div class="khung">
+<aside class="muc"></aside>
+<main>
+<h1>📦 Hướng dẫn cho Kho</h1>
+<p class="phu">Nhân viên kho / kho vận. Bạn xem mọi đơn; số đỏ, việc cần làm và lỗi tính theo <b>kho bạn phụ trách</b> (Admin gán).</p>
+
+<h2>1. Xem hàng sắp về kho mình</h2>
+<ol class="buoc">
+<li>Vào <b>LK đặt</b> → nhóm <span class="nut">Dự kiến về tuần này</span> hoặc <span class="nut">Dự kiến về tuần sau</span>.</li>
+<li>Lọc kho: phễu ở cột <b>Kho</b> (tick kho của bạn), hoặc <span class="nut">Lọc khác</span>.</li>
+<li>Xem cột Ngày dự kiến / SL thiếu để chuẩn bị nhận hàng.</li>
+</ol>
+<figure><img src="img/30-lk-dat.jpg" alt="LK đặt"><figcaption>LK đặt: mỗi dòng 1 linh kiện; cột Kho, Đối tác, SL đặt, Đã về (theo AMIS), Còn thiếu, Ngày dự kiến.</figcaption></figure>
+
+<h2>2. Đơn đặt bởi kho</h2>
+<p>Kho được lập PO (phòng ban kho vận tự gán kho cho các dòng) — làm như <a href="dat-hang.html#tao">Người đặt hàng › Tạo PO</a>. PO kho lập thì kho chịu các quy tắc R1 / R3 / R4:
+nhập ngày dự kiến, thúc NCC, giải trình — xem <a href="dat-hang.html#ngay-dk">ngày dự kiến</a>, <a href="dat-hang.html#push">push NCC</a>, <a href="dat-hang.html#giai-trinh">giải trình</a>.</p>
+
+<h2>3. Hàng về thiếu / sai</h2>
+<ul>
+<li><b>Ngày hàng về</b> lấy từ phiếu nhập kho AMIS (kế toán nhập) — app không có ô nhập tay.</li>
+<li>Về thiếu: dòng vẫn mở, vẫn bị theo dõi đến khi về đủ hoặc người đặt <b>kết thúc sớm</b>.</li>
+<li>Thấy phiếu AMIS khớp sai mã / sai PO: báo kế toán sửa ở <b>Nhập AMIS</b>.</li>
+</ul>
+<figure><img src="img/35-popup-don-hang.jpg" alt="Popup đơn hàng"><figcaption>Popup đơn hàng: tab "Kế hoạch &amp; hàng về" hiện các đợt dự kiến và các đợt hàng đã về (phiếu AMIS).</figcaption></figure>
+
+<h2>4. Giải trình khi lỗi do kho</h2>
+<p>Lỗi do kho (nhận hàng chậm, nhập AMIS muộn…) → người giải trình chọn <b>Ai = Kho</b>. Bạn có thể tự giải trình: LK đặt → ✏️ ở cột Thao tác, hoặc <b>Vi phạm &amp; giải trình</b> → <span class="nut">Của tôi</span>.</p>
+<figure><img src="img/40-vi-pham.jpg" alt="Vi phạm"><figcaption>Vi phạm &amp; giải trình.</figcaption></figure>
+</main>
+</div>
+<script src="hd.js"></script>
+</body>
+</html>

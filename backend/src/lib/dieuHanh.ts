@@ -188,17 +188,29 @@ export async function layDongDieuHanh(env: Env): Promise<{ dong: DongDh[]; goc: 
 /** Tom tat canh bao theo PO (cot o danh sach Don PO). */
 export interface DhPo { do: number; vang: number; qua_dk: number; chua_dk: number; loi_cho: number; ceo: number; thuc7: number; thuc: number;
   thuc_luc: string | null; im_lang: number; td_luc: string | null; td_loai: string | null; td_ai: string | null; ly_do: string[]; mo: number }
-let memoPo: { tag: string; luc: number; m: Map<number, DhPo> } | null = null;
+/** Giai doan theo PO (cot "Tien trinh" o Don PO, v0.086): so dong DANG O tung giai doan (G1..G8 / XONG / HUY) + so dong dang tre han. */
+export interface GdPo { dem: Record<string, number>; tre: Record<string, number> }
+export interface TomTatPo { dh: Map<number, DhPo>; gd: Map<number, GdPo> }
+let memoPo: { tag: string; luc: number; v: TomTatPo } | null = null;
 /** Ghi nho trong isolate <= 5 phut khi version du lieu khong doi (phan "bay gio" thay doi cham: theo gio / ngay) - danh sach Don PO goi moi lan. */
-export async function tomTatTheoPo(env: Env): Promise<Map<number, DhPo>> {
+export async function tomTatTheoPo(env: Env): Promise<TomTatPo> {
   const tag = await versionTag(env.DB, ["eo", "amis", "settings", "theo_doi"], todayVN());
-  if (memoPo && memoPo.tag === tag && Date.now() - memoPo.luc < 5 * 60_000) return memoPo.m;
-  const m = await tinhTheoPo(env);
-  memoPo = { tag, luc: Date.now(), m };
-  return m;
+  if (memoPo && memoPo.tag === tag && Date.now() - memoPo.luc < 5 * 60_000) return memoPo.v;
+  const v = await tinhTheoPo(env);
+  memoPo = { tag, luc: Date.now(), v };
+  return v;
 }
-async function tinhTheoPo(env: Env): Promise<Map<number, DhPo>> {
-  const { dong } = await layDongDieuHanh(env);
+async function tinhTheoPo(env: Env): Promise<TomTatPo> {
+  const { dong, goc, gd: gdAll } = await layDongDieuHanh(env);
+  const gd = new Map<number, GdPo>();
+  for (const [id, k] of gdAll.map) {
+    const eo = goc.item[id]?.[0];
+    if (eo == null) continue;
+    const x = gd.get(eo) ?? { dem: {}, tre: {} };
+    x.dem[k.gd_hien_tai] = (x.dem[k.gd_hien_tai] ?? 0) + 1;
+    if (k.gd_tre && !["XONG", "HUY"].includes(k.gd_hien_tai)) x.tre[k.gd_hien_tai] = (x.tre[k.gd_hien_tai] ?? 0) + 1;
+    gd.set(eo, x);
+  }
   const m = new Map<number, DhPo>();
   for (const d of dong) {
     const x = m.get(d.eo) ?? { do: 0, vang: 0, qua_dk: 0, chua_dk: 0, loi_cho: 0, ceo: 0, thuc7: 0, thuc: 0, thuc_luc: null, im_lang: 0, td_luc: null, td_loai: null, td_ai: null, ly_do: [], mo: 0 };
@@ -213,7 +225,7 @@ async function tinhTheoPo(env: Env): Promise<Map<number, DhPo>> {
     if (d.muc === "DO") for (const l of d.ly_do) { const k = nhomLyDo(l); if (!x.ly_do.includes(k)) x.ly_do.push(k); }
     m.set(d.eo, x);
   }
-  return m;
+  return { dh: m, gd };
 }
 
 /** Nguoi / NCC chiu trach nhiem 1 giai doan (quy trach nhiem tre SLA + dang o). */

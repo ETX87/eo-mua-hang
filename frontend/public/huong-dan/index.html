@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn sử dụng — EO Mua hàng 3T</title>
+<link rel="stylesheet" href="hd.css">
+</head>
+<body>
+<div class="khung">
+<aside class="muc"></aside>
+<main>
+<h1>Hướng dẫn sử dụng app EO Mua hàng</h1>
+<p class="phu">Bản v0.086 · cập nhật 18/11/2026 · ảnh minh hoạ dùng dữ liệu mẫu (không phải đơn thật). Bấm vào ảnh để phóng to, <kbd>Esc</kbd> để đóng.</p>
+
+<h2>App mua hàng để làm gì?</h2>
+<p>Mọi linh kiện <b>bị thiếu, dự kiến thiếu hoặc phát sinh</b> phải được đặt đúng, về đủ, đúng hẹn — và khi chưa về thì <b>luôn có người chịu trách nhiệm đang thúc</b>.
+App ghi lại toàn bộ: ai lập đơn, ai duyệt, đã gửi nhà cung cấp (NCC) chưa, NCC hẹn ngày nào, đã thúc bao nhiêu lần, vì sao còn tồn, ai đang làm chậm.</p>
+<table class="bang">
+<tr><th>Câu hỏi quản lý</th><th>Xem ở đâu</th></tr>
+<tr><td>Đơn đang tồn ở giai đoạn nào, bao lâu?</td><td><b>Điều hành</b> (luồng giai đoạn) · <b>Đơn PO</b> (cột Tiến trình, Tồn)</td></tr>
+<tr><td>Ai đang giữ phần tồn?</td><td><b>Điều hành › Theo người</b></td></tr>
+<tr><td>Người đó đã làm gì, có quyết liệt không?</td><td><b>Điều hành › Điểm nóng</b> (cột Thúc NCC, Hoạt động cuối) · <b>Đơn PO</b> (cột Thúc NCC, Hoạt động cuối)</td></tr>
+<tr><td>Vì sao vẫn tồn?</td><td>Cột "NCC phản hồi gần nhất", "Giải trình gần nhất" · <b>Điều hành › Nguyên nhân</b></td></tr>
+<tr><td>Tốt lên hay xấu đi?</td><td><b>Điều hành › Nguyên nhân &amp; xu hướng</b></td></tr>
+</table>
+
+<h2>Chọn hướng dẫn theo vai trò của bạn</h2>
+<div class="the">
+<a href="dat-hang.html"><b>🛒 Người đặt hàng</b>KH cung ứng · NV đặt hàng. Tạo PO, nhập ngày dự kiến, push / thúc NCC, giải trình lỗi.</a>
+<a href="duyet.html"><b>✅ Người duyệt</b>Người thẩm định · người duyệt mua. Duyệt PO, duyệt dòng thêm sau ban hành.</a>
+<a href="lanh-dao.html"><b>📊 Lãnh đạo / quản lý</b>Theo dõi tiến độ. Xác định tồn trong 5 giây, ai cần nhắc, nhắc giải trình.</a>
+<a href="kho.html"><b>📦 Kho</b>Theo dõi hàng về kho mình, cập nhật ngày dự kiến, giải trình.</a>
+<a href="ke-toan.html"><b>🧾 Kế toán</b>Nhập phiếu nhập kho AMIS, sửa / hủy chứng từ, xử lý chứng từ chưa khớp.</a>
+<a href="admin.html"><b>⚙️ Admin</b>Người dùng, phân quyền, danh mục, cấu hình.</a>
+</div>
+
+<h2>Vào đâu để…? (tra nhanh)</h2>
+<table class="bang">
+<tr><th>Việc</th><th>Vào đâu</th><th>Chi tiết</th></tr>
+<tr><td><b>Tạo</b> đơn mua (PO / EO)</td><td>Đơn PO › <span class="nut">＋ Tạo EO</span></td><td><a href="dat-hang.html#tao">Người đặt hàng › Tạo PO</a></td></tr>
+<tr><td><b>Duyệt</b> PO</td><td>Đơn PO › nhóm <span class="nut">Chờ tôi duyệt</span> › nút <span class="nut">Đồng ý</span> trên dòng</td><td><a href="duyet.html">Người duyệt</a></td></tr>
+<tr><td><b>Theo dõi</b> 1 PO</td><td>Đơn PO › bấm dòng → popup PO (luồng 8 giai đoạn, linh kiện, kế hoạch, mail, nhật ký)</td><td><a href="dat-hang.html#theo-doi">Theo dõi PO</a></td></tr>
+<tr><td><b>Tìm kiếm</b> linh kiện / PO</td><td>Tổng quan › ô <span class="nut">🔍 Tra linh kiện</span> · ô tìm ở Đơn PO / LK đặt · phễu lọc trên tiêu đề cột</td><td><a href="dat-hang.html#tim">Tìm kiếm</a></td></tr>
+<tr><td><b>Nhập ngày dự kiến</b> hàng về</td><td>LK đặt › biểu tượng 📅 ở cột Thao tác · hoặc popup đơn hàng › <span class="nut">Ngày NM / dự kiến / hàng về</span></td><td><a href="dat-hang.html#ngay-dk">Ngày dự kiến</a></td></tr>
+<tr><td><b>Push</b> NCC (gửi đề nghị xác nhận ngày giao)</td><td>LK đặt › tick dòng › <span class="nut">Push (n)</span> · hoặc popup PO › <span class="nut">Push đối tác</span></td><td><a href="dat-hang.html#push">Push NCC</a></td></tr>
+<tr><td>Ghi nhận <b>gọi điện / Zalo</b> với NCC</td><td>LK đặt › tick dòng › <span class="nut">📞 Đã nhắc đối tác</span></td><td><a href="dat-hang.html#goi">Nhắc không qua mail</a></td></tr>
+<tr><td><b>Giải trình</b> lỗi</td><td>LK đặt › tick dòng › <span class="nut">Giải trình chung</span> · Vi phạm &amp; giải trình · popup đơn hàng › <span class="nut">Giải trình</span></td><td><a href="dat-hang.html#giai-trinh">Giải trình</a></td></tr>
+<tr><td><b>Xác định vấn đề tồn</b></td><td>Điều hành (Kết luận nhanh, ô ĐỎ, Điểm nóng) · Đơn PO nhóm <span class="nut">PO có dòng ĐỎ</span></td><td><a href="lanh-dao.html">Lãnh đạo / quản lý</a></td></tr>
+<tr><td><b>Nhắc</b> nhân viên giải trình</td><td>Điều hành › Theo người › <span class="nut">🔔 Nhắc</span></td><td><a href="lanh-dao.html#nhac">Nhắc nhở</a></td></tr>
+<tr><td><b>Lưu bộ lọc</b> của riêng tôi</td><td>Đơn PO › <span class="nut">★ Đã lưu</span> › Lưu bộ lọc hiện tại (☆ = mặc định khi mở)</td><td><a href="dat-hang.html#loc-luu">Bộ lọc đã lưu</a></td></tr>
+<tr><td>Nhập phiếu nhập kho <b>AMIS</b></td><td>Nhập AMIS › <span class="nut">Nhập</span></td><td><a href="ke-toan.html">Kế toán</a></td></tr>
+</table>
+
+<h2>Quy tắc cảnh báo (ai cũng cần biết)</h2>
+<table class="bang">
+<tr><th>Mã</th><th>Quy tắc</th><th>Cách tránh lỗi</th></tr>
+<tr><td>R1</td><td>Sau khi PO ban hành phải có <b>ngày dự kiến</b> trong 24 giờ làm việc (Karofi / Livotec / Korihome) hoặc 48 giờ (hãng khác). Chủ nhật không tính.</td><td>Nhập ngày dự kiến ngay khi NCC hẹn.</td></tr>
+<tr><td>R3</td><td>Thứ 2 và thứ 4: dòng chưa có ngày dự kiến phải được <b>thúc NCC</b> trong kỳ.</td><td>Push, hoặc gửi mail NCC <b>CC theodoimuahang@gmail.com, ghi mã 3TDO / mã linh kiện</b>, hoặc ghi nhận 📞 gọi/Zalo.</td></tr>
+<tr><td>R4</td><td>Quá ngày dự kiến mà chưa về đủ → trong 24 giờ làm việc phải nhập ngày dự kiến mới.</td><td>Hỏi lại NCC, cập nhật ngày mới.</td></tr>
+<tr><td>Cấp CEO</td><td>Lùi ngày dự kiến ≥ 3 lần · ngày dự kiến cách ngày đặt ≥ 30 ngày · ≥ 3 lỗi.</td><td>Báo quản lý sớm, giải trình rõ nguyên nhân.</td></tr>
+</table>
+<p><b>Mức cảnh báo trên màn Điều hành / Đơn PO:</b></p>
+<ul>
+<li><span class="do">ĐỎ</span> — cấp CEO · quá ngày dự kiến · trễ hạn chưa có ngày dự kiến · lỗi chờ giải trình ≥ 7 ngày · im lặng ≥ 7 ngày (không ai cập nhật, push, mail, gọi, giải trình).</li>
+<li><b style="color:#B45309">VÀNG</b> — đang chờ ngày dự kiến · có lỗi chờ giải trình · im lặng ≥ 3 ngày · ngày dự kiến trong 2 ngày tới · tồn &gt; 30 ngày.</li>
+<li><span class="xanh">XANH</span> — có ngày dự kiến, không lỗi chờ, có người tác động gần đây.</li>
+</ul>
+
+<h2>Màn hình chung</h2>
+<figure><img src="img/02-menu.jpg" alt="Menu"><figcaption>Menu bên trái: Tổng quan · Điều hành · Đơn PO · LK đặt (Danh sách / Báo cáo) · Vi phạm &amp; giải trình · Nhập AMIS. Số đỏ = việc đang chờ bạn.</figcaption></figure>
+<ul>
+<li><b>Đơn PO</b>: mỗi dòng = 1 PO (1 phiếu EO, mã phê duyệt 3TDO-…).</li>
+<li><b>LK đặt</b>: mỗi dòng = 1 linh kiện trong 1 PO — nơi làm việc hằng ngày của người đặt hàng.</li>
+<li>Bấm vào 1 dòng → <b>popup</b> 95% màn hình (PO / đơn hàng / mã linh kiện), <kbd>Esc</kbd> để đóng.</li>
+<li>Mọi bảng kiểu Excel: bấm <b>tiêu đề cột</b> để sắp xếp, bấm <b>phễu</b> để lọc.</li>
+<li>Nút <span class="nut">?</span> trên cùng: giải thích thuật ngữ số lượng.</li>
+</ul>
+</main>
+</div>
+<script src="hd.js"></script>
+</body>
+</html>
