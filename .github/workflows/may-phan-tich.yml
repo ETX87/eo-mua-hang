@@ -20,7 +20,7 @@ jobs:
       group: may-${{ github.event.issue.number }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: false }
@@ -42,17 +42,64 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/issues/$SO/comments?per_page=100" --paginate \
             --jq '.[] | "\n\n---\n### Bình luận lúc " + .created_at + "\n\n" + (.body // "")' >> .may/yeu-cau.md
           wc -c .may/yeu-cau.md
+      - name: Tải tệp đính kèm của người báo + đổi Excel / Word sang chữ
+        # GĐ 18/11/2026 (MAY-00514): app không mở được tệp Excel đính kèm → ý tưởng mơ hồ ("chưa rõ áp cho nhóm nào").
+        if: steps.ma.outputs.ma != ''
+        run: |
+          mkdir -p .may/tep
+          node -e '
+            const fs = require("fs"); const t = fs.readFileSync(".may/yeu-cau.md", "utf8")
+            const ds = [...t.matchAll(/\[([^\]]{1,150})\]\((https:\/\/(?:firebasestorage|storage)\.googleapis\.com\/[^)\s]+)\)/g)].slice(0, 10)
+            ;(async () => { for (const [i, m] of ds.entries()) { try { const r = await fetch(m[2]); if (!r.ok) throw new Error(r.status)
+              const ten = String(m[1] || ("tep-" + i)).replace(/[^\w.\-À-ỹ ]/g, "_").slice(0, 80); fs.writeFileSync(".may/tep/" + ten, Buffer.from(await r.arrayBuffer())); console.log("tải", ten)
+            } catch (e) { console.log("không tải được tệp", i, e.message) } } })()'
+          if ls .may/tep/*.xlsx .may/tep/*.docx >/dev/null 2>&1; then
+            pip install -q openpyxl python-docx >/dev/null 2>&1 || true
+            python3 - <<'PY2'
+          import glob
+          for f in glob.glob('.may/tep/*.xlsx'):
+              try:
+                  import openpyxl
+                  wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+                  with open(f + '.txt', 'w') as o:
+                      for ws in wb.worksheets:
+                          o.write(f'## Sheet: {ws.title}\n')
+                          for i, row in enumerate(ws.iter_rows(values_only=True)):
+                              if i >= 5000: o.write('… (cắt bớt)\n'); break
+                              o.write('\t'.join('' if v is None else str(v) for v in row) + '\n')
+              except Exception as e: print('xlsx lỗi', f, e)
+          for f in glob.glob('.may/tep/*.docx'):
+              try:
+                  import docx
+                  d = docx.Document(f)
+                  with open(f + '.txt', 'w') as o:
+                      for p in d.paragraphs: o.write(p.text + '\n')
+                      for t in d.tables:
+                          for r in t.rows: o.write('\t'.join(c.text for c in r.cells) + '\n')
+              except Exception as e: print('docx lỗi', f, e)
+          PY2
+          fi
+          ls -la .may/tep || true
+      - name: Xác thực Google (chỉ ĐỌC dữ liệu thật của app)
+        if: steps.ma.outputs.ma != '' && vars.GCP_WIF_PROVIDER != '' && vars.GCP_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA }}
       - name: Claude Code đọc mã, soạn BRD (chỉ đọc)
         id: claude
         if: steps.ma.outputs.ma != ''
         uses: anthropics/claude-code-action@v1
+        env:
+          MAY_PROJECT: ${{ vars.FIREBASE_PROJECT }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           claude_args: |
-            --allowedTools "Read,Glob,Grep,Write,TodoWrite"
-            --disallowedTools "Bash,Edit,NotebookEdit,WebFetch,WebSearch"
-            --max-turns 60
+            --model claude-opus-5-5
+            --allowedTools "Read,Glob,Grep,Write,TodoWrite,Bash(node .github/may-du-lieu.mjs:*)"
+            --disallowedTools "Edit,NotebookEdit,WebFetch,WebSearch"
+            --max-turns 100
           prompt: |
             KHO: ${{ github.repository }} · MÃ YÊU CẦU: ${{ steps.ma.outputs.ma }} · NHÃN: ${{ github.event.label.name }}
 
@@ -60,7 +107,17 @@ jobs:
             CHƯA viết BRD. Đọc `.may/yeu-cau.md`, `CLAUDE.md`, `SRS.md`, `TONG_HOP_LOGIC.md` và phần mã liên quan để hiểu ĐÚNG
             hiện trạng, rồi ghi DUY NHẤT tệp `.may/y-tuong.md` (KHÔNG ghi `.may/brd.md`, KHÔNG ghi `.may/cau-hoi.md`).
             Viết cho dân văn phòng, gạch đầu dòng, không tên tệp/hàm/bảng (trừ chữ trên màn hình hoặc giá trị dữ liệu nguyên văn
-            cần để lọc, đặt trong ngoặc kép). Việc NHỎ ≤ 150 từ, việc LỚN ≤ 300 từ. Đúng khung:
+            cần để lọc, đặt trong ngoặc kép). PHẦN CHÍNH: việc NHỎ ≤ 150 từ, việc LỚN ≤ 300 từ.
+            CỤ THỂ, KHÔNG MƠ HỒ (Giám đốc dặn 18/11/2026, MAY-00514) — phần chính BẮT BUỘC có:
+              • CON SỐ đếm thật từ tệp đính kèm (`.may/tep/`, Excel/Word đã đổi sang `.txt` cạnh tệp gốc) và từ dữ liệu thật của app
+                (`node .github/may-du-lieu.mjs doc|list|query|count …` — chỉ đọc; app ở project khác ghi trong yêu cầu thì thêm `--project <id>`).
+                Vd: "23 mã đổi điểm, 7 mã đổi tên, 2 mã bỏ, 4 mã mới".
+              • 3–5 VÍ DỤ thật (mã / tên / giá trị cũ → mới).
+              • TRẢ LỜI CHẮC những gì tệp / dữ liệu / mã trả lời được (vd áp cho nhóm nào, bao nhiêu người, bao nhiêu bản ghi).
+                KHÔNG được ghi "chưa rõ…" cho điều tự tra được. Không đọc được tệp / dữ liệu thì nói rõ lý do.
+              • Sau khung dưới đây, thêm mục cuối `## Chi tiết` (KHÔNG giới hạn chữ): bảng số liệu / danh sách đầy đủ để Giám đốc
+                bấm mở xem khi cần (Giám đốc chỉ thấy phần chính trước).
+            Đúng khung:
               **Độ lớn:** Nhỏ | Lớn
               ## Tình hình hiện tại
               - (app đang làm gì ở phần liên quan; vì sao người dùng gặp vấn đề — dựa trên mã, không đoán)
@@ -121,6 +178,9 @@ jobs:
               ## Rủi ro và vùng nhạy cảm — đăng nhập, phân quyền, dữ liệu cá nhân, tiền, cấu hình Firebase, luật bảo mật.
               ## Chi phí vận hành phát sinh — không có thì ghi "Không".
               ## Câu hỏi còn mở — trùng với mục 3 của Phần 1 nhưng có thể chi tiết hơn; không có thì "Không".
+              ## Phần thực hiện — (GĐ 18/11/2026, MAY-00496 hết lượt 2 lần) việc NHỎ ghi "Một phần". Việc VỪA / LỚN: chia thành
+                 Phần 1, Phần 2… mỗi phần làm xong được trong MỘT lượt (khoảng ≤ 100 bước làm việc: đọc + sửa + kiểm), mỗi phần
+                 một dòng: làm gì · xong khi nào (đối chiếu tiêu chí nghiệm thu số mấy). Phần sau không phụ thuộc phần chưa làm.
               Mục nào không áp dụng thì ghi "Không áp dụng", không bỏ mục.
 
               PHÂN TÍCH SÂU, KHÔNG CHUNG CHUNG (Giám đốc dặn 17/11/2026, việc MAY-00481, MAY-00491):
