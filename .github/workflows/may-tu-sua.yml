@@ -78,7 +78,12 @@ jobs:
                Tài khoản CHỈ ĐỌC — không thể và không được tìm cách ghi/xoá dữ liệu. TUYỆT ĐỐI KHÔNG dán nội dung cá nhân (tên, SĐT, email, CCCD, số tiền của khách/nhân sự) vào PR, issue, commit, nhật ký — chỉ ghi MÃ bản ghi (ID).
             3. Tìm nguyên nhân gốc trong mã. Sửa ĐÚNG phạm vi lỗi mô tả; không đổi tính năng khác, không đụng secrets, firestore.rules, storage.rules, hàm hrLink, lệnh deploy.
             4. Chạy `npm ci` (nếu có package.json) rồi `npm run build` (hoặc lệnh kiểm trong CLAUDE.md). Đỏ thì sửa tới khi xanh; không xanh được thì KHÔNG mở PR.
-            5. Ghi 1 dòng vào NHAT_KY_LAM_VIEC.md: ngày · ${{ steps.ma.outputs.ma }} · sửa gì.
+            5. TÀI LIỆU BẮT BUỘC (Giám đốc chốt 18/11/2026 — Mây kiểm sau triển khai, thiếu là việc CHƯA hoàn thành):
+               a) TONG_HOP_LOGIC.md: thêm mục ghi mã ${{ steps.ma.outputs.ma }} và logic đã đổi (trước thế nào → nay thế nào, áp cho ai, màn nào).
+                  Bản sửa thật sự KHÔNG đổi logic thì vẫn ghi đúng một dòng: "${{ steps.ma.outputs.ma }}: không đổi logic, chỉ sửa <việc gì>".
+                  Kho chưa có TONG_HOP_LOGIC.md thì tạo mới.
+               b) NHAT_KY_LAM_VIEC.md: 1 dòng: ngày · ${{ steps.ma.outputs.ma }} · sửa gì.
+               Cả hai tệp nằm trong CÙNG commit / PR với bản sửa.
             6. Tạo nhánh `may/${{ steps.ma.outputs.ma }}` (chữ thường) từ nhánh hiện tại, commit (tiếng Việt, bắt đầu bằng "${{ steps.ma.outputs.ma }}:"), rồi `git push -u origin may/<mã chữ thường>`. KHÔNG cần mở PR — workflow sẽ tự mở PR từ nhánh này. Nếu muốn, ghi sẵn mô tả PR (nguyên nhân · cách sửa · cách thử) vào tệp `.may-pr.md` ở gốc kho (tệp này sẽ bị bỏ khỏi commit).
             7. Nếu KHÔNG phải lỗi mã, bình luận vào issue bắt đầu bằng "MÂY: CẦN NGƯỜI" rồi dừng, theo đúng 1 trong 3 dạng để Mây xử lý tiếp được:
                • "MÂY: CẦN NGƯỜI — VIỆC DỮ LIỆU:" + từng thao tác cụ thể `collection/docId · trường: <giá trị hiện tại> → <giá trị mới>` (đã xem dữ liệu thật, ghi ID chứ không ghi nội dung cá nhân).
