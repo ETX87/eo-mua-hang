@@ -314,6 +314,11 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
     const its = payloadItems();
     if (!tieuDe.trim()) return setErr("Nhập tiêu đề.");
     if (its.length === 0) return setErr("EO phải có ít nhất 1 dòng linh kiện.");
+    if (mode === "create") {
+      const thieuMa = items.findIndex((r) => r.part_code.trim() && whOf(r) &&
+        r.reason.trim() === "Phát sinh" && !r.crm_id.trim() && !r.order_id.trim());
+      if (thieuMa >= 0) return setErr(`Dòng ${thieuMa + 1} có lý do “Phát sinh”. Nhập ID CRM hoặc ID đặt hàng.`);
+    }
     if (!finalApprover) return setErr("Chọn người duyệt mua.");
     if (send) {
       if (!loaiHinh) return setErr(cats.data?.length ? "Chọn loại hình." : "Chưa có danh mục Loại hình EO — Admin cần thêm ở Cài đặt › Danh mục.");
@@ -337,7 +342,11 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       }
     } catch (e: any) {
       const code = e?.body?.error;
-      setErr(loiChuanTxt(e?.body) ?? (code === "MISSING_REQUIRED_FIELDS" ? "Thiếu Loại hình / Phòng ban / Nội dung — bổ sung rồi gửi lại." : code || "Lỗi lưu EO."));
+      if (code === "PHAT_SINH_MISSING_REFERENCE") {
+        setErr(`Linh kiện ${e.body.part_code} có lý do “Phát sinh”. Nhập ID CRM hoặc ID đặt hàng.`);
+      } else {
+        setErr(loiChuanTxt(e?.body) ?? (code === "MISSING_REQUIRED_FIELDS" ? "Thiếu Loại hình / Phòng ban / Nội dung — bổ sung rồi gửi lại." : code || "Lỗi lưu EO."));
+      }
       setBusy(false);
     }
   };
@@ -425,6 +434,9 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         <div>
           <div className="card card-pad">
             <h3 style={{ marginTop: 0, fontSize: 15 }}>2. Danh sách linh kiện</h3>
+            {mode === "create" && items.some((r) => r.reason === "Phát sinh") && (
+              <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Dòng có lý do “Phát sinh” cần ID CRM hoặc ID đặt hàng.</p>
+            )}
             {mode === "edit" && (
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
                 Dòng đã lưu chỉ sửa được số lượng / tên linh kiện / đối tác / ghi chú (mã linh kiện và kho không đổi được sau khi tạo).

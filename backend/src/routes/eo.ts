@@ -305,6 +305,11 @@ app.post("/", async (c) => {
   }
   { const loi = chuanHoaDong(await layBoChuan(c.env.DB), b.items); if (loi.length) return c.json(loiChuan(loi), 400); }
 
+  const thieuMa = b.items.find((it) => it.reason === "Phát sinh" &&
+    !(typeof it.crm_id === "string" && it.crm_id.trim()) &&
+    !(typeof it.order_id === "string" && it.order_id.trim()));
+  if (thieuMa) return c.json({ error: "PHAT_SINH_MISSING_REFERENCE", part_code: thieuMa.part_code.trim() }, 400);
+
   const copyTu = Number(b.copy_tu_eo_id) > 0
     ? await c.env.DB.prepare("SELECT id, eo_code, approval_code FROM eo WHERE id = ?").bind(Number(b.copy_tu_eo_id))
         .first<{ id: number; eo_code: string; approval_code: string | null }>()
