@@ -23,11 +23,12 @@ import partnerRoutes from "./routes/partner";
 import viPhamRoutes from "./routes/viPham";
 import dieuHanhRoutes from "./routes/dieuHanh";
 import caCeoRoutes from "./routes/caCeo";
+import pushRoutes from "./routes/push";
 import { danhGiaQuyTac } from "./lib/theoDoi";
 import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
 
 // EO MUA HANG - Worker doc lap (Hono + D1). Phuc vu ca API lan frontend tinh tu 1 Worker.
-// Khong cron, khong R2 (xem TARGET_ARCHITECTURE.md).
+// Khong R2 (xem TARGET_ARCHITECTURE.md). Tu v0.105 co 1 cron MOI GIO: danhGiaQuyTac (ghi loi + nhac sap het han giai trinh + push).
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 app.use("*", async (c, next) => {
@@ -79,6 +80,7 @@ app.route("/api/so-don-hang", soDonHangRoutes);
 app.route("/api/vi-pham", viPhamRoutes);
 app.route("/api/dieu-hanh", dieuHanhRoutes);
 app.route("/api/ca-ceo", caCeoRoutes);
+app.route("/api/push", pushRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
@@ -90,4 +92,10 @@ app.onError((err, c) => {
 
 app.get("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
-export default { fetch: app.fetch };
+export default {
+  fetch: app.fetch,
+  // v0.105 (2026-11-19, "He thong tu quet moi gio"): ban dem / ngay nghi khong ai mo app van ghi loi + nhac + day thong bao.
+  async scheduled(_ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(danhGiaQuyTac(env).catch((e) => console.error("cron theo doi", e)).then(() => undefined));
+  },
+};

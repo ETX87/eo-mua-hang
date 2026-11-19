@@ -9,6 +9,7 @@ import { Avatar, PageTitleCtx } from "./ui";
 import { NutGiaiThich } from "../lib/thuatNgu";
 import { APP_VERSION } from "../version";
 import { ten, tuBayGio } from "../lib/format";
+import { NutThongBaoDay } from "./NhacGiaiTrinhPopup";
 
 interface Me { email: string; ho_ten: string; vai_tro: string | null; trang_thai_duyet: string; }
 
@@ -71,7 +72,10 @@ function NotificationBell() {
         <div className="notif-pop" style={{ position: "absolute", right: 0, top: 42, width: 360, background:"#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
             <strong style={{ fontSize: 13.5 }}>Thông báo</strong>
-            {unread > 0 && <button className="btn ghost sm" style={{ fontSize: 12 }} onClick={markAllRead}>Đánh dấu đã đọc hết</button>}
+            <span style={{ display: "flex", gap: 4 }}>
+              <NutThongBaoDay />
+              {unread > 0 && <button className="btn ghost sm" style={{ fontSize: 12 }} onClick={markAllRead}>Đánh dấu đã đọc hết</button>}
+            </span>
           </div>
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
             {list.isLoading && <div className="muted" style={{ padding: 20, textAlign: "center", fontSize: 12.5 }}>Đang tải…</div>}

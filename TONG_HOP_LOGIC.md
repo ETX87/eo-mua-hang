@@ -71,6 +71,11 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
   Chờ giải trình > Đã xử lý (đã giải trình / tự đóng hết) > Không vi phạm; kèm số vi phạm / chờ / đã GT / tự đóng. Chip "PO cấp CEO".
 - Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ giải trình ≥ 56 giờ làm việc) / TB (lặp 2 hoặc chờ ≥ 24 giờ làm việc) / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
 - Nhắc nhở: hệ thống tự nhắc khi ghi lỗi mới; quản lý nhắc tay.
+- **Quét mỗi giờ + nhắc sắp hết hạn + thông báo đẩy + popup** (v0.105): ngoài lúc có người dùng app, cron mỗi giờ chạy lại việc ghi lỗi. Người phải
+  giải trình = người vi phạm của lỗi (`ai_email`, mặc định người đặt). Lỗi mới → chuông + thông báo đẩy. Còn ≤ 6 giờ làm việc tới hạn giải trình
+  (hạn lỗi + 56h LV) mà chưa giải trình → nhắc 1 lần / lỗi (chuông + nhắc nhở hệ thống + thông báo đẩy). Thông báo đẩy chỉ tới thiết bị đã bấm
+  "🔔 Bật đẩy" (ở chuông thông báo hoặc trong popup). Mở app mà còn lỗi chờ mình giải trình → popup liệt kê dòng LK, số lỗi, hạn, số giờ còn lại
+  (đỏ khi ≤ 6 giờ); "Để sau" ẩn tới lần mở app sau hoặc khi có lỗi mới / dòng chuyển sắp hết hạn; bấm thông báo đẩy luôn mở lại popup.
 
 ## 7. 8 giai đoạn đơn hàng (chỉ đo)
 

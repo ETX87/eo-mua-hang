@@ -5,7 +5,8 @@ import { cachedReport } from "./reportCache";
 import { bumpVersions } from "./dataVersions";
 import { nowVN, todayVN } from "./vnTime";
 import { laNhomR1_24h } from "./chuanHoa";
-import { congGioLV, GIO_LV_TU } from "./gioLamViec";
+import { congGioLV, demGioLV, GIO_LV_TU } from "./gioLamViec";
+import { sendPushToUser } from "./webPush";
 
 /**
  * "Theo doi linh kien dat" - kiem soat ngay du kien hang ve tung dong EO (migrations/0012). Quy tac:
@@ -487,9 +488,13 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
            WHERE l.created_at = ? AND l.quy_tac <> 'TAY' GROUP BY l.ai_email, l.eo_id`,
         ).bind(now, now),
       ]).catch((e) => console.error("nhac nho tu dong", e));
+      // v0.105: day thong bao (Web Push) dich danh nguoi vi pham - gop 1 tin / nguoi
+      await dayPushLoi(env, "l.created_at = ?1 AND l.quy_tac <> 'TAY'", now, (n, han) =>
+        ({ title: "⏰ Lỗi mới cần giải trình", body: `Bạn có ${n} lỗi mới cần giải trình (hạn giải trình sớm nhất ${hanNgan(han)}). Mở "Vi phạm & giải trình".` }));
       await bumpVersions(db, ["theo_doi"]);
     }
     await tuGiaiTrinh(env, now).catch((e) => console.error("tu giai trinh", e));
+    await nhacSapHetHan(env, now).catch((e) => console.error("nhac sap het han", e));
     await db.prepare("UPDATE tl_state SET danh_gia_luc = ?, running_until = NULL, so_loi_moi = ? WHERE id = 1").bind(nowVN(), moi).run();
   } catch (err) {
     await db.prepare("UPDATE tl_state SET running_until = NULL WHERE id = 1").run();
@@ -507,6 +512,55 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
  *  QUA_HAN    qua GIO_TU_DONG gio LAM VIEC (tinh tu han; v0.103 = 56h LV, truoc la 7 ngay lich) khong giai trinh -> ghi nhan vi pham, khong can giai trinh nua
  * Nguoi ghi = BOOTSTRAP_ADMIN_EMAIL (FK users, giong tu dien ngay KRF); event AUTO_GIAI_TRINH user_email NULL (FE hien "Hệ thống").
  */
+/** v0.105 (2026-11-19, "nhac lai khi con 6 gio la het han giai trinh"): con <= GIO_NHAC_HET_HAN gio LAM VIEC toi han giai trinh
+ *  (han loi + GIO_TU_DONG) ma chua giai trinh -> nhac 1 lan / loi (tl_loi.nhac_het_han_luc): tl_nhac_nho + notification + Web Push dich danh. */
+export const GIO_NHAC_HET_HAN = 6;
+const NGUOI_LOI_SQL = "COALESCE(l.ai_email, e.created_by)";
+const hanNgan = (h: string | null) => (h ? `${h.slice(11, 16)} ${h.slice(8, 10)}/${h.slice(5, 7)}` : "—");
+
+/** Gui push gop theo nguoi cho cac loi khop dieu kien (alias l = tl_loi, e = eo; ?1 = tham so). han = han giai trinh som nhat. */
+async function dayPushLoi(env: Env, dk: string, thamSo: string, tin: (n: number, han: string | null) => { title: string; body: string }) {
+  if (!env.VAPID_SERVER_PRIVATE_KEY) return;
+  const rs = (await env.DB.prepare(
+    `SELECT ${NGUOI_LOI_SQL} email, COUNT(*) n, MIN(COALESCE(l.han, l.created_at)) moc FROM tl_loi l JOIN eo e ON e.id = l.eo_id
+     WHERE ${dk} AND ${NGUOI_LOI_SQL} IS NOT NULL GROUP BY 1`,
+  ).bind(thamSo).all<{ email: string; n: number; moc: string | null }>()).results;
+  await Promise.all(rs.map((r) => sendPushToUser(env, r.email, { ...tin(r.n, r.moc ? congGioLV(r.moc, GIO_TU_DONG) : null), url: "/?nhac_giai_trinh=1" })
+    .catch((e) => console.error("push loi", e))));
+}
+
+async function nhacSapHetHan(env: Env, now: string): Promise<number> {
+  const db = env.DB;
+  // SQL loc tho: 50h LV >= 6 ngay lam viec -> moc truoc it nhat 5 ngay lich; loc that bang congGioLV.
+  const rs = (await db.prepare(
+    `SELECT l.id, COALESCE(l.han, l.created_at) moc FROM tl_loi l JOIN eo e ON e.id = l.eo_id
+     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'TAY' AND l.nhac_het_han_luc IS NULL
+       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-5 days')
+       AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')`,
+  ).bind(now.slice(0, 10)).all<{ id: number; moc: string }>()).results
+    .filter((r) => { const han = congGioLV(r.moc, GIO_TU_DONG); return han > now && demGioLV(now, han) <= GIO_NHAC_HET_HAN; });
+  if (!rs.length) return 0;
+  const ids = JSON.stringify(rs.map((r) => r.id));
+  await db.batch([
+    db.prepare("UPDATE tl_loi SET nhac_het_han_luc = ?1 WHERE nhac_het_han_luc IS NULL AND id IN (SELECT value FROM json_each(?2))").bind(now, ids),
+    db.prepare(
+      `INSERT INTO tl_nhac_nho (eo_item_id, eo_id, loi_id, den_email, kenh, noi_dung, created_at)
+       SELECT l.eo_item_id, l.eo_id, l.id, ${NGUOI_LOI_SQL}, 'HE_THONG', 'Sắp hết hạn giải trình (còn ≤ ${GIO_NHAC_HET_HAN} giờ làm việc)', ?1
+       FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.nhac_het_han_luc = ?1`,
+    ).bind(now),
+    db.prepare(
+      `INSERT INTO notification (email, loai, noi_dung, eo_id, created_at)
+       SELECT ${NGUOI_LOI_SQL}, 'vi_pham', '⚠ ' || COUNT(*) || ' lỗi ở ' || COALESCE(e.approval_code, e.eo_code) || ' sắp hết hạn giải trình (còn ≤ ${GIO_NHAC_HET_HAN} giờ làm việc). Quá hạn sẽ bị ghi nhận vi phạm — mở "Vi phạm & giải trình"', l.eo_id, ?1
+       FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN users u ON u.email = ${NGUOI_LOI_SQL}
+       WHERE l.nhac_het_han_luc = ?1 GROUP BY 1, l.eo_id`,
+    ).bind(now),
+  ]);
+  await dayPushLoi(env, "l.nhac_het_han_luc = ?1", now, (n, han) =>
+    ({ title: "⚠ Sắp hết hạn giải trình", body: `${n} lỗi của bạn sắp hết hạn giải trình (sớm nhất ${hanNgan(han)}). Quá hạn sẽ bị ghi nhận vi phạm, không giải trình được nữa.` }));
+  await bumpVersions(db, ["theo_doi"]);
+  return rs.length;
+}
+
 /** Han giai trinh: qua bay nhieu gio LAM VIEC tu han loi ma chua giai trinh -> he thong tu dong (56h LV = 7 ngay cu x 8h). */
 export const GIO_TU_DONG = 56;
 /** nhan hien thi */

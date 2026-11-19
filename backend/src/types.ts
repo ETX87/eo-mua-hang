@@ -21,6 +21,10 @@ export interface Env {
   THEODOI_MUAHANG_API_KEY?: string;
   /** v0.091: API DOC cho he khac (ca CEO, tong hop / chi tiet loi theo ma) - header X-API-Key; chua dat -> 503 */
   DOC_API_KEY?: string;
+  /** v0.105 Web Push (lib/webPush.ts): public key + subject o vars, private key qua "wrangler secret put VAPID_SERVER_PRIVATE_KEY". */
+  VAPID_SUBJECT: string;
+  VAPID_SERVER_PUBLIC_KEY: string;
+  VAPID_SERVER_PRIVATE_KEY?: string;
 }
 
 export type VaiTro = "Admin" | "KH cung ung" | "Ke toan" | "Kho" | "Theo doi tien do" | "View";

@@ -6,6 +6,7 @@ import { api } from "./api/client";
 import { AppShell } from "./components/AppShell";
 import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
+import { NhacGiaiTrinhPopup } from "./components/NhacGiaiTrinhPopup";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DieuHanh = lazy(() => import("./pages/DieuHanh"));
 const CaCeo = lazy(() => import("./pages/CaCeo"));
@@ -93,6 +94,8 @@ export default function App() {
       </Routes>
       </Suspense>
       </KhungLoi>
+      {/* v0.105: popup nhac giai trinh khi mo app */}
+      <NhacGiaiTrinhPopup />
     </AppShell>
     </QuickViewProvider>
   );

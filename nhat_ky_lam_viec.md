@@ -3,6 +3,16 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.105: Quét mỗi giờ, nhắc sắp hết hạn giải trình, thông báo đẩy, popup khi mở app
+
+- Yêu cầu: làm tương tự app linh kiện — *"Hệ thống tự quét mỗi giờ. Ca quá hạn sẽ báo đích danh người phải giải trình, và nhắc lại khi còn 6 giờ là hết
+  hạn giải trình. đẩy qua thông báo, khi mở sẽ hiện popup nhắc nhở."* Chủ hệ thống chọn làm cả thông báo đẩy (app này trước chỉ có chuông trong app).
+- Đã làm: cron mỗi giờ gọi `danhGiaQuyTac`; nhắc 1 lần / lỗi khi còn ≤ 6 giờ làm việc tới hạn giải trình (56h LV) — chuông + nhắc nhở hệ thống + đẩy;
+  lỗi mới cũng đẩy; dựng Web Push (bảng `push_subscriptions`, khoá VAPID riêng, service worker, nút Bật/Tắt đẩy ở chuông); popup khi mở app
+  (`GET /api/vi-pham/nhac-cua-toi`). Migration 0025 (`tl_loi.nhac_het_han_luc`, `push_subscriptions`). Thêm `viewport-fit=cover` ở `index.html`.
+- Kiểm thử (local): typecheck 0 lỗi; popup hiện 2 lỗi / 1 dòng sắp hết hạn (khung đỏ, hạn + giờ còn lại); hàm nhắc chỉ nhắc lỗi còn ~4 giờ LV (không nhắc
+  lỗi còn 30 giờ), gọi lần 2 không nhắc lại, chuông + nhắc nhở đúng nội dung. Chưa thử: cron thật, nhận thông báo đẩy trên điện thoại (cần deploy + bấm bật đẩy).
+
 ## 19/11/2026 — v0.104: Cột Vi phạm ở Đơn PO + màn "Việc của tôi"
 
 - Yêu cầu: "trong danh sách đơn PO, thêm cột trạng thái vi phạm của PO (CEO hay mấy vi phạm, đang chờ giải trình...)" và "2. Với vai trò 1 nhân viên,

@@ -36,8 +36,14 @@
     "FRONTEND_URL": "https://muahang.dichvu3t.workers.dev",
     // Nguon danh ba "ETX nhan su" (lib/etxNhanSu.ts) - Google Cloud Function, khong nhay cam.
     "ETX_HR_BASE_URL": "https://asia-southeast1-etx-nhan-su.cloudfunctions.net",
-    "DVBH_BASE_URL": "https://dvbh.dichvu3t.workers.dev"
-  }
+    "DVBH_BASE_URL": "https://dvbh.dichvu3t.workers.dev",
+    // v0.105 Web Push (lib/webPush.ts) - public key khong nhay cam; VAPID_SERVER_PRIVATE_KEY dat qua "wrangler secret put".
+    "VAPID_SUBJECT": "mailto:smarttrade.vp@gmail.com",
+    "VAPID_SERVER_PUBLIC_KEY": "BNBGHsrVxeJB12WJMMqdvN8tak5A1IF_3H9VaqypPJdO_hHY2vwIolzshLOZsjd_XHTzv0nIhXH6pHntQt-gU_A"
+  },
+
+  // v0.105 (2026-11-19): quet loi theo doi + nhac sap het han giai trinh MOI GIO (truoc chi chay sau request API).
+  "triggers": { "crons": ["0 * * * *"] }
 
   // Gia tri NHAY CAM (dat qua "wrangler secret put", KHONG de trong "vars"):
   //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, ETX_HR_API_KEY (dung chung key cua linh-kien-app),

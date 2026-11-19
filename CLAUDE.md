@@ -9,7 +9,7 @@ Thay cho hệ no-code trên Google Sheets. Chuỗi tài liệu thiết kế ở 
 ## Stack
 
 Cloudflare Workers (Hono) phục vụ cả API lẫn frontend tĩnh từ 1 Worker · D1 (SQLite) · React + Vite +
-Tailwind. Google OAuth tự cài trong Worker, session JWT cookie. **Không cron, không R2.** Quy ước kỹ
+Tailwind. Google OAuth tự cài trong Worker, session JWT cookie. **Không R2.** Từ v0.105 có **1 cron mỗi giờ** (`scheduled()` ở `index.ts` → `danhGiaQuyTac`); phần còn lại vẫn chạy sau request API. Quy ước kỹ
 thuật giống `../linh-kien-app` (đọc `CLAUDE.md` repo đó nếu cần đối chiếu).
 
 ## Commands
@@ -149,6 +149,20 @@ FE: nút "Ngày KRF từ mail (n)" ở `/don-hang` (`pages/theodoi/KrfGoiY.tsx`)
 lịch sử mail hiện dữ liệu dòng (`DongMail`).
 Số đỏ sau tên menu + khung "Việc cần xử lý" ở Tổng quan: `GET /api/viec-can-lam` (`routes/viecCanLam.ts`, ma trận vai trò ở file
 trên mục 4); FE dùng queryKey `inbox-count` (nhiều màn đã invalidate key này).
+
+## Nhắc giải trình: cron mỗi giờ + Web Push + popup (v0.105, migration 0025)
+
+Yêu cầu (19/11/2026, làm tương tự app linh kiện): *"Hệ thống tự quét mỗi giờ. Ca quá hạn sẽ báo đích danh người phải giải trình, và nhắc lại khi còn
+6 giờ là hết hạn giải trình. đẩy qua thông báo, khi mở sẽ hiện popup nhắc nhở."*
+- Cron `0 * * * *` (`wrangler.jsonc` `triggers`) → `danhGiaQuyTac(env)` (vẫn giới hạn 10 phút / lần như khi chạy sau request).
+- `nhacSapHetHan` (cuối `danhGiaQuyTac`, `lib/theoDoi.ts`): lỗi `CHO_GIAI_TRINH` (trừ `TAY`) còn ≤ `GIO_NHAC_HET_HAN` = 6 giờ LV tới `congGioLV(han, GIO_TU_DONG)`
+  → `tl_loi.nhac_het_han_luc` (1 lần / lỗi) + `tl_nhac_nho` + `notification` (gộp người × EO) + Web Push. Người nhận = `COALESCE(ai_email, eo.created_by)`.
+  Lỗi mới cũng đẩy push (`dayPushLoi`, gộp 1 tin / người). Push url `/?nhac_giai_trinh=1` → popup mở lại.
+- Web Push = bản sao linh-kien-app: `lib/webPush.ts` (`@block65/webcrypto-web-push`), `routes/push.ts` (`/api/push`), `frontend/public/sw.js`,
+  `hooks/usePushNotifications.ts`, bảng `push_subscriptions`. Cặp khoá VAPID RIÊNG của app này: public ở `vars.VAPID_SERVER_PUBLIC_KEY`, private qua
+  `wrangler secret put VAPID_SERVER_PRIVATE_KEY` (thiếu → không gửi, không lỗi). Nút "🔔 Bật đẩy / 🔕 Tắt đẩy" ở đầu popup chuông (`NutThongBaoDay`).
+- Popup `components/NhacGiaiTrinhPopup.tsx` (mount ở `App.tsx`) ← `GET /api/vi-pham/nhac-cua-toi` (lỗi chờ của tôi — CÙNG điều kiện số "Vi phạm của bạn chờ
+  giải trình" ở `viecCanLam`; gộp theo dòng LK, `han`, `con_gio`, `sap_het`). "Để sau" = sessionStorage, khoá = tập dòng + số lỗi + cờ sắp hết.
 
 ## Vi phạm & giải trình (v0.055, `/vi-pham`, migration 0016)
 

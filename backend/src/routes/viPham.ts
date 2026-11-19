@@ -4,7 +4,8 @@ import { nowVN, todayVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
-import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
+import { danhGiaQuyTac, layDongTheoDoi, GIO_TU_DONG, GIO_NHAC_HET_HAN } from "../lib/theoDoi";
+import { congGioLV, demGioLV } from "../lib/gioLamViec";
 import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_GIO, RAT_LAU_GIO } from "../lib/baoCaoLoi";
 import { layDongDieuHanh, thongKeGiaiDoan } from "../lib/dieuHanh";
 import { layBangMaLoi } from "../lib/maLoi";
@@ -23,6 +24,32 @@ import { layBangMaLoi } from "../lib/maLoi";
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 export { QUA_LAU_GIO, RAT_LAU_GIO };
+
+/**
+ * GET /api/vi-pham/nhac-cua-toi (v0.105) - popup nhac khi MO APP (FE components/NhacGiaiTrinhPopup.tsx). Loi CHO_GIAI_TRINH cua toi
+ * (cung dieu kien so "Vi pham cua ban cho giai trinh" o viecCanLam), gop theo dong LK, kem han giai trinh (han loi som nhat + GIO_TU_DONG
+ * gio LV) va so gio LV con lai. Chi doc, khong ghi.
+ */
+app.get("/nhac-cua-toi", async (c) => {
+  const u = c.get("user");
+  const now = nowVN();
+  const rs = (await c.env.DB.prepare(
+    `SELECT l.eo_item_id item_id, l.eo_id, COALESCE(e.approval_code, e.eo_code) ma_po, i.part_code, i.part_name, COUNT(*) so_loi,
+       GROUP_CONCAT(DISTINCT l.quy_tac) quy_tac, MIN(CASE WHEN l.quy_tac <> 'TAY' THEN COALESCE(l.han, l.created_at) END) moc,
+       MAX(l.nhac_het_han_luc) nhac_luc
+     FROM tl_loi l JOIN eo e ON e.id = l.eo_id LEFT JOIN eo_item i ON i.id = l.eo_item_id
+     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR e.created_by = ?1)
+       AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')
+     GROUP BY l.eo_item_id`,
+  ).bind(u.email).all<{ item_id: number; eo_id: number; ma_po: string; part_code: string | null; part_name: string | null; so_loi: number;
+    quy_tac: string; moc: string | null; nhac_luc: string | null }>()).results;
+  const rows = rs.map((r) => {
+    const han = r.moc ? congGioLV(r.moc, GIO_TU_DONG) : null;
+    const conGio = han ? (han >= now ? demGioLV(now, han) : -demGioLV(han, now)) : null;
+    return { ...r, han, con_gio: conGio, sap_het: conGio != null && conGio <= GIO_NHAC_HET_HAN };
+  }).sort((a, b) => String(a.han ?? "9").localeCompare(String(b.han ?? "9")));
+  return c.json({ rows, tong_loi: rows.reduce((t, r) => t + r.so_loi, 0), gio_nhac: GIO_NHAC_HET_HAN, gio_tu_dong: GIO_TU_DONG });
+});
 
 const soNgay = (a: string, b: string) => Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
 
