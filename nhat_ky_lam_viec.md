@@ -3,6 +3,21 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.097: Ca tồn CEO chia 3 mức xử lý + tăng tốc mở app (cache trình duyệt / server, tách mã, nút Tải lại)
+
+- Yêu cầu: "với đơn vi phạm CEO, tôi cần tách được đơn CEO nhưng các vi phạm vẫn chưa được xử lý => … trong 150 ca này bao nhiêu ca vẫn đang tồn đọng, bao nhiêu
+  ca đã xử lý xong hoặc được giải trình rồi => nó sẽ có độ hot khác nhau dễ phân biệt" + "2. khi mở app muahang lên tốc độ load rất chậm. => xem lại logic load dữ liệu,
+  nếu dữ liệu không có gì thay đổi thì hạn chế việc phải load lại mỗi lần mở web. có thể tìm phương án lưu cache không? + thêm nút load báo cáo thủ công nếu cần".
+- Ca tồn CEO (`lib/caCeo.ts` `dsCaCeoXuLy`, dùng chung `/api/ca-ceo` + API đọc `/api/partner/ca-ceo` thêm `muc_xu_ly`, `ly_do_xu_ly`, `dem`): 🔴 TỒN ĐỌNG (còn lỗi chờ GT /
+  quá ngày DK / trễ chưa có ngày DK / ≥ 7 ngày không tác động) · 🟠 BỎ QUA GIẢI TRÌNH (hết vi phạm đang chạy nhưng lỗi bị tự đóng do quá 7 ngày, chưa từng giải trình
+  thật) · 🟢 ĐÃ XỬ LÝ (đã giải trình / khắc phục, chỉ chờ hàng). Màn: 3 ô lớn (số ca, PO, %) bấm lọc, cột "Mức xử lý" + lý do, sắp nóng trước, Excel.
+- Tốc độ: đo D1 (`wrangler d1 insights` 1 ngày) — truy vấn nhanh, chậm do file JS 1,5MB + ~9 API lúc mở, mỗi API giải nén / tính lại báo cáo.
+  · Cache trình duyệt `lib/cacheTrinhDuyet.ts`: lưu query đọc vào IndexedDB (theo tài khoản, ≤ 3 ngày), nạp TRƯỚC khi vẽ → hiện ngay, tải mới ở nền.
+  · Tách mã từng màn (`React.lazy`): JS ban đầu 1.530KB → 255KB (gzip 461 → 83KB); thư viện Excel chỉ tải khi cần.
+  · Server: `cachedReport` nhớ chuỗi JSON đã giải nén trong isolate theo tag (không đọc lại payload D1 / gunzip); `/dashboard/quan-ly` cache theo giờ (`dash:quan-ly:v1`).
+  · Nút **⟳ giờ dữ liệu** trên thanh trên cùng: xoá cache trình duyệt + tải lại ngay mọi dữ liệu đang hiện. Đăng xuất xoá cache.
+- Kiểm thử: typecheck + build; local mở Tổng quan lần 1 2,5 giây → lần 2 (có cache) 0,4 giây; màn Ca tồn CEO 3 mức + nút Tải lại không lỗi trang.
+
 ## 18/11/2026 — v0.096: Chụp lại ảnh hướng dẫn HTML theo tên giai đoạn mới
 
 - Yêu cầu: "Chụp lại" (ảnh hướng dẫn sau khi đổi tên G5 "Chờ ngày DK", G6 "Chờ giao hàng").

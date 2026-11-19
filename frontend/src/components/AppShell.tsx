@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
+import { xoaCacheTrinhDuyet } from "../lib/cacheTrinhDuyet";
 import { api } from "../api/client";
 import { NAV } from "../lib/nav";
 import { I } from "../lib/icons";
@@ -94,7 +95,7 @@ function NotificationBell() {
 function AccountMenu({ uName, email, sub, subColor, nameColor, dropUp, compact }: { uName: string; email?: string | null; sub: string; subColor?: string; nameColor?: string; dropUp?: boolean; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside(() => setOpen(false));
-  const logout = () => api.post("/auth/logout").then(() => (location.href = "/"));
+  const logout = () => xoaCacheTrinhDuyet().finally(() => api.post("/auth/logout").then(() => (location.href = "/")));
   return (
     <div ref={ref} style={{ position: "relative", minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
@@ -282,6 +283,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {mobile && (viec.data?.tong ?? 0) > 0 && <span style={{ position: "absolute", top: 2, right: 4, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
           </button>
           <div style={{ fontSize: mobile ? 16 : 19, fontWeight: 800, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pageTitle ?? titleFor(loc.pathname)}</div>
+          <NutTaiLai />
           {/* v0.086: huong dan su dung theo vai tro (frontend/public/huong-dan/*.html, tinh) */}
           <a className="btn ghost sm" href="/huong-dan/index.html" target="_blank" rel="noopener" title="Hướng dẫn sử dụng theo vai trò (mở tab mới)" style={{ fontWeight: 700 }}>📘 Hướng dẫn</a>
           <NutGiaiThich />
@@ -315,4 +317,25 @@ const ROLE_VI: Record<string, string> = {
 export function roleLabel(v?: string | null): string {
   if (!v) return "Nhân viên";
   return ROLE_VI[v] ?? v;
+}
+
+/**
+ * Nut "Tai lai du lieu" (v0.097): app mo bang du lieu cache (trinh duyet + server) va tu cap nhat o nen; nut nay ep tai lai NGAY moi du lieu
+ * dang hien (xoa cache trinh duyet, refetch moi query dang dung). Hien gio lan cap nhat moi nhat cua cac du lieu dang hien.
+ */
+function NutTaiLai() {
+  const qc = useQueryClient();
+  const [dang, setDang] = useState(false);
+  const dangTaiNen = useIsFetching(); // ve lai khi tai nen xong -> gio moi
+  const moiNhat = Math.max(0, ...qc.getQueryCache().getAll().filter((q) => q.getObserversCount() > 0).map((q) => q.state.dataUpdatedAt));
+  const taiLai = async () => {
+    setDang(true);
+    try { await xoaCacheTrinhDuyet(); await qc.refetchQueries({ type: "active" }); } finally { setDang(false); }
+  };
+  const gio = moiNhat ? new Date(moiNhat).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
+  return (
+    <button className="btn ghost sm" onClick={taiLai} disabled={dang} title={`Tải lại dữ liệu mới nhất từ máy chủ${gio ? ` (đang hiện dữ liệu lúc ${gio})` : ""}`}>
+      <I.refresh width={14} height={14} style={dang ? { animation: "quay 0.8s linear infinite" } : undefined} /> {dang ? "Đang tải…" : dangTaiNen ? "Đang cập nhật…" : gio || "Tải lại"}
+    </button>
+  );
 }

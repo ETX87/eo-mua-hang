@@ -1,23 +1,24 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api/client";
 import { AppShell } from "./components/AppShell";
 import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
-import Dashboard from "./pages/Dashboard";
-import DieuHanh from "./pages/DieuHanh";
-import CaCeo from "./pages/CaCeo";
-import BangMaLoi from "./pages/BangMaLoi";
-import EoList from "./pages/eo/EoList";
-import EoForm from "./pages/eo/EoForm";
-import KeHoachTuan from "./pages/KeHoachTuan";
-import AmisImport from "./pages/amis/AmisImport";
-import DonHang from "./pages/DonHang";
-import ViPham from "./pages/ViPham";
-import Users from "./pages/admin/Users";
-import Roles from "./pages/admin/Roles";
-import DanhMuc from "./pages/admin/DanhMuc";
-import SysConfig from "./pages/admin/SysConfig";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DieuHanh = lazy(() => import("./pages/DieuHanh"));
+const CaCeo = lazy(() => import("./pages/CaCeo"));
+const BangMaLoi = lazy(() => import("./pages/BangMaLoi"));
+const EoList = lazy(() => import("./pages/eo/EoList"));
+const EoForm = lazy(() => import("./pages/eo/EoForm"));
+const KeHoachTuan = lazy(() => import("./pages/KeHoachTuan"));
+const AmisImport = lazy(() => import("./pages/amis/AmisImport"));
+const DonHang = lazy(() => import("./pages/DonHang"));
+const ViPham = lazy(() => import("./pages/ViPham"));
+const Users = lazy(() => import("./pages/admin/Users"));
+const Roles = lazy(() => import("./pages/admin/Roles"));
+const DanhMuc = lazy(() => import("./pages/admin/DanhMuc"));
+const SysConfig = lazy(() => import("./pages/admin/SysConfig"));
 import Pending from "./pages/Pending";
 import { datTenHienThi } from "./lib/format";
 import { datKho } from "./lib/kho";
@@ -51,6 +52,8 @@ export default function App() {
   return (
     <QuickViewProvider>
     <AppShell>
+      {/* v0.097: moi man tai code rieng khi mo (React.lazy) - lan mo dau khong phai tai code cua moi man */}
+      <Suspense fallback={<Spinner />}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/dieu-hanh" element={<DieuHanh />} />
@@ -83,6 +86,7 @@ export default function App() {
         <Route path="/admin/cau-hinh" element={<SysConfig />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </AppShell>
     </QuickViewProvider>
   );

@@ -4,6 +4,7 @@ import { bumpVersions } from "../lib/dataVersions";
 import { tuDongDienKrf } from "../lib/krfGoiY";
 import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, gomViPham } from "../lib/baoCaoLoi";
 import { layBangMaLoi } from "../lib/maLoi";
+import { dsCaCeoXuLy, demTheoMuc } from "../lib/caCeo";
 import { danhGiaQuyTac } from "../lib/theoDoi";
 
 /**
@@ -130,8 +131,9 @@ const docKey = async (c: any, next: () => Promise<void>) => {
 app.get("/ma-loi", docKey, async (c) => c.json({ ma_loi: (await layBangMaLoi(c.env.DB)).ds }));
 app.get("/ca-ceo", docKey, async (c) => {
   await danhGiaQuyTac(c.env).catch(() => {});
-  const rows = await dsCaCeo(c.env);
-  return c.json({ so_dong: rows.length, rows });
+  // v0.097: moi ca kem muc_xu_ly (TON_DONG / BO_QUA_GT / DA_XU_LY) + ly_do_xu_ly; dem = so dong / PO theo muc
+  const rows = await dsCaCeoXuLy(c.env);
+  return c.json({ so_dong: rows.length, dem: demTheoMuc(rows), rows });
 });
 app.get("/loi/tong-hop", docKey, async (c) => {
   await danhGiaQuyTac(c.env).catch(() => {});

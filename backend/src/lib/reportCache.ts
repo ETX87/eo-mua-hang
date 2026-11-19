@@ -32,14 +32,32 @@ async function gunzipB64(b64: string): Promise<string> {
   return new Response(ds.readable).text();
 }
 
+/**
+ * v0.097 (toc do mo app): NHO trong isolate chuoi JSON da giai nen theo (key, tag) -> request sau cung tag khong doc payload D1 / giai nen gzip.
+ * Tra ve JSON.parse moi lan (object moi, nguoi goi sua thoai mai). Gioi han tong ~48MB, day ra muc cu nhat.
+ */
+const NHO = new Map<string, { tag: string; json: string }>();
+const NHO_TOI_DA = 48_000_000;
+let nhoTong = 0;
+function nhoGhi(key: string, tag: string, json: string) {
+  const cu = NHO.get(key);
+  if (cu) { nhoTong -= cu.json.length; NHO.delete(key); }
+  if (json.length > NHO_TOI_DA / 2) return;
+  while (nhoTong + json.length > NHO_TOI_DA && NHO.size) { const [k, v] = NHO.entries().next().value!; nhoTong -= v.json.length; NHO.delete(k); }
+  NHO.set(key, { tag, json }); nhoTong += json.length;
+}
+
 export async function cachedReport<T>(
   db: D1Database,
   key: string,
   domains: DataDomain[],
   compute: () => Promise<T>,
-  opts: { dateSensitive?: boolean } = {},
+  /** tagThem: them vao tag (vd gio hien tai cho bao cao doi theo gio) */
+  opts: { dateSensitive?: boolean; tagThem?: string } = {},
 ): Promise<T> {
-  const tag = (await versionTag(db, domains)) + (opts.dateSensitive === false ? "" : `|${todayVN()}`);
+  const tag = (await versionTag(db, domains)) + (opts.dateSensitive === false ? "" : `|${todayVN()}`) + (opts.tagThem ? `|${opts.tagThem}` : "");
+  const nho = NHO.get(key);
+  if (nho && nho.tag === tag) { try { return JSON.parse(nho.json) as T; } catch { /* bo qua */ } }
 
   const hit = await db
     .prepare("SELECT version_tag, payload FROM report_cache WHERE cache_key = ?")
@@ -47,7 +65,10 @@ export async function cachedReport<T>(
     .first<{ version_tag: string; payload: string }>();
   if (hit && hit.version_tag === tag) {
     try {
-      return JSON.parse(await gunzipB64(hit.payload)) as T;
+      const json = await gunzipB64(hit.payload);
+      const v = JSON.parse(json) as T;
+      nhoGhi(key, tag, json);
+      return v;
     } catch {
       /* cache hong -> tinh lai */
     }
@@ -94,7 +115,9 @@ export async function cachedReport<T>(
     throw e;
   }
   try {
-    const payload = await gzipB64(JSON.stringify(value));
+    const json = JSON.stringify(value);
+    nhoGhi(key, tag, json);
+    const payload = await gzipB64(json);
     await db
       .prepare(
         `INSERT INTO report_cache (cache_key, version_tag, payload, updated_at, computing_until) VALUES (?, ?, ?, ?, NULL)

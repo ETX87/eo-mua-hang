@@ -217,7 +217,8 @@ export const MOC_TON = [
 const msVN = (t: string) => Date.parse(t.replace(" ", "T") + (t.length <= 10 ? "T00:00:00Z" : "Z"));
 const MO = ["Hàng chưa về", "Chưa đủ hàng"];
 
-app.get("/quan-ly", async (c) => {
+/** Than tinh bang dieu khien quan ly (khong phu thuoc nguoi dung). v0.097: route boc cachedReport theo GIO (moc ton "< 1 ngay" doi theo gio). */
+async function tinhQuanLy(c: { env: Env }) {
   const db = c.env.DB;
   const [base, choDuyet, sauBh, boQua, gd] = await Promise.all([
     cachedReport(db, "rep:tien-do-01", ["eo", "amis", "settings"], () => computeTienDo01(c.env)),
@@ -273,7 +274,7 @@ app.get("/quan-ly", async (c) => {
     const i = MOC_TON.findIndex((x) => ngay >= x.tu && ngay < x.den);
     mocDuyet[i < 0 ? 0 : i].so_eo += 1;
   }
-  return c.json({
+  return ({
     luc: nowVN(),
     dap_ung: { thang: cuoi(thang, 12), tuan: cuoi(tuan, 12) },
     ton: {
@@ -305,6 +306,11 @@ app.get("/quan-ly", async (c) => {
       return GIAI_DOAN.filter((g) => !["G4", "G7"].includes(g.k)).map((g) => ({ k: g.k, l: g.l, vai_tro: g.vai_tro, ...(dem.get(g.k) ?? { n: 0, tre: 0 }) }));
     })(),
   });
+}
+
+app.get("/quan-ly", async (c) => {
+  const gio = nowVN().slice(0, 13); // YYYY-MM-DD HH
+  return c.json(await cachedReport(c.env.DB, "dash:quan-ly:v1", ["eo", "amis", "settings", "theo_doi"], () => tinhQuanLy(c), { tagThem: gio }));
 });
 
 // ============================================================ GET /tim-linh-kien?q=  (o tim nhanh linh kien, khong dau)

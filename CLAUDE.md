@@ -376,6 +376,9 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
   FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
+- **v0.097** Ca CEO mức xử lý `lib/caCeo.ts` (`dsCaCeoXuLy`, `demTheoMuc`) — dùng chung route `/ca-ceo` + partner. Hiệu năng: `lib/cacheTrinhDuyet.ts`
+  (React Query dehydrate/hydrate ↔ IndexedDB `eomua-cache`/`rq-v1`, danh sách key `LUU` — thêm query đọc mới muốn mở nhanh thì thêm vào), `main.tsx` nạp trước khi
+  render; `App.tsx` route `React.lazy`; `cachedReport` nhớ JSON trong isolate (`NHO`, ≤ 48MB) + `opts.tagThem`; `/dashboard/quan-ly` cache theo giờ. Nút `NutTaiLai` (AppShell).
 - **v0.095** R1 lặp thứ 3/6: vòng lặp sau `add(R1)` trong `danhGiaQuyTac`, khoá `R1:<item>:<ngày>`, mốc `app_settings.r1_lap_tu` (`R1_LAP_TU_MAC_DINH`); khối đồng bộ R1
   "theo mốc hiện tại" CHỈ lấy `khoa = 'R1:' || eo_item_id` (không sửa hạn lỗi lặp). `khoaViPham` R1 có ngày → `eo|R1|ngày`. Đơn PO `doi_tac_po` (cache `eo:ds-v3`),
   Giải trình hàng loạt `pages/eo/GiaiTrinhHangLoat.tsx`. Tên G5 "Chờ ngày DK", G6 "Chờ giao hàng".

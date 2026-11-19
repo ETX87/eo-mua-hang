@@ -21,7 +21,15 @@ interface R {
   so_lan_lui: number; so_loi: number; so_loi_cho_gt: number; ma_ceo: Ma[];
   ton: number | null; gd: string | null; qua_dk: number; thuc: number; thuc7: number; thuc_luc: string | null; phan_hoi: number; phan_hoi_luc: string | null; phan_hoi_tt: string | null;
   gt_nd: string | null; gt_luc: string | null; gt_ai_ma: string | null; gt_loi_ma: string | null; td_luc: string | null; td_loai: string | null; td_ai: string | null; im_lang: number | null; nhac: number;
+  /** v0.097 muc xu ly (backend lib/caCeo): TON_DONG dang vi pham · BO_QUA_GT tu dong qua 7 ngay chua giai trinh · DA_XU_LY da giai trinh / khac phuc */
+  muc_xu_ly: Muc; ly_do_xu_ly: string[]; so_gt_that: number; so_tu_dong_qua_han: number;
 }
+type Muc = "TON_DONG" | "BO_QUA_GT" | "DA_XU_LY";
+const MUC: Record<Muc, { l: string; ngan: string; mau: string; nen: string; icon: string; mo_ta: string }> = {
+  TON_DONG: { l: "Tồn đọng — chưa xử lý", ngan: "Tồn đọng", mau: "#B91C1C", nen: "#FEE2E2", icon: "🔴", mo_ta: "còn lỗi chờ giải trình / quá ngày DK / chưa có ngày DK / ≥ 7 ngày không ai tác động" },
+  BO_QUA_GT: { l: "Bỏ qua giải trình", ngan: "Bỏ qua GT", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "hết vi phạm đang chạy nhưng lỗi bị tự đóng do quá 7 ngày, chưa từng giải trình" },
+  DA_XU_LY: { l: "Đã xử lý / đã giải trình", ngan: "Đã xử lý", mau: "#15803D", nen: "#DCFCE7", icon: "🟢", mo_ta: "không còn vi phạm, đã giải trình hoặc đã khắc phục — chỉ còn chờ hàng" },
+};
 const MA_CEO: { ma: string; l: string; mau: string }[] = [
   { ma: "ER.MH-201", l: "Lùi ngày dự kiến ≥ 3 lần", mau: "#B91C1C" },
   { ma: "ER.MH-202", l: "Ngày dự kiến cách ngày đặt ≥ 30 ngày", mau: "#C2410C" },
@@ -32,14 +40,19 @@ export default function CaCeo() {
   const qv = useQuickView();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["ca-ceo"], queryFn: () => api.get<{ rows: R[]; quan_ly: boolean }>("/ca-ceo") });
+  const [muc, setMuc] = useState<Muc | "">("");
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
   const [ma, setMa] = useState("");
   const rows = q.data?.rows ?? [];
-  const ds = useMemo(() => (ma ? rows.filter((r) => r.ma_ceo.some((m) => m.ma === ma)) : rows), [rows, ma]);
+  const ds = useMemo(() => rows.filter((r) => (!ma || r.ma_ceo.some((m) => m.ma === ma)) && (!muc || r.muc_xu_ly === muc)), [rows, ma, muc]);
   if (q.isLoading) return <><PageHeader title="Ca tồn CEO" /><Spinner /></>;
 
   const cols: Col<R>[] = [
+    { key: "muc", header: "Mức xử lý", loc: "chon", gt: (r) => r.muc_xu_ly, nhanChon: (v) => MUC[v as Muc]?.ngan ?? v, gtSap: (r) => ({ TON_DONG: 3, BO_QUA_GT: 2, DA_XU_LY: 1 })[r.muc_xu_ly], maxW: 230,
+      render: (r) => <div title={r.ly_do_xu_ly.join("\n")}>
+        <span style={{ background: MUC[r.muc_xu_ly].nen, color: MUC[r.muc_xu_ly].mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{MUC[r.muc_xu_ly].icon} {MUC[r.muc_xu_ly].ngan}</span>
+        <div style={{ fontSize: 11.5, color: MUC[r.muc_xu_ly].mau, marginTop: 2 }}>{r.ly_do_xu_ly.slice(0, 2).join(" · ")}{r.ly_do_xu_ly.length > 2 ? " …" : ""}</div></div> },
     { key: "ma", header: "Mã CEO · lý do", loc: "chon", gt: (r) => r.ma_ceo.map((m) => m.ma), gtSap: (r) => r.ma_ceo.length, maxW: 280,
       render: (r) => <div style={{ display: "grid", gap: 3 }}>{r.ma_ceo.map((m) => (
         <span key={m.ma} title={`${m.ten}: ${m.gia_tri} (ngưỡng ${m.nguong})\n${m.chi_tiet.join("\n")}`} style={{ fontSize: 12 }}>
@@ -60,6 +73,7 @@ export default function CaCeo() {
     { key: "nhac", header: "Bị nhắc", loc: "so", gt: (r) => r.nhac, align: "right", render: (r) => r.nhac || <span className="muted">0</span> },
   ];
   const xuat = () => exportRowsToXlsx(ds, [
+    { header: "Mức xử lý", get: (r) => MUC[r.muc_xu_ly].l }, { header: "Lý do mức", get: (r) => r.ly_do_xu_ly.join("; ") },
     { header: "Mã CEO", get: (r) => r.ma_ceo.map((m) => m.ma).join(", ") }, { header: "Lý do", get: (r) => r.ma_ceo.map((m) => `${m.ten}: ${m.gia_tri}`).join("; ") },
     { header: "PO", get: (r) => r.po }, { header: "Mã LK", get: (r) => r.ma_lk }, { header: "Tên LK", get: (r) => r.ten_lk }, { header: "NCC", get: (r) => r.doi_tac },
     { header: "Kho", get: (r) => r.kho }, { header: "Người đặt", get: (r) => ten(r.nguoi_dat) }, { header: "Tồn (ngày)", get: (r) => r.ton },
@@ -72,8 +86,25 @@ export default function CaCeo() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <PageHeader title="Ca tồn CEO" />
+      {/* v0.097: 3 muc xu ly - bam = loc; tong = 100% ca CEO dang mo */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+        {(Object.keys(MUC) as Muc[]).map((k) => {
+          const x = rows.filter((r) => r.muc_xu_ly === k); const on = muc === k;
+          return (
+            <div key={k} onClick={() => setMuc(on ? "" : k)} title={on ? "Bấm lần nữa để bỏ lọc" : "Bấm để lọc"}
+              style={{ cursor: "pointer", background: on ? MUC[k].nen : "#fff", border: `2px solid ${on ? MUC[k].mau : "var(--border)"}`, borderLeft: `8px solid ${MUC[k].mau}`, borderRadius: 12, padding: "12px 14px" }}>
+              <div style={{ fontWeight: 800, color: MUC[k].mau, fontSize: 14 }}>{MUC[k].icon} {MUC[k].l}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 32, fontWeight: 900, color: x.length ? MUC[k].mau : "#94A3B8" }}>{soLuong(x.length)}</span>
+                <span className="muted" style={{ fontSize: 12.5 }}>ca · {new Set(x.map((r) => r.po)).size} PO · {rows.length ? Math.round((x.length / rows.length) * 100) : 0}%</span>
+              </div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{MUC[k].mo_ta}</div>
+            </div>
+          );
+        })}
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-        <O l="Dòng đang ở cấp CEO" v={rows.length} sub={`${new Set(rows.map((r) => r.eo_id)).size} PO · ${new Set(rows.map((r) => r.nguoi_dat)).size} người đặt`} on={!ma} onClick={() => setMa("")} />
+        <O l="Dòng đang ở cấp CEO" v={rows.length} sub={`${new Set(rows.map((r) => r.eo_id)).size} PO · ${new Set(rows.map((r) => r.nguoi_dat)).size} người đặt`} on={!ma && !muc} onClick={() => { setMa(""); setMuc(""); }} />
         {MA_CEO.map((m) => (
           <O key={m.ma} l={`${m.ma} · ${m.l}`} v={rows.filter((r) => r.ma_ceo.some((x) => x.ma === m.ma)).length} mau={m.mau} on={ma === m.ma} onClick={() => setMa(ma === m.ma ? "" : m.ma)} />
         ))}

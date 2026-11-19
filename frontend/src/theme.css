@@ -296,3 +296,6 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 /* v0.084 man Dieu hanh: cau ket luan bam duoc */
 .dh-cau { border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
 .dh-cau:hover { background: var(--panel-2); text-decoration: underline dotted; }
+
+/* v0.097 nut Tai lai: icon quay khi dang tai */
+@keyframes quay { to { transform: rotate(360deg); } }
