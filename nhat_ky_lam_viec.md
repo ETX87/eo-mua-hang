@@ -3,6 +3,14 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.101: Ô "Cấp CEO" ở màn Vi phạm đếm theo ca (khớp màn Ca tồn CEO)
+
+- Báo: màn Vi phạm ô "Cấp CEO" = 57, màn Ca tồn CEO = 15 ca — "2 số vẫn khác nhau gây khó hiểu".
+- Nguyên nhân: 2 đơn vị khác nhau — màn Vi phạm đếm VI PHẠM (chưa đóng) trên dòng cấp CEO, màn CEO đếm CA (PO + mã CEO).
+- Sửa: ô đổi tên "Ca CEO đang theo dõi", số lớn = số ca đang theo dõi (cùng hàm gộp `gomCa` chuyển sang `frontend/src/lib/caCeo.ts`, dùng chung 2 màn; "Của tôi" = ca có dòng
+  mình đặt); dòng phụ "n vi phạm trên các ca này" + link "Mở Ca tồn CEO →"; bấm ô vẫn lọc vi phạm như cũ. Dải tóm tắt: "x ca CEO (n vi phạm trên các ca này)".
+- Kiểm thử: typecheck; local với dữ liệu giả: màn CEO "Đang theo dõi (3 ca)" = ô màn Vi phạm 3.
+
 ## 19/11/2026 — v0.100: Gộp ca CEO theo PO + mã CEO, tab riêng "Đã xong"
 
 - Yêu cầu: "1. cảnh báo cấp CEO cũng gom vi phạm 2. Các ca lỗi CEO đã xong, tab riêng tab nhỏ trong tab CEO để tránh loãng."

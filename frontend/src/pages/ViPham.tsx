@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner, Modal } from "../components/ui";
@@ -14,6 +14,7 @@ import { GiaiTrinhModal, LichSuDong, NgayHangVeModal, QUY_TAC, TINH_TRANG, useDa
 import { GiaiTrinhNhieuModal, GiaiTrinhPoModal } from "./theodoi/GiaiTrinhPo";
 import { khoGon } from "../lib/kho";
 import { ChonNhieu } from "../components/ChonNhieu";
+import { gomCa, useCaCeo } from "../lib/caCeo";
 
 /**
  * "Vi phạm & giải trình" (/vi-pham) - theo doi rieng mang loi (backend routes/viPham.ts, migrations/0016).
@@ -73,7 +74,7 @@ const KPI_DEF: { k: string; l: string; sub: string; mau: string; loc: (l: L, d: 
   { k: "cho", l: "Chờ giải trình", sub: "lỗi chưa giải trình", mau: "#DC2626", loc: cho },
   { k: "qua_lau", l: "Quá lâu", sub: "chờ ≥ 3 ngày", mau: "#B45309", loc: (l) => l.qua_lau },
   { k: "lap", l: "Lặp liên tiếp", sub: "cùng lỗi ≥ 2 lần, chưa xử lý", mau: "#EA580C", loc: (l) => cho(l) && l.so_lan >= 2 },
-  { k: "ceo", l: "Cấp CEO", sub: "lỗi trên linh kiện cấp CEO", mau: "#7F1D1D", loc: (l) => l.ceo && l.tinh_trang !== "DONG" },
+  { k: "ceo", l: "Ca CEO đang theo dõi", sub: "ca (PO + mã CEO) — khớp màn Ca tồn CEO", mau: "#7F1D1D", loc: (l) => l.ceo && l.tinh_trang !== "DONG" },
   { k: "cao", l: "Mức cao trở lên", sub: "Cao + CEO, chưa giải trình", mau: "#991B1B", loc: (l) => cho(l) && (l.muc === "CAO" || l.muc === "CEO") },
   { k: "da_7", l: "Đã giải trình 7 ngày", sub: "kết quả xử lý gần đây", mau: "#15803D", loc: (l) => !cho(l) && !tuDong(l) && !!l.gt_luc && Date.now() - Date.parse(String(l.gt_luc).replace(" ", "T") + "+07:00") < 7 * 86400_000 },
 ];
@@ -85,6 +86,9 @@ export default function ViPham() {
   const dm = useDanhMuc();
   const q = useQuery({ queryKey: ["vi-pham"], queryFn: () => api.get<Data>("/vi-pham") });
   const d = q.data;
+  // v0.101: o "Ca CEO" dem CA (PO + ma CEO) dang theo doi - cung cach man Ca ton CEO (lib/caCeo gomCa), khong dem vi pham
+  const ceoQ = useCaCeo();
+  const caCeoDang = useMemo(() => gomCa(ceoQ.data?.rows ?? []).filter((c) => c.muc !== "DA_XONG"), [ceoQ.data]);
   const set = (k: string, v: string) => setSp((s) => { const n = new URLSearchParams(s); if (v) n.set(k, v); else n.delete(k); return n; }, { replace: true });
   const xem = sp.get("xem") || (d && !d.quan_ly && !d.tat_ca ? "cua_toi" : d?.quan_ly ? "tat_ca" : "cua_toi");
   const kieu = sp.get("kieu") || "loi";
@@ -131,6 +135,8 @@ export default function ViPham() {
 
   if (q.isLoading || !d) return <><PageHeader title="Vi phạm & giải trình" /><Spinner /></>;
   const dem = (k: string) => { const f = KPI_DEF.find((x) => x.k === k)!; return soVp(goc.filter((l) => f.loc(l, d))); };
+  // so ca CEO theo pham vi dang xem: "Cua toi" = ca co dong toi dat
+  const soCaCeo = (xem === "cua_toi" ? caCeoDang.filter((c) => c.dong.some((r) => r.nguoi_dat === d.me)) : caCeoDang).length;
   const choCua = goc.filter(cho);
   const soVpCho = soVp(choCua);
   const poCho = new Set(choCua.map((l) => l.eo_id)).size;
@@ -154,7 +160,7 @@ export default function ViPham() {
       ? <>Bạn có <b>{soVpCho} vi phạm chờ giải trình</b> trên <b>{poCho} PO</b>{dem("qua_lau") ? <> — <b style={{ color: "var(--danger-ink)" }}>{dem("qua_lau")} vi phạm đã quá {d.qua_lau_ngay} ngày</b></> : null}.
           {" "}Việc cần làm: bấm <b>Giải trình</b> ở từng lỗi, hoặc <b>Giải trình cả PO</b> khi các linh kiện cùng nguyên nhân. Lỗi để lâu / lặp lại sẽ bị nâng mức.</>
       : <>✓ Bạn không có lỗi nào chờ giải trình. Giữ ngày dự kiến cập nhật để không phát sinh lỗi mới.</>
-    : <>Toàn bộ{d.tat_ca ? "" : " (phạm vi của bạn)"}: <b>{soVpCho} vi phạm chờ</b> ({soDong(choCua)} dòng) · <b>{dem("qua_lau")} quá lâu</b> · <b>{dem("lap")} lặp liên tiếp</b> · <b>{dem("ceo")} trên dòng cấp CEO</b>. 1 vi phạm = cùng lỗi, cùng PO, cùng kỳ.
+    : <>Toàn bộ{d.tat_ca ? "" : " (phạm vi của bạn)"}: <b>{soVpCho} vi phạm chờ</b> ({soDong(choCua)} dòng) · <b>{dem("qua_lau")} quá lâu</b> · <b>{dem("lap")} lặp liên tiếp</b> · <b>{soCaCeo} ca CEO</b> ({dem("ceo")} vi phạm trên các ca này). 1 vi phạm = cùng lỗi, cùng PO, cùng kỳ.
         {d.quan_ly ? <> Việc cần làm: xem mức <b>Cao / CEO</b> trước, tick lỗi → <b>Nhắc nhở</b> người vi phạm; xem tab <b>Theo người</b> để biết ai vi phạm nhiều.</> : null}</>;
 
   const colsLoi: Col<Nhom>[] = [
@@ -295,13 +301,15 @@ export default function ViPham() {
       {/* 2. The so - bam de loc */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 12 }}>
         {KPI_DEF.map((k) => {
-          const n = dem(k.k); const on = kpi === k.k;
+          const n = k.k === "ceo" ? soCaCeo : dem(k.k); const on = kpi === k.k;
           return (
             <button key={k.k} onClick={() => set("kpi", on ? "" : k.k)} title={on ? "Bấm lần nữa để bỏ lọc" : "Bấm để lọc"}
               style={{ textAlign: "left", cursor: "pointer", border: `2px solid ${on ? k.mau : "var(--border)"}`, borderLeft: `6px solid ${k.mau}`, borderRadius: 12, background: on ? "#FFFBEB" : "#fff", padding: "10px 12px" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: k.mau }}>{k.l}</div>
               <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.15, color: n ? "var(--text)" : "#94A3B8" }} className="mono-num">{soLuong(n)}</div>
               <div className="muted" style={{ fontSize: 11 }}>{k.sub}</div>
+              {k.k === "ceo" && <div style={{ fontSize: 11, marginTop: 2 }}>
+                <b>{soLuong(dem("ceo"))}</b> vi phạm trên các ca này (bấm ô = lọc) · <Link to="/ca-ceo" onClick={(e) => e.stopPropagation()}>Mở Ca tồn CEO →</Link></div>}
             </button>
           );
         })}
