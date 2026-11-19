@@ -3,6 +3,15 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.099: Sửa bug màn Ca tồn CEO trắng trang
+
+- Báo lỗi: "bug: vào màn ceo bị trắng xóa".
+- Nguyên nhân: cache trình duyệt (v0.097) còn dữ liệu Ca CEO của bản trước (mức TON_DONG / BO_QUA_GT / DA_XU_LY); v0.098 đổi mức thành RAT_HOT / GIAM_HOT / DA_XONG
+  → `MUC[r.muc_xu_ly]` undefined → lỗi "reading 'nen'" → React gỡ cả cây → trắng trang. Tái hiện được ở local bằng cách ghi cache kiểu cũ.
+- Sửa: (1) cache trình duyệt gắn phiên bản app (`pb`), khác phiên bản → bỏ; (2) màn Ca CEO chịu giá trị mức lạ (`mucCua`); (3) khung bắt lỗi `components/KhungLoi.tsx`
+  bọc mọi màn — lỗi hiển thị → thông báo + nút "Xoá cache & tải lại", menu vẫn dùng được.
+- Kiểm thử: typecheck + build; local: cache kiểu cũ → màn hiện bình thường; cache hỏng hẳn → hiện khung lỗi thay vì trắng trang.
+
 ## 19/11/2026 — v0.098: Ca CEO theo độ hot (rất hot / giảm hot / đã xong)
 
 - Yêu cầu: "cấp CEO: 1. Đơn đã xong (không còn tồn hàng chờ) => bị tính lỗi CEO nhưng hàng đã về nên không còn hot 2. Đơn chưa xong (vẫn còn tồn hàng chờ và lỗi

@@ -1,4 +1,5 @@
 import { dehydrate, hydrate, type QueryClient } from "@tanstack/react-query";
+import { APP_VERSION } from "../version";
 
 /**
  * CACHE PHIA TRINH DUYET cho React Query (v0.097, yeu cau 2026-11-19 "mo app load rat cham… neu du lieu khong doi thi han che load lai moi lan mo web").
@@ -41,8 +42,9 @@ export async function xoaCacheTrinhDuyet() { await ghi(null); }
 
 /** Nap cache vao QueryClient truoc khi ve (toi da ~400ms - IndexedDB cham thi bo qua, ve binh thuong). */
 export async function napCache(qc: QueryClient): Promise<void> {
-  const v = await Promise.race([doc(), new Promise((ok) => setTimeout(() => ok(null), 400))]) as { luc: number; email: string; state: any } | null;
-  if (!v?.state || Date.now() - v.luc > TOI_DA_TUOI_MS) return;
+  const v = await Promise.race([doc(), new Promise((ok) => setTimeout(() => ok(null), 400))]) as { luc: number; email: string; state: any; pb?: string } | null;
+  // v0.099: cache cua PHIEN BAN KHAC (cau truc du lieu co the doi - bug man CEO trang v0.098) -> bo, tai moi
+  if (!v?.state || v.pb !== APP_VERSION || Date.now() - v.luc > TOI_DA_TUOI_MS) return;
   try { hydrate(qc, v.state); } catch { /* cache hong */ }
 }
 
@@ -65,7 +67,7 @@ export function batLuuCache(qc: QueryClient) {
       state.queries = state.queries.filter((x) => !["dieu-hanh", "vi-pham"].includes(String(x.queryKey[0])));
     }
     emailDaLuu = me.email;
-    ghi({ luc: Date.now(), email: me.email, state });
+    ghi({ luc: Date.now(), email: me.email, pb: APP_VERSION, state });
   };
   qc.getQueryCache().subscribe((e) => {
     if (e.type !== "updated" || e.action.type !== "success") return;

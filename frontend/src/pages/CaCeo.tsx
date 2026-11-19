@@ -30,6 +30,8 @@ const MUC: Record<Muc, { l: string; ngan: string; mau: string; nen: string; icon
   GIAM_HOT: { l: "Đang giảm hot", ngan: "Giảm hot", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "còn thiếu hàng + lỗi đã > 7 ngày (hệ thống tự đóng) hoặc đã giải trình bù" },
   DA_XONG: { l: "Đã xong — không còn hot", ngan: "Đã xong", mau: "#64748B", nen: "#F1F5F9", icon: "⚪", mo_ta: "hàng đã về đủ / kết thúc sớm — từng chạm ngưỡng CEO" },
 };
+/** gia tri muc la (du lieu ban cu / API doi) -> khong vo man */
+const mucCua = (k: string) => MUC[k as Muc] ?? { l: k, ngan: k, mau: "#64748B", nen: "#F1F5F9", icon: "•", mo_ta: "" };
 const MA_CEO: { ma: string; l: string; mau: string }[] = [
   { ma: "ER.MH-201", l: "Lùi ngày dự kiến ≥ 3 lần", mau: "#B91C1C" },
   { ma: "ER.MH-202", l: "Ngày dự kiến cách ngày đặt ≥ 30 ngày", mau: "#C2410C" },
@@ -51,8 +53,8 @@ export default function CaCeo() {
   const cols: Col<R>[] = [
     { key: "muc", header: "Mức xử lý", loc: "chon", gt: (r) => r.muc_xu_ly, nhanChon: (v) => MUC[v as Muc]?.ngan ?? v, gtSap: (r) => ({ RAT_HOT: 3, GIAM_HOT: 2, DA_XONG: 1 })[r.muc_xu_ly], maxW: 230,
       render: (r) => <div title={r.ly_do_xu_ly.join("\n")}>
-        <span style={{ background: MUC[r.muc_xu_ly].nen, color: MUC[r.muc_xu_ly].mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{MUC[r.muc_xu_ly].icon} {MUC[r.muc_xu_ly].ngan}</span>
-        <div style={{ fontSize: 11.5, color: MUC[r.muc_xu_ly].mau, marginTop: 2 }}>{r.ly_do_xu_ly.slice(0, 2).join(" · ")}{r.ly_do_xu_ly.length > 2 ? " …" : ""}</div></div> },
+        <span style={{ background: mucCua(r.muc_xu_ly).nen, color: mucCua(r.muc_xu_ly).mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{mucCua(r.muc_xu_ly).icon} {mucCua(r.muc_xu_ly).ngan}</span>
+        <div style={{ fontSize: 11.5, color: mucCua(r.muc_xu_ly).mau, marginTop: 2 }}>{r.ly_do_xu_ly.slice(0, 2).join(" · ")}{r.ly_do_xu_ly.length > 2 ? " …" : ""}</div></div> },
     { key: "ma", header: "Mã CEO · lý do", loc: "chon", gt: (r) => r.ma_ceo.map((m) => m.ma), gtSap: (r) => r.ma_ceo.length, maxW: 280,
       render: (r) => <div style={{ display: "grid", gap: 3 }}>{r.ma_ceo.map((m) => (
         <span key={m.ma} title={`${m.ten}: ${m.gia_tri} (ngưỡng ${m.nguong})\n${m.chi_tiet.join("\n")}`} style={{ fontSize: 12 }}>
@@ -73,7 +75,7 @@ export default function CaCeo() {
     { key: "nhac", header: "Bị nhắc", loc: "so", gt: (r) => r.nhac, align: "right", render: (r) => r.nhac || <span className="muted">0</span> },
   ];
   const xuat = () => exportRowsToXlsx(ds, [
-    { header: "Mức xử lý", get: (r) => MUC[r.muc_xu_ly].l }, { header: "Lý do mức", get: (r) => r.ly_do_xu_ly.join("; ") },
+    { header: "Mức xử lý", get: (r) => mucCua(r.muc_xu_ly).l }, { header: "Lý do mức", get: (r) => r.ly_do_xu_ly.join("; ") },
     { header: "Mã CEO", get: (r) => r.ma_ceo.map((m) => m.ma).join(", ") }, { header: "Lý do", get: (r) => r.ma_ceo.map((m) => `${m.ten}: ${m.gia_tri}`).join("; ") },
     { header: "PO", get: (r) => r.po }, { header: "Mã LK", get: (r) => r.ma_lk }, { header: "Tên LK", get: (r) => r.ten_lk }, { header: "NCC", get: (r) => r.doi_tac },
     { header: "Kho", get: (r) => r.kho }, { header: "Người đặt", get: (r) => ten(r.nguoi_dat) }, { header: "Tồn (ngày)", get: (r) => r.ton },

@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { KhungLoi } from "./components/KhungLoi";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api/client";
@@ -34,6 +35,7 @@ function ChuyenHuong({ to, them }: { to: string; them?: string }) {
 interface Me { email: string; ho_ten: string; vai_tro: string | null; trang_thai_duyet: string; }
 
 export default function App() {
+  const location = useLocation();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<Me>("/users/me") });
   // ten hien thi (uu tien ten ETX) cho moi Gmail - lib/format ten(); nap truoc khi ve man de khong nhay Gmail -> ten
   const daDuyet = me.data?.trang_thai_duyet === "Da duyet";
@@ -53,6 +55,7 @@ export default function App() {
     <QuickViewProvider>
     <AppShell>
       {/* v0.097: moi man tai code rieng khi mo (React.lazy) - lan mo dau khong phai tai code cua moi man */}
+      <KhungLoi key={location.pathname}>
       <Suspense fallback={<Spinner />}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -87,6 +90,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      </KhungLoi>
     </AppShell>
     </QuickViewProvider>
   );
