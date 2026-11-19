@@ -10,7 +10,7 @@ import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
 import { cachedReport } from "../lib/reportCache";
 import { layBoChuan, chuanHoaDong } from "../lib/chuanHoa";
-import { tomTatTheoPo, IM_LANG_DO, type DhPo, type GdPo } from "../lib/dieuHanh";
+import { tomTatTheoPo, IM_LANG_DO, VP_TT_TEN, type DhPo, type GdPo, type VpPo } from "../lib/dieuHanh";
 
 /** Doi tac / ly do PS khong nam trong danh muc chuan (migration 0020) -> 400 kem gia tri sai de FE bao ro. */
 const loiChuan = (loi: { loai: string; gia_tri: string }[]) => ({ error: "GIA_TRI_KHONG_CHUAN", loi });
@@ -39,6 +39,8 @@ interface DongEo {
   dh?: DhPo | null;
   /** so dong dang o tung giai doan (v0.086, cot Tien trinh) */
   gd?: GdPo | null;
+  /** trang thai vi pham theo PO (v0.104, cot "Vi phạm") - null = PO ngoai pham vi theo doi */
+  vp?: VpPo | null;
 }
 const boDau = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase();
 const tachDs = (s: string | null) => [...new Set(String(s ?? "").split("\u001f").map((x) => x.trim()).filter(Boolean))];
@@ -93,6 +95,7 @@ const CHIP_EO: Record<string, (r: DongEo, n: NguCanh) => boolean> = {
   po_do: (r) => (r.dh?.do ?? 0) > 0,
   po_im_lang: (r) => (r.dh?.im_lang ?? 0) >= IM_LANG_DO,
   po_loi_cho: (r) => (r.dh?.loi_cho ?? 0) > 0,
+  po_ceo: (r) => r.vp?.tt === "CEO",
 };
 /**
  * Cac MOC TIEN TRINH cua 1 PO (v0.088, loc cot "Tien trinh" - khop FE components/TienTrinhPo): PO chua ban hanh theo trang thai duyet;
@@ -134,6 +137,9 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   doi_tac_po: { kieu: "chon", gt: (r) => r.doi_tac_po },
   canh_bao: { kieu: "so", gt: (r) => r.dh?.do ?? null, sap: (r) => (r.dh ? r.dh.do * 10000 + r.dh.vang : null) },
   loi_cho: { kieu: "so", gt: (r) => r.dh?.loi_cho ?? null },
+  // v0.104: loc theo trang thai vi pham; sap: CEO > cho GT > da xu ly > khong, cung muc thi nhieu vi pham cho / tong truoc
+  vi_pham: { kieu: "chon", gt: (r) => (r.vp ? VP_TT_TEN[r.vp.tt] : ""),
+    sap: (r) => (r.vp ? ({ CEO: 3, CHO: 2, DA_XL: 1, KHONG: 0 }[r.vp.tt] * 1e8 + r.vp.ceo * 1e6 + r.vp.cho * 1e3 + r.vp.tong) : null) },
   thuc: { kieu: "so", gt: (r) => r.dh?.thuc7 ?? null, sap: (r) => (r.dh ? r.dh.thuc7 * 100000 + r.dh.thuc : null) },
   im_lang: { kieu: "so", gt: (r) => r.dh?.im_lang ?? null },
 };
@@ -164,9 +170,9 @@ async function nguCanh(c: any): Promise<NguCanh> {
 async function dsEoDh(env: Env): Promise<DongEo[]> {
   const [ds, dh] = await Promise.all([
     cachedReport(env.DB, "eo:ds-v3", ["eo", "amis"], () => dsEo(env)), // v3 (v0.095): doi_tac_po
-    tomTatTheoPo(env).catch((e) => { console.error("dieuHanh", e); return { dh: new Map<number, DhPo>(), gd: new Map<number, GdPo>() }; }),
+    tomTatTheoPo(env).catch((e) => { console.error("dieuHanh", e); return { dh: new Map<number, DhPo>(), gd: new Map<number, GdPo>(), vp: new Map<number, VpPo>() }; }),
   ]);
-  return ds.map((r) => ({ ...r, dh: dh.dh.get(r.id) ?? null, gd: dh.gd.get(r.id) ?? null }));
+  return ds.map((r) => ({ ...r, dh: dh.dh.get(r.id) ?? null, gd: dh.gd.get(r.id) ?? null, vp: dh.vp.get(r.id) ?? null }));
 }
 
 app.get("/dem", async (c) => {

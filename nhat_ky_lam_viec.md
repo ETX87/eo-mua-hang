@@ -3,6 +3,23 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.104: Cột Vi phạm ở Đơn PO + màn "Việc của tôi"
+
+- Yêu cầu: "trong danh sách đơn PO, thêm cột trạng thái vi phạm của PO (CEO hay mấy vi phạm, đang chờ giải trình...)" và "2. Với vai trò 1 nhân viên,
+  làm sao tôi xác định được việc cần làm, như vào đâu để thêm ngày dự kiến trước khi bị tính lỗi, vào đâu để push mail nhắc nhở? đơn giản dễ hiểu,
+  nhìn cái hiểu phải làm gì luôn".
+- Cột **Vi phạm** (Đơn PO): `lib/dieuHanh.ts` `viPhamTheoPo` (trong `tomTatTheoPo`, ghi nhớ ≤ 5 phút) dùng `dsLoiDayDu` + khoá `vp_khoa` như màn Vi phạm
+  (cả dòng đã đóng) + số dòng đang cấp CEO → `vp { tt, tong, cho, da_gt, tu_dong, ceo, cao }`. `routes/eo.ts`: cột lọc / sắp `vi_pham`, chip `po_ceo`.
+  FE thay cột "Lỗi chờ GT" (chỉ dòng mở) bằng cột Vi phạm; Excel thêm 6 cột vi phạm.
+- Màn **Việc của tôi** (`/viec-cua-toi`, menu đầu tiên, số đỏ = việc LK cần xử lý): `routes/viecCuaToi.ts` + `pages/ViecCuaToi.tsx` — 4 mục có hạn
+  "Còn / Trễ … giờ làm việc" và 1 nút: ① nhập ngày dự kiến (mở form NgayHangVeModal) · ② push NCC thứ 2/4 gom theo NCC (✉ Soạn mail Gmail điền sẵn
+  CC theodoimuahang@gmail.com + tiêu đề mã PO + bảng mã LK, 📋 chép nội dung cho Outlook, 📞 Đã nhắc gọi/Zalo) · ③ quá ngày DK nhập ngày mới ·
+  ④ giải trình (hạn tự đóng). Việc cần xử lý "Linh kiện đặt cần xử lý" trỏ về màn này. Hướng dẫn HTML người đặt hàng thêm hộp "Mỗi sáng mở Việc của tôi".
+- Kiểm thử: typecheck + build; local: cột Vi phạm EO-000001 = 8, EO-000008 = 7 (khớp màn Vi phạm), giả lập 1 lỗi chờ → "Chờ giải trình", lọc chọn đúng 1 PO,
+  sắp `vi_pham:desc`, chip `po_ceo` (0) chạy, trả lại dữ liệu; Việc của tôi (tạm mở phạm vi theo dõi local) → 7 dòng quá ngày DK xếp theo hạn
+  ("Trễ 29 ngày LV"), nút mở đúng form nhập ngày, menu số đỏ 7; trả lại cài đặt, không phát sinh lỗi / nhắc nhở. Chưa thử mục push với dữ liệu
+  (hôm nay thứ 5 — chỉ hiện thứ 2/4).
+
 ## 19/11/2026 — v0.103: Mọi SLA / hạn giải trình theo giờ làm việc
 
 - Yêu cầu: "chuyển đổi toàn bộ sla, hạn giải trình theo mốc giờ làm việc. 24h = 8h làm việc. bỏ qua CN + nửa thứ 7 = 8h + 4h".

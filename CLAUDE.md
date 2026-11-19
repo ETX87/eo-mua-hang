@@ -358,6 +358,13 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
 
+## Việc của tôi + cột Vi phạm Đơn PO (v0.104)
+
+- `/viec-cua-toi` (menu đầu tiên): `routes/viecCuaToi.ts` (dòng `layDongTheoDoi('dang_mo')` lọc của tôi như viecCanLam; 4 nhóm ndk / push / ngay_moi /
+  giai_trinh kèm `han` + `con_gio` giờ LV) + `pages/ViecCuaToi.tsx` (dùng lại NgayHangVeModal / GiaiTrinhModal / LienHeDoiTacModal). Mail push = link Gmail
+  `mail.google.com/mail/?view=cm` (CC hộp theo dõi, tiêu đề có mã 3TDO, thân có mã LK) — người dùng tự gửi. viecCanLam `theo_doi.to` = `/viec-cua-toi`.
+- Cột Vi phạm Đơn PO: `viPhamTheoPo` (lib/dieuHanh) — PHẢI cùng cách đếm với màn Vi phạm (dsLoiDayDu + vp_khoa + trangThaiViPham).
+
 ## Giờ làm việc (v0.103) — `backend/src/lib/gioLamViec.ts`
 
 MỌI SLA / hạn (R1, R4, 8 giai đoạn, hạn giải trình tự đóng, mức độ vi phạm, Điều hành lỗi chờ, ca CEO) dùng `congGioLV` / `demGioLV`:

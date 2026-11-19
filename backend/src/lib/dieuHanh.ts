@@ -7,6 +7,7 @@ import { weekStart } from "./week";
 import { versionTag } from "./dataVersions";
 import { VP_SQL } from "./maLoi";
 import { demGioLV } from "./gioLamViec";
+import { dsLoiDayDu, trangThaiViPham } from "./baoCaoLoi";
 
 /**
  * BANG DIEU HANH (v0.084, yeu cau lanh dao 2026-11-18 - ../QUAN_TRI_DIEU_HANH.md): ghep "ton <-> nguoi <-> hanh dong <-> nguyen nhan"
@@ -205,7 +206,14 @@ export interface DhPo { do: number; vang: number; qua_dk: number; chua_dk: numbe
   thuc_luc: string | null; im_lang: number; td_luc: string | null; td_loai: string | null; td_ai: string | null; ly_do: string[]; mo: number }
 /** Giai doan theo PO (cot "Tien trinh" o Don PO, v0.086): so dong DANG O tung giai doan (G1..G8 / XONG / HUY) + so dong dang tre han. */
 export interface GdPo { dem: Record<string, number>; tre: Record<string, number> }
-export interface TomTatPo { dh: Map<number, DhPo>; gd: Map<number, GdPo> }
+/**
+ * Trang thai VI PHAM theo PO (cot "Vi phạm" o Don PO, v0.104): dem VI PHAM GOP (khoa vp_khoa, giong man Vi pham - lib/baoCaoLoi dsLoiDayDu,
+ * ca dong da dong) + so dong DANG cap CEO. tt uu tien: CEO > CHO (con vi pham cho giai trinh) > DA_XL (da giai trinh / tu dong het) > KHONG.
+ * Chi PO trong pham vi theo doi (PO ngoai pham vi khong co ban ghi -> FE hien "—").
+ */
+export interface VpPo { tt: "CEO" | "CHO" | "DA_XL" | "KHONG"; tong: number; cho: number; da_gt: number; tu_dong: number; ceo: number; cao: number }
+export const VP_TT_TEN: Record<VpPo["tt"], string> = { CEO: "Cấp CEO", CHO: "Chờ giải trình", DA_XL: "Đã xử lý", KHONG: "Không vi phạm" };
+export interface TomTatPo { dh: Map<number, DhPo>; gd: Map<number, GdPo>; vp: Map<number, VpPo> }
 let memoPo: { tag: string; luc: number; v: TomTatPo } | null = null;
 /** Ghi nho trong isolate <= 5 phut khi version du lieu khong doi (phan "bay gio" thay doi cham: theo gio / ngay) - danh sach Don PO goi moi lan. */
 export async function tomTatTheoPo(env: Env): Promise<TomTatPo> {
@@ -242,7 +250,26 @@ async function tinhTheoPo(env: Env): Promise<TomTatPo> {
     m.set(d.eo, x);
   }
   for (const k of vpPo) { const x = m.get(Number(k.split("#")[0])); if (x) x.loi_cho += 1; }
-  return { dh: m, gd };
+  return { dh: m, gd, vp: await viPhamTheoPo(env) };
+}
+
+/** VpPo cho moi PO trong pham vi theo doi (cung nguon so voi man Vi pham: dsLoiDayDu + gom theo vp_khoa). */
+async function viPhamTheoPo(env: Env): Promise<Map<number, VpPo>> {
+  const [{ rows }, dongTd] = await Promise.all([dsLoiDayDu(env), layDongTheoDoi(env, "tat_ca")]);
+  const out = new Map<number, VpPo>();
+  const lay = (eo: number) => { let x = out.get(eo); if (!x) { x = { tt: "KHONG", tong: 0, cho: 0, da_gt: 0, tu_dong: 0, ceo: 0, cao: 0 }; out.set(eo, x); } return x; };
+  for (const d of dongTd) { const x = lay(d.eo_id); if (d.ceo_ly_do.length) x.ceo += 1; }
+  const gom = new Map<string, any[]>();
+  for (const l of rows) gom.set(l.vp_khoa, [...(gom.get(l.vp_khoa) ?? []), l]);
+  for (const ds of gom.values()) {
+    const x = lay(ds[0].eo_id);
+    x.tong += 1;
+    const t = trangThaiViPham(ds);
+    if (t === "CHO") { x.cho += 1; if (ds.some((l) => l.trang_thai === "CHO_GIAI_TRINH" && (l.muc === "CAO" || l.muc === "CEO"))) x.cao += 1; }
+    else if (t === "DA_GT") x.da_gt += 1; else x.tu_dong += 1;
+  }
+  for (const x of out.values()) x.tt = x.ceo ? "CEO" : x.cho ? "CHO" : x.tong ? "DA_XL" : "KHONG";
+  return out;
 }
 
 /** Nguoi / NCC chiu trach nhiem 1 giai doan (quy trach nhiem tre SLA + dang o). */

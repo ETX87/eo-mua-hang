@@ -13,6 +13,8 @@ export interface NavItem {
 }
 
 export const NAV: NavItem[] = [
+  // Viec cua toi (v0.104): nhan vien nhin 1 lan biet phai lam gi truoc han nao - backend routes/viecCuaToi.ts (so do = viecCanLam theo_doi)
+  { to: "/viec-cua-toi", label: "Việc của tôi", icon: "check" },
   { to: "/", label: "Tổng quan", icon: "home" },
   // Dieu hanh (v0.084, ../QUAN_TRI_DIEU_HANH.md): ton <-> nguoi <-> hanh dong <-> nguyen nhan cho lanh dao - backend routes/dieuHanh.ts
   { to: "/dieu-hanh", label: "Điều hành", icon: "trend" },

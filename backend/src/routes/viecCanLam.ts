@@ -93,7 +93,7 @@ app.get("/", async (c) => {
       chiTiet.push({ label: "Cần push đối tác hôm nay", count: chuaNhac.length });
       chuaNhac.forEach((id) => viec.add(id));
     }
-    if (viec.size) out.push({ key: "theo_doi", to: "/don-hang?nhom=can_xl", label: "Linh kiện đặt cần xử lý", count: viec.size, chi_tiet: chiTiet.filter((x) => x.count > 0) });
+    if (viec.size) out.push({ key: "theo_doi", to: "/viec-cua-toi", label: "Linh kiện đặt cần xử lý", count: viec.size, chi_tiet: chiTiet.filter((x) => x.count > 0) });
     // v0.100: dem CA CEO = PO + loai ly do (gop dong) - khop man Ca ton CEO (lib/caCeo gomCaCeo)
     const ceo = rows.filter((r) => r.ceo_ly_do.length > 0);
     const caCua = (f: (x: string) => boolean) => new Set(ceo.filter((r) => r.ceo_ly_do.some(f)).map((r) => r.eo_id)).size;

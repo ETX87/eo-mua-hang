@@ -28,7 +28,16 @@ interface EoRow {
   doi_tac_po?: string | null;
   /** so dong dang o tung giai doan (backend lib/dieuHanh, v0.086) - cot Tien trinh */
   gd?: GdPo | null;
+  /** trang thai vi pham theo PO (backend lib/dieuHanh VpPo, v0.104) - dem vi pham GOP nhu man Vi pham; null = PO ngoai pham vi theo doi */
+  vp?: { tt: "CEO" | "CHO" | "DA_XL" | "KHONG"; tong: number; cho: number; da_gt: number; tu_dong: number; ceo: number; cao: number } | null;
 }
+
+const VP_TT: Record<string, { l: string; nen: string; mau: string }> = {
+  CEO: { l: "🔴 Cấp CEO", nen: "#FEE2E2", mau: "#B91C1C" }, CHO: { l: "Chờ giải trình", nen: "#FFEDD5", mau: "#C2410C" },
+  DA_XL: { l: "Đã xử lý", nen: "#ECFDF5", mau: "#047857" }, KHONG: { l: "✓ Không vi phạm", nen: "transparent", mau: "var(--ok-ink)" },
+};
+const vpTomTat = (v: NonNullable<EoRow["vp"]>) => [v.ceo ? `${v.ceo} dòng cấp CEO` : "", v.tong ? `${v.tong} vi phạm` : "", v.cho ? `${v.cho} chờ giải trình` : "",
+  v.da_gt ? `${v.da_gt} đã giải trình` : "", v.tu_dong ? `${v.tu_dong} tự đóng` : ""].filter(Boolean).join(" · ");
 
 /** Bo loc da luu CA NHAN (v0.086) - luu tren may nguoi dung (localStorage), khong dong bo giua cac may. 1 bo loc co the dat "mac dinh khi mo". */
 interface LocLuu { l: string; chip: string; q: string; loc: LocCot; sap: SapCot; kho: string; doiTac: string; lyDo: string }
@@ -53,6 +62,7 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 56h làm việc / im lặng ≥ 7 ngày" },
   { k: "po_im_lang", l: "PO im lặng ≥ 7 ngày", title: "Có dòng đang mở 7 ngày không ai tác động (cập nhật kế hoạch, push, mail NCC, gọi/Zalo, giải trình)" },
   { k: "po_loi_cho", l: "PO có lỗi chờ giải trình" },
+  { k: "po_ceo", l: "PO cấp CEO", mau: "#B91C1C", title: "PO có dòng đang ở cấp CEO (lùi ngày DK ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi)" },
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
 const CHIP_MAC_DINH = "con_ton";
@@ -81,6 +91,10 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Dòng vàng", get: (r) => r.dh?.vang ?? "" },
   { header: "Lý do đỏ", get: (r) => r.dh?.ly_do.join("; ") ?? "" },
   { header: "Lỗi chờ GT", get: (r) => r.dh?.loi_cho ?? "" },
+  { header: "Trạng thái vi phạm", get: (r) => (r.vp ? VP_TT[r.vp.tt].l.replace(/^\S+ /, "") : "") },
+  { header: "Số vi phạm", get: (r) => r.vp?.tong ?? "" }, { header: "Vi phạm chờ giải trình", get: (r) => r.vp?.cho ?? "" },
+  { header: "Vi phạm đã giải trình", get: (r) => r.vp?.da_gt ?? "" }, { header: "Vi phạm tự đóng", get: (r) => r.vp?.tu_dong ?? "" },
+  { header: "Dòng cấp CEO", get: (r) => r.vp?.ceo ?? "" },
   { header: "Thúc NCC 7 ngày", get: (r) => r.dh?.thuc7 ?? "" },
   { header: "Im lặng (ngày)", get: (r) => r.dh?.im_lang ?? "" },
   { header: "Hoạt động cuối", get: (r) => (r.dh?.td_luc ? `${r.dh.td_loai} · ${ten(r.dh.td_ai)} · ${ngayGio(r.dh.td_luc)}` : "") },
@@ -158,7 +172,23 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           {(r.dh.qua_dk > 0 || r.dh.ceo > 0) && <div className="muted" style={{ fontSize: 10.5, width: "100%" }}>{r.dh.qua_dk ? `quá DK ${r.dh.qua_dk}` : ""}{r.dh.qua_dk && r.dh.ceo ? " · " : ""}{r.dh.ceo ? `CEO ${r.dh.ceo}` : ""}</div>}
         </span>),
     },
-    { key: "loi_cho", header: "Lỗi chờ GT", loc: "so", align: "right", render: (r) => r.dh?.loi_cho ? <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.dh.loi_cho)}</b> : <span className="muted">{r.dh ? "0" : "—"}</span> },
+    {
+      // v0.104: trang thai VI PHAM cua PO (CEO / cho giai trinh / da xu ly / khong) + so vi pham gop - cung cach dem voi man Vi pham
+      key: "vi_pham", header: "Vi phạm", loc: "chon", maxW: 170, render: (r) => {
+        if (!r.vp) return <span className="muted" title="PO ngoài phạm vi theo dõi vi phạm">—</span>;
+        const m = VP_TT[r.vp.tt];
+        return (
+          <span title={vpTomTat(r.vp) || "Chưa có vi phạm"} style={{ display: "inline-block", lineHeight: 1.35 }}>
+            <span style={{ background: m.nen, color: m.mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: r.vp.tt === "KHONG" ? 0 : "1px 6px", whiteSpace: "nowrap" }}>
+              {m.l}{r.vp.tt === "CEO" && r.vp.ceo > 1 ? ` · ${r.vp.ceo} dòng` : ""}</span>
+            {r.vp.tong > 0 && <div style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+              <b>{soLuong(r.vp.tong)}</b> vi phạm{r.vp.cho > 0 && <> · <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.vp.cho)} chờ GT</b></>}
+              {r.vp.cho === 0 && <span className="muted"> · {[r.vp.da_gt ? `${r.vp.da_gt} đã GT` : "", r.vp.tu_dong ? `${r.vp.tu_dong} tự đóng` : ""].filter(Boolean).join(" · ")}</span>}
+            </div>}
+          </span>
+        );
+      },
+    },
     {
       key: "thuc", header: "Thúc NCC", loc: "so", align: "right", render: (r) => !r.dh ? <span className="muted">—</span> : (
         <span title={`Push + mail gửi NCC + gọi/Zalo: 7 ngày ${r.dh.thuc7} · tổng ${r.dh.thuc}${r.dh.thuc_luc ? ` · lần cuối ${ngayGio(r.dh.thuc_luc)}` : ""}`}>
@@ -201,7 +231,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   ];
 
   // v0.084 (yeu cau lanh dao): cot trang thai / canh bao / hanh dong dat sat ma PO - nhin ngay khong can cuon ngang; thong tin phu ra sau
-  const THU_TU_COT = ["eo_code", "doi_tac_po", "trang_thai", "canh_bao", "ton", "pct", "loi_cho", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
+  const THU_TU_COT = ["eo_code", "doi_tac_po", "trang_thai", "vi_pham", "canh_bao", "ton", "pct", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
   cols.sort((a, b) => (THU_TU_COT.indexOf(a.key) + 1 || 99) - (THU_TU_COT.indexOf(b.key) + 1 || 99));
 
   const datChip = (k: string) => { setChip(k); setOffset(0); };

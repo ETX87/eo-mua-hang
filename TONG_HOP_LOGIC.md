@@ -63,6 +63,12 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
   đồng bộ qua hộp thư theo dõi (khớp dòng hoặc mã push); tạo đợt / tải Excel / bản nháp chưa tính.
 - **Nút "Tạo mail nhắc" đang tạm tắt** (v0.088, cờ `BAT_TAO_MAIL_NHAC` ở `pages/theodoi/shared.tsx`): người mua tự soạn mail cho NCC, CC
   hộp theo dõi + ghi mã 3TDO / mã LK. API tạo đợt push và luồng đồng bộ mail giữ nguyên.
+- **Việc của tôi** (v0.104, `/viec-cua-toi`, `routes/viecCuaToi.ts`): dòng LK của tôi (người đặt / kho phụ trách; người xem toàn bộ có nút "Toàn bộ")
+  chia 4 việc có hạn giờ làm việc + 1 nút: ① chưa có ngày DK (hạn R1) · ② thứ 2/4 chưa nhắc NCC trong kỳ (hạn 23:59; nút soạn mail Gmail có CC hộp
+  theo dõi + mã 3TDO + mã LK, hoặc 📞 Đã nhắc) · ③ quá ngày DK (hạn R4) · ④ có lỗi chờ giải trình (hạn tự đóng = lỗi sớm nhất + 56h LV).
+  Số đỏ menu = mục "Linh kiện đặt cần xử lý" của Việc cần xử lý (trỏ về màn này).
+- **Cột Vi phạm ở Đơn PO** (v0.104): đếm vi phạm gộp của PO giống màn Vi phạm (kể cả dòng đã đóng) → trạng thái Cấp CEO (có dòng đang cấp CEO) >
+  Chờ giải trình > Đã xử lý (đã giải trình / tự đóng hết) > Không vi phạm; kèm số vi phạm / chờ / đã GT / tự đóng. Chip "PO cấp CEO".
 - Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ giải trình ≥ 56 giờ làm việc) / TB (lặp 2 hoặc chờ ≥ 24 giờ làm việc) / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
 - Nhắc nhở: hệ thống tự nhắc khi ghi lỗi mới; quản lý nhắc tay.
 
