@@ -3,6 +3,16 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.098: Ca CEO theo độ hot (rất hot / giảm hot / đã xong)
+
+- Yêu cầu: "cấp CEO: 1. Đơn đã xong (không còn tồn hàng chờ) => bị tính lỗi CEO nhưng hàng đã về nên không còn hot 2. Đơn chưa xong (vẫn còn tồn hàng chờ và lỗi
+  ghi nhận > 7 ngày hoặc đã giải trình bù) => … đang giảm hot 3. Đơn chưa xử lý (vẫn còn tồn hàng chờ và lỗi ghi nhận <=7 ngày vẫn chưa giải trình bù) => … đang
+  rất hot. vì 7 ngày là ngày chúng ta chốt việc tự động bỏ qua việc giải trình các ca cũ".
+- `lib/caCeo.ts`: thay 3 mức v0.097 bằng RAT_HOT (còn thiếu + lỗi chờ giải trình — luôn ≤ 7 ngày vì quá 7 ngày hệ thống tự đóng) · GIAM_HOT (còn thiếu + lỗi
+  > 7 ngày tự đóng / đã giải trình bù) · DA_XONG (về đủ / kết thúc sớm). Thêm ca ĐÃ ĐÓNG từng chạm ngưỡng CEO (tính lại 3 ngưỡng: lùi ≥ 3, ngày DK cách ngày đặt
+  ≥ 30, ≥ 3 lỗi; chỉ dòng áp dụng quy tắc; bỏ dòng hủy). Màn Ca tồn CEO + API đọc theo 3 mức mới.
+- Kiểm thử: typecheck + build; API local trả đủ 3 mức; số liệu thật kiểm tra sau deploy qua API đọc.
+
 ## 19/11/2026 — v0.097: Ca tồn CEO chia 3 mức xử lý + tăng tốc mở app (cache trình duyệt / server, tách mã, nút Tải lại)
 
 - Yêu cầu: "với đơn vi phạm CEO, tôi cần tách được đơn CEO nhưng các vi phạm vẫn chưa được xử lý => … trong 150 ca này bao nhiêu ca vẫn đang tồn đọng, bao nhiêu

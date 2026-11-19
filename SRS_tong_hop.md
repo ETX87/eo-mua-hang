@@ -50,7 +50,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Hướng dẫn sử dụng HTML theo vai trò ở `/huong-dan/` (nút 📘 Hướng dẫn), có ảnh minh hoạ thao tác.
 - Đơn PO có cột Đối tác (1 tên / "Nhiều đối tác") và nút Giải trình hàng loạt cho các PO đang lọc (tick vi phạm cùng loại → giải trình chung).
 - R1 chưa có ngày dự kiến được ghi lại mỗi thứ 3 / thứ 6 tới khi có ngày dự kiến. Tên giai đoạn: G5 "Chờ ngày DK", G6 "Chờ giao hàng".
-- Ca tồn CEO chia 3 mức xử lý (tồn đọng / bỏ qua giải trình / đã xử lý) có màu, số đếm, lọc; API đọc trả kèm mức.
+- Ca CEO chia 3 mức độ hot (rất hot / giảm hot / đã xong, gồm cả ca đã về đủ) có màu, số đếm, lọc; API đọc trả kèm mức.
 - Hiệu năng: mở lại app hiện ngay dữ liệu lần trước (cache trình duyệt), tự cập nhật nền; mã tải theo màn; có nút Tải lại dữ liệu thủ công.
 - Số lỗi / vi phạm luôn đếm theo **vi phạm gộp** (cùng lỗi, cùng PO, cùng kỳ), kèm số dòng bị ảnh hưởng; giải trình 1 lần cho cả vi phạm.
 - Bảng mã lỗi (`/ma-loi`): mỗi mã có tên, diễn giải lỗi gì, yêu cầu giải trình, khi nào tự giải trình, số lượng đang đếm.

@@ -21,14 +21,14 @@ interface R {
   so_lan_lui: number; so_loi: number; so_loi_cho_gt: number; ma_ceo: Ma[];
   ton: number | null; gd: string | null; qua_dk: number; thuc: number; thuc7: number; thuc_luc: string | null; phan_hoi: number; phan_hoi_luc: string | null; phan_hoi_tt: string | null;
   gt_nd: string | null; gt_luc: string | null; gt_ai_ma: string | null; gt_loi_ma: string | null; td_luc: string | null; td_loai: string | null; td_ai: string | null; im_lang: number | null; nhac: number;
-  /** v0.097 muc xu ly (backend lib/caCeo): TON_DONG dang vi pham · BO_QUA_GT tu dong qua 7 ngay chua giai trinh · DA_XU_LY da giai trinh / khac phuc */
+  /** v0.098 do hot (backend lib/caCeo): RAT_HOT con thieu + loi <= 7 ngay chua giai trinh · GIAM_HOT con thieu + loi > 7 ngay / da giai trinh bu · DA_XONG hang ve du / phuc */
   muc_xu_ly: Muc; ly_do_xu_ly: string[]; so_gt_that: number; so_tu_dong_qua_han: number;
 }
-type Muc = "TON_DONG" | "BO_QUA_GT" | "DA_XU_LY";
+type Muc = "RAT_HOT" | "GIAM_HOT" | "DA_XONG";
 const MUC: Record<Muc, { l: string; ngan: string; mau: string; nen: string; icon: string; mo_ta: string }> = {
-  TON_DONG: { l: "Tồn đọng — chưa xử lý", ngan: "Tồn đọng", mau: "#B91C1C", nen: "#FEE2E2", icon: "🔴", mo_ta: "còn lỗi chờ giải trình / quá ngày DK / chưa có ngày DK / ≥ 7 ngày không ai tác động" },
-  BO_QUA_GT: { l: "Bỏ qua giải trình", ngan: "Bỏ qua GT", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "hết vi phạm đang chạy nhưng lỗi bị tự đóng do quá 7 ngày, chưa từng giải trình" },
-  DA_XU_LY: { l: "Đã xử lý / đã giải trình", ngan: "Đã xử lý", mau: "#15803D", nen: "#DCFCE7", icon: "🟢", mo_ta: "không còn vi phạm, đã giải trình hoặc đã khắc phục — chỉ còn chờ hàng" },
+  RAT_HOT: { l: "Rất hot — chưa xử lý", ngan: "Rất hot", mau: "#B91C1C", nen: "#FEE2E2", icon: "🔴", mo_ta: "còn thiếu hàng + có lỗi ghi nhận ≤ 7 ngày chưa giải trình" },
+  GIAM_HOT: { l: "Đang giảm hot", ngan: "Giảm hot", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "còn thiếu hàng + lỗi đã > 7 ngày (hệ thống tự đóng) hoặc đã giải trình bù" },
+  DA_XONG: { l: "Đã xong — không còn hot", ngan: "Đã xong", mau: "#64748B", nen: "#F1F5F9", icon: "⚪", mo_ta: "hàng đã về đủ / kết thúc sớm — từng chạm ngưỡng CEO" },
 };
 const MA_CEO: { ma: string; l: string; mau: string }[] = [
   { ma: "ER.MH-201", l: "Lùi ngày dự kiến ≥ 3 lần", mau: "#B91C1C" },
@@ -49,7 +49,7 @@ export default function CaCeo() {
   if (q.isLoading) return <><PageHeader title="Ca tồn CEO" /><Spinner /></>;
 
   const cols: Col<R>[] = [
-    { key: "muc", header: "Mức xử lý", loc: "chon", gt: (r) => r.muc_xu_ly, nhanChon: (v) => MUC[v as Muc]?.ngan ?? v, gtSap: (r) => ({ TON_DONG: 3, BO_QUA_GT: 2, DA_XU_LY: 1 })[r.muc_xu_ly], maxW: 230,
+    { key: "muc", header: "Mức xử lý", loc: "chon", gt: (r) => r.muc_xu_ly, nhanChon: (v) => MUC[v as Muc]?.ngan ?? v, gtSap: (r) => ({ RAT_HOT: 3, GIAM_HOT: 2, DA_XONG: 1 })[r.muc_xu_ly], maxW: 230,
       render: (r) => <div title={r.ly_do_xu_ly.join("\n")}>
         <span style={{ background: MUC[r.muc_xu_ly].nen, color: MUC[r.muc_xu_ly].mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{MUC[r.muc_xu_ly].icon} {MUC[r.muc_xu_ly].ngan}</span>
         <div style={{ fontSize: 11.5, color: MUC[r.muc_xu_ly].mau, marginTop: 2 }}>{r.ly_do_xu_ly.slice(0, 2).join(" · ")}{r.ly_do_xu_ly.length > 2 ? " …" : ""}</div></div> },
@@ -104,15 +104,15 @@ export default function CaCeo() {
         })}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-        <O l="Dòng đang ở cấp CEO" v={rows.length} sub={`${new Set(rows.map((r) => r.eo_id)).size} PO · ${new Set(rows.map((r) => r.nguoi_dat)).size} người đặt`} on={!ma && !muc} onClick={() => { setMa(""); setMuc(""); }} />
+        <O l="Tổng ca từng chạm cấp CEO" v={rows.length} sub={`${new Set(rows.map((r) => r.eo_id)).size} PO · ${new Set(rows.map((r) => r.nguoi_dat)).size} người đặt`} on={!ma && !muc} onClick={() => { setMa(""); setMuc(""); }} />
         {MA_CEO.map((m) => (
           <O key={m.ma} l={`${m.ma} · ${m.l}`} v={rows.filter((r) => r.ma_ceo.some((x) => x.ma === m.ma)).length} mau={m.mau} on={ma === m.ma} onClick={() => setMa(ma === m.ma ? "" : m.ma)} />
         ))}
-        <O l="Không thúc NCC 7 ngày" v={rows.filter((r) => !r.thuc7).length} mau="#B91C1C" sub="trong số ca CEO" />
+        <O l="Không thúc NCC 7 ngày" v={rows.filter((r) => r.muc_xu_ly !== "DA_XONG" && !r.thuc7).length} mau="#B91C1C" sub="trong số ca còn thiếu hàng" />
       </div>
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Dòng đang mở chạm ngưỡng cấp CEO. Rê chuột lên mã CEO xem diễn giải (từng lần lùi, mốc ngày, lỗi theo quy tắc). Bấm dòng → popup đơn hàng (tab "Mã lỗi & giải trình", "Trao đổi NCC").</span>
+          <span className="muted" style={{ fontSize: 12 }}>Mọi dòng từng chạm ngưỡng cấp CEO (gồm cả dòng đã về đủ). Mốc 7 ngày = mốc hệ thống tự đóng lỗi chưa giải trình. Rê chuột lên mã CEO xem diễn giải (từng lần lùi, mốc ngày, lỗi theo quy tắc). Bấm dòng → popup đơn hàng (tab "Mã lỗi & giải trình", "Trao đổi NCC").</span>
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={() => qc.invalidateQueries({ queryKey: ["ca-ceo"] })} title="Tải lại"><I.refresh width={13} height={13} /></button>
           <button className="btn sm" onClick={xuat} title="Xuất Excel"><I.download width={14} height={14} /></button>
