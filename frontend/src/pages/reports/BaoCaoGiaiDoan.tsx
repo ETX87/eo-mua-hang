@@ -117,7 +117,7 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
           <S v={kho} on={setKho} opts={uniq((r) => r.kho)} l="Mọi kho" />
           <S v={doiTac} on={setDoiTac} opts={uniq((r) => r.doi_tac)} l="Mọi NCC" />
           <S v={loaiHinh} on={setLoaiHinh} opts={uniq((r) => r.loai_hinh)} l="Mọi loại hình" />
-          <span className="muted" style={{ fontSize: 12, marginLeft: "auto" }}>{soLuong(rows.length)} dòng · thời gian = giờ làm việc (bỏ Chủ nhật) · 1 ngày = 24 giờ LV</span>
+          <span className="muted" style={{ fontSize: 12, marginLeft: "auto" }}>{soLuong(rows.length)} dòng · thời gian = giờ làm việc (T2–T6 8:00–12:00 + 13:00–17:00, T7 8:00–12:00) · 1 ngày làm việc = 8 giờ</span>
         </div>
       </Card>
 

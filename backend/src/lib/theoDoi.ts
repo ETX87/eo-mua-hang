@@ -5,14 +5,16 @@ import { cachedReport } from "./reportCache";
 import { bumpVersions } from "./dataVersions";
 import { nowVN, todayVN } from "./vnTime";
 import { laNhomR1_24h } from "./chuanHoa";
+import { congGioLV, GIO_LV_TU } from "./gioLamViec";
 
 /**
  * "Theo doi linh kien dat" - kiem soat ngay du kien hang ve tung dong EO (migrations/0012). Quy tac:
- *  R1  tu luc dong bat dau (EO ban hanh / dong them sau ban hanh duoc duyet) -> 48h LAM VIEC (bo Chu nhat, tu 2026-11-05; truoc la 24h) phai co
+ *  R1  tu luc dong bat dau (EO ban hanh / dong them sau ban hanh duoc duyet) -> 16h LAM VIEC (lib/gioLamViec: T2-T6 8h, T7 4h, CN nghi;
+ *      v0.103 quy doi tu 48h cu) phai co
  *      ngay du kien (co it nhat 1 item_plan, ke ca da xoa mem). Tre -> loi.
  *  R3  Thu 2 / thu 4 (ngay X, dong bat dau truoc X): het ngay X ma dong van chua tung co ngay du kien va khong nam
  *      co mail dong bo hoac lien he ghi tay trong ky -> loi.
- *  R4  Ngay du kien gan nhat D < hom nay, dong chua du hang: tu 00:00 ngay D+1 + 24h lam viec phai nhap ngay moi
+ *  R4  Ngay du kien gan nhat D < hom nay, dong chua du hang: tu 00:00 ngay D+1 + 8h lam viec phai nhap ngay moi
  *      (ngay du kien gan nhat > D). Qua han -> loi (khoa theo D, moi lan qua han 1 loi).
  *  Cap CEO (1 trong 3): lui ngay du kien >= 3 lan | ngay du kien gan nhat - ngay dat >= 30 ngay ma chua du | >= 3 loi.
  * Chi mien khi hang VE DU (chot 2026-10-21): ve thieu van canh bao - phai ve du hoac sua lai SL dat. Dong da ve du =
@@ -23,13 +25,15 @@ import { laNhomR1_24h } from "./chuanHoa";
 
 const DONG = TRANG_THAI_DONG;
 const EVAL_GAP_MS = 10 * 60_000;
-/** R1: so gio LAM VIEC tu luc dong bat dau den han phai co ngay du kien (2026-11-05: 24 -> 48). */
-export const GIO_R1 = 48;
+/** R1: so gio LAM VIEC tu luc dong bat dau den han phai co ngay du kien (2026-11-05: 24 -> 48 gio lich; v0.103: 16h LV = 48h cu). */
+export const GIO_R1 = 16;
 /** v0.095: R1 lap lai moi thu 3 / thu 6 khi van chua co ngay du kien - tinh tu ngay nay (app_settings 'r1_lap_tu' de doi). */
 export const R1_LAP_TU_MAC_DINH = "2026-11-18";
-/** R1 nhom Karofi / Livotec / Korihome (lib/chuanHoa laNhomR1_24h): 24h - chi dong BAT DAU tu app_settings 'r1_24h_tu' (2026-11-08),
- *  dong cu giu 48h (khong ghi loi hoi to). */
-export const GIO_R1_NHOM = 24;
+/** R1 nhom Karofi / Livotec / Korihome (lib/chuanHoa laNhomR1_24h): 8h LV (= 24h cu) - chi dong BAT DAU tu app_settings 'r1_24h_tu' (2026-11-08),
+ *  dong cu giu 16h LV (khong ghi loi hoi to). */
+export const GIO_R1_NHOM = 8;
+/** R4: gio LAM VIEC tu 00:00 ngay sau ngay du kien bi qua (= 24h cu). */
+export const GIO_R4 = 8;
 export const gioR1 = (doiTac: string | null | undefined, batDau: string | null, tu: string) =>
   laNhomR1_24h(doiTac) && !!batDau && batDau.slice(0, 10) >= tu ? GIO_R1_NHOM : GIO_R1;
 
@@ -37,18 +41,9 @@ const parseVN = (s: string) => new Date(s.slice(0, 19).replace(" ", "T") + "Z");
 const fmtVN = (d: Date) => d.toISOString().slice(0, 19).replace("T", " ");
 const vnPlus = (ms: number) => fmtVN(new Date(Date.now() + 7 * 3600_000 + ms));
 
-/** Cong N gio LAM VIEC (bo qua tron ngay Chu nhat) vao 1 moc gio VN 'YYYY-MM-DD HH:MM:SS'. */
-export function congGioLamViec(start: string, gio = 24): string {
-  let t = parseVN(start);
-  let con = gio * 3600_000;
-  while (con > 0) {
-    const nuaDem = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1);
-    if (t.getUTCDay() === 0) { t = new Date(nuaDem); continue; }
-    const buoc = Math.min(con, nuaDem - t.getTime());
-    t = new Date(t.getTime() + buoc);
-    con -= buoc;
-  }
-  return fmtVN(t);
+/** Cong N gio LAM VIEC vao 1 moc gio VN 'YYYY-MM-DD HH:MM:SS' - lich chung lib/gioLamViec (T2-T6 8-12 + 13-17, T7 8-12, CN nghi; v0.103). */
+export function congGioLamViec(start: string, gio = GIO_R4): string {
+  return congGioLV(start, gio);
 }
 const ngaySau = (d: string) => { const x = parseVN(`${d.slice(0, 10)} 00:00:00`); x.setUTCDate(x.getUTCDate() + 1); return fmtVN(x); };
 const soNgay = (a: string, b: string) => Math.round((parseVN(`${b.slice(0, 10)} 00:00:00`).getTime() - parseVN(`${a.slice(0, 10)} 00:00:00`).getTime()) / 86400_000);
@@ -84,7 +79,7 @@ export interface DongTheoDoi {
 }
 export interface LanLui { luc: string; tu: string; den: string; ai: string | null }
 export interface CeoChiTiet { ma: "LUI" | "XA" | "LOI"; tieu_de: string; nguong: string; gia_tri: string; dong: string[] }
-const QT_TEN: Record<string, string> = { R1: "Không có ngày DK trong 24h/48h", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
+const QT_TEN: Record<string, string> = { R1: "Không có ngày DK trong 8h/16h LV", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
 const dmy = (s: string) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
 
 async function ngayApDung(env: Env): Promise<string> {
@@ -120,7 +115,7 @@ export function tinhTrangBayGio(r: { trang_thai_don_hang: string; ngay_du_kien_g
 }
 
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v7", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v8", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -355,7 +350,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       const veTruoc = (moc: string) => !!r.ngay_ve_du && r.ngay_ve_du <= moc.slice(0, 10);
       if (viPhamR1(r)) {
         add(r, "R1", `R1:${r.item_id}`, r.han_ngay_du_kien!, null, "KHONG_NDK_24H");
-        // v0.095 R1 LAP LAI (yeu cau 2026-11-18): da tre 24h/48h ma VAN chua co ngay du kien -> moi THU 3 / THU 6 sau han ghi lai 1 loi R1
+        // v0.095 R1 LAP LAI (yeu cau 2026-11-18): da tre 8h/16h LV ma VAN chua co ngay du kien -> moi THU 3 / THU 6 sau han ghi lai 1 loi R1
         // (khoa R1:<item>:<ngay>, han = het ngay do). Co ngay du kien -> het ghi + loi dang cho tu giai trinh (tuGiaiTrinh KHAC_PHUC). Chi ngay >= r1LapTu.
         const hanNgay = r.han_ngay_du_kien!.slice(0, 10);
         const d = parseVN(`${hanNgay} 00:00:00`);
@@ -392,9 +387,10 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       }
     }
     // Dong bo loi R1 DANG CHO voi moc hien tai (doi 24h -> 48h 2026-11-05): het vi pham -> bo (ghi event_log); con -> cap nhat han.
+    // v0.103: CHI loi ghi tu GIO_LV_TU (doi sang gio lam viec) - loi ghi truoc giu nguyen han cu, khong tu xoa (chot 2026-11-19 "chi ap dung tu nay").
     const r1Cho = rows.length
-      ? (await db.prepare("SELECT id, eo_item_id, eo_id, han FROM tl_loi WHERE quy_tac = 'R1' AND khoa = 'R1:' || eo_item_id AND trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?))")
-          .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ id: number; eo_item_id: number; eo_id: number; han: string | null }>()).results
+      ? (await db.prepare("SELECT id, eo_item_id, eo_id, han FROM tl_loi WHERE quy_tac = 'R1' AND khoa = 'R1:' || eo_item_id AND trang_thai = 'CHO_GIAI_TRINH' AND created_at >= ? AND eo_item_id IN (SELECT value FROM json_each(?))")
+          .bind(GIO_LV_TU, JSON.stringify(rows.map((r) => r.item_id))).all<{ id: number; eo_item_id: number; eo_id: number; han: string | null }>()).results
       : [];
     const dongBy = new Map(rows.map((r) => [r.item_id, r]));
     const bo = r1Cho.filter((l) => !viPhamR1(dongBy.get(l.eo_item_id)!));
@@ -407,7 +403,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
            SELECT 'eo', eo_id, eo_id, 'XOA_LOI_THEO_DOI', json_group_array(json_object('id', id, 'khoa', khoa, 'han', han)),
                   json_object('ly_do', 'Không còn vi phạm theo mốc R1 hiện tại (' || ? || ' giờ làm việc)'), NULL, ?
            FROM tl_loi WHERE id IN (SELECT value FROM json_each(?)) GROUP BY eo_id`,
-        ).bind("24/48", now, ids),
+        ).bind("8/16", now, ids),
         db.prepare("DELETE FROM tl_nhac_nho WHERE loi_id IN (SELECT value FROM json_each(?))").bind(ids),
         db.prepare("DELETE FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND id IN (SELECT value FROM json_each(?))").bind(ids),
         db.prepare(
@@ -508,10 +504,13 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
  * so loi, nguong CEO) nhung KHONG tinh la "giai trinh that" (dieuHanh do phu, Vi pham % giai trinh, hoat dong cuoi loai pham_vi AUTO). Thu tu ly do:
  *  KHAC_PHUC  da khac phuc sau do:  R3 - co mail / goi-Zalo / push voi NCC SAU ngay kiem tra · R1 - dong da co ngay du kien ·
  *             R4 - da nhap ngay du kien moi > ngay bi qua · moi quy tac - da co giai trinh THAT cung loi tren dong sau han loi nay
- *  QUA_HAN    qua SO_NGAY_TU_DONG ngay (tinh tu han) khong giai trinh -> ghi nhan vi pham, khong can giai trinh nua
+ *  QUA_HAN    qua GIO_TU_DONG gio LAM VIEC (tinh tu han; v0.103 = 56h LV, truoc la 7 ngay lich) khong giai trinh -> ghi nhan vi pham, khong can giai trinh nua
  * Nguoi ghi = BOOTSTRAP_ADMIN_EMAIL (FK users, giong tu dien ngay KRF); event AUTO_GIAI_TRINH user_email NULL (FE hien "Hệ thống").
  */
-export const SO_NGAY_TU_DONG = 7;
+/** Han giai trinh: qua bay nhieu gio LAM VIEC tu han loi ma chua giai trinh -> he thong tu dong (56h LV = 7 ngay cu x 8h). */
+export const GIO_TU_DONG = 56;
+/** nhan hien thi */
+export const HAN_GT_TXT = `${GIO_TU_DONG} giờ làm việc`;
 async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
   const db = env.DB;
   if (!env.BOOTSTRAP_ADMIN_EMAIL) return 0;
@@ -528,10 +527,12 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
          END khac_phuc,
          (SELECT substr(MIN(g.created_at), 1, 10) FROM tl_loi l2 JOIN tl_giai_trinh g ON g.id = l2.giai_trinh_id
           WHERE l2.eo_item_id = l.eo_item_id AND l2.quy_tac = l.quy_tac AND l2.id <> l.id AND COALESCE(g.pham_vi, '') <> 'AUTO' AND g.created_at > COALESCE(l.han, l.created_at)) gt_cung,
-         date(COALESCE(l.han, l.created_at)) <= date(?1, '-${SO_NGAY_TU_DONG} days') qua_han
+         date(COALESCE(l.han, l.created_at)) <= date(?1, '-6 days') qua_han, COALESCE(l.han, l.created_at) moc
        FROM l)
-     SELECT id, quy_tac, khac_phuc, gt_cung, qua_han FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1`,
-  ).bind(now.slice(0, 10)).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number }>()).results;
+     SELECT id, quy_tac, khac_phuc, gt_cung, qua_han, moc FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1`,
+  ).bind(now.slice(0, 10)).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number; moc: string }>()).results
+    // SQL loc tho (>= 6 ngay lich - 56h LV luon > 7 ngay lich); qua han that = moc + 56h LV <= bay gio
+    .filter((r) => r.khac_phuc || r.gt_cung || congGioLV(r.moc, GIO_TU_DONG) <= now);
   if (!rs.length) return 0;
   const dmy = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
   const KP: Record<string, string> = {
@@ -541,7 +542,7 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
     ? [r.id, `Auto giải trình vi phạm do ${KP[r.quy_tac].replace("%", dmy(r.khac_phuc))} — không cần giải trình nữa.`, "AUTO:KHAC_PHUC"]
     : r.gt_cung
       ? [r.id, `Auto giải trình vi phạm do đã có giải trình cùng lỗi ngày ${dmy(r.gt_cung)} — không cần giải trình lại.`, "AUTO:KHAC_PHUC"]
-      : [r.id, `Auto giải trình vi phạm do quá ${SO_NGAY_TU_DONG} ngày không giải trình — ghi nhận vi phạm, không cần giải trình nữa.`, "AUTO:QUA_HAN"]);
+      : [r.id, `Auto giải trình vi phạm do quá ${HAN_GT_TXT} không giải trình — ghi nhận vi phạm, không cần giải trình nữa.`, "AUTO:QUA_HAN"]);
   let xong = 0;
   for (let i = 0; i < ds.length; i += 250) {
     const lo = JSON.stringify(ds.slice(i, i + 250));

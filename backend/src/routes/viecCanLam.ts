@@ -73,8 +73,8 @@ app.get("/", async (c) => {
     const loiCho = rows.filter((r) => r.so_loi_cho_gt > 0);
     const viec = new Set([...canNdk, ...quaHan, ...loiCho].map((r) => r.item_id));
     const chiTiet = [
-      { label: "Cần nhập ngày dự kiến (48h)", count: canNdk.length },
-      { label: "Trong đó đã trễ 48h", count: canNdk.filter((r) => r.tinh_trang === "TRE_NDK").length },
+      { label: "Cần nhập ngày dự kiến (8h/16h LV)", count: canNdk.length },
+      { label: "Trong đó đã trễ hạn", count: canNdk.filter((r) => r.tinh_trang === "TRE_NDK").length },
       { label: "Quá ngày dự kiến — cần ngày mới", count: quaHan.length },
       { label: "Lỗi chờ giải trình (dòng)", count: loiCho.length },
     ];

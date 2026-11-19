@@ -1,7 +1,7 @@
 import type { Env } from "../types";
 import { dsCaCeo } from "./baoCaoLoi";
 import { layDongDieuHanh } from "./dieuHanh";
-import { layDongTheoDoi, SO_NGAY_TU_DONG } from "./theoDoi";
+import { layDongTheoDoi, HAN_GT_TXT } from "./theoDoi";
 import { maCeo } from "./maLoi";
 
 /**
@@ -57,14 +57,14 @@ export async function dsCaCeoXuLy(env: Env) {
       muc = "DA_XONG";
       lyDo.push(_xong);
     } else if (r.so_loi_cho_gt > 0) {
-      // loi cho giai trinh luon <= 7 ngay (qua 7 ngay he thong tu dong) -> chua xu ly
+      // loi cho giai trinh luon trong han GIO_TU_DONG gio LV (qua han he thong tu dong) -> chua xu ly
       muc = "RAT_HOT";
-      lyDo.push(`${r.so_loi_cho_gt} lỗi ≤ ${SO_NGAY_TU_DONG} ngày chưa giải trình`);
+      lyDo.push(`${r.so_loi_cho_gt} lỗi trong hạn giải trình (≤ ${HAN_GT_TXT}) chưa giải trình`);
       if (d?.loi_cho_ngay) lyDo.push(`lỗi cũ nhất ${d.loi_cho_ngay} ngày`);
     } else {
       muc = "GIAM_HOT";
       if (g.that) lyDo.push(`đã giải trình bù ${g.that} lỗi`);
-      if (g.qh) lyDo.push(`${g.qh} lỗi > ${SO_NGAY_TU_DONG} ngày đã tự đóng (vẫn tính vi phạm)`);
+      if (g.qh) lyDo.push(`${g.qh} lỗi quá hạn giải trình (> ${HAN_GT_TXT}) đã tự đóng (vẫn tính vi phạm)`);
       if (g.kp) lyDo.push(`${g.kp} lỗi đã khắc phục`);
       if (!g.that && !g.qh && !g.kp) lyDo.push("không có lỗi chờ giải trình");
     }

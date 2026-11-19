@@ -54,20 +54,22 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 
 ## 6. Theo dõi linh kiện đặt & vi phạm
 
-- Quy tắc: **R1** — dòng mới phải có ngày dự kiến trong 48 giờ làm việc; **R3** — thứ 2/4 phải có mail cập nhật với NCC; **R4** —
-  quá ngày dự kiến chưa về; lùi ngày nhiều lần → **cấp CEO**. Giờ làm việc bỏ Chủ nhật.
+- Quy tắc: **R1** — dòng mới phải có ngày dự kiến trong 16 giờ làm việc (Karofi / Livotec / Korihome: 8 giờ); **R3** — thứ 2/4 phải có mail cập nhật với NCC; **R4** —
+  quá ngày dự kiến chưa về → nhập ngày mới trong 8 giờ làm việc từ 00:00 ngày sau; lùi ngày nhiều lần → **cấp CEO**.
+- **Giờ làm việc** (v0.103, mọi SLA / hạn — `lib/gioLamViec.ts`): T2–T6 8:00–12:00 + 13:00–17:00 (8h) · T7 8:00–12:00 (4h) · CN nghỉ; 24h cũ = 8h làm việc (48h → 16h, 7 ngày → 56h).
+  Hạn luôn rơi vào trong / cuối 1 ca. Ngày lễ chưa tính. Lỗi ghi trước khi đổi (mốc `GIO_LV_TU`) giữ nguyên hạn cũ, không tự tính lại / tự xoá.
 - Lỗi ghi vào `tl_loi` (chạy nền tối đa 10 phút/lần, idempotent); hết vi phạm thì tự xoá lỗi R1. Lỗi R3 đang chờ tự xoá khi dòng có mail /
   gọi-Zalo ghi nhận trong kỳ của nó (kể cả mail đồng bộ muộn hoặc lỗi ghi trước khi R3 tính mail), có ghi nhật ký. Mail chỉ được tính khi đã
   đồng bộ qua hộp thư theo dõi (khớp dòng hoặc mã push); tạo đợt / tải Excel / bản nháp chưa tính.
 - **Nút "Tạo mail nhắc" đang tạm tắt** (v0.088, cờ `BAT_TAO_MAIL_NHAC` ở `pages/theodoi/shared.tsx`): người mua tự soạn mail cho NCC, CC
   hộp theo dõi + ghi mã 3TDO / mã LK. API tạo đợt push và luồng đồng bộ mail giữ nguyên.
-- Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ ≥ 7 ngày) / TB / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
+- Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ giải trình ≥ 56 giờ làm việc) / TB (lặp 2 hoặc chờ ≥ 24 giờ làm việc) / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
 - Nhắc nhở: hệ thống tự nhắc khi ghi lỗi mới; quản lý nhắc tay.
 
 ## 7. 8 giai đoạn đơn hàng (chỉ đo)
 
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & ban hành · G4 Gửi đơn NCC (song song) · G5 Chờ ngày DK · G6 Chờ giao hàng ·
-G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo giờ làm việc (cấu hình được). Hiện chỉ báo cáo đúng / trễ hạn, chưa sinh lỗi.
+G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo giờ làm việc (cấu hình được; mặc định 8h, G8 56h; G6 = ngày dự kiến lần đầu). Hiện chỉ báo cáo đúng / trễ hạn, chưa sinh lỗi.
 - **Giai đoạn hiện tại = bước MỚI NHẤT đã bắt đầu mà chưa kết thúc** (theo thứ tự G1 → G2 → G3 → G5 → G6 → G8; không bước nào mở → bước mới nhất
   đã bắt đầu). PO đã qua nháp thì G1 luôn đóng: mốc = lần gửi trình đầu sau khi tạo dòng, không có thì lần trình đầu của PO, không có trình nào
   (PO chuyển từ hệ cũ) thì ngày ban hành.
@@ -81,7 +83,7 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 ## 8b. Điều hành cho lãnh đạo (v0.084, `../QUAN_TRI_DIEU_HANH.md`)
 
 - Mỗi dòng LK **đang mở** trong phạm vi theo dõi có **mức cảnh báo**:
-  - **ĐỎ**: cấp CEO · quá ngày dự kiến · trễ hạn chưa có ngày DK · lỗi chờ giải trình ≥ 7 ngày · im lặng ≥ 7 ngày (đơn tồn ≥ 7 ngày).
+  - **ĐỎ**: cấp CEO · quá ngày dự kiến · trễ hạn chưa có ngày DK · lỗi chờ giải trình ≥ 56 giờ làm việc · im lặng ≥ 7 ngày (đơn tồn ≥ 7 ngày).
   - **VÀNG**: đang chờ ngày DK · có lỗi chờ giải trình · im lặng ≥ 3 ngày · ngày DK trong 2 ngày tới · tồn > 30 ngày.
   - **XANH**: còn lại. Mỗi mức kèm lý do bằng chữ.
 - **Tác động** (việc của người mua hàng) = thêm / sửa / xoá đợt kế hoạch, đợt push, mail gửi NCC gắn dòng, ghi nhận gọi / Zalo, giải trình.
@@ -97,21 +99,21 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 
 ## 8c. Mã lỗi ER.MH, Ca tồn CEO (v0.091)
 
-- Mọi lỗi / cảnh báo có mã (`../MA_LOI_HE_THONG.md`): **001/002** chưa có ngày DK 24h (nhóm Karofi/Livotec/Korihome) / 48h — bước G5 · **003** không thúc NCC thứ 2/4 — G4 ·
+- Mọi lỗi / cảnh báo có mã (`../MA_LOI_HE_THONG.md`): **001/002** chưa có ngày DK 8h làm việc (nhóm Karofi/Livotec/Korihome) / 16h làm việc — bước G5 · **003** không thúc NCC thứ 2/4 — G4 ·
   **004** quá ngày DK không cập nhật — G6 · **101–199** lỗi ghi khi giải trình (NCC không phản hồi / báo trễ / hết hàng → G6, đặt sai → G1, chậm duyệt → G3) ·
   **201–203** cấp CEO (lùi ≥ 3 lần / DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi) · **301–308** trễ hạn bước G1–G8 (chỉ đo). Mã tính lúc đọc, không lưu DB.
 - Mỗi đơn hàng / PO có bảng mã lỗi theo bước kèm giải trình; Vi phạm tổng hợp theo mã (mọi trạng thái, % giải trình, nguyên nhân theo giải trình).
-- **R1 lặp lại** (v0.095): dòng đã trễ 24h/48h mà vẫn chưa có ngày dự kiến → mỗi thứ 3 và thứ 6 ghi lại 1 lỗi R1 (vi phạm = PO + ngày đó); có ngày dự kiến
+- **R1 lặp lại** (v0.095): dòng đã trễ hạn R1 (8h/16h làm việc) mà vẫn chưa có ngày dự kiến → mỗi thứ 3 và thứ 6 ghi lại 1 lỗi R1 (vi phạm = PO + ngày đó); có ngày dự kiến
   → thôi ghi, lỗi đang chờ tự giải trình "đã có ngày dự kiến".
 - **Đối tác của PO**: mọi dòng hiệu lực cùng 1 đối tác → tên đối tác, khác nhau → "Nhiều đối tác". **Giải trình hàng loạt** từ Đơn PO cho mọi PO đang lọc.
 - **Vi phạm gộp** (v0.093): lỗi vẫn ghi theo từng dòng nhưng đếm / hiển thị / giải trình theo **vi phạm** = cùng loại lỗi trên cùng PO cùng kỳ:
   R1 = 1 PO (dù bao nhiêu dòng thiếu ngày DK) · R3 = PO + ngày kiểm tra thứ 2/4 · R4 = PO + mốc ngày DK bị quá · lỗi ghi tay = PO + lỗi gì + ngày ghi.
 - **Tự giải trình** (chạy nền ≤ 10 phút / lần): lỗi R1 / R3 / R4 đang chờ được hệ thống tự đóng ("Auto giải trình vi phạm do …") khi **đã khắc phục sau đó**
   (R3: có mail / push / gọi-Zalo với NCC sau ngày kiểm tra · R1: dòng đã có ngày dự kiến · R4: đã nhập ngày dự kiến mới · hoặc đã có giải trình thật cùng lỗi)
-  hoặc **quá 7 ngày** không giải trình (ghi nhận vi phạm). Lỗi tự đóng vẫn tính vi phạm (số lỗi, ngưỡng CEO) nhưng không tính là giải trình thật trong mọi thống kê.
+  hoặc **quá hạn giải trình 56 giờ làm việc** tính từ hạn lỗi (ghi nhận vi phạm). Lỗi tự đóng vẫn tính vi phạm (số lỗi, ngưỡng CEO) nhưng không tính là giải trình thật trong mọi thống kê.
 - **Bảng mã lỗi** (menu Vi phạm › Bảng mã lỗi): tên, lỗi gì, yêu cầu giải trình, tự giải trình khi nào, số đang đếm theo từng mã.
-- **Ca CEO — độ hot** (v0.098): 🔴 Rất hot = còn thiếu hàng + có lỗi ≤ 7 ngày chưa giải trình · 🟠 Giảm hot = còn thiếu hàng + lỗi > 7 ngày (tự đóng) hoặc đã
-  giải trình bù · ⚪ Đã xong = hàng về đủ / kết thúc sớm nhưng từng chạm ngưỡng CEO. Mốc 7 ngày = mốc tự bỏ giải trình.
+- **Ca CEO — độ hot** (v0.098): 🔴 Rất hot = còn thiếu hàng + có lỗi trong hạn giải trình (≤ 56h làm việc) chưa giải trình · 🟠 Giảm hot = còn thiếu hàng + lỗi quá hạn giải trình (tự đóng) hoặc đã
+  giải trình bù · ⚪ Đã xong = hàng về đủ / kết thúc sớm nhưng từng chạm ngưỡng CEO. Mốc 56h làm việc = mốc tự bỏ giải trình.
 - **Cache**: trình duyệt giữ dữ liệu lần mở trước (IndexedDB, theo tài khoản) và cập nhật ở nền; server nhớ báo cáo đã giải nén theo phiên bản dữ liệu,
   Tổng quan tính lại tối đa mỗi giờ khi dữ liệu không đổi; nút ⟳ trên thanh trên cùng tải lại ngay.
 - Menu **Ca tồn CEO**: dòng đang mở cấp CEO + mã 201–203 + hành động (thúc NCC, NCC trả lời, giải trình, im lặng).

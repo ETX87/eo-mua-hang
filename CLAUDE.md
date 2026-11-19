@@ -162,7 +162,7 @@ của mình / đơn mình đặt / kho phụ trách. FE: "Của tôi / Toàn b�
 `tl_giai_trinh` (`pham_vi='PO'`, chung `nhom`) nên các màn cũ đọc như giải trình thường. Form `pages/theodoi/GiaiTrinhPo.tsx` (cũng ở popup EO).
 **Giải trình chung nhiều lỗi cùng loại** (v0.059): tick các lỗi ở màn Vi phạm → `POST /vi-pham/giai-trinh-nhieu` (`loi_ids`, bắt buộc cùng
 `quy_tac` — khác loại trả `KHAC_LOAI`; quyền trên mọi EO), `pham_vi='NHIEU'`, form `GiaiTrinhNhieuModal`.
-R1 = **48h làm việc** (`GIO_R1` ở `lib/theoDoi.ts`, v0.059); `danhGiaQuyTac` đồng bộ lỗi R1 đang chờ với mốc hiện tại (hết vi phạm → xóa + event
+R1 = **16h làm việc** (`GIO_R1` ở `lib/theoDoi.ts`; v0.103 quy đổi từ 48h); `danhGiaQuyTac` đồng bộ lỗi R1 đang chờ với mốc hiện tại (hết vi phạm → xóa + event
 `XOA_LOI_THEO_DOI`, còn → cập nhật `han`). Mã lỗi danh mục vẫn `KHONG_NDK_24H`.
 Số đỏ menu: `viecCanLam` key `vi_pham` = lỗi chờ giải trình CỦA TÔI.
 Tiền tố mã EO mới `MH-` (từ 2026-11-04; mã `EO-` đã cấp giữ nguyên), push `[MH-PUSH]` / `MH-PUSH_<mã>.xlsx`.
@@ -212,7 +212,7 @@ Giữ chọn 1: ô chế độ (Xem, khoảng ngày theo…, sắp theo), bộ l
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & BH · G4 Gửi đơn NCC (mail GUI đầu tiên trong `tl_mail`, CC theodoimuahang —
 luồng SONG SONG, không chặn giai đoạn hiện tại) · G5 Có ngày dự kiến · G6 Chờ SX & giao (hạn = ngày DK lần đầu) ·
 G7 Nhập kho & lên hệ thống (ngày CT AMIS → `amis_receipt.created_at`, chỉ đo) · G8 Giao bù đến đủ. Giờ & hạn = giờ LÀM VIỆC
-(bỏ Chủ nhật, như R1); hạn `app_settings.giai_doan_sla` (JSON giờ, mặc định 24/…/G8 168). Chốt 2026-10-29: CHỈ đo + báo cáo
+(lịch chung `lib/gioLamViec.ts`); hạn `app_settings.giai_doan_sla` (JSON giờ LÀM VIỆC, mặc định 8/…/G8 56). Chốt 2026-10-29: CHỈ đo + báo cáo
 đúng/trễ hạn, chưa sinh lỗi giải trình (bật sau 2–4 tuần). `layGiaiDoan(env)` cache mốc, phần "bây giờ" tính lúc request.
 Báo cáo giai đoạn = tab Báo cáo của Quản lý đơn hàng (`/don-hang?tab=bao-cao&bc=giai-doan`).
 **v0.089**: giai đoạn hiện tại = bước MỚI NHẤT đang mở (`ketQuaGd`); EO qua nháp thì G1 luôn đóng (PO cũ không có `eo_submission`). Đổi cách tính
@@ -357,6 +357,13 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
   (hủy dòng) bắt buộc lý do cả khi EO nháp (chỉ ở FE — form sửa EO nháp xoá dòng vẫn gửi SL 0 không lý do). Thêm đường hủy mới thì cũng bắt buộc.
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
+
+## Giờ làm việc (v0.103) — `backend/src/lib/gioLamViec.ts`
+
+MỌI SLA / hạn (R1, R4, 8 giai đoạn, hạn giải trình tự đóng, mức độ vi phạm, Điều hành lỗi chờ, ca CEO) dùng `congGioLV` / `demGioLV`:
+T2–T6 8:00–12:00 + 13:00–17:00 (8h) · T7 8:00–12:00 (4h) · CN nghỉ; 24h cũ = 8h LV. Không tự viết vòng lặp giờ / chia 24 — dùng 2 hàm này (FE `gioTxt`: 1 ngày LV = 8 giờ).
+`GIO_LV_TU` = mốc đổi: khối đồng bộ lỗi R1 đang chờ (`danhGiaQuyTac`) chỉ xét lỗi ghi từ mốc này (lỗi cũ giữ hạn cũ). Hạn giải trình `GIO_TU_DONG` = 56.
+Chỉ số hoạt động (im lặng, thúc NCC 7 ngày), R3 thứ 2/4, R1 lặp thứ 3/6, mốc tồn vẫn theo ngày lịch. Ngày lễ chưa trừ.
 
 ## Điều hành cho lãnh đạo (v0.084, `../QUAN_TRI_DIEU_HANH.md`) — menu "Điều hành" ngay dưới Tổng quan
 

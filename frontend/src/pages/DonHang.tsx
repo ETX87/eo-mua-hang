@@ -182,8 +182,8 @@ const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?
   { k: "con_cho", l: "Còn chờ hàng", title: "Đơn đã ban hành, hàng chưa về hoặc về chưa đủ (nhóm mặc định)", f: (r) => MO.includes(r.trang_thai_don_hang) },
   { k: "can_xl", l: "Cần xử lý", mau: "#DC2626", title: "Dòng áp dụng quy tắc: cần nhập ngày dự kiến, quá ngày dự kiến hoặc có lỗi chờ giải trình (= Việc cần xử lý)",
     f: (r) => r.ap_dung && (["CHO_NDK", "TRE_NDK", "QUA_HAN_NDK"].includes(r.tinh_trang) || r.so_loi_cho_gt > 0) },
-  { k: "TRE_NDK", l: "Trễ hạn chưa có ngày DK", title: "Quá 24h (Karofi / Livotec / Korihome) hoặc 48h làm việc (hãng khác) sau ban hành mà chưa có ngày dự kiến", f: (r) => r.tinh_trang === "TRE_NDK" },
-  { k: "CHO_NDK", l: "Chờ ngày DK (24h/48h)", f: (r) => r.tinh_trang === "CHO_NDK" },
+  { k: "TRE_NDK", l: "Trễ hạn chưa có ngày DK", title: "Quá 8h làm việc (Karofi / Livotec / Korihome) hoặc 16h làm việc (hãng khác) sau ban hành mà chưa có ngày dự kiến", f: (r) => r.tinh_trang === "TRE_NDK" },
+  { k: "CHO_NDK", l: "Chờ ngày DK (8h/16h LV)", f: (r) => r.tinh_trang === "CHO_NDK" },
   { k: "QUA_HAN_NDK", l: "Quá ngày dự kiến", f: (r) => r.tinh_trang === "QUA_HAN_NDK" },
   { k: "CO_LOI", l: "Lỗi chờ giải trình", f: (r) => r.so_loi_cho_gt > 0 },
   { k: "CEO", l: "Cấp CEO", mau: "#DC2626", title: "Lùi ngày dự kiến ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi", f: (r) => (r.ceo_ly_do ?? []).length > 0 },
@@ -483,8 +483,8 @@ function DanhSach() {
           <Popover align="right" width={560} btnClass="btn sm ghost" title="Chú giải 3 loại ngày + quy tắc theo dõi" label={<I.help width={15} height={15} />}>
             <ChuGiaiNgay gon />
             <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
-              Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 24h làm việc (Karofi / Livotec / Korihome, dòng từ 08/11/2026) hoặc 48h (hãng khác) · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
-              quá ngày DK phải nhập ngày mới trong 24h — vi phạm tự ghi lỗi, phải giải trình. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
+              Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 8h làm việc (Karofi / Livotec / Korihome, dòng từ 08/11/2026) hoặc 16h làm việc (hãng khác) · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
+              quá ngày DK phải nhập ngày mới trong 8h làm việc — vi phạm tự ghi lỗi, phải giải trình (hạn giải trình 56h làm việc). Giờ làm việc: T2–T6 8:00–12:00, 13:00–17:00 · T7 8:00–12:00 · CN nghỉ. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
               {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
               <div style={{ marginTop: 6 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột.</div>
             </div>

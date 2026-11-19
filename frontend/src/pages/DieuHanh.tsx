@@ -64,7 +64,7 @@ const TIEU_CHI: Record<string, { l: string; f: (d: Dong, n: Data["nguong"]) => b
 const pctTxt = (a: number, b: number) => (b ? `${Math.round((a / b) * 1000) / 10}%` : "—");
 /** gom ly do do ve nhan chung (khop backend lib/dieuHanh nhomLyDo) */
 const nhomLyDo = (s: string) => s.startsWith("Cấp CEO") ? "Cấp CEO" : s.startsWith("Quá ngày DK") ? "Quá ngày DK" : s.startsWith("Trễ hạn") ? "Trễ hạn chưa có ngày DK"
-  : s.includes("lỗi chờ giải trình") ? "Lỗi chờ giải trình ≥ 7 ngày" : s.startsWith("Im lặng") ? "Im lặng ≥ 7 ngày" : s;
+  : s.includes("lỗi chờ giải trình") ? "Lỗi chờ giải trình ≥ 56h làm việc" : s.startsWith("Im lặng") ? "Im lặng ≥ 7 ngày" : s;
 const thoiGianCho = (gio: number) => (gio < 24 ? `${gio} giờ` : `${Math.floor(gio / 24)} ngày${gio % 24 ? ` ${gio % 24} giờ` : ""}`);
 
 export default function DieuHanh() {
@@ -125,7 +125,7 @@ export default function DieuHanh() {
   });
   ketLuan.push({
     icon: gtPct < 0.3 ? "⚠️" : "✅", mau: gtPct < 0.3 ? "#B45309" : undefined, onClick: () => setTab("nn"),
-    txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>){d.do_phu.tu_dong ? <> · hệ thống tự đóng <b>{soLuong(d.do_phu.tu_dong)}</b> (đã khắc phục / quá 7 ngày — vẫn tính vi phạm)</> : null}
+    txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>){d.do_phu.tu_dong ? <> · hệ thống tự đóng <b>{soLuong(d.do_phu.tu_dong)}</b> (đã khắc phục / quá hạn giải trình 56h làm việc — vẫn tính vi phạm)</> : null}
       {gtPct < 0.3 ? " — chưa đủ cơ sở kết luận nguyên nhân, phải ép giải trình trước." : "."}</>,
   });
   if (duyetPv.length) {

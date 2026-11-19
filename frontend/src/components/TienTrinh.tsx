@@ -73,7 +73,7 @@ export function TienTrinh({ defs, sla, rows, loi, onChonNut, nhung }: {
           : dangO.length ? <span>Đang ở: {dangO.map((n) => <span key={n.g.k} className={`badge ${n.tt === "tre" ? "reject" : "review"}`} style={{ marginRight: 4 }}>
             {n.g.k} · {n.g.l}{mot ? ` · ${gioTxt(mot.gd_gio_tung?.[n.g.k])}` : ` · ${n.dang.length} dòng`}{n.tt === "tre" ? " · trễ hạn" : ""}</span>)}</span>
           : <span className="muted">Chưa bắt đầu</span>}
-        <span className="muted" style={{ marginLeft: "auto" }}>Giờ làm việc (bỏ Chủ nhật){mot ? "" : " · thời gian = dòng chậm nhất"}</span>
+        <span className="muted" style={{ marginLeft: "auto" }}>Giờ làm việc (T2–T6 8h, T7 4h, CN nghỉ){mot ? "" : " · thời gian = dòng chậm nhất"}</span>
       </div>}
       <div className="tt-line">
         {nut.map((n, i) => {

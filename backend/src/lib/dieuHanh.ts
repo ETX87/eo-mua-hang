@@ -6,6 +6,7 @@ import { nowVN, todayVN } from "./vnTime";
 import { weekStart } from "./week";
 import { versionTag } from "./dataVersions";
 import { VP_SQL } from "./maLoi";
+import { demGioLV } from "./gioLamViec";
 
 /**
  * BANG DIEU HANH (v0.084, yeu cau lanh dao 2026-11-18 - ../QUAN_TRI_DIEU_HANH.md): ghep "ton <-> nguoi <-> hanh dong <-> nguyen nhan"
@@ -21,7 +22,8 @@ import { VP_SQL } from "./maLoi";
 
 export const IM_LANG_DO = 7;
 export const IM_LANG_VANG = 3;
-export const LOI_CHO_DO = 7;
+/** v0.103: loi cho giai trinh >= bay nhieu GIO LAM VIEC -> DO (= han giai trinh / tu dong cua lib/theoDoi GIO_TU_DONG; truoc la 7 ngay lich). */
+export const LOI_CHO_DO = 56;
 const KHOA_CACHE = "dh:goc:v2"; // v2 (v0.093): them vp_cho, loi30 dem vi pham gop
 
 const ngayGiua = (a: string, b: string) =>
@@ -116,7 +118,7 @@ export function nhomLyDo(s: string): string {
   if (s.startsWith("Cấp CEO")) return "Cấp CEO";
   if (s.startsWith("Quá ngày DK")) return "Quá ngày DK";
   if (s.startsWith("Trễ hạn")) return "Trễ hạn chưa có ngày DK";
-  if (s.includes("lỗi chờ giải trình")) return `Lỗi chờ giải trình ≥ ${LOI_CHO_DO} ngày`;
+  if (s.includes("lỗi chờ giải trình")) return `Lỗi chờ giải trình ≥ ${LOI_CHO_DO} giờ làm việc`;
   if (s.startsWith("Im lặng")) return `Im lặng ≥ ${IM_LANG_DO} ngày`;
   return s;
 }
@@ -126,7 +128,7 @@ export interface DongDh {
   id: number; eo: number; po: string; ma: string; ten: string; kho: string; ncc: string | null; nguoi: string | null;
   dat: number; ve: number; thieu: number; bd: string | null; ton: number;
   gd: string | null; gd_tre: boolean; tt: string; ndk: string | null; qua_dk: number; lui: number; ceo: string[];
-  loi: number; loi_cho: number; loi_cho_ngay: number; qt: Record<string, number>;
+  loi: number; loi_cho: number; loi_cho_ngay: number; loi_cho_gio: number; qt: Record<string, number>;
   /** khoa VI PHAM GOP dang cho giai trinh cua dong (v0.093) - FE dem vi pham khong trung giua cac dong cung PO */
   vp_cho: string[];
   thuc: number; thuc7: number; thuc_luc: string | null; phan_hoi: number; phan_hoi_luc: string | null; phan_hoi_tt: string | null;
@@ -151,17 +153,18 @@ function danhGiaDong(r: DongTheoDoi, h: HdDong, gdK: { gd: string | null; tre: b
   const thuc7 = (h.push7 ?? 0) + (h.gui7 ?? 0) + (h.lh7 ?? 0);
   const loiCho = r.so_loi_cho_gt;
   const loiChoNgay = loiCho && h.loi_cho_tu ? ngayGiua(h.loi_cho_tu, today) : 0;
+  const loiChoGio = loiCho && h.loi_cho_tu ? demGioLV(h.loi_cho_tu, nowVN()) : 0;
   const quaDk = r.tinh_trang === "QUA_HAN_NDK" && r.ngay_du_kien_gan_nhat ? ngayGiua(r.ngay_du_kien_gan_nhat, today) : 0;
   const ceo = r.ceo_ly_do ?? [];
 
   const do_: string[] = [], vang: string[] = [];
   if (ceo.length) do_.push(`Cấp CEO: ${ceo.join("; ")}`);
   if (r.tinh_trang === "QUA_HAN_NDK") do_.push(`Quá ngày DK ${quaDk} ngày`);
-  if (r.tinh_trang === "TRE_NDK") do_.push(`Trễ hạn ${r.gio_r1}h chưa có ngày DK`);
-  if (loiCho && loiChoNgay >= LOI_CHO_DO) do_.push(`${loiCho} lỗi chờ giải trình ${loiChoNgay} ngày`);
+  if (r.tinh_trang === "TRE_NDK") do_.push(`Trễ hạn ${r.gio_r1}h làm việc chưa có ngày DK`);
+  if (loiCho && loiChoGio >= LOI_CHO_DO) do_.push(`${loiCho} lỗi chờ giải trình ${loiChoGio} giờ làm việc`);
   if (imLang >= IM_LANG_DO && ton >= IM_LANG_DO) do_.push(`Im lặng ${imLang} ngày`);
   if (r.tinh_trang === "CHO_NDK") vang.push("Đang chờ ngày DK");
-  if (loiCho && loiChoNgay < LOI_CHO_DO) vang.push(`${loiCho} lỗi chờ giải trình`);
+  if (loiCho && loiChoGio < LOI_CHO_DO) vang.push(`${loiCho} lỗi chờ giải trình`);
   if (imLang >= IM_LANG_VANG && imLang < IM_LANG_DO) vang.push(`Im lặng ${imLang} ngày`);
   if (r.tinh_trang === "CHO_HANG" && r.ngay_du_kien_gan_nhat && ngayGiua(today, r.ngay_du_kien_gan_nhat) <= 2) vang.push("Ngày DK trong 2 ngày tới");
   if (ton > 30) vang.push(`Tồn ${ton} ngày`);
@@ -173,7 +176,7 @@ function danhGiaDong(r: DongTheoDoi, h: HdDong, gdK: { gd: string | null; tre: b
     id: r.item_id, eo: r.eo_id, po: poMa, ma: r.part_code, ten: r.part_name, kho: r.kho, ncc: r.doi_tac, nguoi: r.nguoi_dat,
     dat: r.so_luong_dat, ve: r.sl_nhap_amis, thieu: r.so_luong_con_thieu, bd, ton,
     gd: gdK.gd, gd_tre: gdK.tre, tt: r.tinh_trang, ndk: r.ngay_du_kien_gan_nhat, qua_dk: quaDk, lui: r.so_lan_lui, ceo,
-    loi: r.so_loi, loi_cho: loiCho, loi_cho_ngay: loiChoNgay, qt, vp_cho: h.vp_cho ? h.vp_cho.split(",") : [],
+    loi: r.so_loi, loi_cho: loiCho, loi_cho_ngay: loiChoNgay, loi_cho_gio: loiChoGio, qt, vp_cho: h.vp_cho ? h.vp_cho.split(",") : [],
     thuc, thuc7, thuc_luc: lonNhat(h.push_luc, h.gui_luc, h.lh_luc), phan_hoi: h.nhan ?? 0, phan_hoi_luc: h.nhan_luc ?? null, phan_hoi_tt: h.nhan_tt ?? h.lh_kq ?? null,
     gt: h.gt ?? 0, gt_luc: h.gt_luc ?? null, gt_ai_ma: h.gt_ai_ma ?? null, gt_loi_ma: h.gt_loi_ma ?? null, gt_nd: h.gt_nd ?? null,
     td_luc: tdLuc, td_loai: cuoi?.[1] ?? null, td_ai: cuoi?.[2] ?? null,

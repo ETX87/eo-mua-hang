@@ -19,7 +19,7 @@ const CEO: Record<string, [string, string | null]> = { LUI: ["ER.MH-201", "G6"],
 type TT = "CHO" | "DA_GT" | "TU_KP" | "TU_QH" | "CEO" | "TRE_DANG" | "TRE_XONG";
 const NHAN_TT: Record<TT, { l: string; cls: string }> = {
   CHO: { l: "Chờ giải trình", cls: "reject" }, DA_GT: { l: "Đã giải trình", cls: "issued" }, CEO: { l: "Cấp CEO", cls: "reject" },
-  TU_KP: { l: "Tự đóng · đã khắc phục", cls: "nhap" }, TU_QH: { l: "Tự đóng · vi phạm (quá 7 ngày)", cls: "final" },
+  TU_KP: { l: "Tự đóng · đã khắc phục", cls: "nhap" }, TU_QH: { l: "Tự đóng · vi phạm (quá hạn GT 56h LV)", cls: "final" },
   TRE_DANG: { l: "Đang trễ hạn (chỉ đo)", cls: "final" }, TRE_XONG: { l: "Xong · trễ hạn (chỉ đo)", cls: "nhap" },
 };
 interface Muc { k: string; buoc: string; ma: string; ten: string; ma_lk: string; so_dong: number; ds_lk: string[]; item_id: number | null; han: string | null; tt: TT; chi_tiet: string;

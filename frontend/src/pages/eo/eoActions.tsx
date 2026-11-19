@@ -133,7 +133,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
       {issued && (
         <details style={{ background: "var(--panel-2)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, lineHeight: 1.55 }}>
           <summary style={{ cursor: "pointer" }}>
-            Mỗi dòng phải có <b>ngày dự kiến</b> trong 24 giờ (Karofi / Livotec / Korihome) hoặc 48 giờ làm việc (hãng khác) sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
+            Mỗi dòng phải có <b>ngày dự kiến</b> trong 8 giờ làm việc (Karofi / Livotec / Korihome) hoặc 16 giờ làm việc (hãng khác) sau ban hành · cập nhật bằng nút 📅 / ＋ ở cột Thao tác · đơn kế hoạch tháng:{" "}
             <a href={`/don-hang/ke-hoach-tuan?eo=${eo.id}`} onClick={(e) => e.stopPropagation()}>nhập theo tuần</a> <span className="muted">(bấm để xem vì sao)</span>
           </summary>
           Không nhập / quá ngày dự kiến mà chưa cập nhật → hệ thống ghi lỗi, phải giải trình. Kho &amp; CSKH xem kế hoạch để biết khi nào có hàng.

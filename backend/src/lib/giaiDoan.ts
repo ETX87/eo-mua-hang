@@ -2,6 +2,7 @@ import type { Env } from "../types";
 import { computeTienDo01 } from "../routes/reports";
 import { cachedReport } from "./reportCache";
 import { congGioLamViec } from "./theoDoi";
+import { demGioLV } from "./gioLamViec";
 import { nowVN } from "./vnTime";
 
 /**
@@ -15,7 +16,8 @@ import { nowVN } from "./vnTime";
  *  G6 Cho san xuat & giao NCC               co ngay du kien -> hang ve lan dau (ngay chung tu AMIS). Dung hen = ve <= ngay DK lan dau
  *  G7 Nhap kho & len he thong Kho/Ke toan   ngay chung tu AMIS -> phieu duoc import vao app (chi do, khong bao gio "dang o")
  *  G8 Giao bu den du      NCC + NV theo doi hang ve lan dau -> ve du (luy ke >= SL dat)
- * Thoi gian & han tinh theo GIO LAM VIEC (bo Chu nhat) nhu R1. Han cau hinh app_settings 'giai_doan_sla' (JSON gio).
+ * Thoi gian & han tinh theo GIO LAM VIEC (lib/gioLamViec: T2-T6 8-12 + 13-17, T7 8-12, CN nghi; v0.103 - 24h cu = 8h LV).
+ * Han cau hinh app_settings 'giai_doan_sla' (JSON gio LAM VIEC).
  * Moc ranh gioi cache theo version (eo, amis, settings, theo_doi); phan phu thuoc "bay gio" tinh luc request.
  */
 export const GIAI_DOAN = [
@@ -29,7 +31,8 @@ export const GIAI_DOAN = [
   { k: "G8", l: "Giao bù đến đủ", vai_tro: "NCC + NV theo dõi" },
 ] as const;
 export type MaGd = (typeof GIAI_DOAN)[number]["k"];
-export const SLA_MAC_DINH: Record<string, number> = { G1: 24, G2: 24, G3: 24, G4: 24, G5: 24, G7: 24, G8: 168 }; // G6: theo ngay du kien
+// v0.103: gio LAM VIEC (8h = 1 ngay lam viec = 24h cu; G8 56h LV = 7 ngay cu). G6: theo ngay du kien
+export const SLA_MAC_DINH: Record<string, number> = { G1: 8, G2: 8, G3: 8, G4: 8, G5: 8, G7: 8, G8: 56 };
 
 export interface MocGd { bd: string | null; kt: string | null; han: string | null }
 export interface GdDong { item_id: number; gd: Record<string, MocGd>; so_lan_trinh: number; so_lan_tra_ve: number; ket_thuc: "XONG" | "HUY" | null }
@@ -37,20 +40,9 @@ export interface GdDong { item_id: number; gd: Record<string, MocGd>; so_lan_tri
 const parse = (s: string) => Date.parse(s.slice(0, 19).replace(" ", "T") + (s.length <= 10 ? "T00:00:00Z" : "Z"));
 const lon = (a?: string | null, b?: string | null) => (!a ? b ?? null : !b ? a : a > b ? a : b);
 
-/** So gio LAM VIEC (bo Chu nhat) giua 2 moc gio VN. */
+/** So gio LAM VIEC giua 2 moc gio VN - lich chung lib/gioLamViec (v0.103). */
 export function gioLamViec(a: string, b: string): number {
-  let t = parse(a);
-  const het = parse(b);
-  if (!(het > t)) return 0;
-  let ms = 0;
-  while (t < het) {
-    const d = new Date(t);
-    const nuaDem = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
-    const buoc = Math.min(nuaDem, het) - t;
-    if (d.getUTCDay() !== 0) ms += buoc;
-    t += buoc;
-  }
-  return Math.round((ms / 3600_000) * 10) / 10;
+  return demGioLV(a, b);
 }
 
 async function docSla(env: Env): Promise<Record<string, number>> {
@@ -177,7 +169,7 @@ export function ketQuaGd(x: { gd: Record<string, MocGd>; ket_thuc: string | null
 }
 
 export async function layGiaiDoan(env: Env): Promise<{ sla: Record<string, number>; map: Map<number, GdKetQua> }> {
-  const { sla, dong } = await cachedReport(env.DB, "rep:giai-doan:v2", ["eo", "amis", "settings", "theo_doi"], () => tinhMoc(env));
+  const { sla, dong } = await cachedReport(env.DB, "rep:giai-doan:v3", ["eo", "amis", "settings", "theo_doi"], () => tinhMoc(env));
   const now = nowVN();
   const map = new Map<number, GdKetQua>();
   for (const x of dong) map.set(x.item_id, ketQuaGd(x, now));

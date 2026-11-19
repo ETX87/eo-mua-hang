@@ -50,7 +50,7 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "done", l: "Đủ hàng (DONE)", title: "Đã ban hành, mọi dòng đã về đủ SL đặt (kể cả dòng kết thúc sớm)" },
   { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
   // v0.084 bang dieu hanh (../QUAN_TRI_DIEU_HANH.md): muc DO / im lang / loi cho giai trinh theo dong LK dang mo
-  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 7 ngày / im lặng ≥ 7 ngày" },
+  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 56h làm việc / im lặng ≥ 7 ngày" },
   { k: "po_im_lang", l: "PO im lặng ≥ 7 ngày", title: "Có dòng đang mở 7 ngày không ai tác động (cập nhật kế hoạch, push, mail NCC, gọi/Zalo, giải trình)" },
   { k: "po_loi_cho", l: "PO có lỗi chờ giải trình" },
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },

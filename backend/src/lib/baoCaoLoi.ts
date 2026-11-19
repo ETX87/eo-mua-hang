@@ -1,16 +1,18 @@
 import type { Env } from "../types";
-import { todayVN } from "./vnTime";
+import { todayVN, nowVN } from "./vnTime";
+import { demGioLV } from "./gioLamViec";
 import { layDongTheoDoi } from "./theoDoi";
 import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, type BangMaLoi } from "./maLoi";
 
 /**
  * Danh sach LOI day du + tong hop theo MA LOI ER.MH (v0.091) - dung chung: man Vi pham (routes/viPham, loc theo pham vi nguoi xem),
  * Ca ton CEO (routes/caCeo) va API doc cho he khac (routes/partner). Muc do (chot 2026-11-04):
- *   CEO = dong dang cap CEO · CAO = cung loai lap >= 3 lan / cho >= 7 ngay · TB = lap 2 / cho >= 3 ngay · THAP con lai.
+ *   CEO = dong dang cap CEO · CAO = cung loai lap >= 3 lan / cho >= 56h LV · TB = lap 2 / cho >= 24h LV · THAP con lai.
+ *   v0.103: "cho" tinh theo GIO LAM VIEC (lib/gioLamViec) - 3 / 7 ngay cu x 8h. tuoi_ngay van tra de hien thi.
  * Chi loi cua dong con trong layDongTheoDoi (PO ban hanh truoc moc 'theo_doi_bo_qua_truoc' khong tinh).
  */
-export const QUA_LAU_NGAY = 3;
-export const RAT_LAU_NGAY = 7;
+export const QUA_LAU_GIO = 24;
+export const RAT_LAU_GIO = 56;
 const soNgay = (a: string, b: string) => Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
 
 export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaLoi }> {
@@ -31,6 +33,7 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
     layBangMaLoi(db),
   ]);
   const today = todayVN();
+  const now = nowVN();
   const gtBy = new Map(gtRs.results.map((g: any) => [g.id, g]));
   const nnBy = new Map(nnRs.results.map((n: any) => [n.eo_item_id, n]));
   const dongBy = new Map(dong.map((d) => [d.item_id, d]));
@@ -50,17 +53,18 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
     const gt = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
     const moc = (l.han ?? l.created_at) as string;
     const tuoi = cho ? soNgay(moc, today) : gt ? soNgay(moc, gt.created_at) : 0;
+    const tuoiGio = cho ? demGioLV(moc, now) : gt ? demGioLV(moc, gt.created_at) : 0;
     const d = dongBy.get(l.eo_item_id)!;
     const ceo = d.ceo_ly_do.length > 0;
-    const muc = ceo ? "CEO" : soLan >= 3 || (cho && tuoi >= RAT_LAU_NGAY) ? "CAO" : soLan >= 2 || (cho && tuoi >= QUA_LAU_NGAY) ? "TB" : "THAP";
+    const muc = ceo ? "CEO" : soLan >= 3 || (cho && tuoiGio >= RAT_LAU_GIO) ? "CAO" : soLan >= 2 || (cho && tuoiGio >= QUA_LAU_GIO) ? "TB" : "THAP";
     const nn = nnBy.get(l.eo_item_id);
     const m = maCuaLoi(bang, l, l.doi_tac);
     rows.push({
       ...l, nguoi_vp: (l.ai_email || l.nguoi_dat) as string | null, vp_khoa: khoaViPham(l), ma_loi: m.ma, ten_ma: m.ten, buoc: m.buoc,
-      so_lan: soLan, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, qua_lau: cho && tuoi >= QUA_LAU_NGAY, muc,
+      so_lan: soLan, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, tuoi_gio: tuoiGio, qua_lau: cho && tuoiGio >= QUA_LAU_GIO, muc,
       gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
       gt_ai_ma: gt?.ai_ma ?? null, gt_ai_email: gt?.ai_email ?? null, gt_loi_ma: gt?.loi_ma ?? null,
-      /** v0.092: dong tu dong (AUTO:KHAC_PHUC = da khac phuc sau do · AUTO:QUA_HAN = qua 7 ngay khong giai trinh) */
+      /** v0.092: dong tu dong (AUTO:KHAC_PHUC = da khac phuc sau do · AUTO:QUA_HAN = qua han giai trinh 56h LV, truoc v0.103 la 7 ngay) */
       tu_dong: gt?.pham_vi === "AUTO" ? (gt.nhom === "AUTO:QUA_HAN" ? "QUA_HAN" : "KHAC_PHUC") : null,
       so_nhac: nn?.n ?? 0, so_nhac_tay: nn?.tay ?? 0, nhac_gan_nhat: nn?.moi ?? null,
       ceo, ceo_ly_do: d.ceo_ly_do, so_lan_lui: d.so_lan_lui, tinh_trang: d.tinh_trang,

@@ -5,7 +5,7 @@ import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
-import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_NGAY, RAT_LAU_NGAY } from "../lib/baoCaoLoi";
+import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_GIO, RAT_LAU_GIO } from "../lib/baoCaoLoi";
 import { layDongDieuHanh, thongKeGiaiDoan } from "../lib/dieuHanh";
 import { layBangMaLoi } from "../lib/maLoi";
 
@@ -22,7 +22,7 @@ import { layBangMaLoi } from "../lib/maLoi";
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-export { QUA_LAU_NGAY, RAT_LAU_NGAY };
+export { QUA_LAU_GIO, RAT_LAU_GIO };
 
 const soNgay = (a: string, b: string) => Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
 
@@ -46,7 +46,7 @@ app.get("/", async (c) => {
   const st = await db.prepare("SELECT danh_gia_luc FROM tl_state WHERE id = 1").first<{ danh_gia_luc: string | null }>();
   return c.json({
     rows, tat_ca: pv.tatCa, quan_ly: xemToanBoTheoDoi(u), co_the_gt: canEditPlan(u), me: u.email, vai_tro: u.vai_tro,
-    qua_lau_ngay: QUA_LAU_NGAY, rat_lau_ngay: RAT_LAU_NGAY, danh_gia_luc: st?.danh_gia_luc ?? null,
+    qua_lau_gio: QUA_LAU_GIO, rat_lau_gio: RAT_LAU_GIO, danh_gia_luc: st?.danh_gia_luc ?? null,
   });
 });
 

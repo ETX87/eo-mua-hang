@@ -21,7 +21,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 | Điều hành (`/dieu-hanh`) | Cho lãnh đạo: nhìn 3–5 giây biết tồn ở đâu, ai giữ, đã làm gì, vì sao còn tồn. Kết luận nhanh (câu tự sinh, bấm được) · ô sức khoẻ (đỏ / vàng / quá DK / chưa DK / im lặng / không thúc NCC / lỗi chờ GT / cấp CEO / duyệt treo) · luồng giai đoạn ngang G1→G8 · tab Điểm nóng, Theo người (độ quyết liệt 7 ngày, tỷ lệ giải trình, nút Nhắc), Theo NCC, Nguyên nhân & xu hướng (độ phủ giải trình), Duyệt đang treo. Lọc phạm vi người / NCC / kho. Chi tiết `../QUAN_TRI_DIEU_HANH.md` |
 | Ca tồn CEO (`/ca-ceo`) | Menu riêng: dòng đang mở cấp CEO, mã ER.MH-201/202/203 + diễn giải, tồn, ngày DK (lùi), lỗi chờ, thúc NCC, NCC trả lời, giải trình, im lặng; ô lọc theo mã; Excel |
 | Đơn PO (`/eo`) | Danh sách EO có chip số đếm (mặc định "Còn tồn"; thêm "PO có dòng ĐỎ", "PO im lặng ≥ 7 ngày", "PO có lỗi chờ GT"); cột Tiến trình (luồng ngang các giai đoạn, thay nhãn trạng thái) · Cảnh báo · Tồn · % về · Lỗi chờ GT · Thúc NCC · Hoạt động cuối đặt sát mã PO; lọc cột kiểu Excel, duyệt / từ chối / yêu cầu cập nhật ngay trên dòng; chi tiết EO là popup |
-| LK đặt (`/don-hang`) | Mỗi dòng = 1 dòng linh kiện; mặc định nhóm "Còn chờ hàng"; xem theo dòng / theo PO / theo mã LK; nhóm nhanh (Cần xử lý, Trễ 24h, Quá DK, Lỗi chờ giải trình, Cấp CEO, Thiếu ngày NM cam kết, Thiếu ngày dự kiến, Chưa về hàng nào, Về thiếu…); nhập ngày NM / dự kiến, giải trình chung, push đối tác (nút "Tạo mail nhắc" tạm tắt từ v0.088 — người dùng tự gửi mail, CC hộp theo dõi), ngày KRF từ mail, kế hoạch hàng về Excel, kế hoạch tuần KRF; tab Báo cáo |
+| LK đặt (`/don-hang`) | Mỗi dòng = 1 dòng linh kiện; mặc định nhóm "Còn chờ hàng"; xem theo dòng / theo PO / theo mã LK; nhóm nhanh (Cần xử lý, Trễ hạn chưa có ngày DK, Quá DK, Lỗi chờ giải trình, Cấp CEO, Thiếu ngày NM cam kết, Thiếu ngày dự kiến, Chưa về hàng nào, Về thiếu…); nhập ngày NM / dự kiến, giải trình chung, push đối tác (nút "Tạo mail nhắc" tạm tắt từ v0.088 — người dùng tự gửi mail, CC hộp theo dõi), ngày KRF từ mail, kế hoạch hàng về Excel, kế hoạch tuần KRF; tab Báo cáo |
 | Vi phạm | Lỗi theo mức độ CEO / CAO / TB / THẤP, "Của tôi / Toàn bộ", xem theo lỗi / PO / người; giải trình (từng lỗi, cả PO, nhiều lỗi cùng loại), nhắc nhở |
 | Nhập AMIS | Import phiếu nhập (thêm / đồng bộ lại kỳ có xem trước), hủy / khôi phục dòng, tab chứng từ chưa khớp EO |
 | Cài đặt | Danh mục (đối tác, lý do phát sinh…), người dùng & vai trò, cấu hình hạn giai đoạn, đồng bộ PO sang DVBH, ETX nhân sự |
@@ -44,7 +44,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Bảng kiểu Excel (lọc + sắp xếp trên tiêu đề, nhãn "đang lọc n cột · x / y dòng"; cột ngày / số có thêm "Chưa có ngày (ô trống) / Đã có ngày"), thanh thao tác 1 dòng, bộ lọc ít dùng giấu sau "Bộ lọc khác".
 - Mọi nhãn số lượng có giải thích (nút "?" và tooltip thuật ngữ chung).
 - Chống bấm đúp / duyệt đồng thời ở luồng duyệt (không cấp 2 mã 3TDO).
-- Mọi thời gian theo giờ Việt Nam; giờ làm việc bỏ Chủ nhật.
+- Mọi thời gian theo giờ Việt Nam. Mọi SLA / hạn (R1, R4, giai đoạn, hạn giải trình, mức độ vi phạm) tính theo GIỜ LÀM VIỆC: T2–T6 8:00–12:00 + 13:00–17:00 (8h) · T7 8:00–12:00 (4h) · CN nghỉ;
+  quy đổi 24h = 8h làm việc. Chỉ áp dụng từ 19/11/2026 — lỗi ghi trước giữ hạn cũ. Chỉ số hoạt động (im lặng, thúc NCC 7 ngày) vẫn theo ngày lịch.
 - Số trên Tổng quan phải khớp danh sách khi bấm vào.
 - Bộ lọc cá nhân lưu trên máy người dùng (Đơn PO: ★ Đã lưu, đặt 1 bộ làm mặc định khi mở).
 - Hướng dẫn sử dụng HTML theo vai trò ở `/huong-dan/` (nút 📘 Hướng dẫn), có ảnh minh hoạ thao tác.
@@ -55,7 +56,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Hiệu năng: mở lại app hiện ngay dữ liệu lần trước (cache trình duyệt), tự cập nhật nền; mã tải theo màn; có nút Tải lại dữ liệu thủ công.
 - Số lỗi / vi phạm luôn đếm theo **vi phạm gộp** (cùng lỗi, cùng PO, cùng kỳ), kèm số dòng bị ảnh hưởng; giải trình 1 lần cho cả vi phạm.
 - Bảng mã lỗi (`/ma-loi`): mỗi mã có tên, diễn giải lỗi gì, yêu cầu giải trình, khi nào tự giải trình, số lượng đang đếm.
-- Lỗi đang chờ không cần giải trình nữa khi đã khắc phục sau đó hoặc quá 7 ngày → hệ thống tự giải trình (vẫn tính vi phạm, tách khỏi "đã giải trình").
+- Lỗi đang chờ không cần giải trình nữa khi đã khắc phục sau đó hoặc quá hạn giải trình 56 giờ làm việc → hệ thống tự giải trình (vẫn tính vi phạm, tách khỏi "đã giải trình").
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
 - Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.
 - API đọc có khoá cho hệ khác: ca tồn CEO, tổng hợp lỗi theo mã, chi tiết lỗi + giải trình, bảng mã.

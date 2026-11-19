@@ -3,6 +3,23 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.103: Mọi SLA / hạn giải trình theo giờ làm việc
+
+- Yêu cầu: "chuyển đổi toàn bộ sla, hạn giải trình theo mốc giờ làm việc. 24h = 8h làm việc. bỏ qua CN + nửa thứ 7 = 8h + 4h".
+  Chốt thêm: khung giờ T2–T6 8:00–12:00 + 13:00–17:00 (8h) · T7 8:00–12:00 (4h) · CN nghỉ; chỉ áp dụng từ nay (lỗi đã ghi giữ hạn cũ).
+- Thêm `backend/src/lib/gioLamViec.ts` (`congGioLV` cộng giờ làm việc, `demGioLV` đếm giờ làm việc — tuần tròn 44h; mốc `GIO_LV_TU`).
+  `congGioLamViec` (theoDoi) và `gioLamViec` (giaiDoan) chuyển sang lịch này.
+- Quy đổi: R1 48h → 16h LV, nhóm Karofi/Livotec/Korihome 24h → 8h LV; R4 24h → 8h LV; SLA giai đoạn 24h → 8h, G8 168h → 56h;
+  hạn giải trình (tự đóng `AUTO:QUA_HAN`) 7 ngày → 56h LV (`GIO_TU_DONG`); mức độ vi phạm chờ ≥ 3 / 7 ngày → ≥ 24 / 56h LV (`tuoi_gio`);
+  Điều hành "lỗi chờ giải trình" đỏ 7 ngày → 56h LV; ca CEO rất hot / giảm hot theo hạn giải trình. Giữ theo ngày lịch: im lặng, thúc NCC 7 ngày, R3 (thứ 2/4), R1 lặp (thứ 3/6), mốc tồn.
+- Chỉ áp dụng từ nay: khối đồng bộ lỗi R1 đang chờ (tính lại hạn / tự xoá) chỉ xét lỗi ghi từ `GIO_LV_TU`; lỗi cũ giữ nguyên hạn.
+- Nhãn UI đổi theo (8h/16h LV, 56h LV, "giờ làm việc T2–T6 8h, T7 4h"); `gioTxt` FE quy 1 ngày làm việc = 8 giờ. Cache: `tl:goc-theo-doi:v8`,
+  `rep:giai-doan:v3`, tag dòng `|gd4`; Cài đặt › SLA giai đoạn mặc định 8 / 56.
+- Kiểm thử: typecheck; 13 ca thử hàm lịch (T2 10h + 8h = T3 10h; T6 16h + 8h = T2 11h; T7 tối + 8h = T2 17h; trưa 12:30 + 1h = 14:00;
+  56h từ T2 8h = T3 tuần sau 12h; đếm 1 tuần = 44h; 46 tuần = 2.024h); local: dòng bắt đầu T7 18:09 → hạn R1 16h = T3 17:00, G5 8h = T2 17:00,
+  R4 ngày DK T6 → T2 12:00; `/api/vi-pham` ngưỡng 24 / 56h LV, mức độ theo `tuoi_gio`; màn Vi phạm hiện nhãn giờ làm việc, không lỗi server.
+- Còn mở: ngày lễ chưa trừ.
+
 ## 19/11/2026 — v0.101: Ô "Cấp CEO" ở màn Vi phạm đếm theo ca (khớp màn Ca tồn CEO)
 
 - Báo: màn Vi phạm ô "Cấp CEO" = 57, màn Ca tồn CEO = 15 ca — "2 số vẫn khác nhau gây khó hiểu".

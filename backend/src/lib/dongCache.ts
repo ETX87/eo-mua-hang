@@ -57,7 +57,7 @@ const ketQua = (m: any): MetaCache => ({ seq: m.seq, epoch: m.epoch, sla: m.sla 
 export async function damBaoDongCache(env: Env, xay: () => Promise<{ rows: Row[]; sla: Record<string, number> }>): Promise<MetaCache> {
   const db = env.DB;
   // hau to = phien ban cach tinh (doi cach tinh giai doan / theo doi -> tang de dung lai moi dong). gd2: G1 dong khi EO qua nhap (v0.089); gd3: them ngay_dat_hang (v0.094)
-  const tag = `${await versionTag(db, [...DOMAINS], todayVN())}|gd3`;
+  const tag = `${await versionTag(db, [...DOMAINS], todayVN())}|gd4`;
   let m = await docMeta(db);
   if (m.tag === tag) return ketQua(m);
   const claim = await db.prepare(

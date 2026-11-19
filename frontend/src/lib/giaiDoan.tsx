@@ -9,8 +9,8 @@ export const GD_CHINH = [
   { k: "G5", l: "Chờ ngày DK" }, { k: "G6", l: "Chờ giao hàng" }, { k: "G8", l: "Giao bù đến đủ" },
 ] as const;
 
-/** Gio lam viec -> "5 giờ" / "2.5 ngày" (1 ngay = 24 gio lam viec). */
-export const gioTxt = (g: number | null | undefined) => (g == null ? "" : g < 24 ? `${g} giờ` : `${Math.round((g / 24) * 10) / 10} ngày`);
+/** Gio LAM VIEC -> chu (v0.103: 1 ngay lam viec = 8 gio - backend lib/gioLamViec). */
+export const gioTxt = (g: number | null | undefined) => (g == null ? "" : g < 8 ? `${g} giờ LV` : `${Math.round((g / 8) * 10) / 10} ngày LV`);
 
 
 /** Nhan giai doan hien tai + thoi gian da o + tre han. */
