@@ -3,6 +3,17 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+## 19/11/2026 — v0.100: Gộp ca CEO theo PO + mã CEO, tab riêng "Đã xong"
+
+- Yêu cầu: "1. cảnh báo cấp CEO cũng gom vi phạm 2. Các ca lỗi CEO đã xong, tab riêng tab nhỏ trong tab CEO để tránh loãng."
+- 1 ca CEO = 1 PO + 1 mã CEO (ER.MH-201 / 202 / 203) — giống gộp vi phạm (PO + quy tắc). Độ hot ca: mọi dòng đã xong → Đã xong; có dòng rất hot → Rất hot; còn lại Giảm hot.
+- Backend: `lib/caCeo.ts` `khoaCa` / `gomCaCeo`, `demTheoMuc` đếm `{ ca, dong, po }`; API đọc `/api/partner/ca-ceo` thêm `so_ca`, `ca` (kèm `item_ids`);
+  Bảng mã lỗi đếm 2xx theo ca; số đỏ menu "Ca tồn CEO" = số ca (PO × loại lý do).
+- Màn Ca tồn CEO: tab "🔥 Đang theo dõi" + tab nhỏ "⚪ Đã xong"; ô số theo ca (kèm số PO / dòng LK); bảng nhóm theo ca (tiêu đề ca bấm thu gọn), dòng có nhiều mã
+  ghi "dòng này còn ở ca …"; Excel thêm cột Ca / Mức của ca.
+- Số liệu thật (trước deploy, tính từ API đọc): 364 dòng → 18 ca = 3 rất hot · 12 giảm hot · 3 đã xong (nhiều dòng đã về đủ nằm trong PO còn dòng thiếu nên ca vẫn mở).
+- Kiểm thử: typecheck; local với dữ liệu giả (7 dòng → 4 ca, đổi tab, nhóm, ghi chú dòng nhiều mã); API local 200.
+
 ## 19/11/2026 — v0.099: Sửa bug màn Ca tồn CEO trắng trang
 
 - Báo lỗi: "bug: vào màn ceo bị trắng xóa".

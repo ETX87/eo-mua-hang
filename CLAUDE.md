@@ -380,6 +380,7 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - **v0.097/v0.098** Ca CEO độ hot `lib/caCeo.ts` (`dsCaCeoXuLy`, `demTheoMuc`; RAT_HOT / GIAM_HOT / DA_XONG, gồm dòng đã đóng tính lại 3 ngưỡng) — dùng chung route `/ca-ceo` + partner. Hiệu năng: `lib/cacheTrinhDuyet.ts`
   (React Query dehydrate/hydrate ↔ IndexedDB `eomua-cache`/`rq-v1`, danh sách key `LUU` — thêm query đọc mới muốn mở nhanh thì thêm vào), `main.tsx` nạp trước khi
   render; `App.tsx` route `React.lazy`; `cachedReport` nhớ JSON trong isolate (`NHO`, ≤ 48MB) + `opts.tagThem`; `/dashboard/quan-ly` cache theo giờ. Nút `NutTaiLai` (AppShell).
+- **v0.100** ca CEO gộp = PO + mã CEO: `gomCaCeo` (backend `lib/caCeo.ts`) ↔ `gomCa` (FE `pages/CaCeo.tsx`) PHẢI cùng quy tắc; viPham `dem_ceo` + viecCanLam đếm theo ca.
 - **v0.095** R1 lặp thứ 3/6: vòng lặp sau `add(R1)` trong `danhGiaQuyTac`, khoá `R1:<item>:<ngày>`, mốc `app_settings.r1_lap_tu` (`R1_LAP_TU_MAC_DINH`); khối đồng bộ R1
   "theo mốc hiện tại" CHỈ lấy `khoa = 'R1:' || eo_item_id` (không sửa hạn lỗi lặp). `khoaViPham` R1 có ngày → `eo|R1|ngày`. Đơn PO `doi_tac_po` (cache `eo:ds-v3`),
   Giải trình hàng loạt `pages/eo/GiaiTrinhHangLoat.tsx`. Tên G5 "Chờ ngày DK", G6 "Chờ giao hàng".

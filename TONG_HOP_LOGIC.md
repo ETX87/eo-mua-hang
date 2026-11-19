@@ -115,6 +115,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Cache**: trình duyệt giữ dữ liệu lần mở trước (IndexedDB, theo tài khoản) và cập nhật ở nền; server nhớ báo cáo đã giải nén theo phiên bản dữ liệu,
   Tổng quan tính lại tối đa mỗi giờ khi dữ liệu không đổi; nút ⟳ trên thanh trên cùng tải lại ngay.
 - Menu **Ca tồn CEO**: dòng đang mở cấp CEO + mã 201–203 + hành động (thúc NCC, NCC trả lời, giải trình, im lặng).
+- **Gộp ca CEO** (v0.100, như gộp vi phạm): 1 ca = 1 PO + 1 mã CEO (201 / 202 / 203), gộp mọi dòng LK cùng lý do trên PO đó; dòng có 2–3 mã nằm ở 2–3 ca.
+  Độ hot của ca: mọi dòng đã xong → Đã xong · có dòng rất hot → Rất hot · còn lại → Giảm hot. Mọi số đếm CEO (màn Ca tồn CEO, số đỏ menu, Bảng mã lỗi 2xx,
+  API đọc `so_ca` / `dem.*.ca`) tính theo ca. Màn có tab **Đang theo dõi** (rất hot + giảm hot) và tab nhỏ **Đã xong**.
 - Trạng thái luôn gắn bước: Đơn PO / popup PO = luồng tiến trình; popup đơn hàng = giai đoạn hiện tại; LK đặt "Tình trạng đơn" có tiền tố bước.
 - Luồng trao đổi NCC theo dòng: 3T thúc (mail gửi có CC hộp theo dõi, push, gọi/Zalo) ↔ NCC trả lời (mail NCC) ↔ cập nhật ngày DK.
 

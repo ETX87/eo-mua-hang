@@ -4,7 +4,7 @@ import { bumpVersions } from "../lib/dataVersions";
 import { tuDongDienKrf } from "../lib/krfGoiY";
 import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, gomViPham } from "../lib/baoCaoLoi";
 import { layBangMaLoi } from "../lib/maLoi";
-import { dsCaCeoXuLy, demTheoMuc } from "../lib/caCeo";
+import { dsCaCeoXuLy, demTheoMuc, gomCaCeo } from "../lib/caCeo";
 import { danhGiaQuyTac } from "../lib/theoDoi";
 
 /**
@@ -133,7 +133,9 @@ app.get("/ca-ceo", docKey, async (c) => {
   await danhGiaQuyTac(c.env).catch(() => {});
   // v0.097: moi ca kem muc_xu_ly (TON_DONG / BO_QUA_GT / DA_XU_LY) + ly_do_xu_ly; dem = so dong / PO theo muc
   const rows = await dsCaCeoXuLy(c.env);
-  return c.json({ so_dong: rows.length, dem: demTheoMuc(rows), rows });
+  // v0.100: ca = PO + ma CEO (gop nhieu dong); dem theo ca / dong / PO
+  const ca = gomCaCeo(rows).map(({ dong, ...x }) => ({ ...x, item_ids: dong.map((r) => r.item_id) }));
+  return c.json({ so_ca: ca.length, so_dong: rows.length, dem: demTheoMuc(rows), ca, rows });
 });
 app.get("/loi/tong-hop", docKey, async (c) => {
   await danhGiaQuyTac(c.env).catch(() => {});

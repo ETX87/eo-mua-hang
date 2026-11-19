@@ -79,8 +79,33 @@ export async function dsCaCeoXuLy(env: Env) {
   }).sort((a, b) => THU_MUC[b.muc_xu_ly] - THU_MUC[a.muc_xu_ly] || (b.ton ?? 0) - (a.ton ?? 0));
 }
 
-export function demTheoMuc(rows: { muc_xu_ly: MucXuLy; po: string }[]) {
-  const out: Record<MucXuLy, { dong: number; po: number }> = { RAT_HOT: { dong: 0, po: 0 }, GIAM_HOT: { dong: 0, po: 0 }, DA_XONG: { dong: 0, po: 0 } };
-  for (const m of Object.keys(out) as MucXuLy[]) { const x = rows.filter((r) => r.muc_xu_ly === m); out[m] = { dong: x.length, po: new Set(x.map((r) => r.po)).size }; }
+/**
+ * GOP CA CEO (v0.100, yeu cau 2026-11-19 "canh bao cap CEO cung gom vi pham"): 1 CA = 1 PO + 1 ma CEO (201 / 202 / 203), du bao nhieu dong.
+ * Dong co nhieu ma -> nam trong nhieu ca. Do hot ca: moi dong da xong -> DA_XONG; co dong RAT_HOT -> RAT_HOT; con lai GIAM_HOT.
+ * FE pages/CaCeo gop cung quy tac (khoaCa).
+ */
+export const khoaCa = (eoId: number, ma: string) => `${eoId}|${ma}`;
+export function gomCaCeo<T extends { eo_id: number; po: string; muc_xu_ly: MucXuLy; ma_ceo: { ma: string }[]; item_id: number }>(rows: T[]) {
+  const m = new Map<string, { khoa: string; eo_id: number; po: string; ma: string; dong: T[] }>();
+  for (const r of rows) for (const c of r.ma_ceo) {
+    const k = khoaCa(r.eo_id, c.ma);
+    const x = m.get(k) ?? { khoa: k, eo_id: r.eo_id, po: r.po, ma: c.ma, dong: [] };
+    x.dong.push(r); m.set(k, x);
+  }
+  return [...m.values()].map((x) => ({
+    ...x,
+    muc: (x.dong.every((r) => r.muc_xu_ly === "DA_XONG") ? "DA_XONG" : x.dong.some((r) => r.muc_xu_ly === "RAT_HOT") ? "RAT_HOT" : "GIAM_HOT") as MucXuLy,
+    so_dong: x.dong.length, so_dong_xong: x.dong.filter((r) => r.muc_xu_ly === "DA_XONG").length,
+  }));
+}
+
+/** Dem theo muc: so CA (PO + ma CEO), so dong, so PO. */
+export function demTheoMuc(rows: { muc_xu_ly: MucXuLy; po: string; eo_id: number; item_id: number; ma_ceo: { ma: string }[] }[]) {
+  const ca = gomCaCeo(rows);
+  const out: Record<MucXuLy, { ca: number; dong: number; po: number }> = { RAT_HOT: { ca: 0, dong: 0, po: 0 }, GIAM_HOT: { ca: 0, dong: 0, po: 0 }, DA_XONG: { ca: 0, dong: 0, po: 0 } };
+  for (const m of Object.keys(out) as MucXuLy[]) {
+    const x = ca.filter((c) => c.muc === m);
+    out[m] = { ca: x.length, dong: new Set(x.flatMap((c) => c.dong.map((r) => r.item_id))).size, po: new Set(x.map((c) => c.po)).size };
+  }
   return out;
 }

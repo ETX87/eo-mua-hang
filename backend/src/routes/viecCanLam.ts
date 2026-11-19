@@ -15,14 +15,14 @@ import { dvbhEnabled } from "../lib/dvbhSync";
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-type Gon = Pick<DongTheoDoi, "item_id" | "nguoi_dat" | "kho" | "ap_dung" | "tinh_trang" | "so_loi_cho_gt" | "ceo_ly_do" | "co_ngay_du_kien">;
+type Gon = Pick<DongTheoDoi, "item_id" | "eo_id" | "nguoi_dat" | "kho" | "ap_dung" | "tinh_trang" | "so_loi_cho_gt" | "ceo_ly_do" | "co_ngay_du_kien">;
 let cache: { tag: string; rows: Gon[] } | null = null;
 
 async function dongTheoDoi(env: Env): Promise<Gon[]> {
   const tag = `${await versionTag(env.DB, ["eo", "amis", "settings", "theo_doi"])}|${nowVN().slice(0, 15)}`; // moc 10 phut
   if (cache?.tag === tag) return cache.rows;
   const rows = (await layDongTheoDoi(env, "dang_mo")).map((r) => ({
-    item_id: r.item_id, nguoi_dat: r.nguoi_dat, kho: r.kho, ap_dung: r.ap_dung, tinh_trang: r.tinh_trang,
+    item_id: r.item_id, eo_id: r.eo_id, nguoi_dat: r.nguoi_dat, kho: r.kho, ap_dung: r.ap_dung, tinh_trang: r.tinh_trang,
     so_loi_cho_gt: r.so_loi_cho_gt, ceo_ly_do: r.ceo_ly_do, co_ngay_du_kien: r.co_ngay_du_kien,
   }));
   cache = { tag, rows };
@@ -94,12 +94,15 @@ app.get("/", async (c) => {
       chuaNhac.forEach((id) => viec.add(id));
     }
     if (viec.size) out.push({ key: "theo_doi", to: "/don-hang?nhom=can_xl", label: "Linh kiện đặt cần xử lý", count: viec.size, chi_tiet: chiTiet.filter((x) => x.count > 0) });
+    // v0.100: dem CA CEO = PO + loai ly do (gop dong) - khop man Ca ton CEO (lib/caCeo gomCaCeo)
     const ceo = rows.filter((r) => r.ceo_ly_do.length > 0);
-    if (ceo.length) out.push({ key: "ceo", to: "/ca-ceo", label: "Ca tồn CEO", count: ceo.length,
+    const caCua = (f: (x: string) => boolean) => new Set(ceo.filter((r) => r.ceo_ly_do.some(f)).map((r) => r.eo_id)).size;
+    const lui = caCua((x) => x.startsWith("Lùi")), xa = caCua((x) => x.includes("ngày đặt")), loi = caCua((x) => x.endsWith("lỗi"));
+    if (ceo.length) out.push({ key: "ceo", to: "/ca-ceo", label: "Ca tồn CEO", count: lui + xa + loi,
       chi_tiet: [
-        { label: "Lùi ngày dự kiến ≥ 3 lần", count: ceo.filter((r) => r.ceo_ly_do.some((x) => x.startsWith("Lùi"))).length },
-        { label: "Ngày DK ≥ 30 ngày sau ngày đặt", count: ceo.filter((r) => r.ceo_ly_do.some((x) => x.includes("ngày đặt"))).length },
-        { label: "≥ 3 lỗi", count: ceo.filter((r) => r.ceo_ly_do.some((x) => x.endsWith("lỗi"))).length },
+        { label: "Lùi ngày dự kiến ≥ 3 lần", count: lui },
+        { label: "Ngày DK ≥ 30 ngày sau ngày đặt", count: xa },
+        { label: "≥ 3 lỗi", count: loi },
       ].filter((x) => x.count > 0) });
   }
 
