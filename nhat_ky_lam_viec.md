@@ -4,6 +4,27 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 20/11/2026 — v0.107: Việc của tôi thêm Ngày dự kiến, SL đặt, Xuất Excel từng mục
+
+- Yêu cầu: "chỗ này thêm cột kho, và ngày dự kiến đã điền (nếu có), số lượng đặt + xuất file excel của mỗi 1 phân loại" và "Tiếp nhận việc đang dở và thực hiện nốt (đóng và bỏ lỗi từ trước tháng 4/2026)".
+- `pages/ViecCuaToi.tsx`: bảng 4 mục thêm cột **Ngày dự kiến** (đợt gần nhất; "chưa có" nếu chưa điền; dòng phụ "NCC dd/mm" khi ngày NCC cam kết khác) và **SL đặt**
+  (cột Kho đã có từ v0.106 — bản đang chạy thật trước đó là v0.105 nên chưa thấy). Mỗi mục có nút **⬇ Xuất Excel** xuất đúng các dòng của mục.
+  Mục ③ bỏ dòng phụ "ngày DK cũ" (trùng cột mới). API `/viec-cua-toi` đã trả sẵn các trường, không đổi backend.
+- Việc dở (đóng PO trước 04/2026): kiểm lại D1 thật — 0 dòng còn mở, 0 lỗi `tl_loi` của PO ban hành trước 04/2026; commit kèm script SQL đã chạy.
+- Kiểm thử: typecheck + build; local với 2 dòng giả: cột Kho "KHN", Ngày DK "chưa có" / "15/11/2026" + "NCC 14/11/2026", SL đặt 30, nút Xuất Excel chỉ hiện ở mục có dòng.
+  Chưa bấm tải file Excel thật.
+
+## 20/11/2026 — Dữ liệu: đóng toàn bộ PO tồn ban hành trước 04/2026 (không đổi code, không deploy)
+
+- Yêu cầu: "check trên mua hàng, các mã PO , đơn hàng tồn từ trước tháng 4/2026 => đóng kết thúc toàn bộ" và "2. các lỗi, vi phạm liên quan đến các PO đơn hàng tồn trước tháng 4/2026 cũng loại bỏ".
+- Phạm vi: PO `ISSUED` có `issued_at < 2026-04-01` (403 PO / 3.752 dòng). Còn mở 272 dòng / 98 PO: 11 dòng về 1 phần, 261 dòng chưa về; không dòng nào chờ duyệt sau BH.
+- Đã làm: chạy `scripts/dong_po_truoc_2026-04_2026-11-20.sql` lên D1 thật — đúng quy tắc **Kết thúc sớm cả PO** (`POST /eo/:id/ket-thuc-som`): về 1 phần → SL đặt = SL đã về,
+  cắt kế hoạch từ đợt xa nhất (xoá 5 đợt, giảm 5 đợt); chưa về → SL 0 + `CANCELLED_LINE`; đánh dấu `ket_thuc_som_*` (lý do "Đóng PO tồn ban hành trước 04/2026…"), ghi event_log
+  `KET_THUC_SOM` ×272, `KET_THUC_SOM_PO` ×98, `DELETE_PLAN`/`UPDATE_PLAN` ×5; tính lại khớp AMIS cho các mã phê duyệt có dòng bị huỷ; tăng version `eo`, `amis` (cache + đồng bộ DVBH tự chạy lại).
+  Người thực hiện ghi là tài khoản quản trị bootstrap. Sao lưu `eo_item` / `item_plan` trước khi chạy ở thư mục cha `_backup_dong_po_truoc_t4/` (không đưa lên Git).
+- Lỗi / vi phạm: `tl_loi`, `tl_nhac_nho`, `tl_giai_trinh` của các PO này = 0 bản ghi (mốc `theo_doi_bo_qua_truoc` = 2026-07-01 đã loại PO ban hành trước 07/2026 khỏi theo dõi) → không cần xoá gì; dòng đã đóng cũng không phát sinh lỗi mới.
+- Kiểm thử (D1 thật): còn 0 dòng mở của PO trước 04/2026; 272 dòng có SL đặt = SL đã về theo AMIS (lệch 0); 0 lỗi vi phạm.
+
 ## 20/11/2026 — v0.106: Thêm cột "Kho" ở màn Việc của tôi
 
 - Yêu cầu: "ở màn hình việc của tôi, bổ sung thêm cột “kho”".

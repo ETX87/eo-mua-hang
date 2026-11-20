@@ -67,6 +67,8 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
   chia 4 việc có hạn giờ làm việc + 1 nút: ① chưa có ngày DK (hạn R1) · ② thứ 2/4 chưa nhắc NCC trong kỳ (hạn 23:59; nút soạn mail Gmail có CC hộp
   theo dõi + mã 3TDO + mã LK, hoặc 📞 Đã nhắc) · ③ quá ngày DK (hạn R4) · ④ có lỗi chờ giải trình (hạn tự đóng = lỗi sớm nhất + 56h LV).
   Số đỏ menu = mục "Linh kiện đặt cần xử lý" của Việc cần xử lý (trỏ về màn này).
+  Bảng mỗi mục: Hạn · PO · Linh kiện · Kho · Nhà cung cấp · Ngày dự kiến (đợt gần nhất, dòng phụ "NCC dd/mm" nếu ngày NCC cam kết khác) · SL đặt · Còn thiếu.
+  Mỗi mục có nút ⬇ Xuất Excel (v0.107) — xuất đúng các dòng của mục đó (kho tên đầy đủ, ngày ban hành, ngày DK, ngày NCC cam kết, SL đặt / đã về / còn thiếu, lỗi chờ).
 - **Cột Vi phạm ở Đơn PO** (v0.104): đếm vi phạm gộp của PO giống màn Vi phạm (kể cả dòng đã đóng) → trạng thái Cấp CEO (có dòng đang cấp CEO) >
   Chờ giải trình > Đã xử lý (đã giải trình / tự đóng hết) > Không vi phạm; kèm số vi phạm / chờ / đã GT / tự đóng. Chip "PO cấp CEO".
 - Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ giải trình ≥ 56 giờ làm việc) / TB (lặp 2 hoặc chờ ≥ 24 giờ làm việc) / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
