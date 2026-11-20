@@ -3,6 +3,14 @@
 > Mỗi đợt làm việc 1 mục, **mới nhất ở trên**: ngày, phiên bản, yêu cầu, đã làm gì, kiểm thử gì, việc còn dở. Chỉ ghi thêm, không xoá mục cũ.
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
+
+## 20/11/2026 — v0.106: Thêm cột "Kho" ở màn Việc của tôi
+
+- Yêu cầu: "ở màn hình việc của tôi, bổ sung thêm cột “kho”".
+- `pages/ViecCuaToi.tsx`: bảng của cả 4 mục (nhập ngày DK, push NCC, quá ngày DK, giải trình) thêm cột **Kho** giữa Linh kiện và Nhà cung cấp, hiện mã kho rút gọn
+  (`<Kho>` — rê chuột xem tên đầy đủ) như các màn khác. API `/viec-cua-toi` đã trả sẵn `kho`, không đổi backend.
+- Kiểm thử: typecheck; local với 1 dòng giả: cột Kho hiện "KHN" đúng vị trí.
+
 ## 19/11/2026 — v0.105: Quét mỗi giờ, nhắc sắp hết hạn giải trình, thông báo đẩy, popup khi mở app
 
 - Yêu cầu: làm tương tự app linh kiện — *"Hệ thống tự quét mỗi giờ. Ca quá hạn sẽ báo đích danh người phải giải trình, và nhắc lại khi còn 6 giờ là hết

@@ -5,6 +5,7 @@ import { Card, PageHeader, Spinner } from "../components/ui";
 import { EoLink, DongLink } from "../components/quickview/QuickView";
 import { soLuong, ten } from "../lib/format";
 import { gioTxt } from "../lib/giaiDoan";
+import { Kho } from "../lib/kho";
 import { NgayHangVeModal, GiaiTrinhModal, LienHeDoiTacModal, type Dong } from "./theodoi/shared";
 
 /**
@@ -41,13 +42,14 @@ function Han({ v, chu }: { v: V; chu?: string }) {
 function Bang({ rows, nut, chu, phu }: { rows: V[]; nut: (v: V) => ReactNode; chu?: string; phu?: (v: V) => ReactNode }) {
   return (
     <table className="tbl tbl-dense" style={{ width: "100%" }}>
-      <thead><tr><th style={{ width: 130 }}>Hạn</th><th>PO</th><th>Linh kiện</th><th>Nhà cung cấp</th><th style={{ textAlign: "right" }}>Còn thiếu</th><th style={{ width: 170 }}></th></tr></thead>
+      <thead><tr><th style={{ width: 130 }}>Hạn</th><th>PO</th><th>Linh kiện</th><th>Kho</th><th>Nhà cung cấp</th><th style={{ textAlign: "right" }}>Còn thiếu</th><th style={{ width: 170 }}></th></tr></thead>
       <tbody>
         {rows.map((v) => (
           <tr key={v.item_id}>
             <td><Han v={v} chu={chu} /></td>
             <td><EoLink id={v.eo_id}>{v.ma_phe_duyet || v.eo_code}</EoLink>{v.nguoi_dat && <div className="muted" style={{ fontSize: 11 }}>{ten(v.nguoi_dat)}</div>}</td>
             <td><DongLink id={v.item_id} ma={v.part_code} /><div className="muted" style={{ fontSize: 11, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.part_name}</div>{phu?.(v)}</td>
+            <td>{v.kho ? <Kho t={v.kho} /> : <span className="muted">—</span>}</td>
             <td>{v.doi_tac || <span className="muted">—</span>}</td>
             <td style={{ textAlign: "right" }}><b>{soLuong(v.so_luong_con_thieu)}</b></td>
             <td style={{ textAlign: "right" }}>{nut(v)}</td>
