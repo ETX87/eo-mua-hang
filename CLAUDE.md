@@ -403,6 +403,9 @@ Chỉ số hoạt động (im lặng, thúc NCC 7 ngày), R3 thứ 2/4, R1 lặp
 - **v0.091 mã lỗi ER.MH** `lib/maLoi.ts` (`layBangMaLoi`, `maCuaLoi`, `ganMaLoi`; TAY theo danh mục LOI, mã mới cấp 106+ theo thứ tự) + `lib/baoCaoLoi.ts`
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
+- **v0.108** `GET /api/partner/theo-id` cho app linh kiện (`../../linh-kien-app` `lib/muaHangClient.ts`, Service Binding `MUAHANG_SERVICE`, secret `MUAHANG_DOC_API_KEY` = `DOC_API_KEY` bên này):
+  chỉ mục mã (tách từng mã trong ô `crm_id` / `order_id`) giữ trong bộ nhớ isolate theo version `eo`, chi tiết dòng đọc `dong_cache` theo `item_id` (~30 dòng D1 / lượt).
+  Đo SQL từng API trên fixture demo: `node scripts/do-sql-api.mjs <năm> <đường dẫn…>` (Git Bash cần `MSYS_NO_PATHCONV=1`; fixture chung `scripts/demo-d1-seed.mjs`).
   FE: `components/BangLoiTheoBuoc.tsx` (tab Mã lỗi & giải trình ở 2 popup), `components/LuongTraoDoiNcc.tsx` (tab Trao đổi NCC), `pages/CaCeo.tsx`.
 - **v0.099** cache trình duyệt gắn `APP_VERSION` (đổi cấu trúc dữ liệu API → PHẢI tăng phiên bản để bỏ cache cũ); `KhungLoi` bọc mọi màn (App.tsx).
 - **v0.097/v0.098** Ca CEO độ hot `lib/caCeo.ts` (`dsCaCeoXuLy`, `demTheoMuc`; RAT_HOT / GIAM_HOT / DA_XONG, gồm dòng đã đóng tính lại 3 ngưỡng) — dùng chung route `/ca-ceo` + partner. Hiệu năng: `lib/cacheTrinhDuyet.ts`

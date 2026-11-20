@@ -29,6 +29,9 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 
 - **Popup xem nhanh 95% màn hình**: EO, đơn hàng (1 dòng LK), mã linh kiện — mở chồng nhau, Esc đóng popup trên cùng; có đường
   tiến trình 8 giai đoạn (ngang, thu gọn được); thao tác trong popup dùng chung code với trang.
+- **ID case / ID đặt hàng luôn nhìn thấy** (v0.108): mở 1 đơn phải biết đơn đặt cho ca / đơn nào — popup EO có 2 cột riêng "ID case", "ID đặt hàng"
+  (không cắt chữ, lọc được, tách khỏi Ghi chú); popup đơn hàng ghi "ID case … · ID đặt hàng …" ngay đầu dòng thông tin; popup mã LK có cột "ID case · ID đặt hàng".
+- **Trả kết quả cho app linh kiện** (v0.108): app linh kiện hỏi theo mã đơn / ticket / case → thấy PO nào, đã về bao nhiêu, ngày dự kiến (API đọc `theo-id`).
 - Đường dẫn cũ (`/theo-doi`, `/so-don-hang`, `/approvals`, `/reports/*`…) tự chuyển sang màn mới, giữ bộ lọc.
 
 ## 4. Quy tắc nhập liệu

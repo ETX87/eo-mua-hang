@@ -142,6 +142,7 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 |---|---|---|
 | DVBH | Đẩy đi | Mỗi dòng EO = 1 PO (tiến độ, kế hoạch, phiếu AMIS) — chạy sau request khi dữ liệu đổi, cách nhau ≥ 2 phút, chỉ gửi dòng đổi |
 | Hệ khác (DVBH, báo cáo…) | Cho đọc | API `/api/partner/ma-loi`, `/ca-ceo`, `/loi/tong-hop`, `/loi` (khoá `DOC_API_KEY`) |
+| App linh kiện (`linhkien`) | Cho đọc | `GET /api/partner/theo-id?ids=&po_lk=` (khoá `DOC_API_KEY`, gọi qua Service Binding): trả kết quả mua hàng (PO, trạng thái, SL đặt / về / thiếu, ngày dự kiến, ngày về) theo mã. `ids` = mã đơn `DDH-…`, ticket `TLK-…`, mã case — khớp nếu mã nằm trong ô **ID CRM** HOẶC ô **ID đặt hàng** của dòng EO (tách từng mã trong ô, bỏ dấu nháy / khoảng trắng, không phân biệt hoa thường — dữ liệu thật có nhập lẫn cột, nhiều mã 1 ô). `po_lk` = cặp `3TDO-…~MÃ_LK` (ticket đã ghi mã EO) → dòng của PO đó có mã LK đó (kể cả mã gốc trước khi thay). Mỗi dòng trả 1 lần + `khop_theo`; mã không khớp ở `khong_khop` |
 | Thư ký mua hàng (`theodoimuahang`) | Nhận | Sự kiện mail NCC theo dòng (`/api/partner/mail-events`, ghi theo lô, chống trùng) |
 | ETX nhân sự | Nhận | Bấm tay đồng bộ nhân sự |
 

@@ -207,8 +207,12 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       render: ({ t }: any) => t ? <span style={{ whiteSpace: "nowrap" }}><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>CEO</span>}</span> : <span className="muted">—</span> },
     { key: "gd", header: <span title="8 giai đoạn: bấm để xem chi tiết đơn hàng (thời gian, hạn, lỗi từng bước)">Tiến trình</span>, loc: "chon", gt: ({ g }: any) => g?.gd_hien_tai_ten ?? "", wrap: true,
       render: ({ r, t, g }: any) => g ? <TienTrinhGon r={g} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.id)} /> : <span className="muted">—</span> },
-    { key: "gc", header: "Ca / ghi chú", loc: "chu", gt: ({ r }: any) => [r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · "), maxW: 120,
-      render: ({ r }: any) => [r.crm_id && `Ca ${r.crm_id}`, r.order_id, r.ghi_chu].filter(Boolean).join(" · ") || "—" },
+    // v0.108 (20/11/2026 "mở 1 đơn đặt linh kiện A không biết đơn đó đặt cho ID nào"): tach rieng ID case / ID dat hang / ghi chu, khong cat chu
+    { key: "case", header: <span title="ID CRM = mã ca bảo hành (DVBH)">ID case</span>, loc: "chu", gt: ({ r }: any) => r.crm_id ?? "", wrap: true,
+      render: ({ r }: any) => r.crm_id ? <b style={{ wordBreak: "break-all" }}>{r.crm_id}</b> : <span className="muted">—</span> },
+    { key: "dh", header: <span title="ID đặt hàng bên app linh kiện (DDH-… đơn / TLK-… ticket thiếu hàng)">ID đặt hàng</span>, loc: "chu", gt: ({ r }: any) => r.order_id ?? "", wrap: true,
+      render: ({ r }: any) => r.order_id ? <b style={{ wordBreak: "break-all" }}>{r.order_id}</b> : <span className="muted">—</span> },
+    { key: "gc", header: "Ghi chú", loc: "chu", gt: ({ r }: any) => r.ghi_chu ?? "", maxW: 140, render: ({ r }: any) => r.ghi_chu || "—" },
   ];
 
   const guiBinhLuan = async () => {

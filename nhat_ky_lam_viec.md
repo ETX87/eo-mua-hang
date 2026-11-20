@@ -4,6 +4,24 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 20/11/2026 — v0.108: Hiện rõ ID case / ID đặt hàng ở chi tiết đơn + API trả kết quả mua hàng cho app linh kiện
+
+- Yêu cầu: "việc dở liên quan đến việc dựa vào ID case và ID đơn hàng để trả kết quả về bên app linh kiện" và "2. là UI chi tiết đơn hiện thị thiếu
+  thông tin ví dụ ID case, ID đơn hàng => khi mở 1 đơn đặt linh kiện A không biết đơn đó đặt cho ID nào".
+- Dữ liệu thật (đọc D1): 9.205 dòng EO, 882 dòng có ID CRM, 852 dòng có ID đặt hàng; ô ID đặt hàng lẫn 3 kiểu (`DDH-…` mã đơn app linh kiện, `TLK-00…`
+  ticket thiếu hàng, `TLK-<hex>` mã cũ từ Sheet — không còn tồn tại bên app linh kiện); có dòng ghi ticket `TLK-…` vào ô ID CRM; 67 ô có dấu nháy / 2 mã 1 ô.
+  App linh kiện: 321 ticket đã ghi mã EO `3TDO-…`.
+- UI: popup EO tách cột "Ca / ghi chú" (cắt 120px) thành 3 cột **ID case**, **ID đặt hàng** (không cắt, lọc được) và **Ghi chú**; popup đơn hàng thêm
+  "ID case … · ID đặt hàng …" ở đầu dòng thông tin; popup mã LK thêm cột "ID case · ID đặt hàng" (bỏ "Ca …" khỏi cột ghi chú).
+- API `GET /api/partner/theo-id?ids=&po_lk=` (khoá `DOC_API_KEY`) — xem TONG_HOP_LOGIC mục 9. App linh kiện v1.543 gọi API này (khung "Mua hàng (EO)").
+- Công cụ: `scripts/do-sql-api.mjs` đo số dòng D1 từng câu SQL của API trên fixture demo; tách fixture `scripts/demo-d1-seed.mjs` dùng chung với
+  `scripts/demo-d1.mjs` (bộ đo sức tải 19/11, nay đưa vào Git cùng `bao-cao-demo-d1.mjs`; thêm `external: node:*` để build được sau khi có Web Push).
+  Đo nhanh polling `/api/viec-can-lam` (năm 5): ~10.300 dòng / lượt, chủ yếu 4 câu đếm (AMIS chưa khớp, EO nháp theo người tạo, dòng chờ duyệt sau BH,
+  lỗi chờ GT) — CHƯA tối ưu, để đợt sau.
+- Kiểm thử: typecheck + build; local (Miniflare, fixture 1 năm + dữ liệu thử): ticket `TLK-001254` khớp 2 dòng (1 dòng ghi đúng ô, 1 dòng ghi nhầm ô ID CRM),
+  case `b1467882` khớp không phân biệt hoa thường, ô `" DDH-008172 TLK-001254"` tách đúng, cặp `3TDO-000002~LK-0017` khớp, mã lạ vào `khong_khop`,
+  thiếu tham số → 400; lần gọi thứ 2 đọc 28 dòng D1. Sau deploy gọi thử API thật bằng mã có sẵn trong dữ liệu.
+
 ## 20/11/2026 — v0.107: Việc của tôi thêm Ngày dự kiến, SL đặt, Xuất Excel từng mục
 
 - Yêu cầu: "chỗ này thêm cột kho, và ngày dự kiến đã điền (nếu có), số lượng đặt + xuất file excel của mỗi 1 phân loại" và "Tiếp nhận việc đang dở và thực hiện nốt (đóng và bỏ lỗi từ trước tháng 4/2026)".

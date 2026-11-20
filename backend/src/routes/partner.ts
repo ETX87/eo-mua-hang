@@ -6,6 +6,9 @@ import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, gomViPham } from "../lib/baoCaoLoi"
 import { layBangMaLoi } from "../lib/maLoi";
 import { dsCaCeoXuLy, demTheoMuc, gomCaCeo } from "../lib/caCeo";
 import { danhGiaQuyTac } from "../lib/theoDoi";
+import { versionTag } from "../lib/dataVersions";
+import { dongCacheTheo } from "../lib/dongCache";
+import { TRANG_THAI_DONG } from "./reports";
 
 /**
  * /api/partner - API cho he ngoai, KHONG dung session (mount TRUOC verifySessionMiddleware o index.ts).
@@ -122,6 +125,7 @@ app.post("/mail-events", async (c) => {
 //  GET /ca-ceo                    dong dang mo cap CEO kem ma 201-203 + dien giai
 //  GET /loi/tong-hop              tong hop theo ma: so loi, cho / da giai trinh, % giai trinh, so dong / PO, nguoi bi gan, nguyen nhan (Ai)
 //  GET /loi?ma=&po=&trang_thai=&tu=&den=&limit=&offset=   chi tiet tung loi + giai trinh (ma / po nhieu gia tri noi "|"; tu/den theo han YYYY-MM-DD)
+//  GET /theo-id?ids=&po_lk=       (v0.108) ket qua mua hang theo ID case / ID don app linh kien - xem routes "theo-id" ben duoi
 const docKey = async (c: any, next: () => Promise<void>) => {
   const key = c.env.DOC_API_KEY;
   if (!key) return c.json({ error: "NOT_CONFIGURED" }, 503);
@@ -160,6 +164,62 @@ app.get("/loi", docKey, async (c) => {
     giai_trinh: r.gt_luc ? { luc: r.gt_luc, boi: r.gt_boi, ai_ma: r.gt_ai_ma, ai_email: r.gt_ai_email, loi_ma: r.gt_loi_ma, noi_dung: r.gt_noi_dung, pham_vi: r.gt_pham_vi, co_anh: r.gt_co_anh, tu_dong: r.tu_dong } : null,
   }));
   return c.json({ total: loc.length, limit, offset, rows: out });
+});
+
+// ============================================================ GET /theo-id (v0.108, 20/11/2026)
+// App linh kien (linhkien) hoi: "ticket / don / case nay da duoc Mua hang dat chua, PO nao, ve chua, ngay du kien?".
+//  ids   = cac ma noi "|" (<= 50): ma case (B1467882, T21306, 1149078...), DDH-xxxxxx (don), TLK-xxxxxx (ticket thieu hang)
+//          -> khop neu ma xuat hien trong O "ID CRM" HOAC O "ID dat hang" cua dong EO (du lieu that: nhap lan cot, nhieu ma 1 o, co dau nhay
+//          -> tach tung ma trong o, khong phan biet hoa thuong).
+//  po_lk = cap "3TDO-000778~MA_LK" noi "|" (<= 50): ticket da ghi ma EO mua hang -> dong cua PO do co ma LK do (ke ca ma goc truoc khi thay ma).
+// Tra moi dong khop 1 lan + khop_theo (ma nao khop). Chi doc. Doc it: chi muc ma trong bo nho isolate theo version eo + dong_cache theo item_id.
+const tachMa = (s: unknown) => String(s ?? "").toUpperCase().split(/[\s,;|/"'()]+/)
+  .map((x) => x.replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g, "")).filter((x) => x.length >= 3);
+let chiMucMa: { tag: string; map: Map<string, number[]> } | null = null;
+async function layChiMucMa(db: D1Database): Promise<Map<string, number[]>> {
+  const tag = await versionTag(db, ["eo"]);
+  if (chiMucMa?.tag === tag) return chiMucMa.map;
+  const rs = (await db.prepare(
+    `SELECT id, crm_id, order_id FROM eo_item WHERE (crm_id IS NOT NULL AND crm_id <> '') OR (order_id IS NOT NULL AND order_id <> '')`,
+  ).all<{ id: number; crm_id: string | null; order_id: string | null }>()).results;
+  const map = new Map<string, number[]>();
+  for (const r of rs) for (const m of new Set([...tachMa(r.crm_id), ...tachMa(r.order_id)])) map.set(m, [...(map.get(m) ?? []), r.id]);
+  chiMucMa = { tag, map };
+  return map;
+}
+app.get("/theo-id", docKey, async (c) => {
+  const db = c.env.DB;
+  const ids = [...new Set((c.req.query("ids") ?? "").split("|").flatMap(tachMa))].slice(0, 50);
+  const cap = [...new Set((c.req.query("po_lk") ?? "").split("|").map((x) => x.trim().toUpperCase()).filter((x) => x.includes("~")))].slice(0, 50)
+    .map((x) => { const [po, lk] = x.split("~"); return { k: x, po: po.trim(), lk: lk.trim() }; }).filter((x) => x.po && x.lk);
+  if (!ids.length && !cap.length) return c.json({ error: "THIEU_THAM_SO", chi_tiet: "Cần ids hoặc po_lk" }, 400);
+  const khop = new Map<number, Set<string>>();
+  const ghi = (id: number, ma: string) => khop.set(id, (khop.get(id) ?? new Set()).add(ma));
+  if (ids.length) {
+    const map = await layChiMucMa(db);
+    for (const m of ids) for (const id of map.get(m) ?? []) ghi(id, m);
+  }
+  if (cap.length) {
+    const rs = (await db.prepare(
+      `SELECT i.id, x.value k FROM json_each(?) x JOIN eo e ON e.approval_code = json_extract(x.value, '$.po')
+       JOIN eo_item i ON i.eo_id = e.id AND (UPPER(i.part_code) = json_extract(x.value, '$.lk') OR UPPER(i.part_code_goc) = json_extract(x.value, '$.lk'))`,
+    ).bind(JSON.stringify(cap.map((x) => JSON.stringify({ po: x.po, lk: x.lk })))).all<{ id: number; k: string }>()).results;
+    for (const r of rs) { const v = JSON.parse(r.k); ghi(r.id, `${v.po}~${v.lk}`); }
+  }
+  const itemIds = [...khop.keys()];
+  const dong = itemIds.length ? await dongCacheTheo(c.env, "item_id IN (SELECT value FROM json_each(?1))", JSON.stringify(itemIds), (r) => khop.has(r.item_id)) : [];
+  const rows = dong.map((r: any) => ({
+    khop_theo: [...(khop.get(r.item_id) ?? [])],
+    eo_item_id: r.item_id, eo_id: r.eo_id, eo_code: r.eo_code, ma_phe_duyet: r.ma_phe_duyet ?? null, link: `https://muahang.dichvu3t.workers.dev/eo/${r.eo_id}`,
+    trang_thai_eo: r.trang_thai_eo, ngay_ban_hanh: r.ngay_ban_hanh ?? null, ngay_dat_hang: r.ngay_dat_hang ?? null, nguoi_dat: r.nguoi_tao ?? null,
+    id_crm: String(r.id_crm ?? "").replace(/^[\s"']+|[\s"']+$/g, "") || null, id_dat_hang: String(r.id_dat_hang ?? "").replace(/^[\s"']+|[\s"']+$/g, "") || null,
+    ma_lk: r.part_code, ma_lk_goc: r.part_code_goc ?? null, ten_lk: r.part_name ?? "", kho: r.kho, doi_tac: r.doi_tac ?? null,
+    sl_dat: r.so_luong_dat, sl_ve: r.sl_nhap_amis_dung_eo ?? 0, sl_con_thieu: r.so_luong_con_thieu ?? 0,
+    trang_thai: r.trang_thai_don_hang, ket_thuc: TRANG_THAI_DONG.includes(r.trang_thai_don_hang),
+    ngay_du_kien: r.ngay_du_kien_gan_nhat ?? null, ngay_nm_cam_ket: r.ngay_nm_cam_ket ?? null, ngay_ve_gan_nhat: r.ngay_nhap_kho_amis_theo_eo ?? null,
+    canh_bao: r.canh_bao || null, so_lan_lui: r.so_lan_doi_ngay_du_kien ?? 0,
+  })).sort((a, b) => String(b.ngay_dat_hang ?? "").localeCompare(String(a.ngay_dat_hang ?? "")) || b.eo_item_id - a.eo_item_id);
+  return c.json({ so_dong: rows.length, khong_khop: [...ids, ...cap.map((x) => `${x.po}~${x.lk}`)].filter((m) => !rows.some((r) => r.khop_theo.includes(m))), rows });
 });
 
 export default app;

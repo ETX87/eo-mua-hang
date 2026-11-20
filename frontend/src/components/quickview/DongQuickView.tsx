@@ -78,6 +78,9 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           </div>
           <div className="muted qv-meta" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 12, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden" }}>
             <span>EO <EoLink id={it.eo_id}>{it.approval_code || it.eo_code}</EoLink>{it.approval_code ? ` (${it.eo_code})` : ""} {r.trang_thai_eo && (r.trang_thai_eo === "ISSUED" && r.gd_hien_tai ? <GdBadge r={r} /> : <StatusBadge status={r.trang_thai_eo} />)}</span>
+            {/* v0.108: don nay dat cho ca / don nao - de dau dong, luon hien */}
+            <span title="ID CRM = mã ca bảo hành">ID case <b style={{ color: r.id_crm ? "var(--brand-ink)" : undefined }}>{r.id_crm || "—"}</b></span>
+            <span title="ID đặt hàng bên app linh kiện (DDH-… / TLK-…)">ID đặt hàng <b style={{ color: r.id_dat_hang ? "var(--brand-ink)" : undefined }}>{r.id_dat_hang || "—"}</b></span>
             <span>Kho <b><Kho t={it.warehouse} /></b></span>
             <span>Đối tác <b>{it.supplier || "—"}</b></span>
             <span>Người đặt <b>{ten(r.nguoi_dat ?? it.created_by)}</b></span>
