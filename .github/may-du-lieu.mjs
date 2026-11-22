@@ -22,7 +22,8 @@ const [lenh, ...rest] = args
 if (!project) { console.error('Thiếu project: đặt env MAY_PROJECT hoặc --project <id>'); process.exit(2) }
 if (!lenh) { console.error('Cách dùng: xem đầu tệp'); process.exit(2) }
 
-const token = execFileSync('gcloud', ['auth', 'print-access-token'], { encoding: 'utf8' }).trim()
+// Phiên Claude đám mây (GĐ 22/11/2026): không có gcloud — dùng vé chỉ-đọc 1 giờ Mây cấp (env MAY_VE_DOC).
+const token = process.env.MAY_VE_DOC || execFileSync('gcloud', ['auth', 'print-access-token'], { encoding: 'utf8' }).trim()
 const FS = `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents`
 const H = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
@@ -84,7 +85,9 @@ try {
   } else if (lenh === 'log') {
     const tu = new Date(Date.now() - hours * 3600e3).toISOString()
     const filter = `${rest.join(' ')} AND timestamp>="${tu}"`
-    const txt = execFileSync('gcloud', ['logging', 'read', filter, '--project', project, '--limit', String(limit), '--format', 'json', '--order', 'desc'], { encoding: 'utf8', maxBuffer: 50e6 })
+    const txt = process.env.MAY_VE_DOC
+      ? JSON.stringify((await goi('https://logging.googleapis.com/v2/entries:list', { resourceNames: ['projects/' + project], filter, orderBy: 'timestamp desc', pageSize: limit })).entries || [])
+      : execFileSync('gcloud', ['logging', 'read', filter, '--project', project, '--limit', String(limit), '--format', 'json', '--order', 'desc'], { encoding: 'utf8', maxBuffer: 50e6 })
     out = JSON.parse(txt || '[]').map((e) => ({ luc: e.timestamp, muc: e.severity, dichVu: e.resource?.labels?.service_name || e.resource?.labels?.function_name || e.resource?.type, http: e.httpRequest ? `${e.httpRequest.requestMethod} ${e.httpRequest.status}` : undefined, noiDung: (e.textPayload || e.jsonPayload?.message || JSON.stringify(e.jsonPayload || e.protoPayload || '')).slice(0, 2000) }))
   } else throw new Error('Lệnh không hợp lệ: ' + lenh)
   console.log(JSON.stringify(out, null, 2))
