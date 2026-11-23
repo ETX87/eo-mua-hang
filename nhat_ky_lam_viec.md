@@ -4,6 +4,23 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.109: Lịch sử theo dõi gọn + phân biệt "Cần giải trình" với "Vi phạm"
+
+- Yêu cầu: "1. các thông tin diễn giải lịch sử đang rất rối, rút gọn lại chỉ lấy thông tin chính + nút mở rộng nếu người dùng có nhu cầu đọc chi tiết.
+  2. Cần phân biệt rõ là giai đoạn cần giải trình (có hạn giải trình) - hết hạn không giải trình thì mới tính là vi phạm lỗi. => trong các log, mô tả cũng cần làm rõ
+  được quan điểm này để người đọc, người bị vi phạm hiểu rõ tại sao tôi bị lỗi này" và "3. tuy nhiên các lỗi gửi sang CEO sẽ có lỗi không cần thời gian giải trình
+  mà là tự tính như quá 30 ngày từ ngày tạo, hoặc mắc quá x lần lỗi... như logic cũ".
+- `pages/theodoi/shared.tsx` `LichSuDong` (panel "Lịch sử theo dõi" popup đơn hàng + modal lịch sử): 2 khối — **Giải trình & vi phạm** (1 dòng / nhóm lỗi: trạng thái + quy tắc
+  + ngày + hạn GT; bấm mở "Vì sao có lỗi" / "Kết luận" / người chịu / mã lỗi / nội dung giải trình) và **Hoạt động** (mail, giải trình, gọi/Zalo, push, ngày DK gộp 1 dòng thời
+  gian, mỗi mục 1 dòng cắt "…", bấm mở chi tiết; lọc loại chọn nhiều; 8 mục mới nhất + "Xem thêm"). Nút "▾ Xem chi tiết / ▴ Thu gọn" mở hết.
+- `lib/giaiTrinh.tsx` (mới): trạng thái Cần giải trình / Đã giải trình / Đã khắc phục / VI PHẠM / Ghi khi giải trình, hạn GT = mốc + 56 giờ LV (bản sao `congGioLV`), câu
+  "Vì sao" theo R1/R3/R4, câu "Kết luận". Dùng ở bảng giai đoạn (cột "Giải trình / vi phạm": n vi phạm · n cần GT · n đã xử lý, rê chuột xem lý do) và tab
+  "Mã lỗi & giải trình" (cột mới "Hạn giải trình", "Hạn" đổi tên "Mốc lỗi"; cấp CEO ghi "tự tính — không cần" hạn GT).
+- KHÔNG đổi cách đếm: số lỗi, ngưỡng CEO "≥ 3 lỗi", mức độ, màn Vi phạm vẫn đếm mọi lỗi như trước. Cấp CEO giữ logic cũ (yêu cầu 3).
+- Kiểm thử: typecheck + build; local (dữ liệu demo) popup MIC-IP12: VI PHẠM 1 / Đã khắc phục 4 / Ghi khi giải trình 2, mở dòng R4 hiện đúng "Vì sao… 31/10/2026 đã qua…"
+  + "Hết hạn giải trình 11/11/2026 12:00 (56 giờ làm việc)… → ghi nhận VI PHẠM"; tab Mã lỗi hiện cột Hạn giải trình; console không lỗi. Chưa có dữ liệu demo lỗi đang trong hạn.
+- Còn mở: có đổi cách ĐẾM (chỉ tính vi phạm khi hết hạn không giải trình — màn Vi phạm, ngưỡng CEO "≥ 3 lỗi", mức độ, Điều hành) hay không — chờ chủ hệ thống chốt.
+
 ## 20/11/2026 — v0.108: Hiện rõ ID case / ID đặt hàng ở chi tiết đơn + API trả kết quả mua hàng cho app linh kiện
 
 - Yêu cầu: "việc dở liên quan đến việc dựa vào ID case và ID đơn hàng để trả kết quả về bên app linh kiện" và "2. là UI chi tiết đơn hiện thị thiếu

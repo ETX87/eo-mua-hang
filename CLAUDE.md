@@ -372,6 +372,12 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
 
+## Cần giải trình ≠ vi phạm (v0.109) — `frontend/src/lib/giaiTrinh.tsx`
+
+Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / VI_PHAM (AUTO:QUA_HAN hoặc quá hạn chưa chốt) / TAY; hạn GT = `congGioLV(COALESCE(han, created_at), 56)`
+— bản sao FE của `lib/gioLamViec.ts` + `GIO_TU_DONG`, đổi bên nào sửa cả hai. Dùng ở `LichSuDong`, `BangLoiTheoBuoc`, bảng giai đoạn `DongQuickView`. Cấp CEO tự tính,
+không có hạn GT. Chỉ đổi hiển thị — cách đếm số lỗi / ngưỡng CEO chưa đổi.
+
 ## Việc của tôi + cột Vi phạm Đơn PO (v0.104)
 
 - `/viec-cua-toi` (menu đầu tiên): `routes/viecCuaToi.ts` (dòng `layDongTheoDoi('dang_mo')` lọc của tôi như viecCanLam; 4 nhóm ndk / push / ngay_moi /

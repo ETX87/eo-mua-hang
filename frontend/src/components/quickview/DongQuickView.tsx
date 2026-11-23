@@ -15,6 +15,7 @@ import { LuongTraoDoiNcc, luongSuKien } from "../LuongTraoDoiNcc";
 import { GdBadge } from "../../lib/giaiDoan";
 import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
+import { NHAN_GT, demGt, ketLuanGt, trangThaiGt, viSaoLoi } from "../../lib/giaiTrinh";
 
 /**
  * Popup "don hang" = 1 dong linh kien tren EO: duong tien trinh 8 giai doan + bang chi tiet tung giai doan (bat dau, ket thuc,
@@ -50,6 +51,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const xong = () => { setMd(null); ["so-don-hang", "tl-dong", "theo-doi", "inbox-count", "eo-bo-sung"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const tt = r.tinh_trang ? TINH_TRANG[r.tinh_trang as Dong["tinh_trang"]] : null;
   const loiCho = loi.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
+  const gtBy = new Map<number, any>((ls.data.giai_trinh ?? []).map((g: any) => [g.id, g]));
   // huy / ket thuc som don dat (dong): backend kiem quyen (nguoi quan ly EO / nguoi duyet cuoi), loi tra ve hien trong modal
   const daVe = (ls.data.phieu_nhap ?? []).reduce((s: number, p: any) => s + (p.qty_in || 0), 0);
   const moDong = issued && it.line_status === "ACTIVE" && r.phan_loai_thoi_diem_dat !== "Tạo sau ban hành (chờ duyệt)";
@@ -136,9 +138,13 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           <div className="qv-scroll">
             {tab === "gd" && (
               <table className="tbl tbl-dense">
-                <thead><tr><th>Giai đoạn</th><th>Phụ trách</th><th>Bắt đầu</th><th>Kết thúc</th><th style={{ textAlign: "right" }}>Thời gian (giờ LV)</th><th>Hạn</th><th>Kết quả</th><th>Lỗi theo dõi</th></tr></thead>
+                <thead><tr><th>Giai đoạn</th><th>Phụ trách</th><th>Bắt đầu</th><th>Kết thúc</th><th style={{ textAlign: "right" }}>Thời gian (giờ LV)</th><th>Hạn</th><th>Kết quả</th><th title="Chạm quy tắc → cần giải trình trong hạn; hết hạn không giải trình → vi phạm">Giải trình / vi phạm</th></tr></thead>
                 <tbody>
                   {nut.map((n) => {
+                    // v0.109: tach "can giai trinh" (con han) / "vi pham" (het han khong GT) / da xu ly - lib/giaiTrinh
+                    const dmGt = demGt(n.loi, gtBy);
+                    const xuLy = dmGt.DA_GT + dmGt.KHAC_PHUC + dmGt.TAY;
+                    const tip = n.loi.map((l: any) => { const k = trangThaiGt(l, gtBy); return `• ${NHAN_GT[k.tt].l}: ${viSaoLoi(l)}\n   → ${ketLuanGt(k)}`; }).join("\n");
                     const m = r.gd_moc?.[n.g.k];
                     const g = r.gd_gio_tung?.[n.g.k];
                     const tre = r.gd_tre_tung?.[n.g.k];
@@ -154,7 +160,10 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
                         <td style={{ textAlign: "right", fontWeight: 700, color: tre ? "var(--danger-ink)" : undefined }}>{g != null ? gioTxt(g) : "—"}</td>
                         <td style={{ whiteSpace: "nowrap" }}>{m?.han ? ngayGio(m.han) : sla[n.g.k] != null ? `${gioTxt(sla[n.g.k])} làm việc` : "—"}</td>
                         <td>{kq}{n.traVe > 0 && <div><span className="badge final" style={{ marginTop: 3 }}>EO bị trả về {n.traVe} lần</span></div>}</td>
-                        <td>{n.loi.length ? <span className={`badge ${n.loiCho ? "reject" : "nhap"}`} title={n.loi.map((l) => `${l.quy_tac} · hạn ${ngayGio(l.han)}`).join("\n")}>{n.loi.length} lỗi{n.loiCho ? ` · ${n.loiCho} chờ GT` : ""}</span> : <span className="muted">—</span>}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>{n.loi.length ? <span title={tip} onClick={() => setTab("loi")} style={{ cursor: "pointer", display: "inline-flex", gap: 4 }}>
+                          {dmGt.VI_PHAM > 0 && <span className={`badge ${NHAN_GT.VI_PHAM.cls}`}>{dmGt.VI_PHAM} vi phạm</span>}
+                          {dmGt.CAN_GT > 0 && <span className={`badge ${NHAN_GT.CAN_GT.cls}`}>{dmGt.CAN_GT} cần GT</span>}
+                          {xuLy > 0 && <span className="badge nhap">{xuLy} đã xử lý</span>}</span> : <span className="muted">—</span>}</td>
                       </tr>
                     );
                   })}

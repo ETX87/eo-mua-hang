@@ -10,6 +10,8 @@ import { NGAY, NhanNgay } from "../../lib/ngay";
 import { krfMoiNhat } from "./KrfGoiY";
 import { Kho } from "../../lib/kho";
 import { KENH_LIEN_HE } from "../../lib/eventLabels";
+import { gioTxt } from "../../lib/giaiDoan";
+import { GIO_HAN_GT, NHAN_GT, demGt, ketLuanGt, mocLoi, nowVN, trangThaiGt, viSaoLoi, type TrangThaiGt } from "../../lib/giaiTrinh";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -405,18 +407,17 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved }: { ids: number
 }
 
 /** Du lieu dong linh kien trong 1 mail (payload.dong tu app theodoimuahang): ngay 3T can, KRF dap ung, note. */
-function DongMail({ payload }: { payload: string | null }) {
+function dongMailTxt(payload: string | null): string {
   let d: any = null;
   try { d = payload ? JSON.parse(payload)?.dong : null; } catch { /* bo qua */ }
-  if (!d) return null;
-  const parts = [
+  if (!d) return "";
+  return [
     d.ngay_can && `3T cần ${ngay(d.ngay_can)}`,
     (d.ngay_dap_ung || d.dap_ung) && `KRF đáp ứng ${d.ngay_dap_ung ? ngay(d.ngay_dap_ung) : d.dap_ung}`,
     d.con_no != null && `còn nợ ${soLuong(d.con_no)}`,
     d.ton_kho ? `tồn KRF ${soLuong(d.ton_kho)}` : null,
     d.note,
-  ].filter(Boolean);
-  return parts.length ? <div style={{ fontSize: 12, color: NGAY.NM.mau }}>{parts.join(" · ")}</div> : null;
+  ].filter(Boolean).join(" · ");
 }
 
 /** Lich su theo doi 1 dong: loi, giai trinh, push, mail, thay doi ngay du kien. */
@@ -428,73 +429,174 @@ export function LichSuModal({ dong, onClose }: { dong: Dong; onClose: () => void
   );
 }
 
-/** Noi dung lich su theo doi 1 dong (dung trong LichSuModal + popup don hang). Gom trung: thu (1 ban ghi / dong), loi cung quy tac. */
+const ngan = (v: string | null | undefined) => (v ? `${v.slice(8, 10)}/${v.slice(5, 7)}${v.length > 10 ? ` ${v.slice(11, 16)}` : ""}` : "—");
+/** ten hien thi ngan cua dia chi mail: "Ten" <a@b> -> Ten; a@b -> a@b; nhieu nguoi -> them " +" */
+const tenMail = (v: string | null | undefined) => {
+  const all = String(v ?? "");
+  const x = all.split(",")[0].trim();
+  const m = x.match(/^"?([^"<]+?)"?\s*</);
+  return (m ? m[1] : x.replace(/[<>"]/g, "")).trim() + (all.includes(",") ? " +" : "");
+};
+type LoaiHd = "mail_gui" | "mail_nhan" | "gt" | "lien_he" | "push" | "ndk";
+const LOAI_HD: Record<LoaiHd, string> = { mail_gui: "Mail gửi", mail_nhan: "Mail nhận", gt: "Giải trình", lien_he: "Gọi / Zalo", push: "Push", ndk: "Ngày DK" };
+interface MucHd { k: string; loai: LoaiHd; luc: string; icon: string; chinh: ReactNode; phu?: string; chiTiet?: ReactNode }
+
+/** 1 dong gon + bam de mo chi tiet (nguyen tac UI chi tiet: chi thong tin chinh, xo khi can). */
+function DongGon({ luc, icon, chinh, phu, chiTiet, mo, onMo }: { luc?: string; icon?: ReactNode; chinh: ReactNode; phu?: ReactNode; chiTiet?: ReactNode; mo: boolean; onMo: () => void }) {
+  return (
+    <div style={{ borderBottom: "1px solid var(--border)", padding: "5px 0" }}>
+      <div onClick={chiTiet ? onMo : undefined} title={chiTiet ? (mo ? "Bấm để thu gọn" : "Bấm để xem chi tiết") : undefined}
+        style={{ display: "flex", gap: 6, alignItems: "baseline", cursor: chiTiet ? "pointer" : undefined, minWidth: 0 }}>
+        {luc !== undefined && <span className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", width: 70, flexShrink: 0 }}>{luc}</span>}
+        {icon && <span style={{ flexShrink: 0 }}>{icon}</span>}
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: mo ? undefined : "ellipsis", whiteSpace: mo ? "normal" : "nowrap" }}>{chinh}</span>
+        {chiTiet && <span className="muted" style={{ flexShrink: 0, fontSize: 11 }}>{mo ? "▴" : "›"}</span>}
+      </div>
+      {phu && <div style={{ fontSize: 11.5, color: NGAY.NM.mau, marginLeft: luc !== undefined ? 76 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: mo ? "normal" : "nowrap" }}>{phu}</div>}
+      {mo && chiTiet && <div style={{ margin: "4px 0 2px", padding: "6px 8px", background: "#F8FAFC", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}>{chiTiet}</div>}
+    </div>
+  );
+}
+
+const anhGt = (json: string | null) => { try { return (JSON.parse(json || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } };
+const THU_TU_TT: TrangThaiGt[] = ["VI_PHAM", "CAN_GT", "DA_GT", "KHAC_PHUC", "TAY"];
+
+/**
+ * Noi dung lich su theo doi 1 dong (dung trong LichSuModal + popup don hang). v0.109 (chu he thong 2026-11-23: "rut gon lai chi lay thong tin chinh
+ * + nut mo rong"; "phan biet ro giai doan can giai trinh (co han) - het han khong giai trinh moi tinh la vi pham"):
+ *  1. "Giải trình & vi phạm": 1 dong / nhom loi (quy tac + trang thai lib/giaiTrinh) - nhan trang thai + han giai trinh; mo ra = vi sao + ket luan + giai trinh.
+ *  2. "Hoạt động": dong thoi gian gop mail / giai trinh / goi-Zalo / push / ngay DK, moi muc 1 dong, loc theo loai (chon nhieu), 8 muc moi nhat + "Xem thêm".
+ */
 export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" | "kho" | "doi_tac" | "so_luong_dat" | "sl_nhap_amis" | "bat_dau" | "han_ngay_du_kien"> }) {
   const ls = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
+  const [mo, setMo] = useState<Set<string>>(new Set());
+  const [moHet, setMoHet] = useState(false);
+  const [loc, setLoc] = useState<Set<LoaiHd>>(new Set());
+  const [soHien, setSoHien] = useState(8);
   const d = ls.data;
-  const H = ({ children }: any) => <div style={{ fontWeight: 700, fontSize: 13.5, margin: "14px 0 6px" }}>{children}</div>;
-  // thu: cung 1 thu luu 1 ban ghi / dong (ca cac dong khac cung dot push) -> 1 muc, uu tien ban ghi cua chinh dong nay (payload dung dong)
-  const mailGop = gopTrung([...(d?.mail ?? [])].sort((a: any, b: any) => (b.eo_item_id === dong.item_id ? 1 : 0) - (a.eo_item_id === dong.item_id ? 1 : 0)), khoaMail)
-    .sort((a: any, b: any) => String(b.x.thoi_gian).localeCompare(String(a.x.thoi_gian)));
-  const loiGop = gopTrung(d?.loi ?? [], (l: any) => `${l.quy_tac}|${l.trang_thai}|${l.ai_ma ?? ""}|${l.loi_ma ?? ""}`);
-  const ndkGop = gopTrung(d?.ngay_du_kien ?? [], (e: any) => `${e.created_at}|${e.event_type}|${e.after_json ?? ""}|${e.user_email ?? ""}`);
+  if (ls.isLoading || !d) return <Spinner />;
+  const laMo = (k: string) => moHet || mo.has(k);
+  const doiMo = (k: string) => setMo((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  const H = ({ children, phai }: { children: ReactNode; phai?: ReactNode }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13, margin: "12px 0 4px" }}>{children}<span style={{ marginLeft: "auto", fontWeight: 400 }}>{phai}</span></div>
+  );
+  const now = nowVN();
+  const gtBy = new Map<number, any>((d.giai_trinh ?? []).map((g: any) => [g.id, g]));
+
+  // ---- 1. giai trinh & vi pham: gom theo quy tac + trang thai
+  const loiKq = (d.loi ?? []).map((l: any) => ({ l, k: trangThaiGt(l, gtBy, now) }));
+  const nhomLoi = gopTrung(loiKq, (x: any) => `${x.l.quy_tac}|${x.k.tt}`)
+    .sort((a: any, b: any) => THU_TU_TT.indexOf(a.x.k.tt) - THU_TU_TT.indexOf(b.x.k.tt) || String(mocLoi(b.x.l)).localeCompare(String(mocLoi(a.x.l))));
+  const dem = demGt(d.loi ?? [], gtBy, now);
+
+  // ---- 2. hoat dong (dong thoi gian)
+  const mailGop = gopTrung([...(d.mail ?? [])].sort((a: any, b: any) => (b.eo_item_id === dong.item_id ? 1 : 0) - (a.eo_item_id === dong.item_id ? 1 : 0)), khoaMail);
+  const ndkGop = gopTrung(d.ngay_du_kien ?? [], (e: any) => `${e.created_at}|${e.event_type}|${e.after_json ?? ""}|${e.user_email ?? ""}`);
+  const hd: MucHd[] = [
+    ...mailGop.map(({ x: m, ds }: any): MucHd => ({
+      k: `m${m.id}`, loai: m.huong === "GUI" ? "mail_gui" : "mail_nhan", luc: m.thoi_gian, icon: m.huong === "GUI" ? "→" : "←",
+      chinh: <><span className="muted">{m.huong === "GUI" ? `Gửi ${tenMail(m.den)}` : `Nhận từ ${tenMail(m.tu)}`}</span> · <b>{m.tieu_de || "(không tiêu đề)"}</b></>,
+      phu: m.eo_item_id === dong.item_id ? dongMailTxt(m.payload) || undefined : undefined,
+      chiTiet: <><div><b>Từ:</b> {m.tu}</div><div><b>Đến:</b> {m.den}</div>{m.tom_tat && <div style={{ marginTop: 4 }}>{m.tom_tat}</div>}
+        {ds.length > 1 && <div className="muted" style={{ marginTop: 4 }}>Thư chung cho {ds.length} dòng.</div>}</>,
+    })),
+    ...(d.giai_trinh ?? []).map((g: any): MucHd => {
+      const auto = g.pham_vi === "AUTO";
+      const qh = g.nhom === "AUTO:QUA_HAN";
+      return {
+        k: `g${g.id}`, loai: "gt", luc: g.created_at, icon: auto ? "⚙" : "✍",
+        chinh: auto ? <><b>Hệ thống</b> · {qh ? <b style={{ color: NHAN_GT.VI_PHAM.mau }}>hết hạn giải trình → ghi vi phạm</b> : "tự đóng lỗi (đã khắc phục)"}</>
+          : <><b>{ten(g.created_by)}</b> giải trình · <span className="muted">Ai: {tenDm("AI", g.ai_ma)}{g.ai_email ? ` (${ten(g.ai_email)})` : ""} · Lỗi: {tenDm("LOI", g.loi_ma)}</span></>,
+        chiTiet: <><div>{g.noi_dung}</div>{anhGt(g.hinh_anh)}</>,
+      };
+    }),
+    ...(d.lien_he ?? []).map((x: any): MucHd => ({
+      k: `l${x.id}`, loai: "lien_he", luc: x.ngay_lien_he, icon: "📞",
+      chinh: <><b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b>{x.nguoi_lien_he ? ` với ${x.nguoi_lien_he}` : ""} · <span className="muted">{x.ket_qua}</span></>,
+      chiTiet: <><div>{x.ket_qua}</div><div className="muted">Ghi bởi {ten(x.created_by)} lúc {ngayGio(x.created_at)}</div>{anhGt(x.hinh_anh)}</>,
+    })),
+    ...(d.push ?? []).map((p: any): MucHd => ({
+      k: `p${p.ma_push}`, loai: "push", luc: p.created_at, icon: "📤",
+      chinh: <><b>{p.ma_push}</b> · {p.doi_tac} · <span className="muted">{p.trang_thai === "DA_TAO" ? "chưa gửi" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"} · {ten(p.created_by)}</span></>,
+    })),
+    ...ndkGop.map(({ x: e, ds }: any, i: number): MucHd => {
+      let txt = "";
+      try {
+        const a = e.after_json ? JSON.parse(e.after_json) : null;
+        txt = Array.isArray(a) ? a.map((x: any) => `${x.tuan ?? ngay(x.planned_date)}: ${soLuong(x.planned_qty)}`).join(", ") : a?.planned_date ? `${ngay(a.planned_date)}${a.planned_qty ? `: ${soLuong(a.planned_qty)}` : ""}` : e.event_type === "DELETE_PLAN" ? "xóa mốc" : "";
+      } catch { /* bo qua */ }
+      // user_email NULL = He thong (vd tu dong dien ngay KRF tu mail - lib/krfGoiY.ts tuDongDienKrf)
+      return { k: `n${i}`, loai: "ndk", luc: e.created_at, icon: "📅",
+        chinh: <>Ngày DK → <b>{txt || "—"}</b> · <span className="muted">{e.user_email ? ten(e.user_email) : "Hệ thống"}{ds.length > 1 ? ` (×${ds.length})` : ""}</span></> };
+    }),
+  ].sort((a, b) => String(b.luc).localeCompare(String(a.luc)));
+  const demLoai = new Map<LoaiHd, number>();
+  for (const x of hd) demLoai.set(x.loai, (demLoai.get(x.loai) ?? 0) + 1);
+  const hdLoc = loc.size ? hd.filter((x) => loc.has(x.loai)) : hd;
+
   return (
-    <>
-      {ls.isLoading || !d ? <Spinner /> : (
-        <div style={{ fontSize: 12.5 }}>
-          <div className="muted">{dong.part_name} · <Kho t={dong.kho} /> · {dong.doi_tac ?? "—"} · đặt {soLuong(dong.so_luong_dat)}, về {soLuong(dong.sl_nhap_amis)} · bắt đầu theo dõi {ngayGio(dong.bat_dau)} · hạn có ngày DK {ngayGio(dong.han_ngay_du_kien)}</div>
-          <H>Lỗi ({d.loi.length}{loiGop.length < d.loi.length ? ` — ${loiGop.length} loại` : ""})</H>
-          {d.loi.length === 0 ? <div className="muted">Không có lỗi.</div> : loiGop.map(({ x: l, ds }: any) => (
-            <div key={l.id} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-              <span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span>{" "}
-              <b>{QUY_TAC[l.quy_tac]}</b>{ds.length > 1 && <span className="badge final" style={{ marginLeft: 6 }} title="Quy tắc ghi 1 lỗi cho mỗi lần vi phạm (mỗi ngày / mỗi mốc)">× {ds.length} lần</span>}
-              {" "}· {ds.length > 1 ? `ngày: ${lietKe(ds.map((y: any) => ngay(y.ngay_tham_chieu ?? y.han)), 8)}` : `${l.ngay_tham_chieu ? `(${ngay(l.ngay_tham_chieu)}) · ` : ""}hạn ${ngayGio(l.han)}`}
-              {" "}· Ai: {tenDm("AI", l.ai_ma)}{l.ai_email ? ` (${ten(l.ai_email)})` : ""} · Lỗi: {tenDm("LOI", l.loi_ma)}
-            </div>
-          ))}
-          <H>Giải trình ({d.giai_trinh.length})</H>
-          {d.giai_trinh.length === 0 ? <div className="muted">Chưa có.</div> : d.giai_trinh.map((g: any) => (
-            <div key={g.id} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-              {/* v0.092: tu giai trinh (pham_vi AUTO) - nguoi ghi la tai khoan he thong, hien "Hệ thống" */}
-              {g.pham_vi === "AUTO" ? <><b>Hệ thống</b> · {ngayGio(g.created_at)} · <span className="badge nhap">Tự giải trình</span></>
-                : <><b>{ten(g.created_by)}</b> · {ngayGio(g.created_at)} · Ai: {tenDm("AI", g.ai_ma)}{g.ai_email ? ` (${ten(g.ai_email)})` : ""} · Lỗi: {tenDm("LOI", g.loi_ma)}</>}
-              <div>{g.noi_dung}</div>
-              {(() => { try { return (JSON.parse(g.hinh_anh || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } })()}
-            </div>
-          ))}
-          <H>Nhắc đối tác không qua mail ({(d.lien_he ?? []).length})</H>
-          {(d.lien_he ?? []).length === 0 ? <div className="muted">Chưa ghi nhận (gọi điện / Zalo / tin nhắn).</div> : d.lien_he.map((x: any) => (
-            <div key={x.id} style={{ padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
-              <b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b> · {ngayGio(x.ngay_lien_he)}{x.nguoi_lien_he ? ` · với ${x.nguoi_lien_he}` : ""} · ghi bởi {ten(x.created_by)}{x.created_at.slice(0, 10) !== x.ngay_lien_he.slice(0, 10) ? ` (lúc ${ngayGio(x.created_at)})` : ""}
-              <div>{x.ket_qua}</div>
-              {(() => { try { return (JSON.parse(x.hinh_anh || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } })()}
-            </div>
-          ))}
-          <H>Push đối tác ({d.push.length})</H>
-          {d.push.length === 0 ? <div className="muted">Chưa push.</div> : d.push.map((p: any) => (
-            <div key={p.ma_push} style={{ padding: "4px 0" }}><b>{p.ma_push}</b> · {p.doi_tac} · {ngayGio(p.created_at)} · {ten(p.created_by)} · <span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Chưa gửi" : p.trang_thai === "DA_GUI" ? "Đã gửi mail" : "Đối tác đã phản hồi"}</span></div>
-          ))}
-          <H>Mail ({mailGop.length} thư)</H>
-          {mailGop.length === 0 ? <div className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</div> : mailGop.map(({ x: m, ds }: any) => (
-            <div key={m.id} style={{ padding: "4px 0" }}>{m.huong === "GUI" ? "→ Gửi" : "← Nhận"} · {ngayGio(m.thoi_gian)} · {m.tu} → {m.den} · <b>{m.tieu_de}</b>
-              {ds.length > 1 && <span className="muted"> · thư chung cho {ds.length} dòng</span>}{m.tom_tat ? <div className="muted">{m.tom_tat}</div> : null}
-              {m.eo_item_id === dong.item_id && <DongMail payload={m.payload} />}</div>
-          ))}
-          <H>Thay đổi ngày dự kiến ({ndkGop.length})</H>
-          {ndkGop.map(({ x: e, ds }: any, i: number) => {
-            let txt = "";
-            try {
-              const a = e.after_json ? JSON.parse(e.after_json) : null;
-              txt = Array.isArray(a) ? a.map((x: any) => `${x.tuan ?? ngay(x.planned_date)}: ${soLuong(x.planned_qty)}`).join(", ") : a?.planned_date ? `${ngay(a.planned_date)}${a.planned_qty ? `: ${soLuong(a.planned_qty)}` : ""}` : e.event_type === "DELETE_PLAN" ? "Xóa mốc" : "";
-            } catch { /* bo qua */ }
-            // user_email NULL = He thong (vd tu dong dien ngay KRF tu mail - lib/krfGoiY.ts tuDongDienKrf)
-            return <div key={i} style={{ padding: "3px 0" }}>{ngayGio(e.created_at)} · {e.user_email ? ten(e.user_email) : "Hệ thống"} · {txt}{ds.length > 1 && <span className="muted" title="Bản ghi giống hệt nhau (dữ liệu chuyển từ Google Sheet cũ)"> (×{ds.length})</span>}</div>;
+    <div style={{ fontSize: 12.5 }}>
+      <div className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        title={`${dong.part_name} · ${dong.kho} · ${dong.doi_tac ?? "—"} · đặt ${soLuong(dong.so_luong_dat)}, về ${soLuong(dong.sl_nhap_amis)}`}>
+        Bắt đầu theo dõi {ngan(dong.bat_dau)} · hạn có ngày DK {ngan(dong.han_ngay_du_kien)}
+      </div>
+
+      <H phai={<button className="btn ghost sm" onClick={() => { setMoHet(!moHet); setMo(new Set()); }}>{moHet ? "▴ Thu gọn" : "▾ Xem chi tiết"}</button>}>
+        Giải trình & vi phạm
+      </H>
+      <div className="muted" style={{ fontSize: 11.5, marginBottom: 4 }}
+        title={`Mỗi lần chạm quy tắc theo dõi (R1/R3/R4) hệ thống ghi 1 lỗi CẦN GIẢI TRÌNH. Người phụ trách có ${GIO_HAN_GT} giờ làm việc để giải trình (hoặc khắc phục). Quá hạn mà không giải trình → hệ thống ghi nhận VI PHẠM, không giải trình được nữa.\nCảnh báo cấp CEO (lùi ngày DK ≥ 3 lần, ngày DK cách ngày đặt ≥ 30 ngày, ≥ 3 lỗi) hệ thống TỰ TÍNH theo số liệu, không có hạn giải trình.`}>
+        Chạm quy tắc → <b style={{ color: NHAN_GT.CAN_GT.mau }}>cần giải trình</b> trong {GIO_HAN_GT} giờ LV · quá hạn không giải trình → <b style={{ color: NHAN_GT.VI_PHAM.mau }}>vi phạm</b> ⓘ
+      </div>
+      {(d.loi ?? []).length === 0 ? <div className="muted">Không có lỗi nào.</div> : (
+        <>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "2px 0 4px" }}>
+            {THU_TU_TT.filter((t) => dem[t]).map((t) => <span key={t} className={`badge ${NHAN_GT[t].cls}`} title={NHAN_GT[t].mo}>{NHAN_GT[t].l} {dem[t]}</span>)}
+          </div>
+          {nhomLoi.map(({ x, ds }: any) => {
+            const { l, k } = x;
+            const key = `L${l.id}`;
+            const n = NHAN_GT[k.tt as TrangThaiGt];
+            const ngayCua = (y: any) => ngay(y.l.ngay_tham_chieu ?? y.l.han);
+            return (
+              <DongGon key={key} mo={laMo(key)} onMo={() => doiMo(key)}
+                chinh={<><span className={`badge ${n.cls}`} title={n.mo}>{n.l}</span> <b>{QUY_TAC[l.quy_tac] ?? l.quy_tac}</b>
+                  {ds.length > 1 && <span className="muted"> × {ds.length} lần</span>}
+                  <span className="muted"> · {ds.length > 1 ? lietKe(ds.map(ngayCua), 4) : ngayCua(x)}</span>
+                  {k.tt === "CAN_GT" && <span style={{ color: n.mau, fontWeight: 700 }}> · hạn GT {ngan(k.hanGt)} (còn {gioTxt(k.conGio ?? 0)})</span>}
+                  {k.tt === "VI_PHAM" && k.hanGt && <span style={{ color: n.mau }}> · hết hạn GT {ngan(k.hanGt)}</span>}</>}
+                chiTiet={<>
+                  <div><b>Vì sao có lỗi:</b> {viSaoLoi(l)}{ds.length > 1 && <span className="muted"> (lặp {ds.length} lần: {lietKe(ds.map(ngayCua), 12)})</span>}</div>
+                  <div style={{ marginTop: 3, color: n.mau }}><b>Kết luận:</b> {ketLuanGt(k)}</div>
+                  <div className="muted" style={{ marginTop: 3 }}>Người chịu: {tenDm("AI", l.ai_ma)}{l.ai_email ? ` (${ten(l.ai_email)})` : ""} · Mã lỗi: {l.ma_loi ?? tenDm("LOI", l.loi_ma)}</div>
+                  {k.gt && k.gt.pham_vi !== "AUTO" && <div style={{ marginTop: 4 }}><b>Giải trình</b> ({ten(k.gt.created_by)}, {ngayGio(k.gt.created_at)}): {k.gt.noi_dung} {anhGt(k.gt.hinh_anh)}</div>}
+                </>} />
+            );
           })}
-        </div>
+        </>
       )}
-    </>
+
+      <H phai={<span className="muted" style={{ fontSize: 11.5 }}>{hdLoc.length}{loc.size ? ` / ${hd.length}` : ""} mục</span>}>Hoạt động</H>
+      {hd.length === 0 ? <div className="muted">Chưa có mail, push, liên hệ hay thay đổi ngày dự kiến.</div> : (
+        <>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 4 }}>
+            {(Object.keys(LOAI_HD) as LoaiHd[]).filter((t) => demLoai.get(t)).map((t) => (
+              <button key={t} type="button" className={`btn sm ${loc.has(t) ? "primary" : "ghost"}`} style={{ padding: "1px 8px", fontSize: 11.5 }}
+                title="Bấm để lọc (chọn được nhiều loại)" onClick={() => { setLoc((s) => { const n = new Set(s); if (n.has(t)) n.delete(t); else n.add(t); return n; }); setSoHien(8); }}>
+                {loc.has(t) ? "☑" : "☐"} {LOAI_HD[t]} {demLoai.get(t)}
+              </button>
+            ))}
+            {loc.size > 0 && <button type="button" className="btn sm ghost" style={{ padding: "1px 8px", fontSize: 11.5 }} onClick={() => setLoc(new Set())}>× Bỏ lọc</button>}
+          </div>
+          {hdLoc.slice(0, soHien).map((x) => (
+            <DongGon key={x.k} luc={ngan(x.luc)} icon={x.icon} chinh={x.chinh} phu={x.phu} chiTiet={x.chiTiet} mo={laMo(x.k)} onMo={() => doiMo(x.k)} />
+          ))}
+          {hdLoc.length > soHien && <button type="button" className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => setSoHien(soHien + 20)}>▾ Xem thêm (còn {hdLoc.length - soHien} mục)</button>}
+        </>
+      )}
+    </div>
   );
 }
 

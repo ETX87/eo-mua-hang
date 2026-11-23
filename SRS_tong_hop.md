@@ -61,6 +61,9 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Số lỗi / vi phạm luôn đếm theo **vi phạm gộp** (cùng lỗi, cùng PO, cùng kỳ), kèm số dòng bị ảnh hưởng; giải trình 1 lần cho cả vi phạm.
 - Bảng mã lỗi (`/ma-loi`): mỗi mã có tên, diễn giải lỗi gì, yêu cầu giải trình, khi nào tự giải trình, số lượng đang đếm.
 - Lỗi đang chờ không cần giải trình nữa khi đã khắc phục sau đó hoặc quá hạn giải trình 56 giờ làm việc → hệ thống tự giải trình (vẫn tính vi phạm, tách khỏi "đã giải trình").
+- Lỗi phân biệt rõ **Cần giải trình** (còn hạn 56 giờ làm việc, hiện hạn + số giờ còn lại) với **Vi phạm** (hết hạn không giải trình); mỗi lỗi có "Vì sao có lỗi" + "Kết luận".
+  Cảnh báo cấp CEO tự tính theo số liệu, không có hạn giải trình. Lịch sử theo dõi của đơn hàng: mỗi mục 1 dòng (thông tin chính), bấm để mở chi tiết, nút "Xem chi tiết" mở tất cả,
+  dòng thời gian Hoạt động lọc theo loại (chọn nhiều), 8 mục mới nhất + "Xem thêm".
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
 - Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.
 - API đọc có khoá cho hệ khác: ca tồn CEO, tổng hợp lỗi theo mã, chi tiết lỗi + giải trình, bảng mã.
