@@ -379,7 +379,8 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 `BangLoiTheoBuoc`, bảng giai đoạn `DongQuickView`. Cấp CEO tự tính như cũ (≥ 3 lỗi vẫn đếm mọi lỗi), không có hạn GT.
 **Vi phạm = hết hạn không giải trình** (v0.110): `dsLoiDayDu` trả `vi_pham`, `han_gt`, `con_gio_gt`, `so_lan_xau`; `trangThaiViPham` xét `TU_QUA_HAN` trước `DA_GT`;
 `VpPo.vi_pham` + tt `VI_PHAM`; Điều hành `loi30.vp` (cache `dh:goc:v3`). FE ViPham: `vp(l)`, `cho(l)` = chờ & chưa quá hạn.
-`DataTable` prop `khungCao` = cuộn trong khung (tiêu đề dính, thanh ngang trên đầu) — popup PO tab Linh kiện.
+`DataTable` prop `q` = ô tìm chung bên ngoài (ẩn ô tìm riêng) — popup PO / đơn hàng dùng `O_TIM` (`components/quickview/QuickView.tsx`) trên thanh tab,
+truyền `tim` xuống mọi tab (BangLoiTheoBuoc, LuongTraoDoiNcc, TabKeHoach, TabTaiLieu). `DataTable` prop `khungCao` = cuộn trong khung (tiêu đề dính, thanh ngang trên đầu) — popup PO tab Linh kiện.
 
 ## Việc của tôi + cột Vi phạm Đơn PO (v0.104)
 

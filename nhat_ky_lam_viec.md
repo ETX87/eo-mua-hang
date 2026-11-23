@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.112: Ô tìm chung trên thanh tab cho mọi tab của popup PO / đơn hàng
+
+- Yêu cầu: "7. chuyển công cụ tìm kiếm lên chung và dùng cho tất cả các tab có thể tìm kiếm" (ảnh: popup đơn hàng, ô trống bên phải thanh tab).
+- `O_TIM` (`components/quickview/QuickView.tsx`): ô tìm ở cuối thanh tab, viền màu khi đang tìm, nút × xoá; giữ chữ khi đổi tab.
+  Popup đơn hàng: Chi tiết giai đoạn (tên / vai trò / mã lỗi), Kế hoạch & hàng về (đợt + phiếu AMIS), Mã lỗi & giải trình, Trao đổi NCC (mở bảng chi tiết, "Tìm …: x / y mục").
+  Popup PO: thêm Kế hoạch & hàng về, Quy trình duyệt (người duyệt / ghi chú), Tài liệu, Mã lỗi & giải trình (trước chỉ Linh kiện + Mail & push; trước đổi tab thì xoá chữ).
+  `DataTable` prop `q` (ô tìm ngoài, ẩn ô tìm riêng của bảng).
+- Kiểm thử: typecheck; local — popup đơn hàng MIC-IP12: gõ "push" ở tab Mã lỗi còn 3 lỗi R3, đổi sang Trao đổi NCC vẫn giữ chữ, 3 / 4 mục; popup PO 3TDO-000001:
+  "cam" lọc Linh kiện còn 1 dòng, sang Kế hoạch vẫn lọc 1 dòng.
+
 ## 23/11/2026 — v0.111: Cảnh báo cấp CEO ở popup PO gọn lại
 
 - Yêu cầu: "6. diễn giải này đang quá rối, đọc không hiểu gì" (ảnh: khung đỏ "76 dòng ở cấp CEO: Ngày dự kiến cách ngày đặt 44 ngày, chưa có hàng; 4 lỗi; …" ở popup PO).

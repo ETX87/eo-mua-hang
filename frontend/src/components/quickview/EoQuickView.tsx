@@ -10,7 +10,7 @@ import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, DongLink, PartLink, useQuickView } from "./QuickView";
+import { QvHeader, Kpi, DongLink, PartLink, useQuickView, O_TIM } from "./QuickView";
 import { QuyTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
 import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
@@ -291,7 +291,9 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
       <div className="qv-body">
         {/* ------- trai: noi dung ------- */}
         <div className="qv-col">
-          <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => { setTab(t.k); setTim(""); }}>{t.l}</button>)}{["lk", "mail"].includes(tab) && <input className="input qv-tim" placeholder="🔍 Tìm nhanh trong tab (không dấu)…" value={tim} onChange={(e) => setTim(e.target.value)} />}</div>
+          <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => setTab(t.k)}>{t.l}</button>)}
+            {/* 2026-11-23: 1 o tim CHUNG cho moi tab (giu chu khi doi tab) */}
+            <O_TIM tim={tim} setTim={setTim} /></div>
           <div className="qv-scroll">
             {tab === "lk" && (
               <div className="qv-toolbar">
@@ -320,7 +322,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {tab === "kh" && (
               <>
                 <div className="qv-pad">
-                  <TabKeHoach eo={eo} items={d.items} plans={d.plans} issued={P.issued} canEdit={P.canEditPlan} onChanged={() => qc.invalidateQueries()} />
+                  <TabKeHoach eo={eo} items={d.items} plans={d.plans} issued={P.issued} canEdit={P.canEditPlan} onChanged={() => qc.invalidateQueries()} tim={tim} />
                 </div>
                 {(b?.phieu_khong_khop ?? []).length > 0 && (
                   <>
@@ -336,7 +338,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {tab === "duyet" && (
               <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                 {d.submissions.length === 0 && <div className="muted">Chưa gửi trình duyệt.</div>}
-                {[...d.submissions].reverse().map((s: any) => (
+                {[...d.submissions].reverse().filter((s: any) => !tim || k(s) || d.approvals.some((a: any) => a.submission_id === s.id && k({ ...a, ten: ten(a.approver_email) }))).map((s: any) => (
                   <div key={s.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10, opacity: ["SUPERSEDED", "CANCELLED"].includes(s.status) ? 0.6 : 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>Lần trình #{s.version} · {ten(s.submitted_by)} · {ngayGio(s.submitted_at)} <span className="badge nhap" style={{ marginLeft: 6 }}>{s.status}</span></div>
                     {s.note && <div className="muted" style={{ fontSize: 12 }}>{s.note}</div>}
@@ -356,10 +358,10 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {tab === "file" && (
               <div className="qv-pad">
                 <TabTaiLieu eoId={String(id)} files={d.files} onUploaded={() => qc.invalidateQueries()} canDelete={P.canDeleteFile}
-                  myEmail={me.data?.email} preIssue={!["ISSUED", "CANCELLED"].includes(eo.trang_thai)} />
+                  myEmail={me.data?.email} preIssue={!["ISSUED", "CANCELLED"].includes(eo.trang_thai)} tim={tim} />
               </div>
             )}
-            {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} />}
+            {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} tim={tim} />}
             {tab === "mail" && (
               <>
                 {coChon && BAT_TAO_MAIL_NHAC && <div className="qv-toolbar"><span className="muted" style={{ fontSize: 12 }}>Tạo push mới: tab <b>Linh kiện</b> → tick dòng còn thiếu → <b>Tạo mail nhắc</b>.</span>

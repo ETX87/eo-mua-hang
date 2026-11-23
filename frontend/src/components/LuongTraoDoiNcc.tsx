@@ -1,3 +1,4 @@
+import { khopTim } from "../lib/tonDong";
 import { useState } from "react";
 import { ngay, ngayGio, ten, tuBayGio } from "../lib/format";
 
@@ -38,9 +39,12 @@ export function luongSuKien(d: any): Ev[] {
   return ev.sort((x, y) => String(x.luc).localeCompare(String(y.luc)));
 }
 
-export function LuongTraoDoiNcc({ d }: { d: any }) {
+export function LuongTraoDoiNcc({ d, tim = "" }: { d: any; tim?: string }) {
   const [mo, setMo] = useState(false);
   const ev = luongSuKien(d);
+  // o tim chung cua popup: co chu -> mo bang chi tiet, chi giu dong khop (khong dau)
+  const k = khopTim(tim);
+  const evLoc = tim ? ev.filter((e) => k(`${NHAN[e.loai]} ${ngayGio(e.luc)} ${e.tieu_de} ${e.chi_tiet} ${e.ai ? ten(e.ai) : ""}`)) : ev;
   const thuc = ev.filter((e) => e.loai === "THUC"), ncc = ev.filter((e) => e.loai === "NCC");
   const thucCuoi = thuc.at(-1)?.luc ?? null, nccCuoi = ncc.at(-1)?.luc ?? null;
   const choNcc = thucCuoi && (!nccCuoi || nccCuoi < thucCuoi) ? soNgayTu(thucCuoi) : null;
@@ -70,11 +74,12 @@ export function LuongTraoDoiNcc({ d }: { d: any }) {
         </div>
       )}
       {ev.length > 0 && <button className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => setMo(!mo)}>{mo ? "▴ Thu gọn" : `▾ Xem chi tiết (${ev.length})`}</button>}
-      {mo && (
+      {tim && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Tìm “{tim}”: {evLoc.length} / {ev.length} mục</div>}
+      {(mo || !!tim) && (
         <table className="tbl tbl-dense" style={{ marginTop: 6 }}>
           <thead><tr><th>Lúc</th><th>Loại</th><th>Nội dung</th><th>Chi tiết</th><th>Người</th></tr></thead>
           <tbody>
-            {[...ev].reverse().map((e, i) => (
+            {[...evLoc].reverse().map((e, i) => (
               <tr key={i}>
                 <td style={{ whiteSpace: "nowrap" }}>{ngayGio(e.luc)}</td>
                 <td><span style={{ color: MAU[e.loai], fontWeight: 700, whiteSpace: "nowrap" }}>● {NHAN[e.loai]}</span></td>

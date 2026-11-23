@@ -1,3 +1,4 @@
+import { khopTim } from "../../lib/tonDong";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -51,7 +52,7 @@ export function quyenEo(eo: any, me: any) {
   };
 }
 
-export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any) {
+export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged, tim }: any) {
   const [edit, setEdit] = useState<any>(null);
   const [bulk, setBulk] = useState(false);
   const [imp, setImp] = useState<{ name: string; parsed: Parsed } | null>(null);
@@ -158,7 +159,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged }: any
         {demTt("Thiếu KH") > 0 && <span className="badge final">{demTt("Thiếu KH")} thiếu kế hoạch</span>}
         {demTt("Về đủ") > 0 && <span className="badge issued">{demTt("Về đủ")} về đủ</span>}
       </div>
-      <DataTable cols={cols} rows={rowsDong} keyOf={(r) => r.id} empty="EO không có dòng linh kiện hiệu lực" pageSize={20} />
+      <DataTable cols={cols} rows={rowsDong} keyOf={(r) => r.id} empty="EO không có dòng linh kiện hiệu lực" pageSize={20} q={tim} />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
       {ngayItem && <NgayHangVeModal dong={{ item_id: ngayItem.id, part_code: ngayItem.part_code }} onClose={() => setNgayItem(null)} onSaved={() => { setNgayItem(null); onChanged(); }} />}
       {edit && (
@@ -405,7 +406,9 @@ export function ReplacePartModal({ item, onClose, onSaved }: any) {
   );
 }
 
-export function TabTaiLieu({ eoId, files, onUploaded, canDelete, myEmail, preIssue }: any) {
+export function TabTaiLieu({ eoId, files: filesIn, onUploaded, canDelete, myEmail, preIssue, tim = "" }: any) {
+  // o tim chung cua popup PO (thanh tab): loc ten tep / nguoi tai / ghi chu (khong dau)
+  const files = tim ? filesIn.filter(khopTim(tim)) : filesIn;
   const del = async (f: any) => {
     if (!confirm(`Xóa tệp đính kèm "${f.file_name}"?`)) return;
     try { await api.del(`/eo/${eoId}/files/${f.id}`); onUploaded(); }

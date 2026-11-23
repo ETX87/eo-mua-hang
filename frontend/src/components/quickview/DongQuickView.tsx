@@ -15,6 +15,8 @@ import { LuongTraoDoiNcc, luongSuKien } from "../LuongTraoDoiNcc";
 import { GdBadge } from "../../lib/giaiDoan";
 import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
+import { khopTim } from "../../lib/tonDong";
+import { O_TIM } from "./QuickView";
 import { NHAN_GT, demGt, ketLuanGt, trangThaiGt, viSaoLoi } from "../../lib/giaiTrinh";
 
 /**
@@ -33,6 +35,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
     queryFn: () => api.get<{ giai_doan: GdDef[]; sla: Record<string, number>; rows: any[] }>(`/so-don-hang?eo_id=${eoId}`),
   });
   const [tab, setTab] = useState<Tab>("gd");
+  const [tim, setTim] = useState(""); // o tim CHUNG cho moi tab (2026-11-23)
   const qv = useQuickView();
   const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | "lh" | null>(null);
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
@@ -134,13 +137,14 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             <button className={`qv-tab ${tab === "loi" ? "on" : ""}`} onClick={() => setTab("loi")} style={{ color: loi.some((l) => l.trang_thai === "CHO_GIAI_TRINH") ? "var(--danger-ink)" : undefined }}>
               Mã lỗi & giải trình ({new Set(loi.map((l) => l.vp_khoa ?? l.id)).size})</button>
             <button className={`qv-tab ${tab === "ncc" ? "on" : ""}`} onClick={() => setTab("ncc")}>Trao đổi NCC ({luongSuKien(ls.data).filter((e) => e.loai !== "NGAY").length})</button>
+            <O_TIM tim={tim} setTim={setTim} />
           </div>
           <div className="qv-scroll">
             {tab === "gd" && (
               <table className="tbl tbl-dense">
                 <thead><tr><th>Giai đoạn</th><th>Phụ trách</th><th>Bắt đầu</th><th>Kết thúc</th><th style={{ textAlign: "right" }}>Thời gian (giờ LV)</th><th>Hạn</th><th>Kết quả</th><th title="Chạm quy tắc → cần giải trình trong hạn; hết hạn không giải trình → vi phạm">Giải trình / vi phạm</th></tr></thead>
                 <tbody>
-                  {nut.map((n) => {
+                  {nut.filter((n) => !tim || khopTim(tim)(`${n.g.k} ${n.g.l} ${n.g.vai_tro} ${n.loi.map((l: any) => `${l.quy_tac} ${l.ma_loi ?? ""}`).join(" ")}`)).map((n) => {
                     // v0.109: tach "can giai trinh" (con han) / "vi pham" (het han khong GT) / da xu ly - lib/giaiTrinh
                     const dmGt = demGt(n.loi, gtBy);
                     const xuLy = dmGt.DA_GT + dmGt.KHAC_PHUC + dmGt.TAY;
@@ -171,8 +175,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
                 </tbody>
               </table>
             )}
-            {tab === "loi" && <BangLoiTheoBuoc loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} rows={r.item_id ? [r] : []} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} />}
-            {tab === "ncc" && <LuongTraoDoiNcc d={ls.data} />}
+            {tab === "loi" && <BangLoiTheoBuoc loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} rows={r.item_id ? [r] : []} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} tim={tim} />}
+            {tab === "ncc" && <LuongTraoDoiNcc d={ls.data} tim={tim} />}
             {tab === "kh" && (
               <>
                 <div className="qv-sec">Kế hoạch hàng về</div>
@@ -180,7 +184,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
                   <thead><tr><th>Loại</th><th><NhanNgay k="NM" ngan /></th><th><NhanNgay k="DK" ngan /></th><th style={{ textAlign: "right" }}>SL</th><th>Ghi chú</th><th>Cập nhật</th></tr></thead>
                   <tbody>
                     {(ls.data.ke_hoach ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa có kế hoạch.</td></tr>}
-                    {(ls.data.ke_hoach ?? []).map((p: any) => <tr key={p.id}><td>{p.loai === "TUAN" ? `Tuần ${p.tuan ?? ""}` : "Ngày"}</td><td>{ngay(p.factory_committed_date) || "—"}</td><td>{ngay(p.planned_date)}</td>
+                    {(ls.data.ke_hoach ?? []).filter((p: any) => !tim || khopTim(tim)({ ...p, nm: ngay(p.factory_committed_date), dk: ngay(p.planned_date), ai: ten(p.updated_by ?? p.created_by) })).map((p: any) => <tr key={p.id}><td>{p.loai === "TUAN" ? `Tuần ${p.tuan ?? ""}` : "Ngày"}</td><td>{ngay(p.factory_committed_date) || "—"}</td><td>{ngay(p.planned_date)}</td>
                       <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td><td>{p.ghi_chu || ""}</td><td className="muted" style={{ fontSize: 11.5 }}>{ten(p.updated_by ?? p.created_by)} · {ngayGio(p.updated_at ?? p.created_at)}</td></tr>)}
                   </tbody>
                 </table>
@@ -189,7 +193,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
                   <thead><tr><th>Ngày CT</th><th>Số CT</th><th>Kho</th><th style={{ textAlign: "right" }}>SL nhập</th></tr></thead>
                   <tbody>
                     {(ls.data.phieu_nhap ?? []).length === 0 && <tr><td colSpan={4} className="muted">Chưa có hàng về.</td></tr>}
-                    {(ls.data.phieu_nhap ?? []).map((p: any) => <tr key={p.id}><td>{ngay(p.doc_date)}</td><td>{p.doc_no}</td><td>{p.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(p.qty_in)}</td></tr>)}
+                    {(ls.data.phieu_nhap ?? []).filter((p: any) => !tim || khopTim(tim)({ ...p, ngay: ngay(p.doc_date) })).map((p: any) => <tr key={p.id}><td>{ngay(p.doc_date)}</td><td>{p.doc_no}</td><td>{p.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(p.qty_in)}</td></tr>)}
                   </tbody>
                 </table>
               </>

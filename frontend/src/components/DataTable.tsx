@@ -99,7 +99,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -132,6 +132,8 @@ export function DataTable<T>({
    * cuon het bang moi thay thanh ngang); them 1 thanh cuon ngang o TREN dau bang (yeu cau 2026-11-23 popup PO, bang linh kien).
    */
   khungCao?: string;
+  /** O tim CHUNG ben ngoai (vd o tim tren thanh tab cua popup, 2026-11-23) - bang dung gia tri nay va AN o tim rieng. */
+  q?: string;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const tren = useRef<HTMLDivElement>(null);
@@ -147,7 +149,8 @@ export function DataTable<T>({
     return () => ro.disconnect();
   }, [khungCao]);
   const dongBo = (tu: HTMLDivElement | null, den: HTMLDivElement | null) => { if (tu && den && den.scrollLeft !== tu.scrollLeft) den.scrollLeft = tu.scrollLeft; };
-  const [q, setQ] = useState("");
+  const [qTrong, setQ] = useState("");
+  const q = qNgoai ?? qTrong;
   const [locTrong, setLocTrong] = useState<LocCot>({});
   const [sapTrong, setSapTrong] = useState<SapCot>(null);
   const loc = locNgoai ?? locTrong;
@@ -159,7 +162,7 @@ export function DataTable<T>({
   const tu = boDau(q).split(/\s+/).filter(Boolean);
   const daTim = tu.length ? rowsIn.filter((r) => { const h = chuoiTim(r); return tu.every((x) => h.includes(x)); }) : rowsIn;
   const rows = ngoai ? daTim : locVaSap(daTim, colsIn, loc, sap);
-  const coTim = timKiem && (rowsIn.length >= 6 || q !== "");
+  const coTim = timKiem && qNgoai === undefined && (rowsIn.length >= 6 || q !== "");
   const ai = colsIn.findIndex((c) => c.key === "act");
   const order = ai > 0 ? [ai, ...colsIn.map((_, i) => i).filter((i) => i !== ai)] : colsIn.map((_, i) => i);
   const cols = order.map((i) => (i === ai ? { ...colsIn[i], sticky: true, align: "left" as const, header: colsIn[i].header || "Thao tác", wrap: true } : colsIn[i]));

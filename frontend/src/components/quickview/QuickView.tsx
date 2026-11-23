@@ -87,6 +87,21 @@ export function QvHeader({ coTruoc, onClose, onCloseAll, children, actions }: {
   );
 }
 
+/**
+ * O tim CHUNG tren thanh tab cua popup (2026-11-23, chu he thong: "chuyen cong cu tim kiem len chung va dung cho tat ca cac tab co the tim kiem").
+ * Dat cuoi .qv-tabs (tu day sang phai); giu chu khi doi tab; nut × xoa nhanh. Moi tab nhan `tim` va tu loc (khong dau, nhieu tu = VA).
+ */
+export function O_TIM({ tim, setTim }: { tim: string; setTim: (v: string) => void }) {
+  return (
+    <span className="qv-tim" style={{ position: "relative", display: "inline-flex" }}>
+      <input className="input" style={{ width: "100%", height: "100%", fontSize: 12.5, paddingRight: tim ? 24 : undefined, borderColor: tim ? "var(--link-amber)" : undefined }}
+        placeholder="🔍 Tìm trong tab đang mở (không dấu)…" title="Ô tìm dùng chung cho mọi tab — giữ nguyên khi đổi tab" value={tim} onChange={(e) => setTim(e.target.value)} />
+      {tim && <button type="button" title="Xoá tìm kiếm" onClick={() => setTim("")}
+        style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", cursor: "pointer", color: "var(--text-muted)", fontSize: 14 }}>×</button>}
+    </span>
+  );
+}
+
 export function Kpi({ l, v, tone }: { l: string; v: ReactNode; tone?: "danger" | "ok" | "warn" }) {
   const color = tone === "danger" ? "var(--danger-ink)" : tone === "ok" ? "var(--ok-ink)" : tone === "warn" ? "var(--warn-ink)" : undefined;
   return <div className="qv-kpi"><div className="l" title={l}>{l}</div><div className="v" style={{ color }}>{v}</div></div>;

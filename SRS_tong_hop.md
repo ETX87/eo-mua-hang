@@ -68,6 +68,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   gộp 1 dòng "×n", bấm xem từng lần, có nút "Hiện từng mục".
 - Cảnh báo cấp CEO ở popup PO = 1 dòng tóm tắt theo 3 tiêu chí (số dòng + mức nặng nhất: xa nhất bao nhiêu ngày, lùi nhiều nhất bao nhiêu lần, nhiều nhất bao nhiêu lỗi),
   không liệt kê lý do từng dòng; chi tiết từng dòng ở tab "Mã lỗi & giải trình".
+- Popup PO và popup đơn hàng: 1 ô tìm CHUNG ở cuối thanh tab (không dấu, nút × xoá), dùng cho mọi tab tìm được (linh kiện, kế hoạch & hàng về, quy trình duyệt,
+  tài liệu, mail & push, mã lỗi & giải trình, chi tiết giai đoạn, trao đổi NCC); giữ chữ khi đổi tab; bảng trong tab không còn ô tìm riêng.
 - Bảng linh kiện trong popup PO cuộn trong khung: tiêu đề cột luôn ở trên, thanh kéo dọc + ngang luôn thấy, thêm thanh kéo ngang ở trên đầu bảng.
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
 - Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.

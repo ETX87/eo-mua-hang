@@ -28,8 +28,10 @@ const NHAN_TT: Record<TT, { l: string; cls: string }> = {
 interface Muc { k: string; buoc: string; ma: string; ten: string; ma_lk: string; so_dong: number; ds_lk: string[]; item_id: number | null; han: string | null; han_gt: string | null; vi_sao: string; tt: TT; chi_tiet: string;
   gt_ai: string; gt_loi: string; gt_nd: string; gt_boi: string | null; gt_luc: string | null }
 
-export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh }: {
+export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, tim }: {
   loi: any[]; giaiTrinh: any[]; rows: any[]; nhieuDong?: boolean; onGiaiTrinh?: (itemId: number, soDong: number) => void;
+  /** o tim chung cua popup (thanh tab) - khong truyen thi bang tu co o tim */
+  tim?: string;
 }) {
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
@@ -120,7 +122,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh }
         <span className="muted" style={{ marginLeft: "auto" }} title={`ER.MH-0xx / 1xx: chạm quy tắc → cần giải trình trong ${GIO_HAN_GT} giờ làm việc; hết hạn không giải trình → vi phạm.\nER.MH-2xx: cấp CEO, hệ thống tự tính theo số liệu, không có hạn giải trình.\nER.MH-3xx: trễ hạn bước, chỉ đo.`}>
           0xx/1xx: cần giải trình trong {GIO_HAN_GT}h LV, quá hạn → vi phạm · 2xx: cấp CEO tự tính · 3xx: chỉ đo ⓘ</span>
       </div>
-      <DataTable cols={cols} rows={ds} keyOf={(m) => m.k} pageSize={15} empty="Chưa có lỗi / cảnh báo nào." />
+      <DataTable cols={cols} rows={ds} keyOf={(m) => m.k} pageSize={15} empty="Chưa có lỗi / cảnh báo nào." q={tim} />
     </div>
   );
 }
