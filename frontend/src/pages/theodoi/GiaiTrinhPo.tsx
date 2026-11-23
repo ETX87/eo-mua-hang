@@ -98,12 +98,12 @@ export function GiaiTrinhPoModal({ eoId, onClose, onSaved }: { eoId: number; onC
     try {
       const kq = await api.post<{ so_dong: number; so_loi: number }>("/vi-pham/giai-trinh-po", {
         eo_id: eoId, moi, quy_tac: !moi && qt ? [...qt] : [], eo_item_ids: boDong.size ? chon.map((d) => d.item_id) : [],
-        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh,
+        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh, dung_mail: dungMail,
       });
       onSaved(kq);
     } catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "PO không còn lỗi chờ giải trình (có thể vừa được giải trình)." : c === "KHONG_CO_DONG" ? "PO không còn dòng đang theo dõi." : c === "READ_ONLY" ? "Bạn không có quyền giải trình PO này." : "Lỗi lưu giải trình.");
+      setErr(c === "THIEU_THU" ? "Có dòng chưa có thư / ghi nhận liên hệ nào với NCC trong hệ thống — không dùng thư làm bằng chứng được, hãy thêm ảnh." : c === "THIEU_THU" ? "Có dòng chưa có thư / ghi nhận liên hệ nào với NCC trong hệ thống — không dùng thư làm bằng chứng được, hãy thêm ảnh." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "PO không còn lỗi chờ giải trình (có thể vừa được giải trình)." : c === "KHONG_CO_DONG" ? "PO không còn dòng đang theo dõi." : c === "READ_ONLY" ? "Bạn không có quyền giải trình PO này." : "Lỗi lưu giải trình.");
       setBusy(false);
     }
   };
@@ -204,10 +204,10 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
     if (canAnh && !anh.length && !dungMail) return setErr("Loại lỗi này bắt buộc ảnh bằng chứng.");
     setBusy(true);
     try {
-      onSaved(await api.post("/vi-pham/giai-trinh-nhieu", { loi_ids: ids, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh }));
+      onSaved(await api.post("/vi-pham/giai-trinh-nhieu", { loi_ids: ids, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh, dung_mail: dungMail }));
     } catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "KHAC_LOAI" ? "Chỉ giải trình chung được các lỗi cùng loại." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các lỗi đã chọn đã được giải trình." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
+      setErr(c === "KHAC_LOAI" ? "Chỉ giải trình chung được các lỗi cùng loại." : c === "THIEU_THU" ? "Có dòng chưa có thư / ghi nhận liên hệ nào với NCC trong hệ thống — không dùng thư làm bằng chứng được, hãy thêm ảnh." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các lỗi đã chọn đã được giải trình." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
       setBusy(false);
     }
   };
@@ -297,10 +297,10 @@ export function GiaiTrinhDongModal({ dongs, onClose, onSaved }: {
     if (canAnh && !anh.length && !dungMail) return setErr("Có lỗi R1/R4 — bắt buộc ảnh bằng chứng.");
     setBusy(true);
     try {
-      onSaved(await api.post("/vi-pham/giai-trinh-dong", { eo_item_ids: ap.map((d) => d.item_id), moi, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh }));
+      onSaved(await api.post("/vi-pham/giai-trinh-dong", { eo_item_ids: ap.map((d) => d.item_id), moi, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh, dung_mail: dungMail }));
     } catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các dòng đã chọn không còn lỗi chờ (có thể vừa được giải trình)." : c === "KHONG_CO_DONG" ? "Không còn dòng đang theo dõi." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
+      setErr(c === "THIEU_THU" ? "Có dòng chưa có thư / ghi nhận liên hệ nào với NCC trong hệ thống — không dùng thư làm bằng chứng được, hãy thêm ảnh." : c === "THIEU_THU" ? "Có dòng chưa có thư / ghi nhận liên hệ nào với NCC trong hệ thống — không dùng thư làm bằng chứng được, hãy thêm ảnh." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các dòng đã chọn không còn lỗi chờ (có thể vừa được giải trình)." : c === "KHONG_CO_DONG" ? "Không còn dòng đang theo dõi." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
       setBusy(false);
     }
   };

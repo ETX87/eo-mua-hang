@@ -8,6 +8,7 @@ import { gioTxt } from "../lib/giaiDoan";
 import { Kho } from "../lib/kho";
 import { exportRowsToXlsx, type ExportCol } from "../lib/exportXlsx";
 import { NgayHangVeModal, GiaiTrinhModal, LienHeDoiTacModal, type Dong } from "./theodoi/shared";
+import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
 
 /**
  * MAN "VIỆC CỦA TÔI" (v0.104, yeu cau 2026-11-19): nhan vien nhin 1 lan biet phai lam gi, o dau, truoc han nao.
@@ -105,6 +106,84 @@ function Muc({ id, so, tieuDe, lamGi, n, mau, xuat, children }: { id: string; so
   );
 }
 
+/**
+ * Muc 4 GIAI TRINH (v0.114, chu he thong 2026-11-23: "nhom cac van de can giai trinh theo PO hoac ma linh kien, vi chung ta co chuc nang giai trinh
+ * hang loat => tan dung toi da"). Xem: tung dong | theo PO | theo ma LK (localStorage). Tick dong / ca nhom -> "Giai trinh chung" = GiaiTrinhDongModal
+ * (POST /vi-pham/giai-trinh-dong: 1 noi dung dong MOI loi cho cua cac dong, nhieu PO / nhieu loai). Tieu de nhom: so dong, so loi, han som nhat + nut ca nhom.
+ */
+type XemGt = "dong" | "po" | "lk";
+const KHOA_XEM_GT = "vct-gt-xem";
+function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => void; onNhieu: (ds: V[]) => void }) {
+  const [xem, setXemS] = useState<XemGt>(() => (localStorage.getItem(KHOA_XEM_GT) as XemGt) || "po");
+  const setXem = (x: XemGt) => { setXemS(x); localStorage.setItem(KHOA_XEM_GT, x); };
+  const [chon, setChon] = useState<Set<number>>(new Set());
+  const doi = (ids: number[], bat: boolean) => setChon((s) => { const n = new Set(s); ids.forEach((id) => (bat ? n.add(id) : n.delete(id))); return n; });
+  const khoa = (v: V) => (xem === "po" ? String(v.eo_id) : xem === "lk" ? v.part_code : String(v.item_id));
+  const nhom = useMemo(() => {
+    const m = new Map<string, V[]>();
+    for (const v of rows) { const k = khoa(v); m.set(k, [...(m.get(k) ?? []), v]); }
+    // nhom co han som nhat len dau (rows da sap theo han)
+    return [...m.entries()];
+  }, [rows, xem]); // eslint-disable-line react-hooks/exhaustive-deps
+  const daChon = rows.filter((v) => chon.has(v.item_id));
+  const soLoi = (ds: V[]) => ds.reduce((t, v) => t + (v.so_loi_cho_gt || 0), 0);
+  const tatCa = rows.length > 0 && daChon.length === rows.length;
+  const NutXem = ({ k, l }: { k: XemGt; l: string }) => <button className={`btn sm ${xem === k ? "primary" : ""}`} onClick={() => setXem(k)}>{l}</button>;
+  const dong = (v: V, thut = false) => (
+    <tr key={v.item_id} style={{ background: chon.has(v.item_id) ? "#F5F3FF" : undefined }}>
+      <td style={{ width: 28, paddingLeft: thut ? 22 : undefined }}><input type="checkbox" checked={chon.has(v.item_id)} onChange={(e) => doi([v.item_id], e.target.checked)} /></td>
+      <td><Han v={v} chu="tự đóng" /></td>
+      <td>{xem === "po" ? <span className="muted">↳</span> : <EoLink id={v.eo_id}>{v.ma_phe_duyet || v.eo_code}</EoLink>}</td>
+      <td>{xem === "lk" ? <span className="muted">↳</span> : <DongLink id={v.item_id} ma={v.part_code} />}
+        <div className="muted" style={{ fontSize: 11, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{xem === "lk" ? <EoLink id={v.eo_id}>{v.ma_phe_duyet || v.eo_code}</EoLink> : v.part_name}</div></td>
+      <td>{v.kho ? <Kho t={v.kho} /> : <span className="muted">—</span>}</td>
+      <td>{v.doi_tac || <span className="muted">—</span>}</td>
+      <td><b style={{ color: "#7C3AED" }}>{v.so_loi_cho_gt}</b>{v.loi_qt_cho ? <div style={{ fontSize: 11, color: "#7C3AED" }}>{v.loi_qt_cho.split(",").map((k) => QT[k] ?? k).join(" · ")}</div> : null}</td>
+      <td style={{ textAlign: "right" }}><button className="btn sm" style={{ borderColor: "#7C3AED", color: "#7C3AED", fontWeight: 700 }} onClick={() => onMot(v)}>✍ Giải trình ({v.so_loi_cho_gt})</button></td>
+    </tr>
+  );
+  return (
+    <>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700 }}>Xem:</span>
+        <NutXem k="po" l="Theo PO" /><NutXem k="lk" l="Theo mã linh kiện" /><NutXem k="dong" l="Từng dòng" />
+        <span className="muted" style={{ fontSize: 12 }}>· {nhom.length} {xem === "po" ? "PO" : xem === "lk" ? "mã LK" : "dòng"}, {rows.length} dòng, {soLoi(rows)} lỗi</span>
+        <span style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+          {daChon.length > 0 && <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>}
+          <button className="btn sm primary" disabled={!daChon.length} title="1 nội dung giải trình cho mọi lỗi chờ của các dòng đã chọn (nhiều PO, nhiều loại lỗi)" onClick={() => onNhieu(daChon)}>
+            ✍ Giải trình chung{daChon.length ? ` (${daChon.length} dòng · ${soLoi(daChon)} lỗi)` : " — tick dòng / nhóm"}</button>
+        </span>
+      </div>
+      <table className="tbl tbl-dense" style={{ width: "100%" }}>
+        <thead><tr><th style={{ width: 28 }}><input type="checkbox" title="Chọn tất cả" checked={tatCa} onChange={(e) => doi(rows.map((v) => v.item_id), e.target.checked)} /></th>
+          <th style={{ width: 130 }}>Hạn tự đóng</th><th>PO</th><th>Linh kiện</th><th>Kho</th><th>Nhà cung cấp</th><th>Lỗi chờ</th><th style={{ width: 150 }}></th></tr></thead>
+        <tbody>
+          {xem === "dong" ? rows.map((v) => dong(v)) : nhom.map(([k, ds]) => {
+            const ids = ds.map((v) => v.item_id);
+            const het = ids.every((id) => chon.has(id));
+            const v0 = ds[0];
+            return [
+              <tr key={`n-${k}`} style={{ background: "#F5F3FF" }}>
+                <td><input type="checkbox" title="Chọn cả nhóm" checked={het} onChange={(e) => doi(ids, e.target.checked)} /></td>
+                <td><Han v={v0} chu="sớm nhất" /></td>
+                <td colSpan={4}>
+                  {xem === "po" ? <><b><EoLink id={v0.eo_id}>{v0.ma_phe_duyet || v0.eo_code}</EoLink></b> <span className="muted">· {v0.doi_tac || "—"} · {v0.nguoi_dat ? ten(v0.nguoi_dat) : ""}</span></>
+                    : <><b><DongLink id={v0.item_id} ma={v0.part_code} /></b> <span className="muted">· {v0.part_name} · {new Set(ds.map((v) => v.eo_id)).size} PO</span></>}
+                  <span className="badge final" style={{ marginLeft: 8 }}>{ds.length} dòng</span>
+                </td>
+                <td><b style={{ color: "#7C3AED" }}>{soLoi(ds)}</b></td>
+                <td style={{ textAlign: "right" }}><button className="btn sm primary" style={{ background: "#7C3AED", borderColor: "#7C3AED" }}
+                  title="1 nội dung giải trình đóng mọi lỗi chờ của cả nhóm" onClick={() => (ds.length === 1 ? onMot(v0) : onNhieu(ds))}>✍ Giải trình cả nhóm ({ds.length})</button></td>
+              </tr>,
+              ...ds.map((v) => dong(v, true)),
+            ];
+          })}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 /** Noi dung mail push 1 NCC (dung cho Gmail + chep). Giu ma 3TDO + ma LK de hop thu theo doi nhan dien. */
 function mailNcc(ncc: string, ds: V[]) {
   const po = [...new Set(ds.map((v) => v.ma_phe_duyet || v.eo_code))];
@@ -121,6 +200,7 @@ export default function ViecCuaToi() {
   const q = useQuery({ queryKey: ["viec-cua-toi", phamVi], queryFn: () => api.get<Data>(`/viec-cua-toi?pham_vi=${phamVi}`) });
   const [ngay, setNgay] = useState<V | null>(null);
   const [gt, setGt] = useState<V | null>(null);
+  const [gtNhieu, setGtNhieu] = useState<V[] | null>(null);
   const [lh, setLh] = useState<{ ids: number[]; nhan: string; choNcc?: boolean } | null>(null);
   const [daChep, setDaChep] = useState("");
   const xong = () => { qc.invalidateQueries({ queryKey: ["viec-cua-toi"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); };
@@ -213,9 +293,8 @@ export default function ViecCuaToi() {
       </Muc>
 
       <Muc id="m-gt" so="4" n={d.giai_trinh.length} mau="#7C3AED" tieuDe="Giải trình lỗi" xuat={() => xuatMuc(d.giai_trinh, "4-giai-trinh-loi", "Hạn tự đóng")}
-        lamGi={<>Bấm <b>✍ Giải trình</b> → chọn <b>Ai chịu</b> + <b>Lỗi gì</b> + ghi nội dung (lỗi chưa có ngày DK / quá ngày DK cần ảnh bằng chứng: mail, tin nhắn với NCC). Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Nếu do NCC, chọn Ai = <b>Đối tác / NCC</b>; có thư với NCC thì tick dùng thư làm bằng chứng (không cần chụp ảnh). Giải trình nhiều lỗi một lúc: màn <a href="/vi-pham?xem=cua_toi&tt=cho">Vi phạm &amp; giải trình</a>.</>}>
-        <Bang rows={d.giai_trinh} chu="tự đóng" nut={(v) => <button className="btn sm" style={{ borderColor: "#7C3AED", color: "#7C3AED", fontWeight: 700 }} onClick={() => setGt(v)}>✍ Giải trình ({v.so_loi_cho_gt})</button>}
-          phu={(v) => v.loi_qt_cho ? <div style={{ fontSize: 11, color: "#7C3AED" }}>{v.loi_qt_cho.split(",").map((k) => QT[k] ?? k).join(" · ")}</div> : null} />
+        lamGi={<>Bấm <b>✍ Giải trình</b> → chọn <b>Ai chịu</b> + <b>Lỗi gì</b> + ghi nội dung (lỗi chưa có ngày DK / quá ngày DK cần ảnh bằng chứng: mail, tin nhắn với NCC). Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Nếu do NCC, chọn Ai = <b>Đối tác / NCC</b>; có thư với NCC thì tick dùng thư làm bằng chứng (không cần chụp ảnh). Nhiều lỗi cùng nguyên nhân: xem <b>Theo PO</b> / <b>Theo mã linh kiện</b> → bấm <b>✍ Giải trình cả nhóm</b>, hoặc tick nhiều dòng → <b>✍ Giải trình chung</b> (1 nội dung cho mọi lỗi).</>}>
+        <BangGiaiTrinh rows={d.giai_trinh} onMot={setGt} onNhieu={setGtNhieu} />
       </Muc>
 
       <Muc id="m-cho-ncc" so="⏳" n={choNcc.length} mau="#2563EB" tieuDe="Đang chờ NCC báo ngày — hỏi lại đúng ngày hẹn" xuat={() => xuatMuc(choNcc, "5-cho-ncc-bao-ngay", "Hẹn hỏi lại")}
@@ -224,6 +303,8 @@ export default function ViecCuaToi() {
       </Muc>
 
       {ngay && <NgayHangVeModal dong={ngay} onClose={() => setNgay(null)} onSaved={() => { setNgay(null); xong(); }} />}
+      {gtNhieu && <GiaiTrinhDongModal dongs={gtNhieu.map((v) => ({ item_id: v.item_id, eo_id: v.eo_id, ma_po: v.ma_phe_duyet || v.eo_code, part_code: v.part_code, part_name: v.part_name }))}
+        onClose={() => setGtNhieu(null)} onSaved={() => { setGtNhieu(null); xong(); }} />}
       {gt && <GiaiTrinhModal dong={gt} onClose={() => setGt(null)} onSaved={() => { setGt(null); xong(); }} />}
       {lh && <LienHeDoiTacModal ids={lh.ids} nhan={lh.nhan} choNcc={lh.choNcc} onClose={() => setLh(null)} onSaved={() => { setLh(null); xong(); }} />}
     </div>

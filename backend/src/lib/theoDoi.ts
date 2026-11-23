@@ -647,3 +647,21 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
   if (xong) await bumpVersions(db, ["theo_doi"]);
   return xong;
 }
+
+/**
+ * BANG CHUNG loi R1/R4 (v0.114): anh HOAC "dung thu NCC da luu" (dung_mail) - khi dung_mail, MOI dong can bang chung phai co it nhat 1 thu
+ * da dong bo (tl_mail theo dong / theo dot push - MAIL_DONG_BO_THEO_DONG) hoac 1 ghi nhan lien he (tl_lien_he). Tra ma loi hoac null.
+ */
+export async function kiemBangChung(db: D1Database, canAnh: boolean, coAnh: boolean, dungMail: boolean | undefined, itemIds: number[]):
+  Promise<{ error: "CAN_HINH_ANH" | "THIEU_THU"; dong?: number[] } | null> {
+  if (!canAnh || coAnh) return null;
+  if (!dungMail) return { error: "CAN_HINH_ANH" };
+  const ids = [...new Set(itemIds)];
+  if (!ids.length) return null;
+  const co = new Set((await db.prepare(
+    `SELECT eo_item_id FROM (${MAIL_DONG_BO_THEO_DONG}) WHERE eo_item_id IN (SELECT value FROM json_each(?1))
+     UNION SELECT eo_item_id FROM tl_lien_he WHERE eo_item_id IN (SELECT value FROM json_each(?1))`,
+  ).bind(JSON.stringify(ids)).all<{ eo_item_id: number }>()).results.map((r) => r.eo_item_id));
+  const thieu = ids.filter((i) => !co.has(i));
+  return thieu.length ? { error: "THIEU_THU", dong: thieu } : null;
+}

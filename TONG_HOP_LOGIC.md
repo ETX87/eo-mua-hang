@@ -141,6 +141,10 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   Quá ngày hẹn chưa có ngày → dòng quay lại mục cần làm.
 - **Form giải trình (v0.113)**: "Ai chịu" không còn mặc định "Người đặt hàng" (phải chọn); dòng có thư NCC trả lời mà không có ngày → gợi ý 1 bấm điền Ai = Đối tác / NCC,
   Lỗi = NCC không phản hồi + nội dung; lỗi R1/R4 không cần ảnh nếu tick "dùng thư với NCC đã lưu ở hộp theo dõi" (nội dung ghi kèm "[Bằng chứng: … thư …]").
+- **Bằng chứng R1/R4 bằng thư (v0.114)**: 4 API giải trình (`/theo-doi/giai-trinh`, `/vi-pham/giai-trinh-po|nhieu|dong`) nhận `dung_mail: true` thay ảnh — server kiểm
+  MỖI dòng có lỗi R1/R4 phải có ≥ 1 thư đã đồng bộ (theo dòng / theo đợt push) hoặc 1 ghi nhận liên hệ NCC; thiếu → 400 `THIEU_THU` (phải thêm ảnh). (`kiemBangChung`, lib/theoDoi.ts)
+- **Việc của tôi › ④ Giải trình (v0.114)**: xem Theo PO (mặc định) / Theo mã LK / Từng dòng; tick dòng / cả nhóm → "Giải trình chung" (1 nội dung đóng mọi lỗi chờ của các dòng,
+  nhiều PO, nhiều loại — cùng API `/vi-pham/giai-trinh-dong` của LK đặt); tiêu đề nhóm có nút "Giải trình cả nhóm".
 - **Mời bật thông báo đẩy (v0.113)**: thẻ nhỏ góc dưới phải khi trình duyệt chưa bật (Để sau = ẩn 3 ngày); trình duyệt đang chặn → hướng dẫn mở chặn.
 - **Bảng mã lỗi** (menu Vi phạm › Bảng mã lỗi): tên, lỗi gì, yêu cầu giải trình, tự giải trình khi nào, số đang đếm theo từng mã.
 - **Ca CEO — độ hot** (v0.098): 🔴 Rất hot = còn thiếu hàng + có lỗi trong hạn giải trình (≤ 56h làm việc) chưa giải trình · 🟠 Giảm hot = còn thiếu hàng + lỗi quá hạn giải trình (tự đóng) hoặc đã

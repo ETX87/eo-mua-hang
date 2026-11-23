@@ -4,7 +4,7 @@ import { nowVN, todayVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
-import { danhGiaQuyTac, layDongTheoDoi, GIO_TU_DONG, GIO_NHAC_HET_HAN, hanGiaiTrinh } from "../lib/theoDoi";
+import { danhGiaQuyTac, layDongTheoDoi, GIO_TU_DONG, GIO_NHAC_HET_HAN, hanGiaiTrinh, kiemBangChung } from "../lib/theoDoi";
 import { congGioLV, demGioLV } from "../lib/gioLamViec";
 import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_GIO, RAT_LAU_GIO } from "../lib/baoCaoLoi";
 import { layDongDieuHanh, thongKeGiaiDoan } from "../lib/dieuHanh";
@@ -169,7 +169,7 @@ app.post("/giai-trinh-po", async (c) => {
   const db = c.env.DB;
   const b = (await c.req.json().catch(() => ({}))) as {
     eo_id?: number; quy_tac?: string[]; eo_item_ids?: number[]; moi?: boolean;
-    ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[];
+    ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[]; dung_mail?: boolean;
   };
   const eoId = Number(b.eo_id);
   const eo = await db.prepare("SELECT id, eo_code, approval_code, created_by FROM eo WHERE id = ?").bind(eoId)
@@ -215,7 +215,12 @@ app.post("/giai-trinh-po", async (c) => {
   const dem = await db.prepare(`SELECT COUNT(*) n, SUM(l.quy_tac IN ('R1', 'R4')) can_anh FROM tl_loi l WHERE ${loc}`)
     .bind(eoId, quyTac, chiDong).first<{ n: number; can_anh: number }>();
   if (!dem?.n) return c.json({ error: "KHONG_CO_LOI" }, 400);
-  if ((dem.can_anh ?? 0) > 0 && hinh === "[]") return c.json({ error: "CAN_HINH_ANH" }, 400);
+  if ((dem.can_anh ?? 0) > 0 && hinh === "[]") {
+    const dongR = (await db.prepare(`SELECT DISTINCT l.eo_item_id FROM tl_loi l WHERE ${loc} AND l.quy_tac IN ('R1', 'R4')`).bind(eoId, quyTac, chiDong)
+      .all<{ eo_item_id: number }>()).results.map((r) => r.eo_item_id);
+    const bc = await kiemBangChung(db, true, false, b.dung_mail, dongR);
+    if (bc) return c.json(bc, 400);
+  }
   const res = await db.batch([
     db.prepare(
       `INSERT INTO tl_giai_trinh (${gtCols})
@@ -243,7 +248,7 @@ app.post("/giai-trinh-po", async (c) => {
 app.post("/giai-trinh-nhieu", async (c) => {
   const u = c.get("user");
   const db = c.env.DB;
-  const b = (await c.req.json().catch(() => ({}))) as { loi_ids?: number[]; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[] };
+  const b = (await c.req.json().catch(() => ({}))) as { loi_ids?: number[]; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[]; dung_mail?: boolean };
   const ids = JSON.stringify([...new Set((b.loi_ids ?? []).map(Number).filter((x) => x > 0))].slice(0, 2000));
   const noiDung = (b.noi_dung ?? "").trim();
   if (ids === "[]") return c.json({ error: "BAD_INPUT" }, 400);
@@ -251,14 +256,15 @@ app.post("/giai-trinh-nhieu", async (c) => {
   const dm = await db.prepare("SELECT loai FROM tl_danh_muc WHERE (loai = 'AI' AND ma = ?) OR (loai = 'LOI' AND ma = ?)").bind(b.ai_ma, b.loi_ma).all();
   if (dm.results.length < 2) return c.json({ error: "BAD_CATALOG" }, 400);
   const ds = (await db.prepare(
-    `SELECT l.id, l.quy_tac, l.eo_id, e.created_by FROM tl_loi l JOIN eo e ON e.id = l.eo_id
+    `SELECT l.id, l.quy_tac, l.eo_id, l.eo_item_id, e.created_by FROM tl_loi l JOIN eo e ON e.id = l.eo_id
      WHERE l.id IN (SELECT value FROM json_each(?)) AND l.trang_thai = 'CHO_GIAI_TRINH'`,
-  ).bind(ids).all<{ id: number; quy_tac: string; eo_id: number; created_by: string }>()).results;
+  ).bind(ids).all<{ id: number; quy_tac: string; eo_id: number; eo_item_id: number; created_by: string }>()).results;
   if (!ds.length) return c.json({ error: "KHONG_CO_LOI" }, 400);
   if (new Set(ds.map((l) => l.quy_tac)).size > 1) return c.json({ error: "KHAC_LOAI" }, 400);
   if (ds.some((l) => !canEditPlan(u, l))) return c.json({ error: "READ_ONLY" }, 403);
   const hinh = JSON.stringify((Array.isArray(b.hinh_anh) ? b.hinh_anh : []).filter((x: any) => x && x.url).slice(0, 10));
-  if ((ds[0].quy_tac === "R1" || ds[0].quy_tac === "R4") && hinh === "[]") return c.json({ error: "CAN_HINH_ANH" }, 400);
+  const bc = await kiemBangChung(db, ds[0].quy_tac === "R1" || ds[0].quy_tac === "R4", hinh !== "[]", b.dung_mail, ds.map((l) => l.eo_item_id));
+  if (bc) return c.json(bc, 400);
   const aiEmail = b.ai_email?.trim() || null;
   const now = nowVN();
   const nhom = `N:${crypto.randomUUID().slice(0, 12)}`;
@@ -299,7 +305,7 @@ app.post("/giai-trinh-dong", async (c) => {
   const u = c.get("user");
   const db = c.env.DB;
   const b = (await c.req.json().catch(() => ({}))) as {
-    eo_item_ids?: number[]; xem?: boolean; moi?: boolean; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[];
+    eo_item_ids?: number[]; xem?: boolean; moi?: boolean; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[]; dung_mail?: boolean;
   };
   const idList = [...new Set((b.eo_item_ids ?? []).map(Number).filter((x) => x > 0))].slice(0, 2000);
   if (!idList.length) return c.json({ error: "BAD_INPUT" }, 400);
@@ -351,7 +357,9 @@ app.post("/giai-trinh-dong", async (c) => {
   }
 
   if (!loiCho.length) return c.json({ error: "KHONG_CO_LOI" }, 400);
-  if (loiCho.some((l) => l.quy_tac === "R1" || l.quy_tac === "R4") && hinh === "[]") return c.json({ error: "CAN_HINH_ANH" }, 400);
+  const bcD = await kiemBangChung(db, loiCho.some((l) => l.quy_tac === "R1" || l.quy_tac === "R4"), hinh !== "[]", b.dung_mail,
+    loiCho.filter((l) => l.quy_tac === "R1" || l.quy_tac === "R4").map((l) => l.eo_item_id));
+  if (bcD) return c.json(bcD, 400);
   const loc = "l.eo_item_id IN (SELECT value FROM json_each(?1)) AND l.trang_thai = 'CHO_GIAI_TRINH'";
   const res = await db.batch([
     db.prepare(`INSERT INTO tl_giai_trinh (${gtCols})

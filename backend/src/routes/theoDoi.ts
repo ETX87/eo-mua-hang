@@ -7,7 +7,7 @@ import { canEditPlan } from "../lib/eoAccess";
 import { layGiaiDoan } from "../lib/giaiDoan";
 import { requireAdmin } from "../middleware/guards";
 import { uploadPublicFile } from "../lib/googleDrive";
-import { danhGiaQuyTac, layDongTheoDoi, kyR3Tu } from "../lib/theoDoi";
+import { danhGiaQuyTac, layDongTheoDoi, kyR3Tu, kiemBangChung } from "../lib/theoDoi";
 import { layBangMaLoi, ganMaLoi } from "../lib/maLoi";
 import { apDungKrf, layGoiYKrf } from "../lib/krfGoiY";
 
@@ -128,7 +128,7 @@ app.post("/upload", async (c) => {
 //   -> 5 loi "khong push" chi can giai trinh 1 lan, hien "x 5 lan"). Tra so_loi = so loi duoc dong.
 app.post("/giai-trinh", async (c) => {
   const u = c.get("user");
-  const b = (await c.req.json()) as { eo_item_id?: number; loi_id?: number; cung_loai?: boolean; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[] };
+  const b = (await c.req.json()) as { eo_item_id?: number; loi_id?: number; cung_loai?: boolean; ai_ma?: string; ai_email?: string; loi_ma?: string; noi_dung?: string; hinh_anh?: unknown[]; dung_mail?: boolean };
   const itemId = Number(b.eo_item_id);
   const it = await c.env.DB.prepare("SELECT i.id, i.eo_id, e.created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?")
     .bind(itemId).first<{ id: number; eo_id: number; created_by: string }>();
@@ -146,7 +146,8 @@ app.post("/giai-trinh", async (c) => {
     loi = await c.env.DB.prepare("SELECT * FROM tl_loi WHERE id = ? AND eo_item_id = ?").bind(b.loi_id, itemId).first();
     if (!loi) return c.json({ error: "LOI_NOT_FOUND" }, 404);
     if (loi.trang_thai !== "CHO_GIAI_TRINH") return c.json({ error: "DA_GIAI_TRINH" }, 409);
-    if ((loi.quy_tac === "R1" || loi.quy_tac === "R4") && !hinh.length) return c.json({ error: "CAN_HINH_ANH" }, 400);
+    const bc = await kiemBangChung(c.env.DB, loi.quy_tac === "R1" || loi.quy_tac === "R4", hinh.length > 0, b.dung_mail, [itemId]);
+    if (bc) return c.json(bc, 400);
   }
   const now = nowVN();
   const gt = await c.env.DB.prepare(

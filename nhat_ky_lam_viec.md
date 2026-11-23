@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.114: Việc của tôi — nhóm lỗi cần giải trình theo PO / mã LK + giải trình hàng loạt; sửa "dùng thư làm bằng chứng" bị server chặn
+
+- Yêu cầu: "ở mục việc của tôi, có phép nhóm các vần đề cần giải trình theo PO hoặc mã linh kiện, vì chúng ta có chức năng giải trình hàng loạt => tận dụng tối đa".
+- `pages/ViecCuaToi.tsx` `BangGiaiTrinh`: mục ④ xem Theo PO / Theo mã linh kiện / Từng dòng (nhớ lựa chọn), dòng tiêu đề nhóm (hạn sớm nhất, số dòng, số lỗi,
+  nút "Giải trình cả nhóm"), ô tick từng dòng / cả nhóm / tất cả → "Giải trình chung (n dòng · n lỗi)" = `GiaiTrinhDongModal` (cùng chức năng LK đặt).
+- LỖI phát hiện khi thử: v0.113 thêm ô "dùng thư NCC làm bằng chứng" nhưng 4 API giải trình ở server vẫn bắt buộc ảnh R1/R4 → luôn báo "Bắt buộc có ảnh".
+  Sửa: `kiemBangChung` — nhận `dung_mail`, kiểm từng dòng có thư đồng bộ / liên hệ NCC; không có → `THIEU_THU` + thông báo rõ.
+- Kiểm thử local (lỗi thử R4 trên 2 PO, mở tạm mốc áp dụng rồi trả lại, đã xoá dữ liệu thử): nhóm theo PO hiện 2 nhóm; tick tất cả → giải trình chung 2 dòng;
+  dòng không có thư → báo THIEU_THU; thêm thư thử cho 1 dòng → lưu được (Ai = Đối tác / NCC, phạm vi NHIEU, nội dung kèm "[Bằng chứng: thư …]"), dòng rời mục ④.
+
 ## 23/11/2026 — v0.113: Sửa các vấn đề khi đứng vai NV đặt hàng (chờ NCC báo ngày, form giải trình, mời bật push) + bỏ vi phạm cũ trước 01/11
 
 - Yêu cầu: "tôi kiểm tra thì công việc của tôi của đồng thị tuyết rất nhiều và bị quá hạn rất xa, nhưng không thấy nv giải trình, hãy check lại có bị bug không? …

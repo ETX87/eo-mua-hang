@@ -283,12 +283,12 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     try {
       await api.post("/theo-doi/giai-trinh", {
         eo_item_id: dong.item_id, loi_id: loiId && loiId !== "moi" ? Number(loiId) : undefined, cung_loai: true,
-        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh,
+        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh, dung_mail: dungMail,
       });
       onSaved();
     } catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "DA_GIAI_TRINH" ? "Lỗi này đã được giải trình." : c === "READ_ONLY" ? "Bạn không có quyền giải trình dòng này." : "Lỗi lưu giải trình.");
+      setErr(c === "THIEU_THU" ? "Có dòng chưa có thư / ghi nhận liên hệ nào với NCC trong hệ thống — không dùng thư làm bằng chứng được, hãy thêm ảnh." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "DA_GIAI_TRINH" ? "Lỗi này đã được giải trình." : c === "READ_ONLY" ? "Bạn không có quyền giải trình dòng này." : "Lỗi lưu giải trình.");
       setBusy(false);
     }
   };
