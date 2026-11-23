@@ -26,6 +26,8 @@ import caCeoRoutes from "./routes/caCeo";
 import pushRoutes from "./routes/push";
 import { danhGiaQuyTac } from "./lib/theoDoi";
 import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
+import congNhiemVuRoutes from "./routes/congNhiemVu";
+import { congNvBat, dayCongNhiemVu } from "./lib/congNhiemVu";
 
 // EO MUA HANG - Worker doc lap (Hono + D1). Phuc vu ca API lan frontend tinh tu 1 Worker.
 // Khong R2 (xem TARGET_ARCHITECTURE.md). Tu v0.105 co 1 cron MOI GIO: danhGiaQuyTac (ghi loi + nhac sap het han giai trinh + push).
@@ -45,6 +47,10 @@ app.use("/api/*", async (c, next) => {
     await danhGiaQuyTac(c.env).catch((e) => console.error("theo doi", e));
     if (dvbhEnabled(c.env) && !c.req.path.startsWith("/api/dvbh-sync")) await maybeSyncDvbh(c.env).catch((e) => console.error("dvbh sync", e));
   })());
+  // v0.116 day viec cho duyet len App Nhiem vu eOffice khi version eo/users doi (lib/congNhiemVu.ts) - song song, loi khong anh huong nghiep vu
+  if (congNvBat(c.env) && !c.req.path.startsWith("/api/cong-nhiem-vu")) {
+    c.executionCtx.waitUntil(dayCongNhiemVu(c.env).catch((e) => console.error("cong nhiem vu", e)).then(() => undefined));
+  }
 });
 
 // --- auth: khong yeu cau session ---
@@ -81,6 +87,7 @@ app.route("/api/vi-pham", viPhamRoutes);
 app.route("/api/dieu-hanh", dieuHanhRoutes);
 app.route("/api/ca-ceo", caCeoRoutes);
 app.route("/api/push", pushRoutes);
+app.route("/api/cong-nhiem-vu", congNhiemVuRoutes);
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
@@ -97,5 +104,7 @@ export default {
   // v0.105 (2026-11-19, "He thong tu quet moi gio"): ban dem / ngay nghi khong ai mo app van ghi loi + nhac + day thong bao.
   async scheduled(_ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(danhGiaQuyTac(env).catch((e) => console.error("cron theo doi", e)).then(() => undefined));
+    // v0.116 cron moi gio gui lai anh chup du len Cong nhiem vu: lam moi "khan" theo gio + bu lan gui loi
+    if (congNvBat(env)) ctx.waitUntil(dayCongNhiemVu(env, { force: true }).catch((e) => console.error("cron cong nhiem vu", e)).then(() => undefined));
   },
 };

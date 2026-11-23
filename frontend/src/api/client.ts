@@ -1,3 +1,9 @@
+/** v0.116: dang nhap xong quay lai dung trang dang mo (link tu App Nhiem vu /eo/:id). */
+export function dangNhapUrl(): string {
+  const p = window.location.pathname + window.location.search;
+  return p && p !== "/" ? `/api/auth/login?next=${encodeURIComponent(p)}` : "/api/auth/login";
+}
+
 export class ApiError extends Error {
   constructor(public status: number, public body: unknown) {
     super(`API ${status}`);
@@ -12,7 +18,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     credentials: "include",
   });
   if (res.status === 401) {
-    window.location.href = "/api/auth/login";
+    window.location.href = dangNhapUrl();
     throw new ApiError(401, null);
   }
   const data = await res.json().catch(() => null);
@@ -30,7 +36,7 @@ async function postBinary<T>(path: string, bytes: ArrayBuffer, contentType: stri
     credentials: "include",
   });
   if (res.status === 401) {
-    window.location.href = "/api/auth/login";
+    window.location.href = dangNhapUrl();
     throw new ApiError(401, null);
   }
   const data = await res.json().catch(() => null);

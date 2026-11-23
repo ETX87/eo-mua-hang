@@ -25,6 +25,8 @@ export interface Env {
   VAPID_SUBJECT: string;
   VAPID_SERVER_PUBLIC_KEY: string;
   VAPID_SERVER_PRIVATE_KEY?: string;
+  /** v0.116 Cong nhiem vu eOffice (lib/congNhiemVu.ts) - khoa app "mua-hang", "wrangler secret put TASK_FEED_KEY"; thieu -> khong gui, khong loi. */
+  TASK_FEED_KEY?: string;
 }
 
 export type VaiTro = "Admin" | "KH cung ung" | "Ke toan" | "Kho" | "Theo doi tien do" | "View";

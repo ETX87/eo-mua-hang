@@ -8,12 +8,18 @@ import type { Env, AppVariables } from "../types";
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 // Chong login-CSRF: /login dat state ngau nhien vao cookie, /callback chi nhan code khi state khop.
 const LOGIN_STATE_COOKIE = "eomua_login_state";
+// v0.116: duong dan can quay lai sau dang nhap (link tu App Nhiem vu /eo/:id) - chi nhan duong dan noi bo "/..."
+const LOGIN_NEXT_COOKIE = "eomua_login_next";
+const nextHopLe = (p: string | undefined | null) => !!p && p.startsWith("/") && !p.startsWith("//") && !p.startsWith("/\\") && !p.startsWith("/api/") && p.length <= 300;
 
 // GET /api/auth/login -> chuyen huong sang Google OAuth consent
 app.get("/login", (c) => {
   if (c.env.LOCAL_DEV_BYPASS_AUTH === "true") return c.redirect("/");
   const state = crypto.randomUUID();
   setCookie(c, LOGIN_STATE_COOKIE, state, { httpOnly: true, secure: true, sameSite: "Lax", maxAge: 600, path: "/api/auth" });
+  const next = c.req.query("next");
+  if (nextHopLe(next)) setCookie(c, LOGIN_NEXT_COOKIE, encodeURIComponent(next!), { httpOnly: true, secure: true, sameSite: "Lax", maxAge: 600, path: "/api/auth" });
+  else deleteCookie(c, LOGIN_NEXT_COOKIE, { path: "/api/auth" });
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", c.env.GOOGLE_CLIENT_ID);
   url.searchParams.set("redirect_uri", c.env.GOOGLE_REDIRECT_URI);
@@ -65,7 +71,11 @@ app.get("/callback", async (c) => {
   setCookie(c, SESSION_COOKIE, jwt, {
     httpOnly: true, secure: true, sameSite: "Lax", maxAge: SESSION_TTL_SECONDS, path: "/",
   });
-  return c.redirect(c.env.FRONTEND_URL || "/");
+  let next: string | null = null;
+  try { next = decodeURIComponent(getCookie(c, LOGIN_NEXT_COOKIE) ?? ""); } catch { /* bo qua */ }
+  deleteCookie(c, LOGIN_NEXT_COOKIE, { path: "/api/auth" });
+  const goc = (c.env.FRONTEND_URL || "").replace(/\/+$/, "");
+  return c.redirect(nextHopLe(next) ? `${goc}${next}` : (c.env.FRONTEND_URL || "/"));
 });
 
 app.post("/logout", (c) => {

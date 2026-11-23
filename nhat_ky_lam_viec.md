@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.116: Đẩy PO đang chờ duyệt lên App Nhiệm vụ eOffice (Cổng nhiệm vụ)
+
+- Yêu cầu: "phân tích 2 file "api-cong-nhiem-vu" và "ket-noi-app-nhiem-vu" => xác định xem có thể thêm nút đẩy việc PO đang chờ duyệt lên hệ thống này không?
+  PO tạo xong sẽ chờ duyệt, ấn nút thì việc tồn sẽ được đẩy lên kèm link của PO cần duyệt" → "Làm luôn".
+- Đã làm: `lib/congNhiemVu.ts` gom việc chờ duyệt (thẩm định, duyệt mua, dòng thêm sau BH gộp theo PO) theo từng người, gửi ảnh chụp đủ lên cổng; route
+  `GET/POST /api/cong-nhiem-vu`; tự gửi sau request khi hàng chờ đổi + cron mỗi giờ; nút "📤 App Nhiệm vụ (n)" ở thanh công cụ Đơn PO; đăng nhập quay lại đúng
+  đường dẫn đang mở (`?next=`) để link `/eo/<id>` từ App Nhiệm vụ mở đúng PO. Khoá app nạp bằng `wrangler secret put TASK_FEED_KEY`.
+- Kiểm tra D1 thật (chỉ đọc) trước khi làm: đang chờ 2 phiếu thẩm định, 1 phiếu duyệt mua, 57 dòng thêm sau BH (người duyệt mua có chức danh Tổng Giám đốc → cần
+  dấu `gd`, đã gắn cho duyệt mua / dòng thêm).
+- Kiểm thử: typecheck; local (dữ liệu demo, chưa có khoá) nút hiện "(6)" = 2 thẩm định + 2 duyệt mua + 2 PO có dòng thêm / 3 người, popup báo chưa nạp khoá;
+  production: xem mục kết quả nghiệm thu bên dưới.
+
 ## 23/11/2026 — v0.115: Bỏ lỗi cũ trước 01/11 nhưng đơn tồn vẫn tiếp tục bị nhắc giải trình
 
 - Yêu cầu: "trước 1/11 bỏ lỗi thôi, chứ tồn thì vẫn tiếp tục đẩy giải trình vi phạm và theo dõi tiếp".

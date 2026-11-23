@@ -170,6 +170,20 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 | App linh kiện (`linhkien`) | Cho đọc | `GET /api/partner/theo-id?ids=&po_lk=` (khoá `DOC_API_KEY`, gọi qua Service Binding): trả kết quả mua hàng (PO, trạng thái, SL đặt / về / thiếu, ngày dự kiến, ngày về) theo mã. `ids` = mã đơn `DDH-…`, ticket `TLK-…`, mã case — khớp nếu mã nằm trong ô **ID CRM** HOẶC ô **ID đặt hàng** của dòng EO (tách từng mã trong ô, bỏ dấu nháy / khoảng trắng, không phân biệt hoa thường — dữ liệu thật có nhập lẫn cột, nhiều mã 1 ô). `po_lk` = cặp `3TDO-…~MÃ_LK` (ticket đã ghi mã EO) → dòng của PO đó có mã LK đó (kể cả mã gốc trước khi thay). Mỗi dòng trả 1 lần + `khop_theo`; mã không khớp ở `khong_khop` |
 | Thư ký mua hàng (`theodoimuahang`) | Nhận | Sự kiện mail NCC theo dòng (`/api/partner/mail-events`, ghi theo lô, chống trùng) |
 | ETX nhân sự | Nhận | Bấm tay đồng bộ nhân sự |
+| App Nhiệm vụ eOffice (Cổng nhiệm vụ, mã app `mua-hang`) | Đẩy đi | PO đang chờ duyệt → việc của từng người duyệt (v0.116, xem dưới) |
+
+**Đẩy việc chờ duyệt lên App Nhiệm vụ (v0.116, `lib/congNhiemVu.ts`)**
+- Việc gửi = đúng hàng chờ "Chờ tôi duyệt": (1) phiếu thẩm định đang chờ → người thẩm định, tag "Thẩm định PO"; (2) phiếu duyệt mua đang chờ → người
+  duyệt mua, tag "Duyệt mua PO"; (3) dòng thêm sau ban hành chờ duyệt → người duyệt mua của PO, **gộp 1 việc / PO** + số dòng (`count`), tag "Duyệt dòng thêm".
+- Mỗi việc: tiêu đề có mã PO (MH-/EO- hoặc 3TDO) + tiêu đề PO; link `/eo/<id>` mở thẳng popup PO (chưa đăng nhập → đăng nhập xong quay lại đúng PO);
+  hạn = thời điểm giao + hạn giai đoạn (G2 thẩm định / G3 duyệt mua, giờ làm việc, cấu hình hạn giai đoạn); quá hạn → khẩn (🔴, lên đầu).
+- Mã việc ổn định: `EO<id>-L<lần trình>-THAMDINH|DUYET`, `EO<id>-THEMSAUBH` — trình lại sau khi sửa = việc mới = có thông báo lại.
+- Người nhận: mã nhân sự ETX nếu tài khoản đã liên kết, không thì Gmail đăng nhập. Duyệt mua / dòng thêm luôn đánh dấu "Giám đốc quyết" (`gd`);
+  thẩm định chỉ đánh dấu khi người thẩm định có chức danh Giám đốc (Giám đốc chỉ nhận việc có dấu này).
+- Luôn gửi **ảnh chụp đủ** (toàn bộ việc của mọi người): PO duyệt xong / từ chối / rút về tự biến mất ở lần gửi sau. Gửi khi: dữ liệu PO / người dùng đổi
+  (sau request, bỏ qua nếu hàng chờ không đổi; lần lỗi → thử lại sau 10 phút) · cron mỗi giờ (làm mới khẩn) · nút **📤 App Nhiệm vụ** ở Đơn PO (gửi ngay).
+- Lần gửi đầu tiên của app không bắn thông báo (cổng chống báo dồn); từ đó mỗi việc mới có thông báo đẩy về điện thoại người duyệt (đã cài App Nhiệm vụ).
+- Chưa nạp khoá → không gửi, không lỗi; trạng thái lần gửi cuối lưu ở `app_settings` `cong_nv_state`.
 
 ## 10. Tài liệu liên quan
 

@@ -45,7 +45,7 @@ export function gioLamViec(a: string, b: string): number {
   return demGioLV(a, b);
 }
 
-async function docSla(env: Env): Promise<Record<string, number>> {
+export async function docSla(env: Env): Promise<Record<string, number>> {
   const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'giai_doan_sla'").first<{ value: string }>();
   try { return { ...SLA_MAC_DINH, ...(r?.value ? JSON.parse(r.value) : {}) }; } catch { return { ...SLA_MAC_DINH }; }
 }

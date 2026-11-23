@@ -33,7 +33,11 @@ npm run deploy            # build + wrangler deploy
 - `assets.run_worker_first: ["/api/*"]` **load-bearing** — không xóa.
 - Worker `muahang` (https://muahang.dichvu3t.workers.dev), D1 `eo-mua-hang-db` — `database_id` đã điền (production thật).
 - Secrets (`wrangler secret put`): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `ETX_HR_API_KEY`, `DVBH_API_KEY`, `DOC_API_KEY` (API đọc v0.091, chưa đặt),
-  `THEODOI_MUAHANG_API_KEY` (chưa đặt — khi app theo-doi-mua-hang sẵn sàng).
+  `THEODOI_MUAHANG_API_KEY` (chưa đặt — khi app theo-doi-mua-hang sẵn sàng), `TASK_FEED_KEY` (v0.116 Cổng nhiệm vụ eOffice, mã app `mua-hang`;
+  khoá ở skill `qlbh3t-cf-integrations` Phần 4 — nạp bằng pipe, không in).
+- **Cổng nhiệm vụ (v0.116)** `lib/congNhiemVu.ts` + `routes/congNhiemVu.ts` + FE `pages/eo/NutCongNhiemVu.tsx`: ảnh chụp đủ PO chờ duyệt (cùng điều kiện
+  `approvals /count`) → `taskFeedNhan` `toanBo:true`. Gọi từ middleware `/api/*` (version eo/users đổi + hash hàng chờ đổi), cron mỗi giờ (force), nút Đơn PO.
+  Đổi điều kiện "chờ duyệt" ở `approvals.ts` thì sửa cả `gomViecChoDuyet`. Đăng nhập nhận `?next=/đường-dẫn` (cookie 10 phút) để link từ App Nhiệm vụ mở đúng PO.
 - Service Binding `DVBH` → Worker `dvbh` (app DVBH, repo `../../cloudflare smarttrade base`).
 - Bump `frontend/src/version.ts` (`+0.001`, sửa tay chuỗi) trước mỗi deploy.
 

@@ -15,6 +15,7 @@ import { useGoiYDong, LY_DO_CHUAN } from "../../lib/goiY";
 import { ChonNhieu, noiDs, tachDs } from "../../components/ChonNhieu";
 import { actionsFor, ApprovalActionModal } from "./eoActions";
 import { GiaiTrinhHangLoatModal } from "./GiaiTrinhHangLoat";
+import { NutCongNhiemVu } from "./NutCongNhiemVu";
 
 interface EoRow {
   id: number; eo_code: string; approval_code: string | null; tieu_de: string;
@@ -329,6 +330,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
           title="Giải trình hàng loạt các lỗi cần giải trình (còn hạn) của MỌI PO đang lọc (vd lọc cột Đối tác = Karofi)">✎ Giải trình hàng loạt</button>}
         <button className="btn sm" style={{ padding: "0 9px" }} disabled={exporting} onClick={doExport} title="Xuất Excel các EO đang lọc (Lọc / sắp xếp từng cột: bấm phễu / tiêu đề cột)">
           <I.download width={14} height={14} />{exporting ? " Đang xuất..." : ""}</button>
+        {!compact && <NutCongNhiemVu />}
         {actions}
       </FilterBar>
 
