@@ -4,6 +4,15 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.117: Chọn số dòng / trang cho bảng; LK đặt mặc định 8 dòng + thanh cuộn ngang trên đầu
+
+- Yêu cầu (kèm ảnh màn LK đặt xem nhóm theo PO): "thêm lựa chọn số dòng hiện thị, 4, 8, 16..." → "ở màn hình này, mặc định cho xem 8 dòng, thanh kéo hiện top".
+- `components/DataTable.tsx`: thanh phân trang có ô "n dòng / trang" (4, 8, 16, 32, 64, 128 + số mặc định riêng của bảng) cho MỌI bảng phân trang phía máy;
+  hiện cả khi chỉ có 1 trang (để tăng / giảm); prop `luuSoDong` nhớ lựa chọn, `thanhTren` thêm thanh cuộn ngang trên đầu bảng (đồng bộ với thanh dưới).
+- `pages/DonHang.tsx` (LK đặt): mặc định 8 dòng (trước 20), nhớ ở `sdh-so-dong`, bật `thanhTren`.
+- Kiểm thử local (dữ liệu demo 7 dòng): mặc định 8 → "Hiển thị 1–7 / 7"; chọn 4 → "1–4 / 7", 2 trang; xem nhóm theo PO vẫn chia theo nhóm; tải lại vẫn giữ lựa chọn;
+  kéo thanh trên → bảng cuộn ngang theo.
+
 ## 23/11/2026 — v0.116: Đẩy PO đang chờ duyệt lên App Nhiệm vụ eOffice (Cổng nhiệm vụ)
 
 - Yêu cầu: "phân tích 2 file "api-cong-nhiem-vu" và "ket-noi-app-nhiem-vu" => xác định xem có thể thêm nút đẩy việc PO đang chờ duyệt lên hệ thống này không?

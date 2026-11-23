@@ -389,6 +389,8 @@ FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`
 **v0.115**: `R4_TON_TU` (lib/theoDoi.ts) — dòng quá ngày DK từ trước `VP_CU_TRUOC` vẫn tồn → thêm 1 lỗi R4 khoá `…:TON` mốc 24/11 08:00 (bỏ lỗi cũ, không bỏ theo dõi).
 **v0.114**: `kiemBangChung` (lib/theoDoi.ts) — mọi API giải trình nhận `dung_mail` thay ảnh R1/R4, kiểm thư / liên hệ từng dòng (`THIEU_THU`). Việc của tôi ④ `BangGiaiTrinh`
 (pages/ViecCuaToi.tsx, localStorage `vct-gt-xem`) nhóm PO / mã LK + tick → `GiaiTrinhDongModal`.
+`DataTable` (v0.117): ô chọn số dòng / trang `SO_DONG` ở `SimplePager` (mọi bảng có `pageSize`), prop `luuSoDong` = khoá localStorage nhớ lựa chọn,
+prop `thanhTren` = thanh cuộn ngang trên đầu bảng không cần `khungCao`; LK đặt `TRANG` = 8, `sdh-so-dong`.
 `DataTable` prop `q` = ô tìm chung bên ngoài (ẩn ô tìm riêng) — popup PO / đơn hàng dùng `O_TIM` (`components/quickview/QuickView.tsx`) trên thanh tab,
 truyền `tim` xuống mọi tab (BangLoiTheoBuoc, LuongTraoDoiNcc, TabKeHoach, TabTaiLieu). `DataTable` prop `khungCao` = cuộn trong khung (tiêu đề dính, thanh ngang trên đầu) — popup PO tab Linh kiện.
 

@@ -99,7 +99,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -134,20 +134,24 @@ export function DataTable<T>({
   khungCao?: string;
   /** O tim CHUNG ben ngoai (vd o tim tren thanh tab cua popup, 2026-11-23) - bang dung gia tri nay va AN o tim rieng. */
   q?: string;
+  /** Khoa localStorage nho lua chon "so dong / trang" cua bang nay (v0.117). Khong truyen = chon duoc nhung khong nho. */
+  luuSoDong?: string;
+  /** v0.117: hien them thanh cuon ngang o TREN dau bang (khong can khungCao) - bang rong, khong phai cuon xuong cuoi moi keo ngang duoc. */
+  thanhTren?: boolean;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const tren = useRef<HTMLDivElement>(null);
   const [rongBang, setRongBang] = useState(0);
   useEffect(() => {
     const w = wrapRef.current;
-    if (!khungCao || !w) return;
+    if (!(khungCao || thanhTren) || !w) return;
     const do_ = () => setRongBang(w.scrollWidth > w.clientWidth + 1 ? w.scrollWidth : 0);
     do_();
     const ro = new ResizeObserver(do_);
     ro.observe(w);
     if (w.firstElementChild) ro.observe(w.firstElementChild);
     return () => ro.disconnect();
-  }, [khungCao]);
+  }, [khungCao, thanhTren]);
   const dongBo = (tu: HTMLDivElement | null, den: HTMLDivElement | null) => { if (tu && den && den.scrollLeft !== tu.scrollLeft) den.scrollLeft = tu.scrollLeft; };
   const [qTrong, setQ] = useState("");
   const q = qNgoai ?? qTrong;
@@ -167,7 +171,13 @@ export function DataTable<T>({
   const order = ai > 0 ? [ai, ...colsIn.map((_, i) => i).filter((i) => i !== ai)] : colsIn.map((_, i) => i);
   const cols = order.map((i) => (i === ai ? { ...colsIn[i], sticky: true, align: "left" as const, header: colsIn[i].header || "Thao tác", wrap: true } : colsIn[i]));
   const totalRow = totalRowIn && totalRowIn.length === colsIn.length ? order.map((i) => totalRowIn[i]) : totalRowIn;
-  const size = pageSize ?? 0;
+  // v0.117 (yeu cau 2026-11-23 "them lua chon so dong hien thi, 4, 8, 16..."): o chon so dong / trang o thanh phan trang
+  const [sizeChon, setSizeChon] = useState<number>(() => {
+    const v = luuSoDong ? Number(localStorage.getItem(luuSoDong)) : 0;
+    return v > 0 ? v : pageSize ?? 0;
+  });
+  const size = pageSize ? sizeChon : 0;
+  const doiSize = (n: number) => { setSizeChon(n); setPage(0); if (luuSoDong) localStorage.setItem(luuSoDong, String(n)); };
   const [page, setPage] = useState(0);
   const total = rows.length;
   const start = size > 0 ? page * size : 0;
@@ -246,11 +256,11 @@ export function DataTable<T>({
           </>}
         </div>
       )}
-      {khungCao && rongBang > 0 && (
+      {(khungCao || thanhTren) && rongBang > 0 && (
         <div ref={tren} onScroll={() => dongBo(tren.current, wrapRef.current)} title="Kéo trái / phải để xem các cột"
           style={{ overflowX: "auto", overflowY: "hidden", height: 14, marginBottom: 2 }}><div style={{ width: rongBang, height: 1 }} /></div>
       )}
-      <div className="tbl-wrap" ref={wrapRef} onScroll={khungCao ? () => dongBo(wrapRef.current, tren.current) : undefined}
+      <div className="tbl-wrap" ref={wrapRef} onScroll={khungCao || thanhTren ? () => dongBo(wrapRef.current, tren.current) : undefined}
         style={khungCao ? { maxHeight: khungCao, overflow: "auto" } : undefined}>
         <table className="tbl" style={minWidth ? { minWidth } : undefined}>
           <thead>
@@ -310,11 +320,11 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      {size > 0 && !nhom && total > size && (
-        <SimplePager total={total} size={size} page={page} onPage={setPage} />
+      {size > 0 && !nhom && total > SO_DONG[0] && (
+        <SimplePager total={total} size={size} page={page} onPage={setPage} macDinh={pageSize} onSize={doiSize} />
       )}
-      {nhom && trangNhom.length > 1 && (
-        <SimplePager total={nhomDs.length} size={size} page={page} onPage={setPage} soTrang={trangNhom.length}
+      {nhom && size > 0 && rows.length > SO_DONG[0] && (
+        <SimplePager total={nhomDs.length} size={size} page={page} onPage={setPage} soTrang={trangNhom.length} macDinh={pageSize} onSize={doiSize}
           nhan={`Nhóm ${(trangNhom[page]?.[0] ?? 0) + 1}–${trangNhom[page]?.[1] ?? 0} / ${nhomDs.length.toLocaleString("vi-VN")} nhóm`} />
       )}
       {moLoc && cotMo && (
@@ -399,7 +409,14 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
   );
 }
 
-function SimplePager({ total, size, page, onPage, soTrang, nhan }: { total: number; size: number; page: number; onPage: (p: number) => void; soTrang?: number; nhan?: string }) {
+/** Lua chon so dong / trang (v0.117). So mac dinh rieng cua bang (10, 15, 20…) tu chen vao danh sach. */
+const SO_DONG = [4, 8, 16, 32, 64, 128];
+
+function SimplePager({ total, size, page, onPage, soTrang, nhan, macDinh, onSize }: {
+  total: number; size: number; page: number; onPage: (p: number) => void; soTrang?: number; nhan?: string;
+  macDinh?: number; onSize?: (n: number) => void;
+}) {
+  const luaChon = [...new Set([...SO_DONG, ...(macDinh ? [macDinh] : []), size])].sort((a, b) => a - b);
   const pages = soTrang ?? Math.max(1, Math.ceil(total / size));
   const cur = page + 1;
   const nums: (number | "...")[] = [];
@@ -413,6 +430,14 @@ function SimplePager({ total, size, page, onPage, soTrang, nhan }: { total: numb
         {nhan ?? <>Hiển thị {page * size + 1}–{Math.min((page + 1) * size, total)} / {total.toLocaleString("vi-VN")}</>}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {onSize && (
+          <label className="muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 6, marginRight: 8 }} title="Số dòng hiển thị mỗi trang (xem theo nhóm: nhóm không bị cắt giữa 2 trang)">
+            <select className="select" style={{ height: 30, width: "auto", padding: "0 26px 0 8px", fontSize: 12.5 }} value={size} onChange={(e) => onSize(Number(e.target.value))}>
+              {luaChon.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>dòng / trang
+          </label>
+        )}
+        {pages > 1 && <>
         <button className="btn ghost sm" disabled={cur === 1} onClick={() => onPage(0)}>«</button>
         <button className="btn ghost sm" disabled={cur === 1} onClick={() => onPage(page - 1)}>‹</button>
         {nums.map((n, i) => n === "..." ? <span key={i} className="muted" style={{ padding: "0 4px" }}>…</span> : (
@@ -420,6 +445,7 @@ function SimplePager({ total, size, page, onPage, soTrang, nhan }: { total: numb
         ))}
         <button className="btn ghost sm" disabled={cur === pages} onClick={() => onPage(page + 1)}>›</button>
         <button className="btn ghost sm" disabled={cur === pages} onClick={() => onPage(pages - 1)}>»</button>
+        </>}
       </div>
     </div>
   );

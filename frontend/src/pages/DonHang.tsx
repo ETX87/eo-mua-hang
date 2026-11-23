@@ -201,7 +201,7 @@ const KEY_COT = "sdh-cot", KEY_LOC = "sdh-loc-luu", KEY_XEM = "sdh-xem";
 type CheDoXem = "" | "po" | "lk";
 const COT_AN_KHI_NHOM: Record<string, string[]> = { po: ["ma_phe_duyet", "tieu_de"], lk: ["part_code", "part_name"] };
 const maPo = (r: Row) => r.ma_phe_duyet || r.eo_code;
-const TRANG = 20; // so dong / trang (xem theo nhom: nhom tron ven ~20 dong)
+const TRANG = 8; // so dong / trang mac dinh (v0.117 yeu cau 2026-11-23 "mac dinh cho xem 8 dong"; nguoi dung doi o thanh phan trang, nho localStorage sdh-so-dong)
 const NHOM_MAC_DINH = "con_cho";
 
 /** Remount theo query string: link noi bo (Tong quan, bao cao, Viec can xu ly) doi ?nhom= / ?gd= ... -> ap bo loc moi. */
@@ -491,7 +491,7 @@ function DanhSach() {
           </Popover>
         </div>
         {q.isLoading ? <Spinner /> : (
-          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={TRANG} nhom={nhomCfg} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc"
+          <DataTable timKiem={false} cols={cols} rows={rows} keyOf={(r) => r.item_id} pageSize={TRANG} luuSoDong="sdh-so-dong" thanhTren nhom={nhomCfg} onRowClick={(r) => qv.openDong(r.item_id)} empty="Không có dòng nào khớp bộ lọc"
             ngoai rowsGoc={rowsNhom} loc={locCot} onLoc={setLocCot} sap={sap} onSap={setSap} />
         )}
       </Card>

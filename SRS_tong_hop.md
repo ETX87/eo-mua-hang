@@ -46,6 +46,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Mọi bộ lọc theo danh sách giá trị cho tick chọn nhiều (checkbox, tìm không dấu, chọn tất cả / bỏ chọn); nhiều giá trị cùng bộ lọc = HOẶC,
   nhóm nhanh chọn nhiều = hợp các nhóm. Ô chế độ / bộ lọc 2 giá trị đối lập giữ chọn 1.
 - Bảng kiểu Excel (lọc + sắp xếp trên tiêu đề, nhãn "đang lọc n cột · x / y dòng"; cột ngày / số có thêm "Chưa có ngày (ô trống) / Đã có ngày"), thanh thao tác 1 dòng, bộ lọc ít dùng giấu sau "Bộ lọc khác".
+- Bảng có phân trang: ô chọn **số dòng / trang** (4 · 8 · 16 · 32 · 64 · 128, cạnh nút chuyển trang; v0.117). LK đặt mặc định 8 dòng, nhớ lựa chọn trên máy,
+  thanh cuộn ngang hiện cả ở TRÊN đầu bảng (không phải cuộn xuống cuối mới kéo ngang được). Xem theo nhóm: nhóm không bị cắt giữa 2 trang.
 - Mọi nhãn số lượng có giải thích (nút "?" và tooltip thuật ngữ chung).
 - Chống bấm đúp / duyệt đồng thời ở luồng duyệt (không cấp 2 mã 3TDO).
 - Mọi thời gian theo giờ Việt Nam. Mọi SLA / hạn (R1, R4, giai đoạn, hạn giải trình, mức độ vi phạm) tính theo GIỜ LÀM VIỆC: T2–T6 8:00–12:00 + 13:00–17:00 (8h) · T7 8:00–12:00 (4h) · CN nghỉ;
