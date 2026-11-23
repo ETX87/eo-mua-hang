@@ -75,15 +75,17 @@ export default function DieuHanh() {
   const [pv, setPv] = useState<{ nguoi: string[]; ncc: string[]; kho: string[] }>({ nguoi: [], ncc: [], kho: [] });
   const [tieuChi, setTieuChi] = useState("");
   const [gdChon, setGdChon] = useState("");
-  const [tab, setTab] = useState<"nong" | "nguoi" | "ncc" | "nn" | "duyet">("nong");
+  const [tab, setTab] = useState<"nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet">("nong");
+  // v0.118 tab Theo PO: bam so o 1 PO -> Diem nong chi dong cua PO do
+  const [poChon, setPoChon] = useState<{ eo: number; po: string } | null>(null);
   const d = q.data;
 
   const dongPv = useMemo(() => (d?.dong ?? []).filter((x) => khopPv(pv.nguoi, x.nguoi) && khopPv(pv.ncc, x.ncc) && khopPv(pv.kho, x.kho)), [d, pv]);
   const dongDs = useMemo(() => {
     if (!d) return [];
     const tc = TIEU_CHI[tieuChi];
-    return dongPv.filter((x) => (!tc || tc.f(x, d.nguong)) && (!gdChon || x.gd === gdChon)).sort((a, b) => b.diem - a.diem);
-  }, [d, dongPv, tieuChi, gdChon]);
+    return dongPv.filter((x) => (!tc || tc.f(x, d.nguong)) && (!gdChon || x.gd === gdChon) && (!poChon || x.eo === poChon.eo)).sort((a, b) => b.diem - a.diem);
+  }, [d, dongPv, tieuChi, gdChon, poChon]);
 
   if (q.isLoading || !d) return <><PageHeader title="Điều hành mua hàng" /><Spinner text="Đang tổng hợp toàn hệ thống…" /></>;
 
@@ -92,14 +94,15 @@ export default function DieuHanh() {
   const dem = (f: (x: Dong) => boolean) => dongPv.filter(f).length;
   const soPo = (ds: Dong[]) => new Set(ds.map((x) => x.eo)).size;
   const doDs = dongPv.filter((x) => x.muc === "DO");
-  const coLoc = !!(pv.nguoi.length || pv.ncc.length || pv.kho.length || tieuChi || gdChon);
-  const xoaLoc = () => { setPv({ nguoi: [], ncc: [], kho: [] }); setTieuChi(""); setGdChon(""); };
+  const coLoc = !!(pv.nguoi.length || pv.ncc.length || pv.kho.length || tieuChi || gdChon || poChon);
+  const xoaLoc = () => { setPv({ nguoi: [], ncc: [], kho: [] }); setTieuChi(""); setGdChon(""); setPoChon(null); };
   const chonTc = (k: string) => { setTieuChi(tieuChi === k ? "" : k); setTab("nong"); };
   const dmTen = (loai: string, ma: string | null) => d.dm.find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
 
   // ---- gom theo nguoi / NCC (theo pham vi dang loc)
   const theoNguoi = gomNguoi(dongPv, loi30Pv, duyetPv, d.nguong.im_lang_do);
   const theoNcc = gomNcc(dongPv, d.giai_doan);
+  const theoPo = gomPo(dongPv);
   const gtPct = d.do_phu.tong_loi ? d.do_phu.da_gt / d.do_phu.tong_loi : 1;
 
   // ---- ket luan nhanh (cau tu sinh, bam duoc)
@@ -161,6 +164,7 @@ export default function DieuHanh() {
         <S k="kho" w={200} ph="Mọi kho" o={opts(d.dong.map((x) => x.kho))} />
         {tieuChi && <span className="badge reject" style={{ cursor: "pointer" }} onClick={() => setTieuChi("")}>{TIEU_CHI[tieuChi].l} ×</span>}
         {gdChon && <span className="badge review" style={{ cursor: "pointer" }} onClick={() => setGdChon("")}>Giai đoạn {gdChon} ×</span>}
+        {poChon && <span className="badge review" style={{ cursor: "pointer" }} onClick={() => setPoChon(null)}>PO {poChon.po} ×</span>}
         {coLoc && <button className="btn sm ghost" onClick={xoaLoc}><I.refresh width={13} height={13} /> Xóa lọc</button>}
         <div style={{ flex: 1 }} />
         <span className="muted" style={{ fontSize: 11.5 }} title={`Chỉ tính PO ban hành từ ${ngay(d.bo_qua_truoc)} (cùng phạm vi với Theo dõi / Vi phạm)`}>Cập nhật {d.luc.slice(11, 16)} · PO từ {ngay(d.bo_qua_truoc)}</span>
@@ -202,13 +206,14 @@ export default function DieuHanh() {
       {/* 4. TAB CHI TIET */}
       <Card>
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-          {([["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
+          {([["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["po", `📦 Theo PO (${soLuong(theoPo.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
             ["nn", "🧭 Nguyên nhân & xu hướng"], ["duyet", `⏳ Duyệt đang treo (${duyetPv.length})`]] as const).map(([k, l]) => (
             <button key={k} className={`qv-chip ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
         {tab === "nong" && <DiemNong rows={dongDs} dmTen={dmTen}
           empty={["G1", "G2", "G3"].includes(gdChon) ? `${gdChon} là PO chưa ban hành (chưa vào theo dõi hàng về) — người đang giữ xem ở khung giai đoạn phía trên, phiếu chờ duyệt ở tab ⏳ Duyệt đang treo.` : undefined} />}
+        {tab === "po" && <BangPo rows={theoPo} onXem={(r, tc) => { setPoChon({ eo: r.eo, po: r.po }); setTieuChi(tc); setTab("nong"); }} />}
         {tab === "nguoi" && <BangNguoi rows={theoNguoi} quanLy={d.quan_ly} onNhac={nhacNguoi} onXem={(ai, tc) => { setPv({ ...pv, nguoi: [ai] }); setTieuChi(tc); setTab("nong"); }} />}
         {tab === "ncc" && <BangNcc rows={theoNcc} onXem={(ncc, tc) => { setPv({ ...pv, ncc: [ncc || TRONG_K] }); setTieuChi(tc); setTab("nong"); }} />}
         {tab === "nn" && <NguyenNhan d={d} loi30={loi30Pv} dmTen={dmTen} />}
@@ -399,6 +404,68 @@ function BangNguoi({ rows, quanLy, onNhac, onXem }: { rows: Nguoi[]; quanLy: boo
       <DataTable cols={cols} rows={rows} keyOf={(r) => r.ai} pageSize={20} onRowClick={(r) => onXem(r.ai, "")} />
     </>
   );
+}
+
+// ------------------------------------------------------------------ theo PO (v0.118, yeu cau 2026-11-23 "bo sung tab theo PO")
+// Gom dong LK dang mo (theo pham vi dang loc) theo PO: muc nang nhat, so dong do / qua DK / cap CEO / loi cho, ton, thuc NCC, hoat dong cuoi.
+interface Po { eo: number; po: string; muc: Muc; nguoi: string[]; ncc: string[]; kho: string[]; dong: number; thieu: number; do: number; vang: number;
+  qua_dk: number; ceo: number; loi_cho: number; ton_max: number; lui: number; thuc7: number; khong_thuc7: number;
+  td_luc: string | null; td_loai: string | null; td_ai: string | null; diem: number }
+const HANG_MUC: Record<Muc, number> = { DO: 2, VANG: 1, XANH: 0 };
+function gomPo(dong: Dong[]): Po[] {
+  const m = new Map<number, Po & { _ng: Set<string>; _ncc: Set<string>; _kho: Set<string> }>();
+  for (const d of dong) {
+    let x = m.get(d.eo);
+    if (!x) {
+      x = { eo: d.eo, po: d.po, muc: "XANH", nguoi: [], ncc: [], kho: [], dong: 0, thieu: 0, do: 0, vang: 0, qua_dk: 0, ceo: 0, loi_cho: 0, ton_max: 0, lui: 0,
+        thuc7: 0, khong_thuc7: 0, td_luc: null, td_loai: null, td_ai: null, diem: 0, _ng: new Set(), _ncc: new Set(), _kho: new Set() };
+      m.set(d.eo, x);
+    }
+    x.dong += 1; x.thieu += d.thieu; x.diem += d.diem;
+    if (HANG_MUC[d.muc] > HANG_MUC[x.muc]) x.muc = d.muc;
+    if (d.muc === "DO") x.do += 1;
+    if (d.muc === "VANG") x.vang += 1;
+    if (d.tt === "QUA_HAN_NDK") x.qua_dk += 1;
+    if (d.ceo.length) x.ceo += 1;
+    x.loi_cho += d.loi_cho; x.ton_max = Math.max(x.ton_max, d.ton); x.lui = Math.max(x.lui, d.lui);
+    x.thuc7 += d.thuc7;
+    if (d.thuc7 === 0) x.khong_thuc7 += 1;
+    if (d.td_luc && (!x.td_luc || d.td_luc > x.td_luc)) { x.td_luc = d.td_luc; x.td_loai = d.td_loai; x.td_ai = d.td_ai; }
+    if (d.nguoi) x._ng.add(d.nguoi);
+    if (d.ncc) x._ncc.add(d.ncc);
+    if (d.kho) x._kho.add(d.kho);
+  }
+  return [...m.values()].map(({ _ng, _ncc, _kho, ...x }) => ({ ...x, nguoi: [..._ng], ncc: [..._ncc], kho: [..._kho] }))
+    .sort((a, b) => HANG_MUC[b.muc] - HANG_MUC[a.muc] || b.do - a.do || b.diem - a.diem);
+}
+function BangPo({ rows, onXem }: { rows: Po[]; onXem: (r: Po, tc: string) => void }) {
+  const qv = useQuickView();
+  const L = (r: Po, tc: string, v: ReactNode, mau?: string) => (
+    <span className="cell-link" style={{ color: mau, fontWeight: 700 }} title="Xem các dòng này ở Điểm nóng" onClick={(e) => { e.stopPropagation(); onXem(r, tc); }}>{v}</span>
+  );
+  const so0 = <span className="muted">0</span>;
+  const dsTxt = (ds: string[], f: (v: string) => string = (v) => v) => (ds.length === 0 ? "—" : ds.length === 1 ? f(ds[0]) : `${f(ds[0])} +${ds.length - 1}`);
+  const cols: Col<Po>[] = [
+    { key: "po", header: "PO", loc: "chu", gt: (r) => r.po, render: (r) => <span className="cell-link" style={{ fontWeight: 700 }}>{r.po}</span> },
+    { key: "muc", header: "Mức", loc: "chon", gt: (r) => MUC[r.muc].l, gtSap: (r) => HANG_MUC[r.muc],
+      render: (r) => <span className="badge" style={{ background: MUC[r.muc].nen, color: MUC[r.muc].mau, fontWeight: 700 }}>{MUC[r.muc].l}</span> },
+    { key: "nguoi", header: "Người phụ trách", loc: "chu", gt: (r) => r.nguoi.map((v) => ten(v)).join(", "), render: (r) => <span title={r.nguoi.map((v) => ten(v)).join(", ")}>{dsTxt(r.nguoi, ten)}</span> },
+    { key: "ncc", header: "NCC", loc: "chu", gt: (r) => r.ncc.join(", "), render: (r) => <span title={r.ncc.join(", ")}>{dsTxt(r.ncc)}</span> },
+    { key: "kho", header: "Kho", loc: "chu", gt: (r) => r.kho.join(", "), render: (r) => <span title={r.kho.join(", ")}>{dsTxt(r.kho)}</span> },
+    { key: "dong", header: "Dòng mở", loc: "so", gt: (r) => r.dong, align: "right", render: (r) => <>{L(r, "", soLuong(r.dong))}<div className="muted" style={{ fontSize: 11 }}>thiếu {soLuong(r.thieu)}</div></> },
+    { key: "do", header: "🔴 Đỏ", loc: "so", gt: (r) => r.do, align: "right", render: (r) => (r.do ? L(r, "DO", soLuong(r.do), MUC.DO.mau) : so0) },
+    { key: "qua_dk", header: "Quá DK", loc: "so", gt: (r) => r.qua_dk, align: "right", render: (r) => (r.qua_dk ? L(r, "QUA_DK", soLuong(r.qua_dk), MUC.DO.mau) : so0) },
+    { key: "ceo", header: "Cấp CEO", loc: "so", gt: (r) => r.ceo, align: "right", render: (r) => (r.ceo ? L(r, "CEO", soLuong(r.ceo), MUC.DO.mau) : so0) },
+    { key: "loi_cho", header: "Lỗi chờ GT", loc: "so", gt: (r) => r.loi_cho, align: "right", render: (r) => (r.loi_cho ? <b style={{ color: MUC.VANG.mau }}>{soLuong(r.loi_cho)}</b> : so0) },
+    { key: "ton_max", header: "Tồn max", loc: "so", gt: (r) => r.ton_max, align: "right",
+      render: (r) => <>{r.ton_max} ng{r.lui > 0 && <div className="muted" style={{ fontSize: 11 }}>lùi DK tới {r.lui} lần</div>}</> },
+    { key: "khong_thuc7", header: "Dòng không thúc 7 ng", loc: "so", gt: (r) => r.khong_thuc7, align: "right",
+      render: (r) => (r.khong_thuc7 ? L(r, "KHONG_THUC", soLuong(r.khong_thuc7), MUC.VANG.mau) : so0) },
+    { key: "td_luc", header: "Hoạt động cuối", loc: "ngay", gt: (r) => r.td_luc ?? "", render: (r) => (r.td_luc
+      ? <span>{tuBayGio(r.td_luc)}<div className="muted" style={{ fontSize: 11 }}>{r.td_loai ?? ""}{r.td_ai ? ` · ${ten(r.td_ai)}` : ""}</div></span>
+      : <span style={{ color: "var(--danger-ink)" }}>chưa tác động</span>) },
+  ];
+  return <DataTable cols={cols} rows={rows} keyOf={(r) => r.eo} pageSize={20} onRowClick={(r) => qv.openEo(r.eo)} empty="Không có PO nào đang mở trong phạm vi lọc." />;
 }
 
 // ------------------------------------------------------------------ theo NCC

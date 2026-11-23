@@ -444,6 +444,7 @@ Chỉ số hoạt động (im lặng, thúc NCC 7 ngày), R3 thứ 2/4, R1 lặp
 - **v0.092 tự giải trình** `tuGiaiTrinh` (cuối `danhGiaQuyTac`, `lib/theoDoi.ts`): `tl_giai_trinh.pham_vi = 'AUTO'`, `nhom` `AUTO:KHAC_PHUC` | `AUTO:QUA_HAN`
   (`SO_NGAY_TU_DONG` = 7), người ghi `BOOTSTRAP_ADMIN_EMAIL`, event `AUTO_GIAI_TRINH`. MỌI truy vấn "giải trình thật" phải loại `pham_vi = 'AUTO'`
   (dieuHanh hoạt động cuối / xu hướng / nguyên nhân / độ phủ, baoCaoLoi `tu_dong`). Bảng mã lỗi: `pages/BangMaLoi.tsx` (`/ma-loi`).
+- **v0.118** tab Theo PO: `gomPo` / `BangPo` (`pages/DieuHanh.tsx`, gom ở FE từ `dong` như Theo NCC), lọc Điểm nóng theo PO = state `poChon`.
 - `nhomLyDo` (gom lý do đỏ) có 2 bản: backend `lib/dieuHanh.ts` + FE `pages/DieuHanh.tsx` — sửa cả hai.
 
 ## 2 giao diện theo mã linh kiện (v0.072, `components/quickview/QuickView.tsx`)

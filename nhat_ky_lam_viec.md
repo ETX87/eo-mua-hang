@@ -4,6 +4,14 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.118: Điều hành — thêm tab "Theo PO"
+
+- Yêu cầu (kèm ảnh thanh tab màn Điều hành): "bổ sung tab theo PO".
+- `pages/DieuHanh.tsx`: tab "📦 Theo PO (n)" ngay sau Điểm nóng — `gomPo` gom dòng đang mở theo PO (cùng phạm vi lọc người / NCC / kho), `BangPo` bảng kiểu Excel:
+  PO · Mức (nặng nhất) · Người phụ trách · NCC · Kho · Dòng mở (thiếu) · Đỏ · Quá DK · Cấp CEO · Lỗi chờ GT · Tồn max (lùi DK) · Dòng không thúc 7 ng · Hoạt động cuối.
+  Bấm dòng → popup PO; bấm số → Điểm nóng lọc theo PO + tiêu chí (bộ lọc `poChon`, nhãn "PO … ×", nút Xóa lọc bỏ luôn).
+- Kiểm thử local (dữ liệu demo): tab hiện 2 PO, sắp đỏ trước; bấm số Đỏ của PO 3TDO-000001 → Điểm nóng còn 4 dòng của PO đó + nhãn "PO 3TDO-000001 ×".
+
 ## 23/11/2026 — v0.117: Chọn số dòng / trang cho bảng; LK đặt mặc định 8 dòng + thanh cuộn ngang trên đầu
 
 - Yêu cầu (kèm ảnh màn LK đặt xem nhóm theo PO): "thêm lựa chọn số dòng hiện thị, 4, 8, 16..." → "ở màn hình này, mặc định cho xem 8 dòng, thanh kéo hiện top".

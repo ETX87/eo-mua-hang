@@ -104,7 +104,10 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Người phụ trách**: dòng đã ban hành = người lập PO; G2 = người thẩm định; G3 = người duyệt mua; G6 / G8 = NCC; G7 = Kho / Kế toán.
   Lỗi hệ thống vẫn gán mặc định cho người lập PO; nguyên nhân thật đọc từ giải trình (Ai + Lỗi gì), luôn hiện kèm **độ phủ giải trình**.
 - Màn **Điều hành** (`/dieu-hanh`): kết luận nhanh (câu tự sinh), ô sức khoẻ, luồng giai đoạn ngang (đang ở / trễ / lỗi, 30 ngày đúng hạn),
-  tab Điểm nóng / Theo người / Theo NCC / Nguyên nhân & xu hướng / Duyệt đang treo; lọc phạm vi theo người, NCC, kho.
+  tab Điểm nóng / Theo PO / Theo người / Theo NCC / Nguyên nhân & xu hướng / Duyệt đang treo; lọc phạm vi theo người, NCC, kho.
+  **Theo PO** (v0.118): gom dòng đang mở (trong phạm vi lọc) theo PO — mức = mức nặng nhất của các dòng; đếm dòng mở / thiếu, đỏ, quá DK, cấp CEO,
+  lỗi chờ GT, tồn lâu nhất (+ số lần lùi DK nhiều nhất), dòng không thúc NCC 7 ngày, hoạt động cuối (tác động mới nhất trên mọi dòng). Sắp: đỏ → vàng → xanh,
+  nhiều dòng đỏ trước. Bấm dòng = popup PO; bấm 1 con số = Điểm nóng chỉ các dòng đó của PO (nhãn "PO … ×" để bỏ).
   Quản lý (Admin, KH cung ứng, Theo dõi TD) bấm **Nhắc** = nhắc giải trình mọi lỗi chờ của 1 người.
 - **Đơn PO**: cột **Tiến trình** (luồng ngang thay nhãn trạng thái: PO chưa ban hành theo trạng thái duyệt, đã ban hành theo số dòng đang ở từng giai đoạn) ·
   bộ lọc cá nhân lưu trên máy (★ Đã lưu, ☆ mặc định khi mở) · cột Cảnh báo (n đỏ / n vàng + lý do), Lỗi chờ GT, Thúc NCC (7 ngày / lần cuối), Hoạt động cuối (im lặng) đặt sát mã PO; nhóm nhanh
