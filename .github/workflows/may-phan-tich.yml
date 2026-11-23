@@ -120,6 +120,9 @@ jobs:
                 KHÔNG được ghi "chưa rõ…" cho điều tự tra được. Không đọc được tệp / dữ liệu thì nói rõ lý do.
               • Sau khung dưới đây, thêm mục cuối `## Chi tiết` (KHÔNG giới hạn chữ): bảng số liệu / danh sách đầy đủ để Giám đốc
                 bấm mở xem khi cần (Giám đốc chỉ thấy phần chính trước).
+            MÁY CHẠY SAI SO VỚI LUẬT GIÁM ĐỐC ĐÃ CHỐT = LỖI (GĐ 22/11/2026, MAY-00542): ghi **Làn:** nhanh — sửa cho đúng luật đã chốt +
+              chạy lại / đếm số bản ghi bị sai. Viết NGẮN: lỗi gì · vì sao · đã sửa / sẽ sửa · bao nhiêu bản ghi bị ảnh hưởng. KHÔNG biến thành
+              đề xuất đổi luật, KHÔNG hỏi lại Giám đốc điều luật đã chốt. Câu hỏi khác của người báo (việc riêng) → ghi 1 dòng "Tách việc riêng: …".
             Đúng khung:
               **Làn:** nhanh | thường | đầy đủ — <lý do 1 câu> (theo mục "Ba làn xử lý của Trợ lý Mây" trong CLAUDE.md;
                 ghi **nhanh** thì Mây chuyển ngay sang làn nhanh — app xử lý trọn, không đợi duyệt)
