@@ -29,15 +29,17 @@ interface EoRow {
   /** so dong dang o tung giai doan (backend lib/dieuHanh, v0.086) - cot Tien trinh */
   gd?: GdPo | null;
   /** trang thai vi pham theo PO (backend lib/dieuHanh VpPo, v0.104) - dem vi pham GOP nhu man Vi pham; null = PO ngoai pham vi theo doi */
-  vp?: { tt: "CEO" | "CHO" | "DA_XL" | "KHONG"; tong: number; cho: number; da_gt: number; tu_dong: number; ceo: number; cao: number } | null;
+  vp?: { tt: "CEO" | "CHO" | "VI_PHAM" | "DA_XL" | "KHONG"; tong: number; cho: number; vi_pham: number; da_gt: number; tu_dong: number; ceo: number; cao: number } | null;
 }
 
 const VP_TT: Record<string, { l: string; nen: string; mau: string }> = {
-  CEO: { l: "🔴 Cấp CEO", nen: "#FEE2E2", mau: "#B91C1C" }, CHO: { l: "Chờ giải trình", nen: "#FFEDD5", mau: "#C2410C" },
-  DA_XL: { l: "Đã xử lý", nen: "#ECFDF5", mau: "#047857" }, KHONG: { l: "✓ Không vi phạm", nen: "transparent", mau: "var(--ok-ink)" },
+  // v0.110: "Cần giải trình" (còn hạn) ≠ "Có vi phạm" (hết hạn không giải trình); lỗi giải trình / khắc phục đúng hạn = không vi phạm
+  CEO: { l: "🔴 Cấp CEO", nen: "#FEE2E2", mau: "#B91C1C" }, CHO: { l: "Cần giải trình", nen: "#FFEDD5", mau: "#C2410C" },
+  VI_PHAM: { l: "Có vi phạm", nen: "#FEE2E2", mau: "#B91C1C" },
+  DA_XL: { l: "✓ Xử lý trong hạn", nen: "#ECFDF5", mau: "#047857" }, KHONG: { l: "✓ Không có lỗi", nen: "transparent", mau: "var(--ok-ink)" },
 };
-const vpTomTat = (v: NonNullable<EoRow["vp"]>) => [v.ceo ? `${v.ceo} dòng cấp CEO` : "", v.tong ? `${v.tong} vi phạm` : "", v.cho ? `${v.cho} chờ giải trình` : "",
-  v.da_gt ? `${v.da_gt} đã giải trình` : "", v.tu_dong ? `${v.tu_dong} tự đóng` : ""].filter(Boolean).join(" · ");
+const vpTomTat = (v: NonNullable<EoRow["vp"]>) => [v.ceo ? `${v.ceo} dòng cấp CEO` : "", v.vi_pham ? `${v.vi_pham} vi phạm (hết hạn không giải trình)` : "",
+  v.cho ? `${v.cho} lỗi cần giải trình (còn hạn)` : "", v.da_gt ? `${v.da_gt} lỗi đã giải trình` : "", v.tu_dong ? `${v.tu_dong} lỗi đã khắc phục` : ""].filter(Boolean).join(" · ");
 
 /** Bo loc da luu CA NHAN (v0.086) - luu tren may nguoi dung (localStorage), khong dong bo giua cac may. 1 bo loc co the dat "mac dinh khi mo". */
 interface LocLuu { l: string; chip: string; q: string; loc: LocCot; sap: SapCot; kho: string; doiTac: string; lyDo: string }
@@ -59,7 +61,7 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "done", l: "Đủ hàng (DONE)", title: "Đã ban hành, mọi dòng đã về đủ SL đặt (kể cả dòng kết thúc sớm)" },
   { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
   // v0.084 bang dieu hanh (../QUAN_TRI_DIEU_HANH.md): muc DO / im lang / loi cho giai trinh theo dong LK dang mo
-  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 56h làm việc / im lặng ≥ 7 ngày" },
+  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 12h làm việc / im lặng ≥ 7 ngày" },
   { k: "po_im_lang", l: "PO im lặng ≥ 7 ngày", title: "Có dòng đang mở 7 ngày không ai tác động (cập nhật kế hoạch, push, mail NCC, gọi/Zalo, giải trình)" },
   { k: "po_loi_cho", l: "PO có lỗi chờ giải trình" },
   { k: "po_ceo", l: "PO cấp CEO", mau: "#B91C1C", title: "PO có dòng đang ở cấp CEO (lùi ngày DK ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi)" },
@@ -91,9 +93,9 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Dòng vàng", get: (r) => r.dh?.vang ?? "" },
   { header: "Lý do đỏ", get: (r) => r.dh?.ly_do.join("; ") ?? "" },
   { header: "Lỗi chờ GT", get: (r) => r.dh?.loi_cho ?? "" },
-  { header: "Trạng thái vi phạm", get: (r) => (r.vp ? VP_TT[r.vp.tt].l.replace(/^\S+ /, "") : "") },
-  { header: "Số vi phạm", get: (r) => r.vp?.tong ?? "" }, { header: "Vi phạm chờ giải trình", get: (r) => r.vp?.cho ?? "" },
-  { header: "Vi phạm đã giải trình", get: (r) => r.vp?.da_gt ?? "" }, { header: "Vi phạm tự đóng", get: (r) => r.vp?.tu_dong ?? "" },
+  { header: "Trạng thái vi phạm", get: (r) => (r.vp ? VP_TT[r.vp.tt].l.replace(/^(🔴|✓) /u, "") : "") },
+  { header: "Số vi phạm (hết hạn không GT)", get: (r) => r.vp?.vi_pham ?? "" }, { header: "Lỗi cần giải trình", get: (r) => r.vp?.cho ?? "" },
+  { header: "Lỗi đã giải trình", get: (r) => r.vp?.da_gt ?? "" }, { header: "Lỗi đã khắc phục", get: (r) => r.vp?.tu_dong ?? "" },
   { header: "Dòng cấp CEO", get: (r) => r.vp?.ceo ?? "" },
   { header: "Thúc NCC 7 ngày", get: (r) => r.dh?.thuc7 ?? "" },
   { header: "Im lặng (ngày)", get: (r) => r.dh?.im_lang ?? "" },
@@ -178,12 +180,13 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         if (!r.vp) return <span className="muted" title="PO ngoài phạm vi theo dõi vi phạm">—</span>;
         const m = VP_TT[r.vp.tt];
         return (
-          <span title={vpTomTat(r.vp) || "Chưa có vi phạm"} style={{ display: "inline-block", lineHeight: 1.35 }}>
+          <span title={vpTomTat(r.vp) || "Chưa có lỗi"} style={{ display: "inline-block", lineHeight: 1.35 }}>
             <span style={{ background: m.nen, color: m.mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: r.vp.tt === "KHONG" ? 0 : "1px 6px", whiteSpace: "nowrap" }}>
               {m.l}{r.vp.tt === "CEO" && r.vp.ceo > 1 ? ` · ${r.vp.ceo} dòng` : ""}</span>
             {r.vp.tong > 0 && <div style={{ fontSize: 11, whiteSpace: "nowrap" }}>
-              <b>{soLuong(r.vp.tong)}</b> vi phạm{r.vp.cho > 0 && <> · <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.vp.cho)} chờ GT</b></>}
-              {r.vp.cho === 0 && <span className="muted"> · {[r.vp.da_gt ? `${r.vp.da_gt} đã GT` : "", r.vp.tu_dong ? `${r.vp.tu_dong} tự đóng` : ""].filter(Boolean).join(" · ")}</span>}
+              {r.vp.vi_pham > 0 && <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.vp.vi_pham)} vi phạm</b>}
+              {r.vp.cho > 0 && <>{r.vp.vi_pham > 0 ? " · " : ""}<b style={{ color: "#C2410C" }}>{soLuong(r.vp.cho)} cần GT</b></>}
+              {r.vp.da_gt + r.vp.tu_dong > 0 && <span className="muted">{r.vp.vi_pham + r.vp.cho > 0 ? " · " : ""}{r.vp.da_gt + r.vp.tu_dong} đã xử lý</span>}
             </div>}
           </span>
         );
@@ -323,7 +326,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         <div style={{ flex: 1 }} />
         {list.data && <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}><b style={{ color: "var(--text)" }}>{soLuong(list.data.total)}</b> EO</span>}
         {!compact && <button className="btn sm" onClick={() => setGtLoat(true)}
-          title="Giải trình hàng loạt các vi phạm chờ giải trình của MỌI PO đang lọc (vd lọc cột Đối tác = Karofi)">✎ Giải trình hàng loạt</button>}
+          title="Giải trình hàng loạt các lỗi cần giải trình (còn hạn) của MỌI PO đang lọc (vd lọc cột Đối tác = Karofi)">✎ Giải trình hàng loạt</button>}
         <button className="btn sm" style={{ padding: "0 9px" }} disabled={exporting} onClick={doExport} title="Xuất Excel các EO đang lọc (Lọc / sắp xếp từng cột: bấm phễu / tiêu đề cột)">
           <I.download width={14} height={14} />{exporting ? " Đang xuất..." : ""}</button>
         {actions}

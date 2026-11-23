@@ -36,7 +36,8 @@ interface Duyet { eo_id: number; po: string; tieu_de: string | null; buoc: strin
 interface Data {
   luc: string; hom_nay: string; bo_qua_truoc: string; nguong: { im_lang_do: number; im_lang_vang: number; loi_cho_do: number };
   dong: Dong[]; giai_doan: Gd[]; xu_huong: { tuan: string; loi: number; gt: number; nhac: number }[];
-  loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number }[];
+  /** v0.110: vp = vi pham THAT (het han giai trinh ma khong giai trinh); n = moi loi; cho = loi con can giai trinh */
+  loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number; vp?: number }[];
   nguyen_nhan: { ai_ma: string; loi_ma: string; n: number }[]; do_phu: { tong_loi: number; da_gt: number; tu_dong?: number };
   dm: { loai: string; ma: string; ten: string }[]; duyet: Duyet[]; quan_ly: boolean;
 }
@@ -64,7 +65,7 @@ const TIEU_CHI: Record<string, { l: string; f: (d: Dong, n: Data["nguong"]) => b
 const pctTxt = (a: number, b: number) => (b ? `${Math.round((a / b) * 1000) / 10}%` : "—");
 /** gom ly do do ve nhan chung (khop backend lib/dieuHanh nhomLyDo) */
 const nhomLyDo = (s: string) => s.startsWith("Cấp CEO") ? "Cấp CEO" : s.startsWith("Quá ngày DK") ? "Quá ngày DK" : s.startsWith("Trễ hạn") ? "Trễ hạn chưa có ngày DK"
-  : s.includes("lỗi chờ giải trình") ? "Lỗi chờ giải trình ≥ 56h làm việc" : s.startsWith("Im lặng") ? "Im lặng ≥ 7 ngày" : s;
+  : s.includes("lỗi chờ giải trình") ? `Lỗi chờ giải trình ≥ ${12}h làm việc` : s.startsWith("Im lặng") ? "Im lặng ≥ 7 ngày" : s;
 const thoiGianCho = (gio: number) => (gio < 24 ? `${gio} giờ` : `${Math.floor(gio / 24)} ngày${gio % 24 ? ` ${gio % 24} giờ` : ""}`);
 
 export default function DieuHanh() {
@@ -114,7 +115,7 @@ export default function DieuHanh() {
   const nguoiNhac = theoNguoi.filter((x) => x.dong > 0).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho)[0];
   if (nguoiNhac && nguoiNhac.do > 0) ketLuan.push({
     icon: "👤", mau: "#B91C1C", onClick: () => { setPv({ ...pv, nguoi: [nguoiNhac.ai] }); setTieuChi("DO"); setTab("nong"); },
-    txt: <>Cần nhắc ngay: <b>{ten(nguoiNhac.ai)}</b> — giữ {soLuong(nguoiNhac.dong)} dòng, <b>{soLuong(nguoiNhac.do)} đỏ</b>, {soLuong(nguoiNhac.loi_cho)} vi phạm chờ giải trình,
+    txt: <>Cần nhắc ngay: <b>{ten(nguoiNhac.ai)}</b> — giữ {soLuong(nguoiNhac.dong)} dòng, <b>{soLuong(nguoiNhac.do)} đỏ</b>, {soLuong(nguoiNhac.loi_cho)} lỗi cần giải trình,
       chỉ <b>{pctTxt(nguoiNhac.td7_dong, nguoiNhac.dong)}</b> dòng có tác động 7 ngày qua{nguoiNhac.im_lang7 ? `, ${soLuong(nguoiNhac.im_lang7)} dòng im lặng ≥ 7 ngày` : ""}.</>,
   });
   const nccXau = theoNcc.filter((x) => x.do > 0).sort((a, b) => b.do - a.do)[0];
@@ -125,7 +126,7 @@ export default function DieuHanh() {
   });
   ketLuan.push({
     icon: gtPct < 0.3 ? "⚠️" : "✅", mau: gtPct < 0.3 ? "#B45309" : undefined, onClick: () => setTab("nn"),
-    txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>){d.do_phu.tu_dong ? <> · hệ thống tự đóng <b>{soLuong(d.do_phu.tu_dong)}</b> (đã khắc phục / quá hạn giải trình 56h làm việc — vẫn tính vi phạm)</> : null}
+    txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>){d.do_phu.tu_dong ? <> · hệ thống tự đóng <b>{soLuong(d.do_phu.tu_dong)}</b> (đã khắc phục trong hạn — không tính vi phạm · hết hạn giải trình 16h làm việc — vi phạm)</> : null}
       {gtPct < 0.3 ? " — chưa đủ cơ sở kết luận nguyên nhân, phải ép giải trình trước." : "."}</>,
   });
   if (duyetPv.length) {
@@ -190,7 +191,7 @@ export default function DieuHanh() {
         <O l="Chưa có ngày DK" v={soLuong(dem((x) => x.tt === "TRE_NDK" || x.tt === "CHO_NDK"))} sub={`${dem((x) => x.tt === "TRE_NDK")} đã trễ hạn`} mau={MUC.VANG.mau} on={tieuChi === "CHUA_DK"} onClick={() => chonTc("CHUA_DK")} />
         <O l={`Im lặng ≥ ${d.nguong.im_lang_do} ngày`} v={soLuong(dem((x) => x.im_lang >= d.nguong.im_lang_do))} sub="không ai tác động" mau={MUC.DO.mau} on={tieuChi === "IM_LANG"} onClick={() => chonTc("IM_LANG")} />
         <O l="Không thúc NCC 7 ngày" v={soLuong(dem((x) => x.thuc7 === 0))} sub="push / mail / gọi = 0" on={tieuChi === "KHONG_THUC"} onClick={() => chonTc("KHONG_THUC")} />
-        <O l="Vi phạm chờ giải trình" v={soLuong(new Set(dongPv.flatMap((x) => x.vp_cho ?? [])).size)} sub={`${dem((x) => x.loi_cho > 0)} dòng · đã GT ${pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}`} mau={MUC.DO.mau} on={tieuChi === "LOI_CHO"} onClick={() => chonTc("LOI_CHO")} />
+        <O l="Lỗi cần giải trình" v={soLuong(new Set(dongPv.flatMap((x) => x.vp_cho ?? [])).size)} sub={`${dem((x) => x.loi_cho > 0)} dòng · đã GT ${pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}`} mau={MUC.DO.mau} on={tieuChi === "LOI_CHO"} onClick={() => chonTc("LOI_CHO")} />
         <O l="Cấp CEO" v={soLuong(dem((x) => x.ceo.length > 0))} mau={MUC.DO.mau} on={tieuChi === "CEO"} onClick={() => chonTc("CEO")} />
         <O l="Duyệt đang treo" v={soLuong(duyetPv.length)} sub={duyetPv.length ? `lâu nhất ${thoiGianCho(Math.max(...duyetPv.map((x) => x.gio)))}` : "không có"} mau={duyetPv.length ? MUC.VANG.mau : undefined} on={tab === "duyet"} onClick={() => setTab("duyet")} />
       </div>
@@ -344,10 +345,10 @@ function DiemNong({ rows, dmTen, empty }: { rows: Dong[]; dmTen: (loai: string, 
 
 // ------------------------------------------------------------------ theo nguoi
 interface Nguoi { ai: string; po: number; dong: number; thieu: number; do: number; vang: number; qua_dk: number; chua_dk: number; ceo: number; loi_cho: number; loi_cho_max: number;
-  loi30: number; loi30_cho: number; td7_dong: number; thuc7: number; im_lang7: number; nhac: number; td_luc: string | null; duyet: number; duyet_max: number }
+  loi30: number; loi30_cho: number; vp30: number; td7_dong: number; thuc7: number; im_lang7: number; nhac: number; td_luc: string | null; duyet: number; duyet_max: number }
 function gomNguoi(dong: Dong[], loi30: Data["loi30"], duyet: Duyet[], imLangDo: number): Nguoi[] {
   const m = new Map<string, Nguoi & { _po: Set<number>; _vp: Set<string> }>();
-  const lay = (ai: string) => { let x = m.get(ai); if (!x) { x = { ai, po: 0, dong: 0, thieu: 0, do: 0, vang: 0, qua_dk: 0, chua_dk: 0, ceo: 0, loi_cho: 0, loi_cho_max: 0, loi30: 0, loi30_cho: 0, td7_dong: 0, thuc7: 0, im_lang7: 0, nhac: 0, td_luc: null, duyet: 0, duyet_max: 0, _po: new Set(), _vp: new Set() }; m.set(ai, x); } return x; };
+  const lay = (ai: string) => { let x = m.get(ai); if (!x) { x = { ai, po: 0, dong: 0, thieu: 0, do: 0, vang: 0, qua_dk: 0, chua_dk: 0, ceo: 0, loi_cho: 0, loi_cho_max: 0, loi30: 0, loi30_cho: 0, vp30: 0, td7_dong: 0, thuc7: 0, im_lang7: 0, nhac: 0, td_luc: null, duyet: 0, duyet_max: 0, _po: new Set(), _vp: new Set() }; m.set(ai, x); } return x; };
   for (const d of dong) {
     const x = lay(d.nguoi ?? "");
     x._po.add(d.eo); x.dong += 1; x.thieu += d.thieu;
@@ -361,7 +362,7 @@ function gomNguoi(dong: Dong[], loi30: Data["loi30"], duyet: Duyet[], imLangDo: 
     if (d.im_lang >= imLangDo) x.im_lang7 += 1;
     if (d.td_luc && (!x.td_luc || d.td_luc > x.td_luc)) x.td_luc = d.td_luc;
   }
-  for (const l of loi30) { const x = lay(l.ai ?? ""); x.loi30 += l.n; x.loi30_cho += l.cho; }
+  for (const l of loi30) { const x = lay(l.ai ?? ""); x.loi30 += l.n; x.loi30_cho += l.cho; x.vp30 += l.vp ?? 0; }
   for (const p of duyet) { if (!p.ai) continue; const x = lay(p.ai); x.duyet += 1; x.duyet_max = Math.max(x.duyet_max, p.gio); }
   // v0.093: loi cho = VI PHAM GOP (PO + loai + ky) khong trung giua cac dong
   return [...m.values()].map(({ _po, _vp, ...x }) => ({ ...x, po: _po.size, loi_cho: _vp.size })).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho || b.dong - a.dong);
@@ -376,7 +377,9 @@ function BangNguoi({ rows, quanLy, onNhac, onXem }: { rows: Nguoi[]; quanLy: boo
     { key: "qua_dk", header: "Quá DK", loc: "so", gt: (r) => r.qua_dk, align: "right", render: (r) => r.qua_dk ? L(r.ai, "QUA_DK", soLuong(r.qua_dk), MUC.DO.mau) : <span className="muted">0</span> },
     { key: "chua_dk", header: "Chưa có DK", loc: "so", gt: (r) => r.chua_dk, align: "right", render: (r) => r.chua_dk ? L(r.ai, "CHUA_DK", soLuong(r.chua_dk)) : <span className="muted">0</span> },
     { key: "ceo", header: "Cấp CEO", loc: "so", gt: (r) => r.ceo, align: "right", render: (r) => r.ceo ? L(r.ai, "CEO", soLuong(r.ceo), MUC.DO.mau) : <span className="muted">0</span> },
-    { key: "loi_cho", header: "Vi phạm chờ GT", loc: "so", gt: (r) => r.loi_cho, align: "right", render: (r) => r.loi_cho ? <>{L(r.ai, "LOI_CHO", soLuong(r.loi_cho), MUC.DO.mau)}<div className="muted" style={{ fontSize: 11 }}>lâu nhất {r.loi_cho_max} ng</div></> : <span className="muted">0</span> },
+    { key: "vp30", header: "Vi phạm 30 ng", loc: "so", gt: (r) => r.vp30, align: "right",
+      render: (r) => r.vp30 ? <b style={{ color: "var(--danger-ink)" }} title="Lỗi hết hạn giải trình (16 giờ làm việc) mà không giải trình trong 30 ngày">{soLuong(r.vp30)}</b> : <span className="muted">0</span> },
+    { key: "loi_cho", header: "Lỗi cần GT", loc: "so", gt: (r) => r.loi_cho, align: "right", render: (r) => r.loi_cho ? <>{L(r.ai, "LOI_CHO", soLuong(r.loi_cho), MUC.DO.mau)}<div className="muted" style={{ fontSize: 11 }}>lâu nhất {r.loi_cho_max} ng</div></> : <span className="muted">0</span> },
     { key: "gt_pct", header: "Giải trình 30 ng", loc: "so", gt: (r) => (r.loi30 ? Math.round(((r.loi30 - r.loi30_cho) / r.loi30) * 100) : null), align: "right",
       render: (r) => r.loi30 ? <span title={`${r.loi30} lỗi phát sinh 30 ngày, ${r.loi30 - r.loi30_cho} đã giải trình`} style={{ fontWeight: 700, color: r.loi30_cho / r.loi30 > 0.7 ? "var(--danger-ink)" : undefined }}>{pctTxt(r.loi30 - r.loi30_cho, r.loi30)}<div className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{r.loi30 - r.loi30_cho}/{r.loi30} lỗi</div></span> : <span className="muted">—</span> },
     { key: "td7", header: "Quyết liệt 7 ng", loc: "so", gt: (r) => (r.dong ? Math.round((r.td7_dong / r.dong) * 100) : null), align: "right",
@@ -440,8 +443,8 @@ function BangNcc({ rows, onXem }: { rows: Ncc[]; onXem: (ncc: string, tc: string
 
 // ------------------------------------------------------------------ nguyen nhan & xu huong
 function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen: (loai: string, ma: string | null) => string }) {
-  const theoQt = new Map<string, { n: number; cho: number }>();
-  for (const l of loi30) { const x = theoQt.get(l.qt) ?? { n: 0, cho: 0 }; x.n += l.n; x.cho += l.cho; theoQt.set(l.qt, x); }
+  const theoQt = new Map<string, { n: number; cho: number; vp: number }>();
+  for (const l of loi30) { const x = theoQt.get(l.qt) ?? { n: 0, cho: 0, vp: 0 }; x.n += l.n; x.cho += l.cho; x.vp += l.vp ?? 0; theoQt.set(l.qt, x); }
   const tongQt = [...theoQt.values()].reduce((s, x) => s + x.n, 0);
   const ganCho = new Map<string, number>();
   for (const l of loi30) ganCho.set(l.ai ?? "", (ganCho.get(l.ai ?? "") ?? 0) + l.n);
@@ -465,7 +468,7 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
           {phu < 0.3 && <b style={{ color: "var(--danger-ink)" }}> Dưới 30% → các tỷ lệ nguyên nhân bên cạnh chỉ là mẫu nhỏ, chưa dùng để kết luận. Ưu tiên ép giải trình.</b>}</div>
         <div style={{ marginTop: 12 }}><b>Lỗi phát sinh 30 ngày theo quy tắc</b></div>
         {[...theoQt.entries()].sort((a, b) => b[1].n - a[1].n).map(([k, x]) => (
-          <Thanh key={k} l={`${QT_TEN[k] ?? k}${QT_GD[k] ? ` (${QT_GD[k]})` : ""}`} n={x.n} tong={tongQt} mau="#F87171" sub={`${soLuong(x.cho)} chờ giải trình`} />
+          <Thanh key={k} l={`${QT_TEN[k] ?? k}${QT_GD[k] ? ` (${QT_GD[k]})` : ""}`} n={x.n} tong={tongQt} mau="#F87171" sub={`${soLuong(x.cho)} cần giải trình · ${soLuong(x.vp)} vi phạm (hết hạn không GT)`} />
         ))}
         {theoQt.get("R3") && tongQt && theoQt.get("R3")!.n / tongQt > 0.5 && (
           <div style={{ fontSize: 11.5, background: "#FEF3C7", borderRadius: 6, padding: "6px 8px", marginTop: 4 }}>

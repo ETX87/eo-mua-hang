@@ -20,10 +20,10 @@ export interface MaLoiDef {
   yeu_cau_gt?: string; tu_dong?: string;
 }
 const YEU_CAU: Record<string, [string, string]> = {
-  R1_24: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến, hoặc quá hạn giải trình 56 giờ làm việc không giải trình (vẫn tính vi phạm)."],
-  R1_48: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến, hoặc quá hạn giải trình 56 giờ làm việc không giải trình (vẫn tính vi phạm)."],
-  R3: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung (không bắt buộc ảnh).", "Tự đóng khi sau đó có mail (CC hộp theo dõi) / push / gọi-Zalo với NCC, hoặc quá hạn giải trình 56 giờ làm việc không giải trình (vẫn tính vi phạm)."],
-  R4: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng.", "Tự đóng khi đã nhập ngày dự kiến mới muộn hơn ngày bị quá, hoặc quá hạn giải trình 56 giờ làm việc không giải trình (vẫn tính vi phạm)."],
+  R1_24: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R1_48: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R3: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung (không bắt buộc ảnh).", "Tự đóng khi sau đó có mail (CC hộp theo dõi) / push / gọi-Zalo với NCC (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R4: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng.", "Tự đóng khi đã nhập ngày dự kiến mới muộn hơn ngày bị quá (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
   TAY: ["Không — lỗi được ghi kèm giải trình ngay lúc giải trình.", "—"],
   CEO: ["Không giải trình riêng mã này — giải trình các lỗi 0xx / 1xx của dòng; theo dõi ở menu Ca tồn CEO.", "Hết khi dòng về đủ / kết thúc sớm / hủy, hoặc không còn chạm ngưỡng."],
   GIAI_DOAN: ["Không — chỉ đo để báo cáo đúng / trễ hạn từng bước.", "—"],

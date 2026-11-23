@@ -314,7 +314,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <input type="checkbox" checked={xemHuy} onChange={(e) => setXemHuy(e.target.checked)} />
                   Xem cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}
                 </label>
-                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} empty="Không có dòng linh kiện khớp bộ lọc" />
+                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} empty="Không có dòng linh kiện khớp bộ lọc" khungCao="max(300px, calc(95vh - 420px))" />
               </>
             )}
             {tab === "kh" && (

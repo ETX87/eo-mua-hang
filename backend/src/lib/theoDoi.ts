@@ -505,7 +505,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
 
 /**
  * TU GIAI TRINH (v0.092, yeu cau lanh dao 2026-11-18): loi DANG CHO khong can giai trinh nua -> he thong tu dong, ghi 1 ban ghi tl_giai_trinh
- * pham_vi 'AUTO' (nhom = 'AUTO:<ly do>', noi dung "Auto giải trình vi phạm do …"), loi chuyen DA_GIAI_TRINH. Van TINH la vi pham (giu trong tl_loi,
+ * pham_vi 'AUTO' (nhom = 'AUTO:<ly do>', noi dung "Auto giải trình vi phạm do …"), loi chuyen DA_GIAI_TRINH. v0.110: CHI AUTO:QUA_HAN la VI PHAM (dem o man Vi pham / Don PO / Dieu hanh); KHAC_PHUC khong tinh vi pham. Van giu trong tl_loi (so loi,
  * so loi, nguong CEO) nhung KHONG tinh la "giai trinh that" (dieuHanh do phu, Vi pham % giai trinh, hoat dong cuoi loai pham_vi AUTO). Thu tu ly do:
  *  KHAC_PHUC  da khac phuc sau do:  R3 - co mail / goi-Zalo / push voi NCC SAU ngay kiem tra · R1 - dong da co ngay du kien ·
  *             R4 - da nhap ngay du kien moi > ngay bi qua · moi quy tac - da co giai trinh THAT cung loi tren dong sau han loi nay
@@ -525,20 +525,20 @@ async function dayPushLoi(env: Env, dk: string, thamSo: string, tin: (n: number,
     `SELECT ${NGUOI_LOI_SQL} email, COUNT(*) n, MIN(COALESCE(l.han, l.created_at)) moc FROM tl_loi l JOIN eo e ON e.id = l.eo_id
      WHERE ${dk} AND ${NGUOI_LOI_SQL} IS NOT NULL GROUP BY 1`,
   ).bind(thamSo).all<{ email: string; n: number; moc: string | null }>()).results;
-  await Promise.all(rs.map((r) => sendPushToUser(env, r.email, { ...tin(r.n, r.moc ? congGioLV(r.moc, GIO_TU_DONG) : null), url: "/?nhac_giai_trinh=1" })
+  await Promise.all(rs.map((r) => sendPushToUser(env, r.email, { ...tin(r.n, r.moc ? hanGiaiTrinh(r.moc) : null), url: "/?nhac_giai_trinh=1" })
     .catch((e) => console.error("push loi", e))));
 }
 
 async function nhacSapHetHan(env: Env, now: string): Promise<number> {
   const db = env.DB;
-  // SQL loc tho: 50h LV >= 6 ngay lam viec -> moc truoc it nhat 5 ngay lich; loc that bang congGioLV.
+  // SQL loc tho: (16 - 6) = 10h LV > 1 ngay lam viec -> moc truoc it nhat 1 ngay lich; loc that bang hanGiaiTrinh.
   const rs = (await db.prepare(
     `SELECT l.id, COALESCE(l.han, l.created_at) moc FROM tl_loi l JOIN eo e ON e.id = l.eo_id
      WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'TAY' AND l.nhac_het_han_luc IS NULL
-       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-5 days')
+       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days')
        AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')`,
   ).bind(now.slice(0, 10)).all<{ id: number; moc: string }>()).results
-    .filter((r) => { const han = congGioLV(r.moc, GIO_TU_DONG); return han > now && demGioLV(now, han) <= GIO_NHAC_HET_HAN; });
+    .filter((r) => { const han = hanGiaiTrinh(r.moc); return han > now && demGioLV(now, han) <= GIO_NHAC_HET_HAN; });
   if (!rs.length) return 0;
   const ids = JSON.stringify(rs.map((r) => r.id));
   await db.batch([
@@ -561,8 +561,15 @@ async function nhacSapHetHan(env: Env, now: string): Promise<number> {
   return rs.length;
 }
 
-/** Han giai trinh: qua bay nhieu gio LAM VIEC tu han loi ma chua giai trinh -> he thong tu dong (56h LV = 7 ngay cu x 8h). */
-export const GIO_TU_DONG = 56;
+/** Han giai trinh: qua bay nhieu gio LAM VIEC tu moc loi ma chua giai trinh -> he thong ghi VI PHAM (AUTO:QUA_HAN).
+ *  v0.110 (chu he thong 2026-11-23: "thoi gian giai trinh la 16h lam viec truoc khi bi tinh loi") = 16h LV, CHI loi co moc tu HAN_GT_16_TU;
+ *  loi co moc truoc giu 56h LV (da hua 56h - khong bien loi dang cho thanh vi pham hang loat). FE lib/giaiTrinh.tsx PHAI khop. */
+export const GIO_TU_DONG = 16;
+export const GIO_TU_DONG_CU = 56;
+export const HAN_GT_16_TU = "2026-11-24 00:00:00";
+export const gioHanGt = (moc: string) => (moc >= HAN_GT_16_TU ? GIO_TU_DONG : GIO_TU_DONG_CU);
+/** Han giai trinh cua 1 loi tu moc (COALESCE(han, created_at)). */
+export const hanGiaiTrinh = (moc: string) => congGioLV(moc, gioHanGt(moc));
 /** nhan hien thi */
 export const HAN_GT_TXT = `${GIO_TU_DONG} giờ làm việc`;
 async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
@@ -581,22 +588,22 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
          END khac_phuc,
          (SELECT substr(MIN(g.created_at), 1, 10) FROM tl_loi l2 JOIN tl_giai_trinh g ON g.id = l2.giai_trinh_id
           WHERE l2.eo_item_id = l.eo_item_id AND l2.quy_tac = l.quy_tac AND l2.id <> l.id AND COALESCE(g.pham_vi, '') <> 'AUTO' AND g.created_at > COALESCE(l.han, l.created_at)) gt_cung,
-         date(COALESCE(l.han, l.created_at)) <= date(?1, '-6 days') qua_han, COALESCE(l.han, l.created_at) moc
+         date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') qua_han, COALESCE(l.han, l.created_at) moc
        FROM l)
      SELECT id, quy_tac, khac_phuc, gt_cung, qua_han, moc FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1`,
   ).bind(now.slice(0, 10)).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number; moc: string }>()).results
-    // SQL loc tho (>= 6 ngay lich - 56h LV luon > 7 ngay lich); qua han that = moc + 56h LV <= bay gio
-    .filter((r) => r.khac_phuc || r.gt_cung || congGioLV(r.moc, GIO_TU_DONG) <= now);
+    // SQL loc tho (>= 1 ngay lich - 16h LV luon qua it nhat 1 ngay); qua han that = hanGiaiTrinh(moc) <= bay gio
+    .filter((r) => r.khac_phuc || r.gt_cung || hanGiaiTrinh(r.moc) <= now);
   if (!rs.length) return 0;
   const dmy = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
   const KP: Record<string, string> = {
     R3: "đã thúc NCC sau đó (mail / push / gọi-Zalo ngày %)", R1: "dòng đã có ngày dự kiến (nhập ngày %)", R4: "đã cập nhật ngày dự kiến mới (ngày %)",
   };
   const ds = rs.map((r) => r.khac_phuc
-    ? [r.id, `Auto giải trình vi phạm do ${KP[r.quy_tac].replace("%", dmy(r.khac_phuc))} — không cần giải trình nữa.`, "AUTO:KHAC_PHUC"]
+    ? [r.id, `Tự đóng lỗi do ${KP[r.quy_tac].replace("%", dmy(r.khac_phuc))} — đã khắc phục trong hạn, không tính vi phạm.`, "AUTO:KHAC_PHUC"]
     : r.gt_cung
-      ? [r.id, `Auto giải trình vi phạm do đã có giải trình cùng lỗi ngày ${dmy(r.gt_cung)} — không cần giải trình lại.`, "AUTO:KHAC_PHUC"]
-      : [r.id, `Auto giải trình vi phạm do quá ${HAN_GT_TXT} không giải trình — ghi nhận vi phạm, không cần giải trình nữa.`, "AUTO:QUA_HAN"]);
+      ? [r.id, `Tự đóng lỗi do đã có giải trình cùng lỗi ngày ${dmy(r.gt_cung)} — không cần giải trình lại, không tính vi phạm.`, "AUTO:KHAC_PHUC"]
+      : [r.id, `Hết hạn giải trình (${gioHanGt(r.moc)} giờ làm việc từ mốc lỗi) mà không giải trình → ghi nhận VI PHẠM, không giải trình được nữa.`, "AUTO:QUA_HAN"]);
   let xong = 0;
   for (let i = 0; i < ds.length; i += 250) {
     const lo = JSON.stringify(ds.slice(i, i + 250));

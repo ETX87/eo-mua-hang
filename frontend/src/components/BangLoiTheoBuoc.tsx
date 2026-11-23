@@ -4,7 +4,7 @@ import { useDanhMuc } from "../pages/theodoi/shared";
 import { GD_CHINH } from "../lib/giaiDoan";
 import { ngay, ngayGio, ten } from "../lib/format";
 import { gioTxt } from "../lib/giaiDoan";
-import { GIO_HAN_GT, NHAN_GT, congGioLV, demGioLV, mocLoi, nowVN, viSaoLoi } from "../lib/giaiTrinh";
+import { GIO_HAN_GT, NHAN_GT, congGioLV, demGioLV, gioHanGt, mocLoi, nowVN, viSaoLoi } from "../lib/giaiTrinh";
 
 /**
  * BANG MA LOI TUNG BUOC + GIAI TRINH (v0.091, yeu cau lanh dao "trong tung don hang phai co bang ma loi tung buoc - giai trinh").
@@ -47,13 +47,13 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh }
       const that = gts.find((g: any) => g.pham_vi !== "AUTO"), auto = gts.find((g: any) => g.pham_vi === "AUTO");
       const choDs = dsl.filter((l) => l.trang_thai === "CHO_GIAI_TRINH");
       // con cho nhung da qua han giai trinh (cron chua chot) -> da la vi pham
-      const hanGtCho = choDs.length ? choDs.map((l) => congGioLV(mocLoi(l) ?? now, GIO_HAN_GT)).sort()[0] : null;
+      const hanGtCho = choDs.length ? choDs.map((l) => { const m = mocLoi(l) ?? now; return congGioLV(m, gioHanGt(m)); }).sort()[0] : null;
       const tt: TT = choDs.length ? (hanGtCho && hanGtCho <= now && choDs[0].quy_tac !== "TAY" ? "TU_QH" : "CHO") : that ? "DA_GT" : gts.length && gts.every((g: any) => g.nhom === "AUTO:QUA_HAN") ? "TU_QH" : "TU_KP";
       const g = that ?? auto ?? null;
       const l0 = choDs[0] ?? dsl[0];
       const x = lk(dsl.map((l) => l.eo_item_id), dsl.map((l) => l.part_code ?? lkBy.get(l.eo_item_id) ?? ""));
       out.push({ k, buoc: l0.buoc ?? "", ma: l0.ma_loi ?? l0.quy_tac, ten: l0.ten_ma ?? l0.quy_tac, ...x, item_id: l0.eo_item_id,
-        han: l0.han ?? null, han_gt: l0.quy_tac === "TAY" || !mocLoi(l0) ? null : (hanGtCho ?? congGioLV(mocLoi(l0)!, GIO_HAN_GT)), vi_sao: viSaoLoi(l0), tt, chi_tiet: `${l0.ngay_tham_chieu ? `ngày kiểm tra / mốc ${ngay(l0.ngay_tham_chieu)}` : ""}${x.so_dong > 1 ? ` · ${x.so_dong} dòng${choDs.length && choDs.length < dsl.length ? ` (${new Set(choDs.map((l) => l.eo_item_id)).size} còn chờ)` : ""}` : ""}`,
+        han: l0.han ?? null, han_gt: l0.quy_tac === "TAY" || !mocLoi(l0) ? null : (hanGtCho ?? congGioLV(mocLoi(l0)!, gioHanGt(mocLoi(l0)!))), vi_sao: viSaoLoi(l0), tt, chi_tiet: `${l0.ngay_tham_chieu ? `ngày kiểm tra / mốc ${ngay(l0.ngay_tham_chieu)}` : ""}${x.so_dong > 1 ? ` · ${x.so_dong} dòng${choDs.length && choDs.length < dsl.length ? ` (${new Set(choDs.map((l) => l.eo_item_id)).size} còn chờ)` : ""}` : ""}`,
         gt_ai: g ? (g.pham_vi !== "AUTO" ? tenDm("AI", g.ai_ma) : "Hệ thống") : "", gt_loi: g ? (g.pham_vi !== "AUTO" ? tenDm("LOI", g.loi_ma) : "Tự giải trình") : "",
         gt_nd: g?.noi_dung ?? "", gt_boi: g && g.pham_vi !== "AUTO" ? g.created_by : null, gt_luc: g?.created_at ?? null });
     }

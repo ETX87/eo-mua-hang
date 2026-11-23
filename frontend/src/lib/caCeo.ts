@@ -18,8 +18,8 @@ export interface R {
 }
 export type Muc = "RAT_HOT" | "GIAM_HOT" | "DA_XONG";
 export const MUC: Record<Muc, { l: string; ngan: string; mau: string; nen: string; icon: string; mo_ta: string }> = {
-  RAT_HOT: { l: "Rất hot — chưa xử lý", ngan: "Rất hot", mau: "#B91C1C", nen: "#FEE2E2", icon: "🔴", mo_ta: "còn thiếu hàng + có lỗi trong hạn giải trình (≤ 56h làm việc) chưa giải trình" },
-  GIAM_HOT: { l: "Đang giảm hot", ngan: "Giảm hot", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "còn thiếu hàng + lỗi đã quá hạn giải trình 56h làm việc (hệ thống tự đóng) hoặc đã giải trình bù" },
+  RAT_HOT: { l: "Rất hot — chưa xử lý", ngan: "Rất hot", mau: "#B91C1C", nen: "#FEE2E2", icon: "🔴", mo_ta: "còn thiếu hàng + có lỗi trong hạn giải trình (≤ 16h làm việc) chưa giải trình" },
+  GIAM_HOT: { l: "Đang giảm hot", ngan: "Giảm hot", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "còn thiếu hàng + lỗi đã quá hạn giải trình 16h làm việc (hệ thống tự đóng) hoặc đã giải trình bù" },
   DA_XONG: { l: "Đã xong — không còn hot", ngan: "Đã xong", mau: "#64748B", nen: "#F1F5F9", icon: "⚪", mo_ta: "hàng đã về đủ / kết thúc sớm — từng chạm ngưỡng CEO" },
 };
 /** gia tri muc la (du lieu ban cu / API doi) -> khong vo man */

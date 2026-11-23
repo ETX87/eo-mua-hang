@@ -4,6 +4,24 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.110: Chỉ hết hạn không giải trình mới tính vi phạm, hạn giải trình 16h LV, gộp bước giống nhau, bảng PO cuộn trong khung
+
+- Yêu cầu: chọn "Yes, change counting" (chỉ tính vi phạm khi hết hạn không giải trình) + "5. thời gian giải trình là 16h làm việc trước khi bị tính lỗi)"
+  + "trong log gải trình chung thì cũng nhóm các bước giống nhau lại (tham khảo app dvbh)" + "4. table này hiện 4 dòng => hiện thanh kéo trái phải, lên xuống luôn hiện trên cùng"
+  (bảng linh kiện popup PO). Giữ yêu cầu 3 (cấp CEO tự tính như logic cũ).
+- Đếm vi phạm: `lib/baoCaoLoi.ts` `dsLoiDayDu` thêm `vi_pham` / `han_gt` / `con_gio_gt` / `so_lan_xau` (mức độ "lặp" chỉ đếm lần chưa xử lý / vi phạm), `trangThaiViPham`
+  ưu tiên TU_QUA_HAN; `lib/dieuHanh.ts` VpPo thêm `vi_pham` + trạng thái VI_PHAM, `loi30.vp`; màn Vi phạm: ô "Cần giải trình" + ô mới "Vi phạm", lọc trạng thái "Vi phạm",
+  cột Hạn giải trình, kết luận trong chi tiết, cột Vi phạm ở theo PO / người / mã; Đơn PO cột Vi phạm; Điều hành cột "Vi phạm 30 ng". Chữ "Người vi phạm" → "Người chịu lỗi".
+  Nội dung tự đóng mới: "Tự đóng lỗi … không tính vi phạm" / "Hết hạn giải trình … → ghi nhận VI PHẠM" (bản ghi cũ giữ chữ cũ). Cấp CEO KHÔNG đổi.
+- Hạn giải trình 16h LV (`hanGiaiTrinh`, `HAN_GT_16_TU` = 24/11/2026): lỗi có mốc trước đó giữ 56h — không biến lỗi đang chờ (đã hứa 56h) thành vi phạm hàng loạt.
+  Lọc thô SQL tự đóng / nhắc sắp hết hạn đổi -6/-5 ngày → -1 ngày. Ngưỡng: quá lâu 24→8h, rất lâu 56→12h, Điều hành đỏ 56→12h. Văn bản 56h → 16h (màn Vi phạm, bảng mã lỗi, LK đặt, Ca CEO).
+- Lịch sử theo dõi: mục Hoạt động liền nhau cùng bước (cùng người + cùng nội dung giải trình, cùng lần hệ thống tự đóng, cùng tiêu đề mail, cùng đợt push, cùng người sửa ngày DK)
+  gộp 1 dòng "×n" (mới nhất đầy đủ, bấm xem các lần trước), "Hiện từng mục" / "Gộp bước giống nhau" — theo mẫu app DVBH `GiaiTrinhLichSu`.
+- `DataTable` prop `khungCao`: bảng cuộn trong khung, tiêu đề dính, thanh kéo ngang thêm ở trên đầu (đồng bộ 2 chiều); popup PO tab Linh kiện dùng `max(300px, calc(95vh - 420px))`.
+- Kiểm thử: typecheck + build; local: lỗi thử mốc 24/11 08:00 → hạn GT 25/11 17:00 (16h LV), "Cần giải trình", popup nhắc ghi 16 giờ; lỗi R4 cũ hết hạn → `vi_pham`;
+  màn Vi phạm: 1 cần GT / 3 vi phạm; popup PO: thanh ngang trên đầu kéo bảng, cuộn dọc trong khung, tiêu đề đứng yên; Hoạt động 11 mục gộp còn 6 nhóm (×4 tự đóng, ×3 push).
+  Đã xoá lỗi thử khỏi DB local. Chưa thử với PO thật nhiều dòng (327 dòng) trên production.
+
 ## 23/11/2026 — v0.109: Lịch sử theo dõi gọn + phân biệt "Cần giải trình" với "Vi phạm"
 
 - Yêu cầu: "1. các thông tin diễn giải lịch sử đang rất rối, rút gọn lại chỉ lấy thông tin chính + nút mở rộng nếu người dùng có nhu cầu đọc chi tiết.

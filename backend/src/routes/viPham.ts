@@ -4,7 +4,7 @@ import { nowVN, todayVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
-import { danhGiaQuyTac, layDongTheoDoi, GIO_TU_DONG, GIO_NHAC_HET_HAN } from "../lib/theoDoi";
+import { danhGiaQuyTac, layDongTheoDoi, GIO_TU_DONG, GIO_NHAC_HET_HAN, hanGiaiTrinh } from "../lib/theoDoi";
 import { congGioLV, demGioLV } from "../lib/gioLamViec";
 import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_GIO, RAT_LAU_GIO } from "../lib/baoCaoLoi";
 import { layDongDieuHanh, thongKeGiaiDoan } from "../lib/dieuHanh";
@@ -44,7 +44,7 @@ app.get("/nhac-cua-toi", async (c) => {
   ).bind(u.email).all<{ item_id: number; eo_id: number; ma_po: string; part_code: string | null; part_name: string | null; so_loi: number;
     quy_tac: string; moc: string | null; nhac_luc: string | null }>()).results;
   const rows = rs.map((r) => {
-    const han = r.moc ? congGioLV(r.moc, GIO_TU_DONG) : null;
+    const han = r.moc ? hanGiaiTrinh(r.moc) : null;
     const conGio = han ? (han >= now ? demGioLV(now, han) : -demGioLV(han, now)) : null;
     return { ...r, han, con_gio: conGio, sap_het: conGio != null && conGio <= GIO_NHAC_HET_HAN };
   }).sort((a, b) => String(a.han ?? "9").localeCompare(String(b.han ?? "9")));

@@ -1,18 +1,20 @@
 import type { Env } from "../types";
 import { todayVN, nowVN } from "./vnTime";
 import { demGioLV } from "./gioLamViec";
+import { hanGiaiTrinh } from "./theoDoi";
 import { layDongTheoDoi } from "./theoDoi";
 import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, type BangMaLoi } from "./maLoi";
 
 /**
  * Danh sach LOI day du + tong hop theo MA LOI ER.MH (v0.091) - dung chung: man Vi pham (routes/viPham, loc theo pham vi nguoi xem),
  * Ca ton CEO (routes/caCeo) va API doc cho he khac (routes/partner). Muc do (chot 2026-11-04):
- *   CEO = dong dang cap CEO · CAO = cung loai lap >= 3 lan / cho >= 56h LV · TB = lap 2 / cho >= 24h LV · THAP con lai.
+ *   CEO = dong dang cap CEO · CAO = cung loai lap >= 3 lan / cho >= 12h LV · TB = lap 2 / cho >= 8h LV · THAP con lai (v0.110, han GT 16h LV).
  *   v0.103: "cho" tinh theo GIO LAM VIEC (lib/gioLamViec) - 3 / 7 ngay cu x 8h. tuoi_ngay van tra de hien thi.
  * Chi loi cua dong con trong layDongTheoDoi (PO ban hanh truoc moc 'theo_doi_bo_qua_truoc' khong tinh).
  */
-export const QUA_LAU_GIO = 24;
-export const RAT_LAU_GIO = 56;
+// v0.110: han giai trinh 16h LV -> "qua lau" 8h LV (nua han), "rat lau" 12h LV (con <= 4h). Truoc: 24 / 56.
+export const QUA_LAU_GIO = 8;
+export const RAT_LAU_GIO = 12;
 const soNgay = (a: string, b: string) => Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
 
 export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaLoi }> {
@@ -44,24 +46,37 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
   }
   for (const ds of nhomLoai.values()) ds.sort((a, b) => String(a.han ?? a.created_at).localeCompare(String(b.han ?? b.created_at)) || a.id - b.id);
 
+  // v0.110 (chu he thong 2026-11-23): "het han khong giai trinh thi moi tinh la vi pham loi".
+  //  han_gt = moc + GIO_TU_DONG gio LV; vi_pham = tu dong QUA_HAN, hoac con cho ma da qua han (nen chua chot). Loi TAY khong co han, khong la vi pham.
+  const hanGtCua = (l: any) => (l.quy_tac === "TAY" ? null : hanGiaiTrinh((l.han ?? l.created_at) as string));
+  const laViPham = (l: any) => {
+    if (l.quy_tac === "TAY") return false;
+    if (l.trang_thai === "CHO_GIAI_TRINH") { const h = hanGtCua(l); return !!h && h <= now; }
+    const g = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
+    return g?.pham_vi === "AUTO" && g.nhom === "AUTO:QUA_HAN";
+  };
+  const vpBy = new Map<number, boolean>(loiRs.results.map((l: any) => [l.id, laViPham(l)]));
   const rows: any[] = [];
   for (const l of loiRs.results) {
     if (!dongBy.has(l.eo_item_id)) continue;
     const ds = nhomLoai.get(`${l.eo_item_id}|${l.quy_tac}`)!;
     const soLan = ds.length;
     const cho = l.trang_thai === "CHO_GIAI_TRINH";
+    // muc do: "lap" chi dem lan CHUA xu ly trong han (dang cho / vi pham) - lan da giai trinh / khac phuc dung han khong nang muc
+    const soLanXau = ds.filter((y) => y.trang_thai === "CHO_GIAI_TRINH" || vpBy.get(y.id)).length;
+    const hanGt = hanGtCua(l);
     const gt = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
     const moc = (l.han ?? l.created_at) as string;
     const tuoi = cho ? soNgay(moc, today) : gt ? soNgay(moc, gt.created_at) : 0;
     const tuoiGio = cho ? demGioLV(moc, now) : gt ? demGioLV(moc, gt.created_at) : 0;
     const d = dongBy.get(l.eo_item_id)!;
     const ceo = d.ceo_ly_do.length > 0;
-    const muc = ceo ? "CEO" : soLan >= 3 || (cho && tuoiGio >= RAT_LAU_GIO) ? "CAO" : soLan >= 2 || (cho && tuoiGio >= QUA_LAU_GIO) ? "TB" : "THAP";
+    const muc = ceo ? "CEO" : soLanXau >= 3 || (cho && tuoiGio >= RAT_LAU_GIO) ? "CAO" : soLanXau >= 2 || (cho && tuoiGio >= QUA_LAU_GIO) ? "TB" : "THAP";
     const nn = nnBy.get(l.eo_item_id);
     const m = maCuaLoi(bang, l, l.doi_tac);
     rows.push({
       ...l, nguoi_vp: (l.ai_email || l.nguoi_dat) as string | null, vp_khoa: khoaViPham(l), ma_loi: m.ma, ten_ma: m.ten, buoc: m.buoc,
-      so_lan: soLan, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, tuoi_gio: tuoiGio, qua_lau: cho && tuoiGio >= QUA_LAU_GIO, muc,
+      so_lan: soLan, so_lan_xau: soLanXau, vi_pham: vpBy.get(l.id) ?? false, han_gt: hanGt, con_gio_gt: cho && hanGt && hanGt > now ? demGioLV(now, hanGt) : 0, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, tuoi_gio: tuoiGio, qua_lau: cho && tuoiGio >= QUA_LAU_GIO, muc,
       gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
       gt_ai_ma: gt?.ai_ma ?? null, gt_ai_email: gt?.ai_email ?? null, gt_loi_ma: gt?.loi_ma ?? null,
       /** v0.092: dong tu dong (AUTO:KHAC_PHUC = da khac phuc sau do · AUTO:QUA_HAN = qua han giai trinh 56h LV, truoc v0.103 la 7 ngay) */
@@ -76,10 +91,12 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
 
 /** Tong hop theo ma loi: so loi, cho / da giai trinh, so dong / PO, top nguoi bi gan, top nguyen nhan (Ai theo giai trinh). */
 /** Trang thai 1 VI PHAM GOP tu cac dong cua no (lib/maLoi khoaViPham). */
+// v0.110: TU_QUA_HAN = VI PHAM THAT (co dong het han khong giai trinh) - xet truoc DA_GT; CHO = con dong can giai trinh (trong han)
 export function trangThaiViPham(ds: any[]): "CHO" | "DA_GT" | "TU_KHAC_PHUC" | "TU_QUA_HAN" {
-  if (ds.some((r) => r.trang_thai === "CHO_GIAI_TRINH")) return "CHO";
+  if (ds.some((r) => r.trang_thai === "CHO_GIAI_TRINH" && !r.vi_pham)) return "CHO";
+  if (ds.some((r) => r.vi_pham || r.tu_dong === "QUA_HAN")) return "TU_QUA_HAN";
   if (ds.some((r) => !r.tu_dong)) return "DA_GT";
-  return ds.every((r) => r.tu_dong === "QUA_HAN") ? "TU_QUA_HAN" : "TU_KHAC_PHUC";
+  return "TU_KHAC_PHUC";
 }
 /** Gom loi theo khoa vi pham -> danh sach vi pham (dai dien = dong cho / moi nhat). */
 export function gomViPham(rows: any[]) {

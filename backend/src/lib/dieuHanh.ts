@@ -24,8 +24,9 @@ import { dsLoiDayDu, trangThaiViPham } from "./baoCaoLoi";
 export const IM_LANG_DO = 7;
 export const IM_LANG_VANG = 3;
 /** v0.103: loi cho giai trinh >= bay nhieu GIO LAM VIEC -> DO (= han giai trinh / tu dong cua lib/theoDoi GIO_TU_DONG; truoc la 7 ngay lich). */
-export const LOI_CHO_DO = 56;
-const KHOA_CACHE = "dh:goc:v2"; // v2 (v0.093): them vp_cho, loi30 dem vi pham gop
+export const LOI_CHO_DO = 12; // v0.110: han giai trinh 16h LV -> con <= 4h la DO (truoc 56)
+const KHOA_CACHE = "dh:goc:v3"; // v3 (v0.110): loi30.vp = vi pham that (het han khong giai trinh)
+// v2 (v0.093): them vp_cho, loi30 dem vi pham gop
 
 const ngayGiua = (a: string, b: string) =>
   Math.max(0, Math.floor((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / 86400_000));
@@ -46,7 +47,7 @@ interface Goc {
   /** lich su giai doan: item -> {eo_id, ncc}, eo -> {created_by, final, reviewer cuoi} */
   item: Record<number, [number, string | null]>;
   eo: Record<number, { tao: string; final: string | null; tham_dinh: string | null; tt: string; bh: string | null; ma: string }>;
-  loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number }[];
+  loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number; vp: number }[];
   loi_ngay: { d: string; n: number }[]; gt_ngay: { d: string; n: number }[]; nhac_ngay: { d: string; n: number }[];
   nguyen_nhan: { ai_ma: string; loi_ma: string; n: number }[];
   dm: { loai: string; ma: string; ten: string }[];
@@ -85,8 +86,9 @@ async function docGoc(env: Env): Promise<Goc> {
                 WHERE a.step_type = 'REVIEW' AND a.status IN ('APPROVED', 'PENDING') GROUP BY s.eo_id`),
     // v0.093: dem VI PHAM GOP (PO + loai + ky - lib/maLoi VP_SQL), khong dem tung dong
     db.prepare(`SELECT l.quy_tac qt, COALESCE(l.ai_email, e.created_by) ai, i.supplier ncc,
-                COUNT(DISTINCT CASE WHEN l.trang_thai = 'CHO_GIAI_TRINH' THEN ${VP_SQL("l")} END) cho, COUNT(DISTINCT ${VP_SQL("l")}) n
-                FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN eo_item i ON i.id = l.eo_item_id
+                COUNT(DISTINCT CASE WHEN l.trang_thai = 'CHO_GIAI_TRINH' THEN ${VP_SQL("l")} END) cho, COUNT(DISTINCT ${VP_SQL("l")}) n,
+                COUNT(DISTINCT CASE WHEN g.nhom = 'AUTO:QUA_HAN' THEN ${VP_SQL("l")} END) vp
+                FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN eo_item i ON i.id = l.eo_item_id LEFT JOIN tl_giai_trinh g ON g.id = l.giai_trinh_id
                 WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1, 2, 3`).bind(d30, boQua),
     db.prepare(`SELECT substr(l.created_at, 1, 10) d, COUNT(*) n FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1`).bind(d60, boQua),
     db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_giai_trinh WHERE created_at >= ?1 AND COALESCE(pham_vi, '') <> 'AUTO' GROUP BY 1").bind(d60),
@@ -208,11 +210,12 @@ export interface DhPo { do: number; vang: number; qua_dk: number; chua_dk: numbe
 export interface GdPo { dem: Record<string, number>; tre: Record<string, number> }
 /**
  * Trang thai VI PHAM theo PO (cot "Vi phạm" o Don PO, v0.104): dem VI PHAM GOP (khoa vp_khoa, giong man Vi pham - lib/baoCaoLoi dsLoiDayDu,
- * ca dong da dong) + so dong DANG cap CEO. tt uu tien: CEO > CHO (con vi pham cho giai trinh) > DA_XL (da giai trinh / tu dong het) > KHONG.
+ * ca dong da dong) + so dong DANG cap CEO. tt uu tien: CEO > CHO (con loi CAN giai trinh, trong han) > VI_PHAM (co loi het han khong giai trinh)
+ * > DA_XL (moi loi da giai trinh / khac phuc dung han - KHONG vi pham) > KHONG. v0.110: vi_pham = so vi pham THAT (het han khong GT); tong = so loi.
  * Chi PO trong pham vi theo doi (PO ngoai pham vi khong co ban ghi -> FE hien "—").
  */
-export interface VpPo { tt: "CEO" | "CHO" | "DA_XL" | "KHONG"; tong: number; cho: number; da_gt: number; tu_dong: number; ceo: number; cao: number }
-export const VP_TT_TEN: Record<VpPo["tt"], string> = { CEO: "Cấp CEO", CHO: "Chờ giải trình", DA_XL: "Đã xử lý", KHONG: "Không vi phạm" };
+export interface VpPo { tt: "CEO" | "CHO" | "VI_PHAM" | "DA_XL" | "KHONG"; tong: number; cho: number; vi_pham: number; da_gt: number; tu_dong: number; ceo: number; cao: number }
+export const VP_TT_TEN: Record<VpPo["tt"], string> = { CEO: "Cấp CEO", CHO: "Cần giải trình", VI_PHAM: "Có vi phạm", DA_XL: "Đã xử lý trong hạn", KHONG: "Không có lỗi" };
 export interface TomTatPo { dh: Map<number, DhPo>; gd: Map<number, GdPo>; vp: Map<number, VpPo> }
 let memoPo: { tag: string; luc: number; v: TomTatPo } | null = null;
 /** Ghi nho trong isolate <= 5 phut khi version du lieu khong doi (phan "bay gio" thay doi cham: theo gio / ngay) - danh sach Don PO goi moi lan. */
@@ -257,7 +260,7 @@ async function tinhTheoPo(env: Env): Promise<TomTatPo> {
 async function viPhamTheoPo(env: Env): Promise<Map<number, VpPo>> {
   const [{ rows }, dongTd] = await Promise.all([dsLoiDayDu(env), layDongTheoDoi(env, "tat_ca")]);
   const out = new Map<number, VpPo>();
-  const lay = (eo: number) => { let x = out.get(eo); if (!x) { x = { tt: "KHONG", tong: 0, cho: 0, da_gt: 0, tu_dong: 0, ceo: 0, cao: 0 }; out.set(eo, x); } return x; };
+  const lay = (eo: number) => { let x = out.get(eo); if (!x) { x = { tt: "KHONG", tong: 0, cho: 0, vi_pham: 0, da_gt: 0, tu_dong: 0, ceo: 0, cao: 0 }; out.set(eo, x); } return x; };
   for (const d of dongTd) { const x = lay(d.eo_id); if (d.ceo_ly_do.length) x.ceo += 1; }
   const gom = new Map<string, any[]>();
   for (const l of rows) gom.set(l.vp_khoa, [...(gom.get(l.vp_khoa) ?? []), l]);
@@ -266,9 +269,9 @@ async function viPhamTheoPo(env: Env): Promise<Map<number, VpPo>> {
     x.tong += 1;
     const t = trangThaiViPham(ds);
     if (t === "CHO") { x.cho += 1; if (ds.some((l) => l.trang_thai === "CHO_GIAI_TRINH" && (l.muc === "CAO" || l.muc === "CEO"))) x.cao += 1; }
-    else if (t === "DA_GT") x.da_gt += 1; else x.tu_dong += 1;
+    else if (t === "TU_QUA_HAN") x.vi_pham += 1; else if (t === "DA_GT") x.da_gt += 1; else x.tu_dong += 1;
   }
-  for (const x of out.values()) x.tt = x.ceo ? "CEO" : x.cho ? "CHO" : x.tong ? "DA_XL" : "KHONG";
+  for (const x of out.values()) x.tt = x.ceo ? "CEO" : x.cho ? "CHO" : x.vi_pham ? "VI_PHAM" : x.tong ? "DA_XL" : "KHONG";
   return out;
 }
 

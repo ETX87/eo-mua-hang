@@ -112,7 +112,7 @@ app.get("/", async (c) => {
      WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR e.created_by = ?1)
        AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')`,
   ).bind(u.email).first<{ n: number; po: number }>();
-  if (vp?.n) out.push({ key: "vi_pham", to: "/vi-pham?xem=cua_toi&tt=cho", label: "Vi phạm của bạn chờ giải trình", count: vp.n,
+  if (vp?.n) out.push({ key: "vi_pham", to: "/vi-pham?xem=cua_toi&tt=cho", label: "Lỗi của bạn cần giải trình (còn hạn)", count: vp.n,
     chi_tiet: [{ label: "Số PO có lỗi (giải trình chung được cho cả PO)", count: vp.po }] });
 
   // 5. Nhap AMIS hom nay (Ke toan / Admin), bo Chu nhat

@@ -10,9 +10,12 @@ import { gioTxt } from "./giaiDoan";
  *   KHAC_PHUC  he thong tu dong vi da khac phuc / da co giai trinh cung loi (tl_giai_trinh AUTO:KHAC_PHUC)
  *   VI_PHAM    het han giai trinh ma khong giai trinh (AUTO:QUA_HAN) - hoac da qua han, cho he thong chot
  *   TAY        loi ghi tay khi giai trinh
- * Han giai trinh PHAI khop backend lib/theoDoi.ts (congGioLV(moc, GIO_TU_DONG)) + lib/gioLamViec.ts.
+ * Han giai trinh PHAI khop backend lib/theoDoi.ts (hanGiaiTrinh) + lib/gioLamViec.ts.
  */
-export const GIO_HAN_GT = 56;
+/** v0.110: 16h LV cho loi co moc tu HAN_GT_16_TU, loi cu 56h - khop backend lib/theoDoi gioHanGt / hanGiaiTrinh */
+export const GIO_HAN_GT = 16;
+export const HAN_GT_16_TU = "2026-11-24 00:00:00";
+export const gioHanGt = (moc: string) => (moc >= HAN_GT_16_TU ? GIO_HAN_GT : 56);
 
 // ---- ban sao backend lib/gioLamViec.ts congGioLV / demGioLV (T2-T6 8-12 + 13-17, T7 8-12, CN nghi) - sua 1 ben thi sua ca 2
 const H = 3600_000, NGAY_MS = 24 * H;
@@ -66,20 +69,21 @@ export const NHAN_GT: Record<TrangThaiGt, { l: string; cls: string; mau: string;
 /** Moc tinh han giai trinh cua 1 loi (= backend COALESCE(han, created_at)). */
 export const mocLoi = (l: any): string | null => l.han ?? l.created_at ?? null;
 
-export interface KqGt { tt: TrangThaiGt; hanGt: string | null; conGio: number | null; gt: any | null }
+export interface KqGt { tt: TrangThaiGt; hanGt: string | null; conGio: number | null; gt: any | null; gio?: number }
 /** Trang thai giai trinh cua 1 loi. gtBy = map id tl_giai_trinh -> ban ghi (de biet AUTO:QUA_HAN / KHAC_PHUC). */
 export function trangThaiGt(l: any, gtBy: Map<number, any>, now = nowVN()): KqGt {
   const gt = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) ?? null : null;
   const moc = mocLoi(l);
-  const hanGt = l.quy_tac === "TAY" || !moc ? null : congGioLV(moc, GIO_HAN_GT);
+  const hanGt = l.quy_tac === "TAY" || !moc ? null : congGioLV(moc, gioHanGt(moc));
+  const gio = moc ? gioHanGt(moc) : GIO_HAN_GT;
   if (l.quy_tac === "TAY") return { tt: "TAY", hanGt, conGio: null, gt };
   if (l.trang_thai === "CHO_GIAI_TRINH") {
     // qua han nhung cron chua chot -> da la vi pham
-    if (hanGt && hanGt <= now) return { tt: "VI_PHAM", hanGt, conGio: 0, gt };
-    return { tt: "CAN_GT", hanGt, conGio: hanGt ? demGioLV(now, hanGt) : null, gt };
+    if (hanGt && hanGt <= now) return { tt: "VI_PHAM", hanGt, conGio: 0, gt, gio };
+    return { tt: "CAN_GT", hanGt, conGio: hanGt ? demGioLV(now, hanGt) : null, gt, gio };
   }
-  if (gt?.pham_vi === "AUTO") return { tt: gt.nhom === "AUTO:QUA_HAN" ? "VI_PHAM" : "KHAC_PHUC", hanGt, conGio: null, gt };
-  return { tt: "DA_GT", hanGt, conGio: null, gt };
+  if (gt?.pham_vi === "AUTO") return { tt: gt.nhom === "AUTO:QUA_HAN" ? "VI_PHAM" : "KHAC_PHUC", hanGt, conGio: null, gt, gio };
+  return { tt: "DA_GT", hanGt, conGio: null, gt, gio };
 }
 
 /** "Vi sao co loi nay" - 1 cau theo quy tac, du de nguoi bi ghi loi hieu. */
@@ -100,10 +104,10 @@ export function viSaoLoi(l: any): string {
 export function ketLuanGt(k: KqGt): string {
   const han = k.hanGt ? ngayGio(k.hanGt) : "—";
   switch (k.tt) {
-    case "CAN_GT": return `Hạn giải trình ${han} (${GIO_HAN_GT} giờ làm việc, còn ${gioTxt(k.conGio ?? 0)}). Giải trình trước hạn → không bị ghi vi phạm.`;
+    case "CAN_GT": return `Hạn giải trình ${han} (${k.gio ?? GIO_HAN_GT} giờ làm việc, còn ${gioTxt(k.conGio ?? 0)}). Giải trình trước hạn → không bị ghi vi phạm.`;
     case "DA_GT": return `Đã giải trình lúc ${ngayGio(k.gt?.created_at)} — trước hạn ${han}.`;
     case "KHAC_PHUC": return k.gt?.noi_dung ?? "Hệ thống tự đóng vì đã khắc phục.";
-    case "VI_PHAM": return `Hết hạn giải trình ${han} (${GIO_HAN_GT} giờ làm việc) mà không có giải trình → ghi nhận VI PHẠM.`;
+    case "VI_PHAM": return `Hết hạn giải trình ${han} (${k.gio ?? GIO_HAN_GT} giờ làm việc) mà không có giải trình → ghi nhận VI PHẠM.`;
     default: return "";
   }
 }

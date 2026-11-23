@@ -61,9 +61,12 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - Số lỗi / vi phạm luôn đếm theo **vi phạm gộp** (cùng lỗi, cùng PO, cùng kỳ), kèm số dòng bị ảnh hưởng; giải trình 1 lần cho cả vi phạm.
 - Bảng mã lỗi (`/ma-loi`): mỗi mã có tên, diễn giải lỗi gì, yêu cầu giải trình, khi nào tự giải trình, số lượng đang đếm.
 - Lỗi đang chờ không cần giải trình nữa khi đã khắc phục sau đó hoặc quá hạn giải trình 56 giờ làm việc → hệ thống tự giải trình (vẫn tính vi phạm, tách khỏi "đã giải trình").
-- Lỗi phân biệt rõ **Cần giải trình** (còn hạn 56 giờ làm việc, hiện hạn + số giờ còn lại) với **Vi phạm** (hết hạn không giải trình); mỗi lỗi có "Vì sao có lỗi" + "Kết luận".
+- Lỗi phân biệt rõ **Cần giải trình** (còn hạn **16 giờ làm việc**, hiện hạn + số giờ còn lại) với **Vi phạm** (hết hạn không giải trình); mỗi lỗi có "Vì sao có lỗi" + "Kết luận".
+  Chỉ vi phạm mới được đếm là vi phạm (màn Vi phạm, Đơn PO, Điều hành); giải trình / khắc phục trong hạn không tính vi phạm.
   Cảnh báo cấp CEO tự tính theo số liệu, không có hạn giải trình. Lịch sử theo dõi của đơn hàng: mỗi mục 1 dòng (thông tin chính), bấm để mở chi tiết, nút "Xem chi tiết" mở tất cả,
-  dòng thời gian Hoạt động lọc theo loại (chọn nhiều), 8 mục mới nhất + "Xem thêm".
+  dòng thời gian Hoạt động lọc theo loại (chọn nhiều), 8 nhóm mới nhất + "Xem thêm"; các mục giống nhau liền nhau (1 lần giải trình chung, 1 lần hệ thống tự đóng nhiều lỗi…)
+  gộp 1 dòng "×n", bấm xem từng lần, có nút "Hiện từng mục".
+- Bảng linh kiện trong popup PO cuộn trong khung: tiêu đề cột luôn ở trên, thanh kéo dọc + ngang luôn thấy, thêm thanh kéo ngang ở trên đầu bảng.
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
 - Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.
 - API đọc có khoá cho hệ khác: ca tồn CEO, tổng hợp lỗi theo mã, chi tiết lỗi + giải trình, bảng mã.

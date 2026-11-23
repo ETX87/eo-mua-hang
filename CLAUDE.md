@@ -372,11 +372,14 @@ table-layout fixed + colgroup (cuộn ngang trong khung, không tràn trang).
 - **DONE** = trạng thái TÍNH (không đổi CHECK của `eo.trang_thai`): ISSUED + có dòng sống + mọi dòng sống về >= SL đặt. `GET /eo` trả `xong`,
   chip `done`, lọc cột trạng thái giá trị `DONE`; `STATUS_META.DONE`; popup EO tính `poDone`. Cache `eo:ds-v2`.
 
-## Cần giải trình ≠ vi phạm (v0.109) — `frontend/src/lib/giaiTrinh.tsx`
+## Cần giải trình ≠ vi phạm (v0.109 hiển thị, v0.110 đếm + hạn 16h) — `frontend/src/lib/giaiTrinh.tsx`
 
 Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / VI_PHAM (AUTO:QUA_HAN hoặc quá hạn chưa chốt) / TAY; hạn GT = `congGioLV(COALESCE(han, created_at), 56)`
-— bản sao FE của `lib/gioLamViec.ts` + `GIO_TU_DONG`, đổi bên nào sửa cả hai. Dùng ở `LichSuDong`, `BangLoiTheoBuoc`, bảng giai đoạn `DongQuickView`. Cấp CEO tự tính,
-không có hạn GT. Chỉ đổi hiển thị — cách đếm số lỗi / ngưỡng CEO chưa đổi.
+— v0.110: hạn = `hanGiaiTrinh(moc)` (`lib/theoDoi.ts`): 16h LV nếu mốc ≥ `HAN_GT_16_TU` (2026-11-24), lỗi cũ 56h; FE `gioHanGt` PHẢI khớp. Dùng ở `LichSuDong`,
+`BangLoiTheoBuoc`, bảng giai đoạn `DongQuickView`. Cấp CEO tự tính như cũ (≥ 3 lỗi vẫn đếm mọi lỗi), không có hạn GT.
+**Vi phạm = hết hạn không giải trình** (v0.110): `dsLoiDayDu` trả `vi_pham`, `han_gt`, `con_gio_gt`, `so_lan_xau`; `trangThaiViPham` xét `TU_QUA_HAN` trước `DA_GT`;
+`VpPo.vi_pham` + tt `VI_PHAM`; Điều hành `loi30.vp` (cache `dh:goc:v3`). FE ViPham: `vp(l)`, `cho(l)` = chờ & chưa quá hạn.
+`DataTable` prop `khungCao` = cuộn trong khung (tiêu đề dính, thanh ngang trên đầu) — popup PO tab Linh kiện.
 
 ## Việc của tôi + cột Vi phạm Đơn PO (v0.104)
 

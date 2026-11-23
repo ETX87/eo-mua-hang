@@ -99,7 +99,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -127,7 +127,26 @@ export function DataTable<T>({
    * dong dau tien sau loc / sap. Phan trang theo NHOM: moi trang gom nhom tron ven toi ~pageSize dong (nhom thu gon = 1 dong).
    */
   nhom?: { khoa: (row: T) => string; dau: (khoa: string, rows: T[], mo: boolean) => ReactNode };
+  /**
+   * Bang cuon TRONG khung cao toi da nay (vd "calc(95vh - 400px)") - tieu de dinh tren, thanh cuon doc + ngang luon thay (khong phai
+   * cuon het bang moi thay thanh ngang); them 1 thanh cuon ngang o TREN dau bang (yeu cau 2026-11-23 popup PO, bang linh kien).
+   */
+  khungCao?: string;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const tren = useRef<HTMLDivElement>(null);
+  const [rongBang, setRongBang] = useState(0);
+  useEffect(() => {
+    const w = wrapRef.current;
+    if (!khungCao || !w) return;
+    const do_ = () => setRongBang(w.scrollWidth > w.clientWidth + 1 ? w.scrollWidth : 0);
+    do_();
+    const ro = new ResizeObserver(do_);
+    ro.observe(w);
+    if (w.firstElementChild) ro.observe(w.firstElementChild);
+    return () => ro.disconnect();
+  }, [khungCao]);
+  const dongBo = (tu: HTMLDivElement | null, den: HTMLDivElement | null) => { if (tu && den && den.scrollLeft !== tu.scrollLeft) den.scrollLeft = tu.scrollLeft; };
   const [q, setQ] = useState("");
   const [locTrong, setLocTrong] = useState<LocCot>({});
   const [sapTrong, setSapTrong] = useState<SapCot>(null);
@@ -224,7 +243,12 @@ export function DataTable<T>({
           </>}
         </div>
       )}
-      <div className="tbl-wrap">
+      {khungCao && rongBang > 0 && (
+        <div ref={tren} onScroll={() => dongBo(tren.current, wrapRef.current)} title="Kéo trái / phải để xem các cột"
+          style={{ overflowX: "auto", overflowY: "hidden", height: 14, marginBottom: 2 }}><div style={{ width: rongBang, height: 1 }} /></div>
+      )}
+      <div className="tbl-wrap" ref={wrapRef} onScroll={khungCao ? () => dongBo(wrapRef.current, tren.current) : undefined}
+        style={khungCao ? { maxHeight: khungCao, overflow: "auto" } : undefined}>
         <table className="tbl" style={minWidth ? { minWidth } : undefined}>
           <thead>
             <tr>
@@ -235,8 +259,9 @@ export function DataTable<T>({
                 const loc1 = dangLoc(loc[c.key]);
                 return (
                   <th key={c.key} style={{ textAlign: c.align ?? "left", width: c.width, whiteSpace: "nowrap",
-                    position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, zIndex: c.sticky ? 2 : undefined,
-                    background: c.sticky ? "var(--panel-2)" : loc1 ? "#FEF9C3" : undefined }}>
+                    position: c.sticky || khungCao ? "sticky" : undefined, left: c.sticky ? 0 : undefined, top: khungCao ? 0 : undefined,
+                    zIndex: c.sticky ? (khungCao ? 3 : 2) : khungCao ? 2 : undefined,
+                    background: c.sticky ? "var(--panel-2)" : loc1 ? "#FEF9C3" : khungCao ? "var(--panel-2)" : undefined }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                       <span onClick={coSap ? () => datSap(!dangSap ? { k: c.key, tang: true } : sap!.tang ? { k: c.key, tang: false } : null) : undefined}
                         style={{ cursor: coSap ? "pointer" : undefined, userSelect: "none" }} title={coSap ? "Bấm để sắp xếp tăng / giảm / bỏ" : undefined}>

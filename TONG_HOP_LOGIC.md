@@ -124,11 +124,15 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Tự giải trình** (chạy nền ≤ 10 phút / lần): lỗi R1 / R3 / R4 đang chờ được hệ thống tự đóng ("Auto giải trình vi phạm do …") khi **đã khắc phục sau đó**
   (R3: có mail / push / gọi-Zalo với NCC sau ngày kiểm tra · R1: dòng đã có ngày dự kiến · R4: đã nhập ngày dự kiến mới · hoặc đã có giải trình thật cùng lỗi)
   hoặc **quá hạn giải trình 56 giờ làm việc** tính từ hạn lỗi (ghi nhận vi phạm). Lỗi tự đóng vẫn tính vi phạm (số lỗi, ngưỡng CEO) nhưng không tính là giải trình thật trong mọi thống kê.
-- **Cần giải trình ≠ vi phạm** (cách gọi / hiển thị, v0.109): chạm quy tắc R1/R3/R4 → lỗi **CẦN GIẢI TRÌNH**, hạn giải trình = mốc lỗi (`han`, không có thì lúc ghi)
-  + 56 giờ làm việc. Trạng thái hiển thị (`frontend/src/lib/giaiTrinh.tsx`, khớp `tuGiaiTrinh`): **Cần giải trình** (còn hạn, kèm "còn x giờ") · **Đã giải trình** ·
+- **Cần giải trình ≠ vi phạm** (v0.109 hiển thị, v0.110 cách đếm): chạm quy tắc R1/R3/R4 → lỗi **CẦN GIẢI TRÌNH**, hạn giải trình = mốc lỗi (`han`, không có thì lúc ghi)
+  + **16 giờ làm việc** (lỗi có mốc từ 24/11/2026; lỗi cũ hơn giữ 56 giờ — `hanGiaiTrinh` ở `lib/theoDoi.ts`). Trạng thái hiển thị (`frontend/src/lib/giaiTrinh.tsx`, khớp `tuGiaiTrinh`): **Cần giải trình** (còn hạn, kèm "còn x giờ") · **Đã giải trình** ·
   **Đã khắc phục** (tự đóng KHAC_PHUC) · **VI PHẠM** (hết hạn không giải trình — QUA_HAN, hoặc đã quá hạn mà nền chưa kịp chốt) · Ghi khi giải trình (TAY).
   Mỗi lỗi có câu "Vì sao có lỗi" (theo quy tắc + ngày) và "Kết luận" (hạn / lúc giải trình / vì sao thành vi phạm). **Cấp CEO** (lùi ≥ 3 lần, ngày DK cách ngày đặt
-  ≥ 30 ngày, ≥ 3 lỗi) hệ thống tự tính theo số liệu như cũ, KHÔNG có hạn giải trình. Cách đếm số lỗi / ngưỡng CEO / mức độ chưa đổi.
+  ≥ 30 ngày, ≥ 3 lỗi) hệ thống tự tính theo số liệu như cũ (ngưỡng "≥ 3 lỗi" vẫn đếm mọi lỗi), KHÔNG có hạn giải trình.
+  **Đếm vi phạm (v0.110)**: CHỈ lỗi hết hạn giải trình mà không giải trình (tự đóng `AUTO:QUA_HAN`, hoặc còn chờ nhưng đã quá hạn) là **vi phạm**. Lỗi giải trình
+  hoặc khắc phục trong hạn KHÔNG tính vi phạm. Áp dụng: màn Vi phạm (ô "Vi phạm", lọc trạng thái, theo PO / người / mã có cột Vi phạm), cột Vi phạm ở Đơn PO
+  (Cấp CEO > Cần giải trình > Có vi phạm > Xử lý trong hạn > Không có lỗi), Điều hành (cột "Vi phạm 30 ng" theo người, nguyên nhân theo quy tắc).
+  Mức độ: "lặp" chỉ đếm lần chưa xử lý / thành vi phạm; TB = chờ ≥ 8 giờ LV, CAO = chờ ≥ 12 giờ LV; Điều hành ĐỎ khi lỗi chờ ≥ 12 giờ LV. Nhắc sắp hết hạn vẫn khi còn ≤ 6 giờ LV.
 - **Bảng mã lỗi** (menu Vi phạm › Bảng mã lỗi): tên, lỗi gì, yêu cầu giải trình, tự giải trình khi nào, số đang đếm theo từng mã.
 - **Ca CEO — độ hot** (v0.098): 🔴 Rất hot = còn thiếu hàng + có lỗi trong hạn giải trình (≤ 56h làm việc) chưa giải trình · 🟠 Giảm hot = còn thiếu hàng + lỗi quá hạn giải trình (tự đóng) hoặc đã
   giải trình bù · ⚪ Đã xong = hàng về đủ / kết thúc sớm nhưng từng chạm ngưỡng CEO. Mốc 56h làm việc = mốc tự bỏ giải trình.

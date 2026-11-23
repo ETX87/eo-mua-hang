@@ -139,7 +139,7 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   loi_cho: { kieu: "so", gt: (r) => r.dh?.loi_cho ?? null },
   // v0.104: loc theo trang thai vi pham; sap: CEO > cho GT > da xu ly > khong, cung muc thi nhieu vi pham cho / tong truoc
   vi_pham: { kieu: "chon", gt: (r) => (r.vp ? VP_TT_TEN[r.vp.tt] : ""),
-    sap: (r) => (r.vp ? ({ CEO: 3, CHO: 2, DA_XL: 1, KHONG: 0 }[r.vp.tt] * 1e8 + r.vp.ceo * 1e6 + r.vp.cho * 1e3 + r.vp.tong) : null) },
+    sap: (r) => (r.vp ? ({ CEO: 4, CHO: 3, VI_PHAM: 2, DA_XL: 1, KHONG: 0 }[r.vp.tt] * 1e8 + r.vp.ceo * 1e6 + r.vp.cho * 1e3 + r.vp.vi_pham) : null) },
   thuc: { kieu: "so", gt: (r) => r.dh?.thuc7 ?? null, sap: (r) => (r.dh ? r.dh.thuc7 * 100000 + r.dh.thuc : null) },
   im_lang: { kieu: "so", gt: (r) => r.dh?.im_lang ?? null },
 };

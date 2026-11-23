@@ -64,7 +64,7 @@ export async function dsCaCeoXuLy(env: Env) {
     } else {
       muc = "GIAM_HOT";
       if (g.that) lyDo.push(`đã giải trình bù ${g.that} lỗi`);
-      if (g.qh) lyDo.push(`${g.qh} lỗi quá hạn giải trình (> ${HAN_GT_TXT}) đã tự đóng (vẫn tính vi phạm)`);
+      if (g.qh) lyDo.push(`${g.qh} vi phạm (hết hạn giải trình, không giải trình)`);
       if (g.kp) lyDo.push(`${g.kp} lỗi đã khắc phục`);
       if (!g.that && !g.qh && !g.kp) lyDo.push("không có lỗi chờ giải trình");
     }

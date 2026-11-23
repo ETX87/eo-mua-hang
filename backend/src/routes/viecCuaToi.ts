@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env, AppVariables } from "../types";
 import { todayVN, nowVN } from "../lib/vnTime";
-import { danhGiaQuyTac, kyR3Tu, layDongTheoDoi, GIO_TU_DONG, type DongTheoDoi } from "../lib/theoDoi";
+import { danhGiaQuyTac, kyR3Tu, layDongTheoDoi, GIO_TU_DONG, hanGiaiTrinh, type DongTheoDoi } from "../lib/theoDoi";
 import { MAIL_DONG_BO_THEO_DONG } from "../lib/mailNhacDongBo";
 import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { congGioLV, demGioLV } from "../lib/gioLamViec";
@@ -62,7 +62,7 @@ app.get("/", async (c) => {
     `SELECT eo_item_id, MIN(COALESCE(han, created_at)) moc, GROUP_CONCAT(DISTINCT quy_tac) qt FROM tl_loi
      WHERE trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY eo_item_id`,
   ).bind(JSON.stringify(coLoi.map((r) => r.item_id))).all<{ eo_item_id: number; moc: string; qt: string }>()).results.map((x) => [x.eo_item_id, x])) : new Map();
-  const giaiTrinh = coLoi.map((r) => { const m = mocLoi.get(r.item_id); return { ...gan(r, m ? congGioLV(m.moc, GIO_TU_DONG) : null), loi_qt_cho: m?.qt ?? "" }; }).sort(sapHan);
+  const giaiTrinh = coLoi.map((r) => { const m = mocLoi.get(r.item_id); return { ...gan(r, m ? hanGiaiTrinh(m.moc) : null), loi_qt_cho: m?.qt ?? "" }; }).sort(sapHan);
 
   return c.json({
     ndk, push, ngay_moi: ngayMoi, giai_trinh: giaiTrinh,

@@ -484,7 +484,7 @@ function DanhSach() {
             <ChuGiaiNgay gon />
             <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
               Quy tắc theo dõi (EO ban hành từ ngày áp dụng, tới khi hàng về ĐỦ theo AMIS): có ngày dự kiến trong 8h làm việc (Karofi / Livotec / Korihome, dòng từ 08/11/2026) hoặc 16h làm việc (hãng khác) · thứ 2/thứ 4 push đối tác dòng chưa có ngày DK ·
-              quá ngày DK phải nhập ngày mới trong 8h làm việc — vi phạm tự ghi lỗi, phải giải trình (hạn giải trình 56h làm việc). Giờ làm việc: T2–T6 8:00–12:00, 13:00–17:00 · T7 8:00–12:00 · CN nghỉ. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
+              quá ngày DK phải nhập ngày mới trong 8h làm việc — vi phạm tự ghi lỗi, phải giải trình (hạn giải trình 16h làm việc — quá hạn không giải trình mới tính vi phạm). Giờ làm việc: T2–T6 8:00–12:00, 13:00–17:00 · T7 8:00–12:00 · CN nghỉ. Cấp CEO: lùi ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi.
               {q.data?.danh_gia_luc && ` Kiểm tra lỗi lần cuối ${ngayGio(q.data.danh_gia_luc)}.`}
               <div style={{ marginTop: 6 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột.</div>
             </div>
