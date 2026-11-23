@@ -133,6 +133,15 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   hoặc khắc phục trong hạn KHÔNG tính vi phạm. Áp dụng: màn Vi phạm (ô "Vi phạm", lọc trạng thái, theo PO / người / mã có cột Vi phạm), cột Vi phạm ở Đơn PO
   (Cấp CEO > Cần giải trình > Có vi phạm > Xử lý trong hạn > Không có lỗi), Điều hành (cột "Vi phạm 30 ng" theo người, nguyên nhân theo quy tắc).
   Mức độ: "lặp" chỉ đếm lần chưa xử lý / thành vi phạm; TB = chờ ≥ 8 giờ LV, CAO = chờ ≥ 12 giờ LV; Điều hành ĐỎ khi lỗi chờ ≥ 12 giờ LV. Nhắc sắp hết hạn vẫn khi còn ≤ 6 giờ LV.
+- **Vi phạm cũ bỏ qua (v0.113)**: lỗi có mốc trước **01/11/2026** không tính vi phạm — đang chờ thì hệ thống tự đóng "Tự bỏ vi phạm do vi phạm cũ" (`AUTO:CU`),
+  các lỗi đã bị đóng "quá hạn" trước đó đổi sang `AUTO:CU` (migration 0026, 601 lỗi / 9 PO / 2 người). Hiển thị "Bỏ qua · lỗi cũ".
+- **Chờ NCC báo ngày (v0.113)**: NCC trả lời nhưng chưa có ngày → NV ghi nhận nhắc đối tác (kênh gọi / Zalo / tin nhắn / **mail** / gặp) và tick "NCC chưa có ngày dự kiến",
+  hẹn hỏi lại (sau hôm nay, tối đa 7 ngày; `tl_lien_he.hen_lai`). Từ ngày liên hệ đến ngày hẹn: KHÔNG ghi lỗi lặp R1 (thứ 3/6) và R3 (thứ 2/4) cho dòng; lỗi R1 đầu tiên vẫn ghi.
+  Việc của tôi: dòng chuyển sang mục "Đang chờ NCC báo ngày" (hạn = ngày hẹn 17:00), không còn ở ① / ③ và không vào danh sách push; số đỏ menu cũng không tính.
+  Quá ngày hẹn chưa có ngày → dòng quay lại mục cần làm.
+- **Form giải trình (v0.113)**: "Ai chịu" không còn mặc định "Người đặt hàng" (phải chọn); dòng có thư NCC trả lời mà không có ngày → gợi ý 1 bấm điền Ai = Đối tác / NCC,
+  Lỗi = NCC không phản hồi + nội dung; lỗi R1/R4 không cần ảnh nếu tick "dùng thư với NCC đã lưu ở hộp theo dõi" (nội dung ghi kèm "[Bằng chứng: … thư …]").
+- **Mời bật thông báo đẩy (v0.113)**: thẻ nhỏ góc dưới phải khi trình duyệt chưa bật (Để sau = ẩn 3 ngày); trình duyệt đang chặn → hướng dẫn mở chặn.
 - **Bảng mã lỗi** (menu Vi phạm › Bảng mã lỗi): tên, lỗi gì, yêu cầu giải trình, tự giải trình khi nào, số đang đếm theo từng mã.
 - **Ca CEO — độ hot** (v0.098): 🔴 Rất hot = còn thiếu hàng + có lỗi trong hạn giải trình (≤ 56h làm việc) chưa giải trình · 🟠 Giảm hot = còn thiếu hàng + lỗi quá hạn giải trình (tự đóng) hoặc đã
   giải trình bù · ⚪ Đã xong = hàng về đủ / kết thúc sớm nhưng từng chạm ngưỡng CEO. Mốc 56h làm việc = mốc tự bỏ giải trình.

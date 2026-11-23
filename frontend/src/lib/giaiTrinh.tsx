@@ -57,12 +57,15 @@ export function demGioLV(a: string, b: string): number {
 /** gio tuong VN hien tai 'YYYY-MM-DD HH:MM:SS' */
 export const nowVN = () => fmt(Date.now() + 7 * H);
 
-export type TrangThaiGt = "CAN_GT" | "DA_GT" | "KHAC_PHUC" | "VI_PHAM" | "TAY";
+export type TrangThaiGt = "CAN_GT" | "DA_GT" | "KHAC_PHUC" | "VI_PHAM" | "BO_QUA" | "TAY";
+/** v0.113: loi co moc truoc ngay nay = vi pham cu, bo qua (khop backend lib/theoDoi VP_CU_TRUOC) */
+export const VP_CU_TRUOC = "2026-11-01";
 export const NHAN_GT: Record<TrangThaiGt, { l: string; cls: string; mau: string; mo: string }> = {
   CAN_GT: { l: "Cần giải trình", cls: "final", mau: "#B45309", mo: "Đang trong hạn giải trình — chưa phải vi phạm" },
   DA_GT: { l: "Đã giải trình", cls: "issued", mau: "#15803D", mo: "Đã giải trình trong hạn" },
   KHAC_PHUC: { l: "Đã khắc phục", cls: "nhap", mau: "#475569", mo: "Hệ thống tự đóng vì đã khắc phục / đã giải trình cùng lỗi" },
   VI_PHAM: { l: "VI PHẠM", cls: "reject", mau: "#B91C1C", mo: "Hết hạn giải trình mà không giải trình" },
+  BO_QUA: { l: "Bỏ qua · lỗi cũ", cls: "nhap", mau: "#64748B", mo: "Lỗi cũ trước 01/11/2026 — hệ thống tự bỏ, không tính vi phạm" },
   TAY: { l: "Ghi khi giải trình", cls: "nhap", mau: "#475569", mo: "Lỗi do người giải trình tự ghi nhận" },
 };
 
@@ -79,10 +82,11 @@ export function trangThaiGt(l: any, gtBy: Map<number, any>, now = nowVN()): KqGt
   if (l.quy_tac === "TAY") return { tt: "TAY", hanGt, conGio: null, gt };
   if (l.trang_thai === "CHO_GIAI_TRINH") {
     // qua han nhung cron chua chot -> da la vi pham
+    if (moc && moc < VP_CU_TRUOC) return { tt: "BO_QUA", hanGt, conGio: null, gt, gio };
     if (hanGt && hanGt <= now) return { tt: "VI_PHAM", hanGt, conGio: 0, gt, gio };
     return { tt: "CAN_GT", hanGt, conGio: hanGt ? demGioLV(now, hanGt) : null, gt, gio };
   }
-  if (gt?.pham_vi === "AUTO") return { tt: gt.nhom === "AUTO:QUA_HAN" ? "VI_PHAM" : "KHAC_PHUC", hanGt, conGio: null, gt, gio };
+  if (gt?.pham_vi === "AUTO") return { tt: gt.nhom === "AUTO:QUA_HAN" ? "VI_PHAM" : gt.nhom === "AUTO:CU" ? "BO_QUA" : "KHAC_PHUC", hanGt, conGio: null, gt, gio };
   return { tt: "DA_GT", hanGt, conGio: null, gt, gio };
 }
 
@@ -107,6 +111,7 @@ export function ketLuanGt(k: KqGt): string {
     case "CAN_GT": return `Hạn giải trình ${han} (${k.gio ?? GIO_HAN_GT} giờ làm việc, còn ${gioTxt(k.conGio ?? 0)}). Giải trình trước hạn → không bị ghi vi phạm.`;
     case "DA_GT": return `Đã giải trình lúc ${ngayGio(k.gt?.created_at)} — trước hạn ${han}.`;
     case "KHAC_PHUC": return k.gt?.noi_dung ?? "Hệ thống tự đóng vì đã khắc phục.";
+    case "BO_QUA": return "Lỗi cũ (mốc trước 01/11/2026) — hệ thống tự bỏ, không tính vi phạm.";
     case "VI_PHAM": return `Hết hạn giải trình ${han} (${k.gio ?? GIO_HAN_GT} giờ làm việc) mà không có giải trình → ghi nhận VI PHẠM.`;
     default: return "";
   }
@@ -114,7 +119,7 @@ export function ketLuanGt(k: KqGt): string {
 
 /** Dem theo trang thai (cho o tom tat). */
 export function demGt(loi: any[], gtBy: Map<number, any>, now = nowVN()) {
-  const d: Record<TrangThaiGt, number> = { CAN_GT: 0, DA_GT: 0, KHAC_PHUC: 0, VI_PHAM: 0, TAY: 0 };
+  const d: Record<TrangThaiGt, number> = { CAN_GT: 0, DA_GT: 0, KHAC_PHUC: 0, VI_PHAM: 0, BO_QUA: 0, TAY: 0 };
   for (const l of loi) d[trangThaiGt(l, gtBy, now).tt] += 1;
   return d;
 }

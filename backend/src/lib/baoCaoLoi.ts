@@ -1,7 +1,7 @@
 import type { Env } from "../types";
 import { todayVN, nowVN } from "./vnTime";
 import { demGioLV } from "./gioLamViec";
-import { hanGiaiTrinh } from "./theoDoi";
+import { hanGiaiTrinh, VP_CU_TRUOC } from "./theoDoi";
 import { layDongTheoDoi } from "./theoDoi";
 import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, type BangMaLoi } from "./maLoi";
 
@@ -51,7 +51,7 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
   const hanGtCua = (l: any) => (l.quy_tac === "TAY" ? null : hanGiaiTrinh((l.han ?? l.created_at) as string));
   const laViPham = (l: any) => {
     if (l.quy_tac === "TAY") return false;
-    if (l.trang_thai === "CHO_GIAI_TRINH") { const h = hanGtCua(l); return !!h && h <= now; }
+    if (l.trang_thai === "CHO_GIAI_TRINH") { const h = hanGtCua(l); return !!h && h <= now && String(l.han ?? l.created_at) >= VP_CU_TRUOC; }
     const g = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
     return g?.pham_vi === "AUTO" && g.nhom === "AUTO:QUA_HAN";
   };
@@ -80,7 +80,8 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
       gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
       gt_ai_ma: gt?.ai_ma ?? null, gt_ai_email: gt?.ai_email ?? null, gt_loi_ma: gt?.loi_ma ?? null,
       /** v0.092: dong tu dong (AUTO:KHAC_PHUC = da khac phuc sau do · AUTO:QUA_HAN = qua han giai trinh 56h LV, truoc v0.103 la 7 ngay) */
-      tu_dong: gt?.pham_vi === "AUTO" ? (gt.nhom === "AUTO:QUA_HAN" ? "QUA_HAN" : "KHAC_PHUC") : null,
+      // v0.113: AUTO:CU = vi pham cu truoc 01/11/2026, bo qua (khong tinh vi pham)
+      tu_dong: gt?.pham_vi === "AUTO" ? (gt.nhom === "AUTO:QUA_HAN" ? "QUA_HAN" : gt.nhom === "AUTO:CU" ? "CU" : "KHAC_PHUC") : null,
       so_nhac: nn?.n ?? 0, so_nhac_tay: nn?.tay ?? 0, nhac_gan_nhat: nn?.moi ?? null,
       ceo, ceo_ly_do: d.ceo_ly_do, so_lan_lui: d.so_lan_lui, tinh_trang: d.tinh_trang,
       ngay_du_kien: d.ngay_du_kien_gan_nhat, so_luong_dat: d.so_luong_dat, sl_ve: d.sl_nhap_amis,

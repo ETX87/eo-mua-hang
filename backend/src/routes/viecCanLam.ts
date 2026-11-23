@@ -67,16 +67,22 @@ app.get("/", async (c) => {
   if (canEditPlan(u) || TOAN_BO(u)) {
     const khoCua = (u.khu_vuc_kho ?? "").split(",").map((x) => x.trim()).filter(Boolean);
     const cua = (r: Gon) => TOAN_BO(u) || r.nguoi_dat === u.email || (u.vai_tro === "Kho" && (khoCua.length === 0 || khoCua.includes(r.kho)));
-    const rows = (await dongTheoDoi(c.env)).filter((r) => r.ap_dung && cua(r));
+    const rows0 = (await dongTheoDoi(c.env)).filter((r) => r.ap_dung && cua(r));
+    // v0.113: dong dang "cho NCC bao ngay" (tl_lien_he.hen_lai >= hom nay) khong tinh la viec can lam - khop man Viec cua toi
+    const canNgay = rows0.filter((r) => ["CHO_NDK", "TRE_NDK", "QUA_HAN_NDK"].includes(r.tinh_trang)).map((r) => r.item_id);
+    const choNcc = new Set(canNgay.length ? (await db.prepare("SELECT DISTINCT eo_item_id FROM tl_lien_he WHERE hen_lai >= ? AND eo_item_id IN (SELECT value FROM json_each(?))")
+      .bind(today, JSON.stringify(canNgay)).all<{ eo_item_id: number }>()).results.map((x) => x.eo_item_id) : []);
+    const rows = rows0.filter((r) => !choNcc.has(r.item_id));
     const canNdk = rows.filter((r) => r.tinh_trang === "CHO_NDK" || r.tinh_trang === "TRE_NDK");
     const quaHan = rows.filter((r) => r.tinh_trang === "QUA_HAN_NDK");
-    const loiCho = rows.filter((r) => r.so_loi_cho_gt > 0);
+    const loiCho = rows0.filter((r) => r.so_loi_cho_gt > 0); // loi cho giai trinh van tinh ca khi dong dang cho NCC
     const viec = new Set([...canNdk, ...quaHan, ...loiCho].map((r) => r.item_id));
     const chiTiet = [
       { label: "Cần nhập ngày dự kiến (8h/16h LV)", count: canNdk.length },
       { label: "Trong đó đã trễ hạn", count: canNdk.filter((r) => r.tinh_trang === "TRE_NDK").length },
       { label: "Quá ngày dự kiến — cần ngày mới", count: quaHan.length },
       { label: "Lỗi chờ giải trình (dòng)", count: loiCho.length },
+      { label: "Đang chờ NCC báo ngày (không tính)", count: choNcc.size },
     ];
     if (dow === 1 || dow === 3) {
       const ids = rows.filter((r) => !r.co_ngay_du_kien).map((r) => r.item_id);

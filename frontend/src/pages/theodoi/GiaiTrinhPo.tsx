@@ -10,7 +10,11 @@ import { QUY_TAC, useDanhMuc } from "./shared";
 type Anh = { name: string; drive_file_id: string; url: string };
 
 /** Anh bang chung giai trinh (Google Drive, POST /theo-doi/upload). */
-export function AnhBangChung({ anh, setAnh, batBuoc, setErr }: { anh: Anh[]; setAnh: (f: (a: Anh[]) => Anh[]) => void; batBuoc: boolean; setErr: (s: string) => void }) {
+/** v0.113: ghi kem vao noi dung khi NV chon "dung thu da luu lam bang chung" (khong phai chup man hinh moi lan). */
+export const noiDungGui = (s: string, dungMail: boolean) => s.trim() + (dungMail ? "\n[Bằng chứng: thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]" : "");
+
+export function AnhBangChung({ anh, setAnh, batBuoc, setErr, dungMail, setDungMail }: { anh: Anh[]; setAnh: (f: (a: Anh[]) => Anh[]) => void; batBuoc: boolean; setErr: (s: string) => void;
+  dungMail?: boolean; setDungMail?: (v: boolean) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const upload = async (list: FileList | null) => {
     setErr("");
@@ -37,6 +41,12 @@ export function AnhBangChung({ anh, setAnh, batBuoc, setErr }: { anh: Anh[]; set
         <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
       </div>
+      {batBuoc && setDungMail && (
+        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, marginTop: 6 }}>
+          <input type="checkbox" checked={!!dungMail} onChange={(e) => setDungMail(e.target.checked)} />
+          Không cần ảnh: bằng chứng là <b>thư đã gửi / nhận với NCC</b> đã lưu ở hộp theo dõi (CC theodoimuahang) — người duyệt xem ở tab "Trao đổi NCC"
+        </label>
+      )}
     </>
   );
 }
@@ -57,7 +67,8 @@ export function GiaiTrinhPoModal({ eoId, onClose, onSaved }: { eoId: number; onC
   const quyTacCo = [...new Set(loi.map((l) => l.quy_tac))];
   const [qt, setQt] = useState<Set<string> | null>(null); // null = tat ca
   const [boDong, setBoDong] = useState<Set<number>>(new Set());
-  const [aiMa, setAiMa] = useState("NGUOI_DAT");
+  const [aiMa, setAiMa] = useState(""); // v0.113: khong mac dinh "Nguoi dat" - NV phai chon ai chiu (truoc bi ghi tu nhan het)
+  const [dungMail, setDungMail] = useState(false);
   const [aiEmail, setAiEmail] = useState("");
   const [loiMa, setLoiMa] = useState("");
   const [noiDung, setNoiDung] = useState("");
@@ -78,15 +89,16 @@ export function GiaiTrinhPoModal({ eoId, onClose, onSaved }: { eoId: number; onC
   const save = async () => {
     setErr("");
     if (!chon.length) return setErr("Chưa chọn dòng nào.");
+    if (!aiMa) return setErr("Chọn Ai chịu: người đặt / đối tác (NCC) / kho / …");
     if (!loiMa) return setErr("Chọn Lỗi gì.");
     if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
-    if (canAnh && !anh.length) return setErr("Có lỗi R1/R4 — bắt buộc ảnh bằng chứng.");
+    if (canAnh && !anh.length && !dungMail) return setErr("Có lỗi R1/R4 — bắt buộc ảnh bằng chứng.");
     if (!confirm(`Giải trình chung ${soLoi} lỗi trên ${chon.length} dòng linh kiện của PO này bằng 1 nội dung?`)) return;
     setBusy(true);
     try {
       const kq = await api.post<{ so_dong: number; so_loi: number }>("/vi-pham/giai-trinh-po", {
         eo_id: eoId, moi, quy_tac: !moi && qt ? [...qt] : [], eo_item_ids: boDong.size ? chon.map((d) => d.item_id) : [],
-        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh,
+        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh,
       });
       onSaved(kq);
     } catch (e: any) {
@@ -136,7 +148,7 @@ export function GiaiTrinhPoModal({ eoId, onClose, onSaved }: { eoId: number; onC
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
             <div>
               <label className="field-label">Ai chịu trách nhiệm <span className="req">*</span></label>
-              <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
+              <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}><option value="">— Chọn ai chịu —</option>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
             </div>
             <div>
               <label className="field-label">Người cụ thể</label>
@@ -155,7 +167,7 @@ export function GiaiTrinhPoModal({ eoId, onClose, onSaved }: { eoId: number; onC
           </div>
           <label className="field-label" style={{ marginTop: 12 }}>Nội dung giải trình chung <span className="req">*</span></label>
           <textarea className="textarea" value={noiDung} onChange={(e) => setNoiDung(e.target.value)} placeholder="Nguyên nhân chung của cả PO, đã làm gì, khi nào có ngày dự kiến…" />
-          <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} />
+          <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} dungMail={dungMail} setDungMail={setDungMail} />
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
         </div>
       )}
@@ -175,7 +187,8 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
   const quyTac = nhom[0]?.x.quy_tac as string;
   const ids = nhom.flatMap((n) => n.ds.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").map((l) => l.id));
   const soPo = new Set(nhom.map((n) => n.x.eo_id)).size;
-  const [aiMa, setAiMa] = useState("NGUOI_DAT");
+  const [aiMa, setAiMa] = useState(""); // v0.113: khong mac dinh "Nguoi dat" - NV phai chon ai chiu (truoc bi ghi tu nhan het)
+  const [dungMail, setDungMail] = useState(false);
   const [aiEmail, setAiEmail] = useState("");
   const [loiMa, setLoiMa] = useState(quyTac === "R1" ? "KHONG_NDK_24H" : quyTac === "R3" ? "KHONG_PUSH" : quyTac === "R4" ? "KHONG_NDK_QUA_HAN" : "");
   const [noiDung, setNoiDung] = useState("");
@@ -185,12 +198,13 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
   const canAnh = quyTac === "R1" || quyTac === "R4";
   const save = async () => {
     setErr("");
+    if (!aiMa) return setErr("Chọn Ai chịu: người đặt / đối tác (NCC) / kho / …");
     if (!loiMa) return setErr("Chọn Lỗi gì.");
     if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
-    if (canAnh && !anh.length) return setErr("Loại lỗi này bắt buộc ảnh bằng chứng.");
+    if (canAnh && !anh.length && !dungMail) return setErr("Loại lỗi này bắt buộc ảnh bằng chứng.");
     setBusy(true);
     try {
-      onSaved(await api.post("/vi-pham/giai-trinh-nhieu", { loi_ids: ids, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh }));
+      onSaved(await api.post("/vi-pham/giai-trinh-nhieu", { loi_ids: ids, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh }));
     } catch (e: any) {
       const c = e?.body?.error;
       setErr(c === "KHAC_LOAI" ? "Chỉ giải trình chung được các lỗi cùng loại." : c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các lỗi đã chọn đã được giải trình." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
@@ -218,7 +232,7 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
           <div>
             <label className="field-label">Ai chịu trách nhiệm <span className="req">*</span></label>
-            <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
+            <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}><option value="">— Chọn ai chịu —</option>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
           </div>
           <div>
             <label className="field-label">Người cụ thể</label>
@@ -237,7 +251,7 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
         </div>
         <label className="field-label" style={{ marginTop: 12 }}>Nội dung giải trình chung <span className="req">*</span></label>
         <textarea className="textarea" value={noiDung} onChange={(e) => setNoiDung(e.target.value)} placeholder="Nguyên nhân chung, đã làm gì, khi nào có ngày dự kiến…" />
-        <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} />
+        <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} dungMail={dungMail} setDungMail={setDungMail} />
         {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
       </div>
     </Modal>
@@ -266,7 +280,8 @@ export function GiaiTrinhDongModal({ dongs, onClose, onSaved }: {
   const soLoi = moi ? ap.length : loi.reduce((s, l) => s + l.n, 0);
   const soPo = new Set(ap.map((d) => d.eo_id)).size;
   const canAnh = !moi && loi.some((l) => l.quy_tac === "R1" || l.quy_tac === "R4");
-  const [aiMa, setAiMa] = useState("NGUOI_DAT");
+  const [aiMa, setAiMa] = useState(""); // v0.113: khong mac dinh "Nguoi dat" - NV phai chon ai chiu (truoc bi ghi tu nhan het)
+  const [dungMail, setDungMail] = useState(false);
   const [aiEmail, setAiEmail] = useState("");
   const [loiMa, setLoiMa] = useState("");
   const [noiDung, setNoiDung] = useState("");
@@ -276,12 +291,13 @@ export function GiaiTrinhDongModal({ dongs, onClose, onSaved }: {
   const save = async () => {
     setErr("");
     if (!ap.length) return setErr(moi ? "Không có dòng nào đang theo dõi." : "Các dòng đã chọn không có lỗi chờ giải trình.");
+    if (!aiMa) return setErr("Chọn Ai chịu: người đặt / đối tác (NCC) / kho / …");
     if (!loiMa) return setErr("Chọn Lỗi gì.");
     if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
-    if (canAnh && !anh.length) return setErr("Có lỗi R1/R4 — bắt buộc ảnh bằng chứng.");
+    if (canAnh && !anh.length && !dungMail) return setErr("Có lỗi R1/R4 — bắt buộc ảnh bằng chứng.");
     setBusy(true);
     try {
-      onSaved(await api.post("/vi-pham/giai-trinh-dong", { eo_item_ids: ap.map((d) => d.item_id), moi, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh }));
+      onSaved(await api.post("/vi-pham/giai-trinh-dong", { eo_item_ids: ap.map((d) => d.item_id), moi, ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDungGui(noiDung, dungMail), hinh_anh: anh }));
     } catch (e: any) {
       const c = e?.body?.error;
       setErr(c === "CAN_HINH_ANH" ? "Bắt buộc có ảnh bằng chứng." : c === "KHONG_CO_LOI" ? "Các dòng đã chọn không còn lỗi chờ (có thể vừa được giải trình)." : c === "KHONG_CO_DONG" ? "Không còn dòng đang theo dõi." : c === "READ_ONLY" ? "Bạn không có quyền giải trình một số PO đã chọn." : "Lỗi lưu giải trình.");
@@ -321,7 +337,7 @@ export function GiaiTrinhDongModal({ dongs, onClose, onSaved }: {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
             <div>
               <label className="field-label">Ai chịu trách nhiệm <span className="req">*</span></label>
-              <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
+              <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}><option value="">— Chọn ai chịu —</option>{ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</select>
             </div>
             <div>
               <label className="field-label">Người cụ thể</label>
@@ -340,7 +356,7 @@ export function GiaiTrinhDongModal({ dongs, onClose, onSaved }: {
           </div>
           <label className="field-label" style={{ marginTop: 12 }}>Nội dung giải trình chung <span className="req">*</span></label>
           <textarea className="textarea" value={noiDung} onChange={(e) => setNoiDung(e.target.value)} placeholder="Nguyên nhân chung, đã làm gì, khi nào có ngày dự kiến…" />
-          <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} />
+          <AnhBangChung anh={anh} setAnh={setAnh} batBuoc={canAnh} setErr={setErr} dungMail={dungMail} setDungMail={setDungMail} />
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
         </div>
       )}

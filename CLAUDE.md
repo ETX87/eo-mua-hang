@@ -45,7 +45,7 @@ migrations/                  0001 schema · 0002 don_gia · 0003 report_cache ·
                              · 0008 hủy / đồng bộ lại AMIS · 0009 khóa chống trùng AMIS
                              · 0010 đồng bộ PO sang DVBH · 0011 xóa mềm file đính kèm
                              · 0012 theo dõi linh kiện đặt (lỗi / giải trình / push / mail) · 0013 mốc bỏ qua đơn cũ
-                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng · 0022 ghi lỗi dựng cache · 0023 nhắc đối tác không qua mail
+                             · 0014 từ chối dòng sau BH · 0015 chỉ mục hiệu năng · 0016 vi phạm (nhắc nhở, giải trình PO) · 0017 R1 48h · 0018 kết thúc sớm · 0019 khoá tính báo cáo · 0020 chuẩn hoá đối tác/lý do + Gmail phụ + R1 24h · 0021 cache theo dòng · 0022 ghi lỗi dựng cache · 0023 nhắc đối tác không qua mail · 0024 lý do hết hàng · 0025 nhắc hết hạn + push · 0026 chờ NCC báo ngày + bỏ vi phạm cũ
 backend/src/
   index.ts                   Hono app, mount router, middleware chain
   middleware/                session (OAuth/JWT), guards (loadUser/requireApproved/requireWrite/requireAdmin)
@@ -379,6 +379,9 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 `BangLoiTheoBuoc`, bảng giai đoạn `DongQuickView`. Cấp CEO tự tính như cũ (≥ 3 lỗi vẫn đếm mọi lỗi), không có hạn GT.
 **Vi phạm = hết hạn không giải trình** (v0.110): `dsLoiDayDu` trả `vi_pham`, `han_gt`, `con_gio_gt`, `so_lan_xau`; `trangThaiViPham` xét `TU_QUA_HAN` trước `DA_GT`;
 `VpPo.vi_pham` + tt `VI_PHAM`; Điều hành `loi30.vp` (cache `dh:goc:v3`). FE ViPham: `vp(l)`, `cho(l)` = chờ & chưa quá hạn.
+**v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
+FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
+`viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
 `DataTable` prop `q` = ô tìm chung bên ngoài (ẩn ô tìm riêng) — popup PO / đơn hàng dùng `O_TIM` (`components/quickview/QuickView.tsx`) trên thanh tab,
 truyền `tim` xuống mọi tab (BangLoiTheoBuoc, LuongTraoDoiNcc, TabKeHoach, TabTaiLieu). `DataTable` prop `khungCao` = cuộn trong khung (tiêu đề dính, thanh ngang trên đầu) — popup PO tab Linh kiện.
 

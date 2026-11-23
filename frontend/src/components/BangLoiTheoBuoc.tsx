@@ -18,11 +18,11 @@ import { GIO_HAN_GT, NHAN_GT, congGioLV, demGioLV, gioHanGt, mocLoi, nowVN, viSa
 const TEN_GD: Record<string, string> = { G1: "Lập & trình EO", G2: "Thẩm định", G3: "Duyệt mua & BH", G4: "Gửi đơn NCC", G5: "Chờ ngày DK", G6: "Chờ giao hàng", G7: "Nhập kho", G8: "Giao bù đến đủ" };
 const THU_TU = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"];
 const CEO: Record<string, [string, string | null]> = { LUI: ["ER.MH-201", "G6"], XA: ["ER.MH-202", "G6"], LOI: ["ER.MH-203", null] };
-type TT = "CHO" | "DA_GT" | "TU_KP" | "TU_QH" | "CEO" | "TRE_DANG" | "TRE_XONG";
+type TT = "CHO" | "DA_GT" | "TU_KP" | "TU_QH" | "TU_CU" | "CEO" | "TRE_DANG" | "TRE_XONG";
 const NHAN_TT: Record<TT, { l: string; cls: string }> = {
   // v0.109: "can giai trinh" (trong han) khac "vi pham" (het han khong giai trinh) - lib/giaiTrinh; cap CEO tu tinh, khong co han giai trinh
   CHO: { l: NHAN_GT.CAN_GT.l, cls: NHAN_GT.CAN_GT.cls }, DA_GT: { l: NHAN_GT.DA_GT.l, cls: NHAN_GT.DA_GT.cls }, CEO: { l: "Cấp CEO · tự tính", cls: "reject" },
-  TU_KP: { l: NHAN_GT.KHAC_PHUC.l, cls: NHAN_GT.KHAC_PHUC.cls }, TU_QH: { l: `VI PHẠM · hết hạn GT`, cls: "reject" },
+  TU_KP: { l: NHAN_GT.KHAC_PHUC.l, cls: NHAN_GT.KHAC_PHUC.cls }, TU_CU: { l: NHAN_GT.BO_QUA.l, cls: NHAN_GT.BO_QUA.cls }, TU_QH: { l: `VI PHẠM · hết hạn GT`, cls: "reject" },
   TRE_DANG: { l: "Đang trễ hạn (chỉ đo)", cls: "final" }, TRE_XONG: { l: "Xong · trễ hạn (chỉ đo)", cls: "nhap" },
 };
 interface Muc { k: string; buoc: string; ma: string; ten: string; ma_lk: string; so_dong: number; ds_lk: string[]; item_id: number | null; han: string | null; han_gt: string | null; vi_sao: string; tt: TT; chi_tiet: string;
@@ -50,7 +50,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, 
       const choDs = dsl.filter((l) => l.trang_thai === "CHO_GIAI_TRINH");
       // con cho nhung da qua han giai trinh (cron chua chot) -> da la vi pham
       const hanGtCho = choDs.length ? choDs.map((l) => { const m = mocLoi(l) ?? now; return congGioLV(m, gioHanGt(m)); }).sort()[0] : null;
-      const tt: TT = choDs.length ? (hanGtCho && hanGtCho <= now && choDs[0].quy_tac !== "TAY" ? "TU_QH" : "CHO") : that ? "DA_GT" : gts.length && gts.every((g: any) => g.nhom === "AUTO:QUA_HAN") ? "TU_QH" : "TU_KP";
+      const tt: TT = choDs.length ? (hanGtCho && hanGtCho <= now && choDs[0].quy_tac !== "TAY" ? "TU_QH" : "CHO") : that ? "DA_GT" : gts.some((g: any) => g.nhom === "AUTO:QUA_HAN") ? "TU_QH" : gts.length && gts.every((g: any) => g.nhom === "AUTO:CU") ? "TU_CU" : "TU_KP";
       const g = that ?? auto ?? null;
       const l0 = choDs[0] ?? dsl[0];
       const x = lk(dsl.map((l) => l.eo_item_id), dsl.map((l) => l.part_code ?? lkBy.get(l.eo_item_id) ?? ""));
@@ -88,7 +88,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, 
   // tom tat theo buoc (1 dong chip): so loi phai giai trinh / cho / tre han
   const tomTat = THU_TU.concat("").map((b) => {
     const x = ds.filter((m) => m.buoc === b);
-    return { b, n: x.filter((m) => ["CHO", "DA_GT", "TU_KP", "TU_QH"].includes(m.tt)).length, cho: x.filter((m) => m.tt === "CHO").length, tre: x.filter((m) => m.tt.startsWith("TRE")).length, ceo: x.filter((m) => m.tt === "CEO").length };
+    return { b, n: x.filter((m) => ["CHO", "DA_GT", "TU_KP", "TU_QH", "TU_CU"].includes(m.tt)).length, cho: x.filter((m) => m.tt === "CHO").length, tre: x.filter((m) => m.tt.startsWith("TRE")).length, ceo: x.filter((m) => m.tt === "CEO").length };
   }).filter((x) => x.n || x.tre || x.ceo);
 
   const cols: Col<Muc>[] = [

@@ -233,8 +233,9 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
   const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
   const mo = (ls.data?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH");
   const [loiId, setLoiId] = useState<string>("");
-  const [aiMa, setAiMa] = useState("NGUOI_DAT");
+  const [aiMa, setAiMa] = useState(""); // v0.113: khong mac dinh "Nguoi dat" - phai chon
   const [aiEmail, setAiEmail] = useState(dong.nguoi_dat ?? "");
+  const [dungMail, setDungMail] = useState(false);
   const [loiMa, setLoiMa] = useState("");
   const [noiDung, setNoiDung] = useState("");
   const [anh, setAnh] = useState<{ name: string; drive_file_id: string; url: string }[]>([]);
@@ -248,6 +249,17 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     if (mo.length) { setLoiId(String(mo[0].id)); setLoiMa(mo[0].loi_ma ?? ""); } else setLoiId("moi");
   }, [ls.isLoading, mo.length, loiId]); // eslint-disable-line react-hooks/exhaustive-deps
   const canAnh = loiChon && (loiChon.quy_tac === "R1" || loiChon.quy_tac === "R4");
+  // v0.113: thu NCC da luu cua dong (dung lam bang chung thay anh) + goi y "Doi tac / NCC" khi NCC tra loi ma KHONG co ngay
+  const thuDong = (ls.data?.mail ?? []).filter((m: any) => m.eo_item_id === dong.item_id);
+  const thuNhan = thuDong.filter((m: any) => m.huong === "NHAN").sort((a: any, b: any) => String(b.thoi_gian).localeCompare(String(a.thoi_gian)));
+  const nccKhongNgay = thuNhan.find((m: any) => { try { const p = JSON.parse(m.payload || "null")?.dong; return p && !p.ngay_dap_ung; } catch { return false; } });
+  const traLoi = (() => { try { const p = JSON.parse(nccKhongNgay?.payload || "null")?.dong; return [p?.dap_ung, p?.note].filter(Boolean).join(" · "); } catch { return ""; } })();
+  const goiYNcc = () => {
+    setAiMa("DOI_TAC"); if (aiEmail === dong.nguoi_dat) setAiEmail("");
+    setLoiMa("NCC_KHONG_PHAN_HOI");
+    if (!noiDung.trim()) setNoiDung(`NCC trả lời ngày ${ngay(nccKhongNgay?.thoi_gian)} nhưng chưa có ngày dự kiến${traLoi ? `: "${traLoi}"` : ""}. Đã hỏi lại, chờ NCC báo ngày.`);
+    if (canAnh) setDungMail(true);
+  };
 
   const upload = async (list: FileList | null) => {
     setErr("");
@@ -266,12 +278,12 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     if (!aiMa) return setErr("Chọn Ai chịu trách nhiệm.");
     if (!loiMa) return setErr("Chọn Lỗi gì.");
     if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
-    if (canAnh && !anh.length) return setErr("Lỗi này bắt buộc có ảnh bằng chứng.");
+    if (canAnh && !anh.length && !dungMail) return setErr("Lỗi này bắt buộc có ảnh bằng chứng (hoặc tick dùng thư NCC đã lưu).");
     setBusy(true);
     try {
       await api.post("/theo-doi/giai-trinh", {
         eo_item_id: dong.item_id, loi_id: loiId && loiId !== "moi" ? Number(loiId) : undefined, cung_loai: true,
-        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim(), hinh_anh: anh,
+        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh,
       });
       onSaved();
     } catch (e: any) {
@@ -295,10 +307,17 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
             <option value="moi">Ghi lỗi mới (vd NCC báo trễ, hết hàng…)</option>
           </select>
           {!mo.length && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng này không có lỗi chờ giải trình — giải trình sẽ ghi thành 1 lỗi mới.</div>}
+          {nccKhongNgay && (
+            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 10 }}>
+              💡 NCC đã trả lời ngày <b>{ngay(nccKhongNgay.thoi_gian)}</b> nhưng <b>không có ngày dự kiến</b>{traLoi ? <> ("{traLoi}")</> : null}. Nguyên nhân có thể do NCC, không phải do bạn.
+              <button className="btn sm" style={{ marginLeft: 8 }} onClick={goiYNcc}>Điền: Ai = Đối tác / NCC</button>
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div>
               <label className="field-label">Ai <span className="req">*</span></label>
-              <select className="select" value={aiMa} onChange={(e) => setAiMa(e.target.value)}>
+              <select className="select" value={aiMa} onChange={(e) => { setAiMa(e.target.value); if (e.target.value !== "NGUOI_DAT" && aiEmail === dong.nguoi_dat) setAiEmail(""); }}>
+                <option value="">— Chọn ai chịu —</option>
                 {ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}
               </select>
             </div>
@@ -328,6 +347,12 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
             <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>
             <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
           </div>
+          {canAnh && thuDong.length > 0 && (
+            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, marginTop: 6 }}>
+              <input type="checkbox" checked={dungMail} onChange={(e) => setDungMail(e.target.checked)} />
+              Không cần ảnh: dùng <b>{thuDong.length} thư với NCC</b> đã lưu ở hộp theo dõi làm bằng chứng
+            </label>
+          )}
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
         </>
       )}
@@ -339,10 +364,14 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
  * Ghi nhan NHAC DOI TAC khong qua mail (2026-11-13) - POST /theo-doi/lien-he: goi dien / Zalo / tin nhan cho 1 hoac nhieu dong.
  * R3 (push thu 2 / thu 4) tinh nhu da push trong ky; ghi muon (<= 7 ngay) tu bo loi R3 dang cho cua ky do.
  */
-export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved }: { ids: number[]; nhan: string; onClose: () => void; onSaved: (kq: { so_dong: number; bo_loi_r3: number }) => void }) {
+export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved, choNcc: choNccMacDinh }: { ids: number[]; nhan: string; onClose: () => void; onSaved: (kq: { so_dong: number; bo_loi_r3: number }) => void; choNcc?: boolean }) {
   const homNay = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
   const tuNgay = new Date(Date.now() + 7 * 3600_000 - 7 * 86400_000).toISOString().slice(0, 10);
-  const [kenh, setKenh] = useState("DIEN_THOAI");
+  const [kenh, setKenh] = useState(choNccMacDinh ? "MAIL" : "DIEN_THOAI");
+  // v0.113 "Cho NCC bao ngay": NCC chua co ngay -> hen hoi lai (<= 7 ngay), trong khoang nay khong bi ghi loi lap
+  const toiDaHen = new Date(Date.now() + 7 * 3600_000 + 7 * 86400_000).toISOString().slice(0, 10);
+  const [choNcc, setChoNcc] = useState(!!choNccMacDinh);
+  const [henLai, setHenLai] = useState(new Date(Date.now() + 7 * 3600_000 + 2 * 86400_000).toISOString().slice(0, 10));
   const [ngayLh, setNgayLh] = useState(homNay);
   const [gio, setGio] = useState("");
   const [nguoi, setNguoi] = useState("");
@@ -363,12 +392,13 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved }: { ids: number
     setErr("");
     if (!ketQua.trim()) return setErr("Nhập kết quả: đối tác trả lời gì (hẹn ngày nào, chưa có ngày vì sao…).");
     if (!ngayLh || ngayLh > homNay || ngayLh < tuNgay) return setErr(`Ngày liên hệ phải từ ${ngay(tuNgay)} đến hôm nay.`);
+    if (choNcc && (!henLai || henLai <= homNay || henLai > toiDaHen)) return setErr(`Ngày hẹn hỏi lại NCC phải sau hôm nay và không quá ${ngay(toiDaHen)}.`);
     setBusy(true);
     try {
-      onSaved(await api.post<any>("/theo-doi/lien-he", { eo_item_ids: ids, kenh, ngay: ngayLh, gio: gio || undefined, nguoi_lien_he: nguoi.trim() || undefined, ket_qua: ketQua.trim(), hinh_anh: anh }));
+      onSaved(await api.post<any>("/theo-doi/lien-he", { eo_item_ids: ids, kenh, ngay: ngayLh, gio: gio || undefined, nguoi_lien_he: nguoi.trim() || undefined, ket_qua: ketQua.trim(), hinh_anh: anh, hen_lai: choNcc ? henLai : undefined }));
     } catch (e: any) {
       const c = e?.body?.error;
-      setErr(c === "READ_ONLY" ? "Bạn không có quyền trên một số dòng đã chọn." : c === "BAD_NGAY" ? "Ngày / giờ liên hệ không hợp lệ (không sau hiện tại, không quá 7 ngày trước)." : "Lỗi lưu ghi nhận.");
+      setErr(c === "READ_ONLY" ? "Bạn không có quyền trên một số dòng đã chọn." : c === "BAD_NGAY" ? "Ngày / giờ liên hệ không hợp lệ (không sau hiện tại, không quá 7 ngày trước)." : c === "BAD_HEN_LAI" ? "Ngày hẹn hỏi lại không hợp lệ (sau hôm nay, tối đa 7 ngày)." : "Lỗi lưu ghi nhận.");
       setBusy(false);
     }
   };
@@ -376,7 +406,7 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved }: { ids: number
     <Modal title={`Ghi nhận nhắc đối tác — ${nhan}`} onClose={onClose} width={640}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : `Ghi nhận ${ids.length} dòng`}</button></>}>
       <div style={{ background: "var(--panel-2)", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 12, lineHeight: 1.5 }}>
-        Dùng khi đã nhắc đối tác bằng <b>gọi điện / Zalo / tin nhắn</b> thay vì mail. Kiểm tra push thứ 2 / thứ 4 (lỗi R3) tính như <b>đã push</b> trong kỳ của ngày liên hệ;
+        Dùng khi đã nhắc đối tác bằng <b>gọi điện / Zalo / tin nhắn / mail</b>. Kiểm tra push thứ 2 / thứ 4 (lỗi R3) tính như <b>đã push</b> trong kỳ của ngày liên hệ;
         ghi muộn mà R3 kỳ đó đã bị ghi lỗi (chưa giải trình) thì lỗi tự bỏ. Đối tác đã báo ngày → nhập luôn <b>ngày dự kiến</b> (nút 📅) để hết theo dõi R1 / R3.
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr", gap: 10 }}>
@@ -385,6 +415,18 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved }: { ids: number
         <div><label className="field-label">Ngày liên hệ <span className="req">*</span></label>
           <input className="input" type="date" value={ngayLh} min={tuNgay} max={homNay} onChange={(e) => setNgayLh(e.target.value)} /></div>
         <div><label className="field-label">Giờ</label><input className="input" type="time" value={gio} onChange={(e) => setGio(e.target.value)} /></div>
+      </div>
+      <div style={{ marginTop: 12, border: `1px solid ${choNcc ? "#93C5FD" : "var(--border)"}`, background: choNcc ? "#EFF6FF" : undefined, borderRadius: 8, padding: "8px 10px" }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 700, fontSize: 13 }}>
+          <input type="checkbox" checked={choNcc} onChange={(e) => setChoNcc(e.target.checked)} /> ⏳ NCC chưa có ngày dự kiến — chờ NCC báo ngày
+        </label>
+        <div className="muted" style={{ fontSize: 12, margin: "2px 0 0 22px" }}>
+          Dòng chuyển sang mục "Đang chờ NCC báo ngày" ở Việc của tôi; tới ngày hẹn hệ thống <b>không ghi thêm lỗi lặp</b> (chưa có ngày DK thứ 3/6, push thứ 2/4).
+          Tới ngày hẹn mà vẫn chưa có ngày → dòng quay lại mục cần làm. Lỗi đầu tiên (không có ngày DK đúng hạn) vẫn phải giải trình.
+        </div>
+        {choNcc && <div style={{ margin: "6px 0 0 22px", display: "flex", gap: 8, alignItems: "center", fontSize: 12.5 }}>
+          Hẹn hỏi lại NCC ngày <input className="input" type="date" style={{ width: 160 }} value={henLai} min={homNay} max={toiDaHen} onChange={(e) => setHenLai(e.target.value)} /> <span className="muted">(tối đa 7 ngày)</span>
+        </div>}
       </div>
       <label className="field-label" style={{ marginTop: 10 }}>Người liên hệ bên đối tác</label>
       <input className="input" value={nguoi} onChange={(e) => setNguoi(e.target.value)} placeholder="vd: chị Lan — KRF, 09xx…" />
@@ -469,7 +511,7 @@ function DongGon({ luc, icon, chinh, phu, chiTiet, mo, onMo }: { luc?: string; i
 }
 
 const anhGt = (json: string | null) => { try { return (JSON.parse(json || "[]") as any[]).map((a) => <a key={a.drive_file_id} href={a.url} target="_blank" rel="noopener" style={{ marginRight: 8 }}>📷 {a.name}</a>); } catch { return null; } };
-const THU_TU_TT: TrangThaiGt[] = ["VI_PHAM", "CAN_GT", "DA_GT", "KHAC_PHUC", "TAY"];
+const THU_TU_TT: TrangThaiGt[] = ["VI_PHAM", "CAN_GT", "DA_GT", "KHAC_PHUC", "BO_QUA", "TAY"];
 
 /**
  * Noi dung lich su theo doi 1 dong (dung trong LichSuModal + popup don hang). v0.109 (chu he thong 2026-11-23: "rut gon lai chi lay thong tin chinh
@@ -525,7 +567,7 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
     }),
     ...(d.lien_he ?? []).map((x: any): MucHd => ({
       k: `l${x.id}`, gop: `lh|${x.kenh}|${x.ket_qua ?? ""}`, loai: "lien_he", luc: x.ngay_lien_he, icon: "📞",
-      chinh: <><b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b>{x.nguoi_lien_he ? ` với ${x.nguoi_lien_he}` : ""} · <span className="muted">{x.ket_qua}</span></>,
+      chinh: <><b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b>{x.nguoi_lien_he ? ` với ${x.nguoi_lien_he}` : ""}{x.hen_lai ? <b style={{ color: "#1D4ED8" }}> · ⏳ chờ NCC, hẹn hỏi lại {ngay(x.hen_lai)}</b> : null} · <span className="muted">{x.ket_qua}</span></>,
       chiTiet: <><div>{x.ket_qua}</div><div className="muted">Ghi bởi {ten(x.created_by)} lúc {ngayGio(x.created_at)}</div>{anhGt(x.hinh_anh)}</>,
     })),
     ...(d.push ?? []).map((p: any): MucHd => ({

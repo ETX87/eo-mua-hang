@@ -68,6 +68,10 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   gộp 1 dòng "×n", bấm xem từng lần, có nút "Hiện từng mục".
 - Cảnh báo cấp CEO ở popup PO = 1 dòng tóm tắt theo 3 tiêu chí (số dòng + mức nặng nhất: xa nhất bao nhiêu ngày, lùi nhiều nhất bao nhiêu lần, nhiều nhất bao nhiêu lỗi),
   không liệt kê lý do từng dòng; chi tiết từng dòng ở tab "Mã lỗi & giải trình".
+- Lỗi có mốc trước 01/11/2026 không tính vi phạm ("Bỏ qua · lỗi cũ").
+- "Chờ NCC báo ngày": ghi nhận NCC chưa có ngày + hẹn hỏi lại (≤ 7 ngày) → không bị ghi lỗi lặp tới ngày hẹn, dòng nằm ở mục riêng của Việc của tôi (nút "⏳ NCC chưa có ngày").
+- Form giải trình: bắt buộc chọn "Ai chịu" (không mặc định); gợi ý "Đối tác / NCC" khi NCC trả lời không kèm ngày; thư với NCC đã lưu thay được ảnh bằng chứng.
+- Sau đăng nhập, mời bật thông báo đẩy trên thiết bị (hướng dẫn mở chặn nếu trình duyệt đang chặn).
 - Popup PO và popup đơn hàng: 1 ô tìm CHUNG ở cuối thanh tab (không dấu, nút × xoá), dùng cho mọi tab tìm được (linh kiện, kế hoạch & hàng về, quy trình duyệt,
   tài liệu, mail & push, mã lỗi & giải trình, chi tiết giai đoạn, trao đổi NCC); giữ chữ khi đổi tab; bảng trong tab không còn ô tìm riêng.
 - Bảng linh kiện trong popup PO cuộn trong khung: tiêu đề cột luôn ở trên, thanh kéo dọc + ngang luôn thấy, thêm thanh kéo ngang ở trên đầu bảng.

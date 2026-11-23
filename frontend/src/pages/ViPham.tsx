@@ -54,6 +54,7 @@ const TrangThai = ({ l }: { l: L }) => vp(l)
   ? <span className="badge reject" style={{ background: "#B91C1C", color: "#fff" }} title={`Hết hạn giải trình ${ngayGio(l.han_gt)} mà không giải trình → ghi nhận vi phạm`}>VI PHẠM · hết hạn GT</span>
   : l.trang_thai === "CHO_GIAI_TRINH"
   ? <span className="badge final" title={`Chưa phải vi phạm. Hạn giải trình ${ngayGio(l.han_gt)} — giải trình trước hạn thì không bị ghi vi phạm`}>Cần giải trình</span>
+  : l.tu_dong === "CU" ? <span className="badge nhap" title={l.gt_noi_dung ?? ""}>Bỏ qua · lỗi cũ</span>
   : l.tu_dong ? <span className="badge nhap" title={l.gt_noi_dung ?? ""}>Đã khắc phục</span>
   : <span className="badge issued" title={l.gt_pham_vi === "PO" ? "Giải trình chung cả PO" : l.gt_pham_vi === "NHIEU" ? "Giải trình chung nhiều lỗi cùng loại" : undefined}>Đã giải trình{l.gt_pham_vi === "PO" ? " (PO)" : l.gt_pham_vi === "NHIEU" ? " (chung)" : ""}</span>;
 const maPo = (l: L) => l.approval_code || l.eo_code;
@@ -278,7 +279,7 @@ export default function ViPham() {
 
   const xuat = () => exportRowsToXlsx(loc, [
     { header: "Mã lỗi", get: (l) => l.ma_loi }, { header: "Tên mã lỗi", get: (l) => l.ten_ma }, { header: "Bước", get: (l) => l.buoc },
-    { header: "Mức độ", get: (l) => MUC[l.muc]?.l }, { header: "Trạng thái", get: (l) => vp(l) ? "Vi phạm (hết hạn không giải trình)" : cho(l) ? "Cần giải trình" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình" },
+    { header: "Mức độ", get: (l) => MUC[l.muc]?.l }, { header: "Trạng thái", get: (l) => vp(l) ? "Vi phạm (hết hạn không giải trình)" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua (lỗi cũ trước 01/11/2026)" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình" },
     { header: "Hạn giải trình", get: (l) => ngayGio(l.han_gt) },
     { header: "Lỗi", get: (l) => QUY_TAC[l.quy_tac] ?? l.quy_tac }, { header: "Lần thứ", get: (l) => `${l.lan_thu}/${l.so_lan}` },
     { header: "Mã phê duyệt", get: (l) => l.approval_code }, { header: "Mã EO", get: (l) => l.eo_code },
@@ -286,7 +287,7 @@ export default function ViPham() {
     { header: "Người chịu lỗi", get: (l) => l.nguoi_vp }, { header: "Ai (loại)", get: (l) => tenDm("AI", l.ai_ma) }, { header: "Lỗi gì", get: (l) => tenDm("LOI", l.loi_ma) },
     { header: "Ngày lỗi", get: (l) => ngay(l.ngay_tham_chieu ?? l.han) }, { header: "Mốc lỗi", get: (l) => ngayGio(l.han) },
     { header: "Số ngày chờ / đến khi giải trình", get: (l) => l.tuoi_ngay }, { header: "Giờ làm việc chờ / đến khi giải trình", get: (l) => l.tuoi_gio }, { header: "Số lần nhắc (dòng)", get: (l) => l.so_nhac },
-    { header: "Tự đóng", get: (l) => (l.tu_dong === "QUA_HAN" ? "Hết hạn giải trình - vi phạm" : l.tu_dong ? "Đã khắc phục" : "") }, { header: "Giải trình", get: (l) => l.gt_noi_dung }, { header: "Giải trình bởi", get: (l) => l.gt_boi }, { header: "Giải trình lúc", get: (l) => ngayGio(l.gt_luc) },
+    { header: "Tự đóng", get: (l) => (l.tu_dong === "QUA_HAN" ? "Hết hạn giải trình - vi phạm" : l.tu_dong === "CU" ? "Bỏ qua - lỗi cũ" : l.tu_dong ? "Đã khắc phục" : "") }, { header: "Giải trình", get: (l) => l.gt_noi_dung }, { header: "Giải trình bởi", get: (l) => l.gt_boi }, { header: "Giải trình lúc", get: (l) => ngayGio(l.gt_luc) },
     { header: "Cấp CEO vì", get: (l) => (l.ceo_ly_do ?? []).join("; ") },
   ], `vi-pham_${new Date().toISOString().slice(0, 10)}.xlsx`, "Vi pham");
 
@@ -472,6 +473,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
           <b>Kết luận:</b>{" "}
           {vp(x) ? <>Hết hạn giải trình <b>{ngayGio(x.han_gt)}</b> (từ mốc lỗi {ngayGio(x.han)}) mà không có giải trình → <b>ghi nhận VI PHẠM</b>, không giải trình được nữa.</>
             : cho(x) ? <>Lỗi <b>cần giải trình</b> — chưa phải vi phạm. Hạn giải trình <b>{ngayGio(x.han_gt)}</b> (còn {x.con_gio_gt} giờ làm việc). Giải trình hoặc khắc phục trước hạn thì không bị ghi vi phạm.</>
+            : x.tu_dong === "CU" ? <>Lỗi cũ (mốc trước 01/11/2026) — hệ thống <b>tự bỏ, không tính vi phạm</b>.</>
             : tuDong(x) ? <>Hệ thống tự đóng vì đã khắc phục trong hạn — <b>không tính vi phạm</b>. {x.gt_noi_dung}</>
             : x.quy_tac === "TAY" ? <>Lỗi do người giải trình tự ghi nhận (nguyên nhân) — không tính vi phạm.</>
             : <>Đã giải trình lúc {ngayGio(x.gt_luc)} — trước hạn {ngayGio(x.han_gt)}, <b>không tính vi phạm</b>.</>}

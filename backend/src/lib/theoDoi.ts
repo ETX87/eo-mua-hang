@@ -337,6 +337,15 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       : [];
     const mailBy = new Map<number, string[]>();
     for (const m of [...mailRs, ...lienHeRs]) mailBy.set(m.eo_item_id, [...(mailBy.get(m.eo_item_id) ?? []), m.d]);
+    // v0.113 "Cho NCC bao ngay" (migration 0026 tl_lien_he.hen_lai): NCC chua co ngay, NV hen hoi lai -> trong [ngay lien he, hen_lai]
+    // KHONG ghi loi lap R1 (thu 3/6) / R3 (thu 2/4) cho dong. Loi R1 DAU TIEN (khong co ngay DK dung han) van ghi.
+    const choNccRs = rows.length
+      ? (await db.prepare("SELECT eo_item_id, substr(ngay_lien_he, 1, 10) tu, hen_lai den FROM tl_lien_he WHERE hen_lai IS NOT NULL AND eo_item_id IN (SELECT value FROM json_each(?))")
+          .bind(JSON.stringify(rows.map((r) => r.item_id))).all<{ eo_item_id: number; tu: string; den: string }>()).results
+      : [];
+    const choNccBy = new Map<number, { tu: string; den: string }[]>();
+    for (const x of choNccRs) choNccBy.set(x.eo_item_id, [...(choNccBy.get(x.eo_item_id) ?? []), x]);
+    const dangChoNcc = (id: number, ngay: string) => (choNccBy.get(id) ?? []).some((k) => k.tu <= ngay && ngay <= k.den);
     const loi: unknown[][] = [];
     const add = (r: DongTheoDoi, quyTac: string, khoa: string, han: string, ngayTc: string | null, loiMa: string) =>
       loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, "NGUOI_DAT", r.nguoi_dat, loiMa]);
@@ -360,6 +369,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           if (dow !== 2 && dow !== 5) continue;
           const x = fmtVN(d).slice(0, 10);
           if (x < r1LapTu) continue;
+          if (dangChoNcc(r.item_id, x)) continue; // dang cho NCC bao ngay (da hen hoi lai) -> khong ghi lap
           const hetNgay = `${x} 23:59:59`;
           if (r.lan_dau_co_ndk && r.lan_dau_co_ndk <= hetNgay) break;
           if (daVe(r, x)) break;
@@ -382,7 +392,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           if (r.lan_dau_co_ndk && r.lan_dau_co_ndk <= hetNgay) break; // da co ngay du kien tu truoc -> het nghia vu push
           if (veTruoc(x) || daVe(r, x)) break; // hang da ve -> het nghia vu push
           const kyTu = fmtVN(new Date(d.getTime() - (dow === 1 ? 5 : 2) * 86400_000)).slice(0, 10);
-          const coMail = (mailBy.get(r.item_id) ?? []).some((m) => m > kyTu && m <= x);
+          const coMail = (mailBy.get(r.item_id) ?? []).some((m) => m > kyTu && m <= x) || dangChoNcc(r.item_id, x);
           if (!coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
         }
       }
@@ -535,7 +545,7 @@ async function nhacSapHetHan(env: Env, now: string): Promise<number> {
   const rs = (await db.prepare(
     `SELECT l.id, COALESCE(l.han, l.created_at) moc FROM tl_loi l JOIN eo e ON e.id = l.eo_id
      WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'TAY' AND l.nhac_het_han_luc IS NULL
-       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days')
+       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') AND COALESCE(l.han, l.created_at) >= '${VP_CU_TRUOC}'
        AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')`,
   ).bind(now.slice(0, 10)).all<{ id: number; moc: string }>()).results
     .filter((r) => { const han = hanGiaiTrinh(r.moc); return han > now && demGioLV(now, han) <= GIO_NHAC_HET_HAN; });
@@ -565,6 +575,9 @@ async function nhacSapHetHan(env: Env, now: string): Promise<number> {
  *  v0.110 (chu he thong 2026-11-23: "thoi gian giai trinh la 16h lam viec truoc khi bi tinh loi") = 16h LV, CHI loi co moc tu HAN_GT_16_TU;
  *  loi co moc truoc giu 56h LV (da hua 56h - khong bien loi dang cho thanh vi pham hang loat). FE lib/giaiTrinh.tsx PHAI khop. */
 export const GIO_TU_DONG = 16;
+/** v0.113 (chu he thong 2026-11-23 "loi vi pham cu truoc thang 11 thi bo qua (auto bo vi pham do vi pham cu)"): loi co moc truoc ngay nay
+ *  KHONG tinh vi pham - tuGiaiTrinh dong 'AUTO:CU'; migration 0026 doi cac AUTO:QUA_HAN cu sang AUTO:CU. */
+export const VP_CU_TRUOC = "2026-11-01";
 export const GIO_TU_DONG_CU = 56;
 export const HAN_GT_16_TU = "2026-11-24 00:00:00";
 export const gioHanGt = (moc: string) => (moc >= HAN_GT_16_TU ? GIO_TU_DONG : GIO_TU_DONG_CU);
@@ -590,10 +603,10 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
           WHERE l2.eo_item_id = l.eo_item_id AND l2.quy_tac = l.quy_tac AND l2.id <> l.id AND COALESCE(g.pham_vi, '') <> 'AUTO' AND g.created_at > COALESCE(l.han, l.created_at)) gt_cung,
          date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') qua_han, COALESCE(l.han, l.created_at) moc
        FROM l)
-     SELECT id, quy_tac, khac_phuc, gt_cung, qua_han, moc FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1`,
-  ).bind(now.slice(0, 10)).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number; moc: string }>()).results
+     SELECT id, quy_tac, khac_phuc, gt_cung, qua_han, moc, moc < ?2 cu FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1 OR moc < ?2`,
+  ).bind(now.slice(0, 10), VP_CU_TRUOC).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number; moc: string; cu: number }>()).results
     // SQL loc tho (>= 1 ngay lich - 16h LV luon qua it nhat 1 ngay); qua han that = hanGiaiTrinh(moc) <= bay gio
-    .filter((r) => r.khac_phuc || r.gt_cung || hanGiaiTrinh(r.moc) <= now);
+    .filter((r) => r.khac_phuc || r.gt_cung || r.cu || hanGiaiTrinh(r.moc) <= now);
   if (!rs.length) return 0;
   const dmy = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
   const KP: Record<string, string> = {
@@ -603,7 +616,9 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
     ? [r.id, `Tự đóng lỗi do ${KP[r.quy_tac].replace("%", dmy(r.khac_phuc))} — đã khắc phục trong hạn, không tính vi phạm.`, "AUTO:KHAC_PHUC"]
     : r.gt_cung
       ? [r.id, `Tự đóng lỗi do đã có giải trình cùng lỗi ngày ${dmy(r.gt_cung)} — không cần giải trình lại, không tính vi phạm.`, "AUTO:KHAC_PHUC"]
-      : [r.id, `Hết hạn giải trình (${gioHanGt(r.moc)} giờ làm việc từ mốc lỗi) mà không giải trình → ghi nhận VI PHẠM, không giải trình được nữa.`, "AUTO:QUA_HAN"]);
+      : r.cu
+        ? [r.id, `Tự bỏ vi phạm do vi phạm cũ (mốc lỗi trước ${dmy(VP_CU_TRUOC)}) — không tính vi phạm.`, "AUTO:CU"]
+        : [r.id, `Hết hạn giải trình (${gioHanGt(r.moc)} giờ làm việc từ mốc lỗi) mà không giải trình → ghi nhận VI PHẠM, không giải trình được nữa.`, "AUTO:QUA_HAN"]);
   let xong = 0;
   for (let i = 0; i < ds.length; i += 250) {
     const lo = JSON.stringify(ds.slice(i, i + 250));
@@ -622,7 +637,7 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
       ).bind(ids),
       db.prepare(
         `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, after_json, metadata_json, user_email, created_at)
-         SELECT 'eo', g.eo_id, g.eo_id, 'AUTO_GIAI_TRINH', json_object('so_loi', COUNT(*), 'khac_phuc', SUM(g.nhom = 'AUTO:KHAC_PHUC'), 'qua_han', SUM(g.nhom = 'AUTO:QUA_HAN')),
+         SELECT 'eo', g.eo_id, g.eo_id, 'AUTO_GIAI_TRINH', json_object('so_loi', COUNT(*), 'khac_phuc', SUM(g.nhom = 'AUTO:KHAC_PHUC'), 'qua_han', SUM(g.nhom = 'AUTO:QUA_HAN'), 'cu', SUM(g.nhom = 'AUTO:CU')),
                 json_object('loi_ids', json_group_array(g.loi_id)), NULL, ?1
          FROM tl_giai_trinh g WHERE g.pham_vi = 'AUTO' AND g.created_at = ?1 AND g.loi_id IN (SELECT value FROM json_each(?2)) GROUP BY g.eo_id`,
       ).bind(now, ids),

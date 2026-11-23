@@ -190,11 +190,11 @@ app.post("/ap-dung-krf", async (c) => {
 // Ghi nhan da nhac doi tac KHONG qua mail (goi dien / Zalo / tin nhan / gap) cho 1 hoac nhieu dong - R3 tinh nhu da push trong ky.
 // Quyen nhu push (canEditPlan tung dong). Ngay lien he: khong sau hom nay, khong qua 7 ngay truoc. Ghi muon -> bo loi R3 DANG CHO
 // ma ky (ngay kiem tra truoc, X] chua ngay lien he (event XOA_LOI_THEO_DOI, giong cac lan tu bo loi khac).
-const KENH = ["DIEN_THOAI", "ZALO", "TIN_NHAN", "GAP", "KHAC"];
+const KENH = ["DIEN_THOAI", "ZALO", "TIN_NHAN", "GAP", "MAIL", "KHAC"];
 app.post("/lien-he", async (c) => {
   const u = c.get("user");
   const db = c.env.DB;
-  const b = (await c.req.json().catch(() => ({}))) as { eo_item_ids?: number[]; kenh?: string; ngay?: string; gio?: string; nguoi_lien_he?: string; ket_qua?: string; hinh_anh?: unknown[] };
+  const b = (await c.req.json().catch(() => ({}))) as { eo_item_ids?: number[]; kenh?: string; ngay?: string; gio?: string; nguoi_lien_he?: string; ket_qua?: string; hinh_anh?: unknown[]; hen_lai?: string };
   const ids = [...new Set((b.eo_item_ids ?? []).map(Number).filter((x) => x > 0))];
   if (!ids.length || ids.length > 2000) return c.json({ error: "BAD_INPUT" }, 400);
   if (!KENH.includes(String(b.kenh))) return c.json({ error: "BAD_KENH" }, 400);
@@ -208,6 +208,10 @@ app.post("/lien-he", async (c) => {
   const now = nowVN();
   const ngayLh = gio ? `${ngay} ${gio}:00` : ngay === today ? now : `${ngay} 12:00:00`;
   if (ngayLh > now) return c.json({ error: "BAD_NGAY", tu: tuNgay, den: today }, 400);
+  // v0.113 "Cho NCC bao ngay": NCC chua co ngay -> hen hoi lai (sau hom nay, toi da 7 ngay) - tam dung loi lap R1 / R3 trong khoang nay
+  const toiDaHen = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86400_000).toISOString().slice(0, 10);
+  const henLai = b.hen_lai ? String(b.hen_lai).slice(0, 10) : null;
+  if (henLai && (!/^\d{4}-\d{2}-\d{2}$/.test(henLai) || henLai <= today || henLai > toiDaHen)) return c.json({ error: "BAD_HEN_LAI", den: toiDaHen }, 400);
   const metas = (await db.prepare("SELECT i.id, i.eo_id, e.created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id IN (SELECT value FROM json_each(?))")
     .bind(JSON.stringify(ids)).all<{ id: number; eo_id: number; created_by: string }>()).results;
   if (!metas.length) return c.json({ error: "ITEM_NOT_FOUND" }, 404);
@@ -223,14 +227,14 @@ app.post("/lien-he", async (c) => {
   const boIds = JSON.stringify(r3.map((l) => l.id));
   const stmts = [
     db.prepare(
-      `INSERT INTO tl_lien_he (nhom, eo_item_id, eo_id, kenh, ngay_lien_he, nguoi_lien_he, ket_qua, hinh_anh, created_by, created_at)
-       SELECT ?, json_extract(value, '$[0]'), json_extract(value, '$[1]'), ?, ?, ?, ?, ?, ?, ? FROM json_each(?)`,
-    ).bind(nhom, b.kenh, ngayLh, nguoi, ketQua, anh, u.email, now, ds),
+      `INSERT INTO tl_lien_he (nhom, eo_item_id, eo_id, kenh, ngay_lien_he, nguoi_lien_he, ket_qua, hinh_anh, created_by, created_at, hen_lai)
+       SELECT ?, json_extract(value, '$[0]'), json_extract(value, '$[1]'), ?, ?, ?, ?, ?, ?, ?, ? FROM json_each(?)`,
+    ).bind(nhom, b.kenh, ngayLh, nguoi, ketQua, anh, u.email, now, henLai, ds),
     db.prepare(
       `INSERT INTO event_log (entity_type, entity_id, eo_id, event_type, after_json, metadata_json, user_email, created_at)
-       SELECT 'eo_item', json_extract(value, '$[0]'), json_extract(value, '$[1]'), 'LIEN_HE_DOI_TAC', json_object('kenh', ?, 'ngay_lien_he', ?, 'ket_qua', ?),
+       SELECT 'eo_item', json_extract(value, '$[0]'), json_extract(value, '$[1]'), 'LIEN_HE_DOI_TAC', json_object('kenh', ?, 'ngay_lien_he', ?, 'ket_qua', ?, 'hen_lai', ?),
               json_object('nhom', ?, 'so_dong', ?), ?, ? FROM json_each(?)`,
-    ).bind(b.kenh, ngayLh, ketQua, nhom, metas.length, u.email, now, ds),
+    ).bind(b.kenh, ngayLh, ketQua, henLai, nhom, metas.length, u.email, now, ds),
   ];
   if (r3.length) stmts.push(
     db.prepare(

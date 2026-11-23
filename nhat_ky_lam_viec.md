@@ -4,6 +4,24 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.113: Sửa các vấn đề khi đứng vai NV đặt hàng (chờ NCC báo ngày, form giải trình, mời bật push) + bỏ vi phạm cũ trước 01/11
+
+- Yêu cầu: "tôi kiểm tra thì công việc của tôi của đồng thị tuyết rất nhiều và bị quá hạn rất xa, nhưng không thấy nv giải trình, hãy check lại có bị bug không? …
+  thử đứng với vai trò nv đó" → sau báo cáo: "fix các lỗi tìm thấy, tuy nhiên các lỗi vi phạm cũ trước tháng 11 thì bỏ qua (auto bỏ vi phạm do vi phạm cũ)".
+- Kiểm tra D1 thật (chỉ đọc): NV có ~200 giải trình 18–21/11, 0 lỗi đang chờ; việc tồn = 30 dòng chưa có ngày DK + 24 dòng quá ngày DK, gần như toàn Karofi; thư Karofi
+  trả lời không có ngày (trống / "CCTT" / "chờ mua hàng phản hồi" / "đang xin hình ảnh bên 3T" / "MOQ = 400"); mọi giải trình để Ai = Người đặt (mặc định form);
+  898 lỗi (mốc 07/10–11/11) bị đóng "quá hạn" cùng lúc 18/11 14:00 (lần chạy đầu tự đóng, trước khi có popup / push); 0 thiết bị bật push toàn hệ thống.
+  Không có bug chặn giải trình (quyền KH cung ứng đủ).
+- Đã sửa: (1) "Chờ NCC báo ngày" — nút "⏳ NCC chưa có ngày" ở Việc của tôi + ô tick trong form "Ghi nhận nhắc đối tác" (thêm kênh Mail), hẹn hỏi lại ≤ 7 ngày,
+  tạm dừng lỗi lặp R1 / R3, mục riêng ở Việc của tôi, không tính số đỏ / push; (2) form giải trình: Ai chịu bắt buộc chọn, gợi ý Đối tác / NCC từ thư không có ngày,
+  dùng thư đã lưu thay ảnh (4 form); nhãn lỗi "trong 48h" → "đúng hạn (8h / 16h làm việc)"; (3) vi phạm cũ: mốc trước 01/11/2026 → `AUTO:CU` "Bỏ qua · lỗi cũ"
+  (601 lỗi / 9 PO / 2 người trên production; 348 vi phạm từ 01/11 giữ nguyên), event `BO_VI_PHAM_CU`; (4) thẻ mời bật thông báo đẩy / hướng dẫn mở chặn.
+- Migration 0026 dựng lại `tl_lien_he` (CHECK kênh có MAIL + cột hen_lai; production 0 dòng lúc chạy).
+- Kiểm thử local: lỗi cũ → TU_CU (vi phạm còn 1); Việc của tôi (toàn bộ, mở tạm mốc áp dụng ở DB local rồi trả lại) bấm "⏳ NCC chưa có ngày" → form sẵn Mail + hẹn 25/11 →
+  lưu → dòng sang "Đang chờ NCC báo ngày" (còn 2.7 ngày LV), ③ từ 7 còn 6 (lần đầu lỗi CHECK kênh MAIL → sửa migration dựng lại bảng); form giải trình: Ai trống, thư NCC thử
+  "CCTT" → gợi ý 1 bấm điền Đối tác / NCC + NCC không phản hồi + nội dung; thẻ push hiện hướng dẫn mở chặn (trình duyệt thử đang chặn). Chưa thử được: R1 lặp / R3 bị bỏ qua
+  đúng ngày thứ 2-6 thật (cần chờ lịch), bật push trên điện thoại thật. Đã xoá dữ liệu thử local.
+
 ## 23/11/2026 — v0.112: Ô tìm chung trên thanh tab cho mọi tab của popup PO / đơn hàng
 
 - Yêu cầu: "7. chuyển công cụ tìm kiếm lên chung và dùng cho tất cả các tab có thể tìm kiếm" (ảnh: popup đơn hàng, ô trống bên phải thanh tab).

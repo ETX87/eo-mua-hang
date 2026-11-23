@@ -130,3 +130,34 @@ export function NutThongBaoDay() {
     </button>
   );
 }
+
+/**
+ * v0.113 (2026-11-23): MOI BAT THONG BAO DAY sau khi dang nhap - kiem tra production: 0 thiet bi bat day tren toan he thong
+ * nen nhac sap het han giai trinh / loi moi khong toi ai. Hien 1 the nho goc duoi phai khi trinh duyet ho tro, chua bat, chua bi chan;
+ * "De sau" = an 3 ngay (localStorage). Trinh duyet da CHAN quyen -> the huong dan mo chan (bam o khoa canh dia chi -> Thong bao -> Cho phep).
+ */
+const KHOA_MOI_DAY = "eomua:moi-bat-day";
+export function MoiBatDay() {
+  const push = usePushNotifications();
+  const [an, setAn] = useState(() => { const t = Number(localStorage.getItem(KHOA_MOI_DAY) || 0); return Date.now() - t < 3 * 86400_000; });
+  const [loi, setLoi] = useState("");
+  const chan = typeof Notification !== "undefined" && Notification.permission === "denied";
+  if (an || !push.supported || !push.checked || push.subscribed) return null;
+  const deSau = () => { localStorage.setItem(KHOA_MOI_DAY, String(Date.now())); setAn(true); };
+  return (
+    <div style={{ position: "fixed", right: 16, bottom: 16, zIndex: 150, width: 340, background: "#fff", border: "1px solid var(--border)", borderLeft: "5px solid var(--brand-yellow, #F5C518)",
+      borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: "12px 14px", fontSize: 13 }}>
+      <div style={{ fontWeight: 800, marginBottom: 4 }}>{chan ? "🔕 Trình duyệt đang chặn thông báo" : "🔔 Bật thông báo trên máy này?"}</div>
+      <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Nhận nhắc ngay khi có lỗi mới cần giải trình và khi còn ≤ 6 giờ làm việc là hết hạn — kể cả lúc không mở app.
+        Hết hạn mà không giải trình sẽ bị ghi vi phạm.</div>
+      {chan && <div style={{ fontSize: 12.5, marginTop: 6, background: "#FEF3C7", borderRadius: 6, padding: "6px 8px" }}>
+        Mở chặn: bấm biểu tượng <b>🔒 / ⓘ</b> bên trái thanh địa chỉ → <b>Thông báo</b> → <b>Cho phép</b> → tải lại trang, rồi bấm "Bật thông báo".</div>}
+      {loi && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6 }}>{loi}</div>}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
+        <button className="btn sm" onClick={deSau}>Để sau</button>
+        {!chan && <button className="btn sm primary" disabled={push.busy} onClick={() => push.subscribe().then(() => setLoi("")).catch((e) => setLoi(e instanceof Error ? e.message : String(e)))}>
+          {push.busy ? "Đang bật…" : "Bật thông báo"}</button>}
+      </div>
+    </div>
+  );
+}
