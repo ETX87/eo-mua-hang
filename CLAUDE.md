@@ -382,6 +382,7 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.115**: `R4_TON_TU` (lib/theoDoi.ts) — dòng quá ngày DK từ trước `VP_CU_TRUOC` vẫn tồn → thêm 1 lỗi R4 khoá `…:TON` mốc 24/11 08:00 (bỏ lỗi cũ, không bỏ theo dõi).
 **v0.114**: `kiemBangChung` (lib/theoDoi.ts) — mọi API giải trình nhận `dung_mail` thay ảnh R1/R4, kiểm thư / liên hệ từng dòng (`THIEU_THU`). Việc của tôi ④ `BangGiaiTrinh`
 (pages/ViecCuaToi.tsx, localStorage `vct-gt-xem`) nhóm PO / mã LK + tick → `GiaiTrinhDongModal`.
 `DataTable` prop `q` = ô tìm chung bên ngoài (ẩn ô tìm riêng) — popup PO / đơn hàng dùng `O_TIM` (`components/quickview/QuickView.tsx`) trên thanh tab,

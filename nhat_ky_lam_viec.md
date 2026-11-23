@@ -4,6 +4,14 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.115: Bỏ lỗi cũ trước 01/11 nhưng đơn tồn vẫn tiếp tục bị nhắc giải trình
+
+- Yêu cầu: "trước 1/11 bỏ lỗi thôi, chứ tồn thì vẫn tiếp tục đẩy giải trình vi phạm và theo dõi tiếp".
+- Kiểm tra D1 thật (chỉ đọc), dòng mở từ trước 01/11: chưa có ngày DK 14 dòng — 14/14 vẫn có lỗi mới từ 01/11 (R1 lặp thứ 3/6, R3 thứ 2/4) ✓; quá ngày DK 13 dòng — chỉ 9/13 có lỗi
+  mới: R4 chỉ ghi 1 lần cho mỗi ngày DK, ngày DK quá từ tháng 10 → lỗi đó vừa bị bỏ (vi phạm cũ) → 4 dòng tồn không còn bị nhắc giải trình.
+- Sửa `danhGiaQuyTac`: dòng quá ngày DK có hạn cập nhật trước 01/11 mà vẫn tồn → ghi thêm 1 lỗi R4 mốc `R4_TON_TU` = 24/11/2026 08:00 (khoá `…:TON`), hạn giải trình 16h LV → 25/11 17:00.
+- Kiểm thử local (tạm dời mốc sang 23/11 trong code + mở mốc áp dụng ở DB local, chạy quét rồi trả lại, đã xoá dữ liệu thử): 3 dòng quá ngày DK từ tháng 10 sinh lỗi R4 `:TON` chờ giải trình.
+
 ## 23/11/2026 — v0.114: Việc của tôi — nhóm lỗi cần giải trình theo PO / mã LK + giải trình hàng loạt; sửa "dùng thư làm bằng chứng" bị server chặn
 
 - Yêu cầu: "ở mục việc của tôi, có phép nhóm các vần đề cần giải trình theo PO hoặc mã linh kiện, vì chúng ta có chức năng giải trình hàng loạt => tận dụng tối đa".

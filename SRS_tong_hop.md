@@ -68,7 +68,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   gộp 1 dòng "×n", bấm xem từng lần, có nút "Hiện từng mục".
 - Cảnh báo cấp CEO ở popup PO = 1 dòng tóm tắt theo 3 tiêu chí (số dòng + mức nặng nhất: xa nhất bao nhiêu ngày, lùi nhiều nhất bao nhiêu lần, nhiều nhất bao nhiêu lỗi),
   không liệt kê lý do từng dòng; chi tiết từng dòng ở tab "Mã lỗi & giải trình".
-- Lỗi có mốc trước 01/11/2026 không tính vi phạm ("Bỏ qua · lỗi cũ").
+- Lỗi có mốc trước 01/11/2026 không tính vi phạm ("Bỏ qua · lỗi cũ") — nhưng đơn còn tồn vẫn tiếp tục theo dõi và nhắc giải trình (dòng quá ngày DK từ trước 01/11
+  được ghi 1 lỗi mới từ 24/11/2026).
 - "Chờ NCC báo ngày": ghi nhận NCC chưa có ngày + hẹn hỏi lại (≤ 7 ngày) → không bị ghi lỗi lặp tới ngày hẹn, dòng nằm ở mục riêng của Việc của tôi (nút "⏳ NCC chưa có ngày").
 - Form giải trình: bắt buộc chọn "Ai chịu" (không mặc định); gợi ý "Đối tác / NCC" khi NCC trả lời không kèm ngày; thư với NCC đã lưu thay được ảnh bằng chứng.
 - Việc của tôi, mục Giải trình: nhóm theo PO / mã linh kiện / từng dòng, tick nhiều dòng hoặc cả nhóm → giải trình chung 1 lần.

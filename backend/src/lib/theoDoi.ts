@@ -379,6 +379,11 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
       // R4
       if (r.han_cap_nhat_lai && now > r.han_cap_nhat_lai && r.ngay_du_kien_gan_nhat && !daVe(r, r.han_cap_nhat_lai)) {
         add(r, "R4", `R4:${r.item_id}:${r.ngay_du_kien_gan_nhat}`, r.han_cap_nhat_lai, r.ngay_du_kien_gan_nhat, "KHONG_NDK_QUA_HAN");
+        // v0.115 (chu he thong 2026-11-23: "truoc 1/11 bo loi thoi, chu ton thi van tiep tuc day giai trinh vi pham va theo doi tiep"): R4 chi ghi 1 lan / ngay DK
+        // -> dong qua ngay DK TU TRUOC 01/11 (loi cu da bo AUTO:CU) van ton thi ghi THEM 1 loi R4 moi, moc R4_TON_TU (han giai trinh 16h LV) - khoa rieng ":TON".
+        if (r.han_cap_nhat_lai < VP_CU_TRUOC && now > R4_TON_TU && !daVe(r, R4_TON_TU)) {
+          add(r, "R4", `R4:${r.item_id}:${r.ngay_du_kien_gan_nhat}:TON`, R4_TON_TU, r.ngay_du_kien_gan_nhat, "KHONG_NDK_QUA_HAN");
+        }
       }
       // R3: moi thu 2 / thu 4 da qua, ke tu ngay sau khi dong bat dau, ma het ngay do dong chua tung co ngay du kien
       if (r.bat_dau) {
@@ -578,6 +583,8 @@ export const GIO_TU_DONG = 16;
 /** v0.113 (chu he thong 2026-11-23 "loi vi pham cu truoc thang 11 thi bo qua (auto bo vi pham do vi pham cu)"): loi co moc truoc ngay nay
  *  KHONG tinh vi pham - tuGiaiTrinh dong 'AUTO:CU'; migration 0026 doi cac AUTO:QUA_HAN cu sang AUTO:CU. */
 export const VP_CU_TRUOC = "2026-11-01";
+/** v0.115: dong ton qua ngay DK tu truoc VP_CU_TRUOC -> 1 loi R4 moi voi moc nay (sau khi bo loi cu van tiep tuc day giai trinh). */
+export const R4_TON_TU = "2026-11-24 08:00:00";
 export const GIO_TU_DONG_CU = 56;
 export const HAN_GT_16_TU = "2026-11-24 00:00:00";
 export const gioHanGt = (moc: string) => (moc >= HAN_GT_16_TU ? GIO_TU_DONG : GIO_TU_DONG_CU);
