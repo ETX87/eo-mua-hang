@@ -14,7 +14,10 @@
 - Kiểm tra D1 thật (chỉ đọc) trước khi làm: đang chờ 2 phiếu thẩm định, 1 phiếu duyệt mua, 57 dòng thêm sau BH (người duyệt mua có chức danh Tổng Giám đốc → cần
   dấu `gd`, đã gắn cho duyệt mua / dòng thêm).
 - Kiểm thử: typecheck; local (dữ liệu demo, chưa có khoá) nút hiện "(6)" = 2 thẩm định + 2 duyệt mua + 2 PO có dòng thêm / 3 người, popup báo chưa nạp khoá;
-  production: xem mục kết quả nghiệm thu bên dưới.
+  production (sau deploy, khoá đã nạp): lần gửi đầu `ok` — 3 người / 13 việc (2 thẩm định, 1 duyệt mua, 10 PO có tổng 57 dòng thêm sau BH), không người nào
+  "không tra ra"; hỏi lại cổng: người duyệt mua giữ 11 dòng, đúng tag / link `/eo/<id>` / `gd` / `count`; đăng nhập `?next=/eo/288` lưu đường dẫn, `?next=//…` bị bỏ.
+  Lần đầu cổng không bắn thông báo (đúng đặc tả) — thông báo đẩy sẽ có từ PO trình / chuyển bước tiếp theo.
+- Còn để ý: 10 PO có dòng thêm sau BH chờ duyệt từ tháng 6–8/2026 → hiện đỏ (quá hạn) ở App Nhiệm vụ của người duyệt mua; cần người duyệt xử lý hoặc từ chối.
 
 ## 23/11/2026 — v0.115: Bỏ lỗi cũ trước 01/11 nhưng đơn tồn vẫn tiếp tục bị nhắc giải trình
 
