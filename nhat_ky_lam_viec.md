@@ -4,6 +4,14 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 23/11/2026 — v0.111: Cảnh báo cấp CEO ở popup PO gọn lại
+
+- Yêu cầu: "6. diễn giải này đang quá rối, đọc không hiểu gì" (ảnh: khung đỏ "76 dòng ở cấp CEO: Ngày dự kiến cách ngày đặt 44 ngày, chưa có hàng; 4 lỗi; …" ở popup PO).
+- `routes/xemNhanh.ts` (`GET /xem/eo/:id/bo-sung`, `canh_bao`): trước nối mọi lý do của mọi dòng; nay 1 câu tóm tắt theo 3 tiêu chí CEO (từ `ceo_chi_tiet`):
+  "n dòng cấp CEO (hệ thống tự tính): x dòng ngày dự kiến cách ngày đặt ≥ 30 ngày (xa nhất … ngày) · y dòng lùi ngày dự kiến ≥ 3 lần (nhiều nhất …) · z dòng có ≥ 3 lỗi
+  (nhiều nhất … lỗi). Chi tiết từng dòng ở tab "Mã lỗi & giải trình"." Cảnh báo lỗi chờ đổi thành "n lỗi cần giải trình (còn hạn — quá hạn sẽ thành vi phạm)".
+- Kiểm thử: typecheck; local gọi API popup PO (dữ liệu demo không có dòng cấp CEO nên chưa thấy câu mới trên dữ liệu thật — kiểm tra trên production sau deploy).
+
 ## 23/11/2026 — v0.110: Chỉ hết hạn không giải trình mới tính vi phạm, hạn giải trình 16h LV, gộp bước giống nhau, bảng PO cuộn trong khung
 
 - Yêu cầu: chọn "Yes, change counting" (chỉ tính vi phạm khi hết hạn không giải trình) + "5. thời gian giải trình là 16h làm việc trước khi bị tính lỗi)"

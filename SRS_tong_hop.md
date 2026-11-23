@@ -66,6 +66,8 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   Cảnh báo cấp CEO tự tính theo số liệu, không có hạn giải trình. Lịch sử theo dõi của đơn hàng: mỗi mục 1 dòng (thông tin chính), bấm để mở chi tiết, nút "Xem chi tiết" mở tất cả,
   dòng thời gian Hoạt động lọc theo loại (chọn nhiều), 8 nhóm mới nhất + "Xem thêm"; các mục giống nhau liền nhau (1 lần giải trình chung, 1 lần hệ thống tự đóng nhiều lỗi…)
   gộp 1 dòng "×n", bấm xem từng lần, có nút "Hiện từng mục".
+- Cảnh báo cấp CEO ở popup PO = 1 dòng tóm tắt theo 3 tiêu chí (số dòng + mức nặng nhất: xa nhất bao nhiêu ngày, lùi nhiều nhất bao nhiêu lần, nhiều nhất bao nhiêu lỗi),
+  không liệt kê lý do từng dòng; chi tiết từng dòng ở tab "Mã lỗi & giải trình".
 - Bảng linh kiện trong popup PO cuộn trong khung: tiêu đề cột luôn ở trên, thanh kéo dọc + ngang luôn thấy, thêm thanh kéo ngang ở trên đầu bảng.
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
 - Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.

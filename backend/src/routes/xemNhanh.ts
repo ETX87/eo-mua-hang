@@ -92,8 +92,19 @@ app.get("/eo/:id/bo-sung", async (c) => {
   if (tre) cb.push({ muc: "danger", text: `${tre} dòng quá hạn (8h/16h LV) chưa có ngày dự kiến` });
   if (cho) cb.push({ muc: "warn", text: `${cho} dòng cần nhập ngày dự kiến (trong 8h/16h làm việc)` });
   if (qua) cb.push({ muc: "danger", text: `${qua} dòng đã quá ngày dự kiến — phải nhập ngày mới` });
-  if (loiCho) cb.push({ muc: "danger", text: `${loiCho} lỗi chờ giải trình` });
-  if (ceo.length) cb.push({ muc: "danger", text: `${ceo.length} dòng ở cấp CEO: ${[...new Set(ceo.flatMap((r) => r.ceo_ly_do))].join("; ")}` });
+  if (loiCho) cb.push({ muc: "danger", text: `${loiCho} lỗi cần giải trình (còn hạn — quá hạn sẽ thành vi phạm)` });
+  // v0.111 (chu he thong 2026-11-23 "dien giai nay dang qua roi"): TOM TAT theo 3 tieu chi CEO (so dong + muc te nhat), khong liet ke ly do tung dong.
+  if (ceo.length) {
+    const theo = (ma: string) => ceo.filter((r) => (r.ceo_chi_tiet ?? []).some((c: any) => c.ma === ma));
+    const so = (s: string) => Number(String(s).match(/\d+/)?.[0] ?? 0);
+    const xa = theo("XA"), lui = theo("LUI"), nhieuLoi = theo("LOI");
+    const phan = [
+      xa.length ? `${xa.length} dòng ngày dự kiến cách ngày đặt ≥ 30 ngày (xa nhất ${Math.max(...xa.map((r) => so(r.ceo_chi_tiet.find((c: any) => c.ma === "XA")!.gia_tri)))} ngày)` : "",
+      lui.length ? `${lui.length} dòng lùi ngày dự kiến ≥ 3 lần (nhiều nhất ${Math.max(...lui.map((r) => r.so_lan_lui))} lần)` : "",
+      nhieuLoi.length ? `${nhieuLoi.length} dòng có ≥ 3 lỗi (nhiều nhất ${Math.max(...nhieuLoi.map((r) => r.so_loi))} lỗi)` : "",
+    ].filter(Boolean);
+    cb.push({ muc: "danger", text: `${ceo.length} dòng cấp CEO (hệ thống tự tính): ${phan.join(" · ")}. Chi tiết từng dòng ở tab "Mã lỗi & giải trình".` });
+  }
   if (khongKhop.results.length) cb.push({ muc: "warn", text: `${khongKhop.results.length} phiếu nhập AMIS mang mã ${eo.approval_code} nhưng không khớp dòng nào (kho / mã hàng lệch)` });
   const chuaKh = dem((r) => !r.ap_dung && r.tinh_trang !== "DONG" && !r.co_ngay_du_kien);
   if (chuaKh) cb.push({ muc: "info", text: `${chuaKh} dòng đang mở chưa có kế hoạch hàng về` });
