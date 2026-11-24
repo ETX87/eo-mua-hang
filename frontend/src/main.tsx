@@ -11,6 +11,7 @@ import "./theme.css";
 import "./index.css";
 import App from "./App";
 import { napCache, batLuuCache } from "./lib/cacheTrinhDuyet";
+import { CuaSoThongTin } from "./components/CuaSoThongTin";
 
 // gcTime 24h: du lieu nap tu cache trinh duyet khong bi don ngay khi chua co man nao dung
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 15000, gcTime: 24 * 3600_000 } } });
@@ -23,6 +24,7 @@ napCache(qc).finally(() => {
       <QueryClientProvider client={qc}>
         <BrowserRouter>
           <App />
+          <CuaSoThongTin />
         </BrowserRouter>
       </QueryClientProvider>
     </React.StrictMode>,

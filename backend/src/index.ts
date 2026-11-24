@@ -28,6 +28,7 @@ import { danhGiaQuyTac } from "./lib/theoDoi";
 import { dvbhEnabled, maybeSyncDvbh } from "./lib/dvbhSync";
 import congNhiemVuRoutes from "./routes/congNhiemVu";
 import { congNvBat, dayCongNhiemVu } from "./lib/congNhiemVu";
+import { layCuaSoThongTin } from "./lib/cuaSoThongTin";
 
 // EO MUA HANG - Worker doc lap (Hono + D1). Phuc vu ca API lan frontend tinh tu 1 Worker.
 // Khong R2 (xem TARGET_ARCHITECTURE.md). Tu v0.105 co 1 cron MOI GIO: danhGiaQuyTac (ghi loi + nhac sap het han giai trinh + push).
@@ -40,6 +41,9 @@ app.use("*", async (c, next) => {
 
 // Day PO thay doi sang DVBH sau moi request API (khong cron - xem lib/dvbhSync.ts). Chay nen bang
 // waitUntil, khong lam cham response; tu bo qua khi version du lieu + ngay chua doi.
+// Cua so thong tin eOffice (2026-11-24, lib/cuaSoThongTin.ts): khong can dang nhap - hien ca o man dang nhap.
+app.get("/api/cua-so", async (c) => c.json(await layCuaSoThongTin(c.env.CUA_SO_KHOA)));
+
 app.use("/api/*", async (c, next) => {
   await next();
   // ghi loi Theo doi linh kien dat (R1/R3/R4) - toi da 10 phut/lan, xem lib/theoDoi.ts; xong moi day DVBH (payload co so loi)

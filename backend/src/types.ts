@@ -1,4 +1,6 @@
 export interface Env {
+  // Ma khoa API "Cua so thong tin" eOffice (popup Giam doc) - lib/cuaSoThongTin.ts. Chua dat -> khong hien popup.
+  CUA_SO_KHOA?: string;
   DB: D1Database;
   ASSETS: Fetcher;
 
