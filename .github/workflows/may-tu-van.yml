@@ -38,17 +38,29 @@ jobs:
             const j = m ? JSON.parse(m[1]) : {}
             fs.writeFileSync(".may/luot.json", JSON.stringify(j))
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `ma_tu_van=${j.maTuVan || ""}\nluot=${j.luot || ""}\n`)
-            fs.writeFileSync(".may/tep.json", JSON.stringify((j.tep || []).filter((x) => /^https:\/\/firebasestorage\.googleapis\.com\//.test(x.url || "")).slice(0, 10)))'
+            fs.writeFileSync(".may/tep.json", JSON.stringify((j.tep || []).filter((x) => /^https:\/\/(firebasestorage|storage)\.googleapis\.com\//.test(x.url || "")).slice(0, 40)))'
           node -e '
             const fs = require("fs"); const ds = JSON.parse(fs.readFileSync(".may/tep.json", "utf8"))
             ;(async () => { for (const [i, x] of ds.entries()) { try { const r = await fetch(x.url); if (!r.ok) throw new Error(r.status)
-              const ten = String(x.ten || ("tep-" + i)).replace(/[^\w.\-À-ỹ ]/g, "_").slice(0, 80); fs.writeFileSync(".may/tep/" + ten, Buffer.from(await r.arrayBuffer())); console.log("tải", ten)
+              const ten = String(i + 1).padStart(2, "0") + "-" + String(x.ten || ("tep-" + i)).replace(/[^\w.\-À-ỹ ]/g, "_").slice(0, 80); fs.writeFileSync(".may/tep/" + ten, Buffer.from(await r.arrayBuffer())); console.log("tải", ten)
             } catch (e) { console.log("không tải được tệp", i, e.message) } } })()'
-          if ls .may/tep/*.xlsx .may/tep/*.docx >/dev/null 2>&1; then
-            pip install -q openpyxl python-docx >/dev/null 2>&1 || true
-            python3 - <<'PY'
-          import glob, os
-          for f in glob.glob('.may/tep/*.xlsx'):
+          pip install -q openpyxl python-docx >/dev/null 2>&1 || true
+          python3 - <<'PY'
+          # Đọc hết tệp: zip → giải nén (chặn đường dẫn lạ, tối đa 300 MB); Excel/Word/HTML → .txt cạnh tệp gốc. PDF, ảnh: Claude đọc thẳng.
+          import glob, os, zipfile, html.parser
+          for f in glob.glob('.may/tep/*.zip'):
+              try:
+                  dich = f + '_giai_nen'; tong = 0
+                  with zipfile.ZipFile(f) as z:
+                      for m in z.infolist():
+                          if m.is_dir() or m.filename.startswith('/') or '..' in m.filename.split('/'): continue
+                          tong += m.file_size
+                          if tong > 300 * 2**20: print('zip quá lớn, dừng', f); break
+                          z.extract(m, dich)
+                  print('giải nén', f)
+              except Exception as e: print('zip lỗi', f, e)
+          def ds(duoi): return [x for x in glob.glob('.may/tep/**/*' + duoi, recursive=True) + glob.glob('.may/tep/**/*' + duoi.upper(), recursive=True)]
+          for f in ds('.xlsx'):
               try:
                   import openpyxl
                   wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
@@ -59,7 +71,7 @@ jobs:
                               if i >= 3000: o.write('… (cắt bớt)\n'); break
                               o.write('\t'.join('' if v is None else str(v) for v in row) + '\n')
               except Exception as e: print('xlsx lỗi', f, e)
-          for f in glob.glob('.may/tep/*.docx'):
+          for f in ds('.docx'):
               try:
                   import docx
                   d = docx.Document(f)
@@ -68,8 +80,23 @@ jobs:
                       for t in d.tables:
                           for r in t.rows: o.write('\t'.join(c.text for c in r.cells) + '\n')
               except Exception as e: print('docx lỗi', f, e)
+          class BocChu(html.parser.HTMLParser):
+              def __init__(s): super().__init__(); s.ra = []; s.bo = 0
+              def handle_starttag(s, t, a):
+                  if t in ('script', 'style'): s.bo += 1
+                  if t in ('br', 'p', 'div', 'tr', 'li', 'h1', 'h2', 'h3', 'h4', 'table'): s.ra.append('\n')
+                  if t in ('td', 'th'): s.ra.append('\t')
+              def handle_endtag(s, t):
+                  if t in ('script', 'style') and s.bo: s.bo -= 1
+              def handle_data(s, d):
+                  if not s.bo: s.ra.append(d)
+          for f in ds('.html') + ds('.htm'):
+              try:
+                  b = BocChu(); b.feed(open(f, encoding='utf-8', errors='replace').read())
+                  chu = '\n'.join(x.strip() for x in ''.join(b.ra).splitlines() if x.strip())
+                  open(f + '.txt', 'w').write(chu[:400000])
+              except Exception as e: print('html lỗi', f, e)
           PY
-          fi
           ls -la .may/tep || true
       - name: Xác thực Google (chỉ đọc dữ liệu)
         if: steps.yc.outputs.ma_tu_van != '' && vars.GCP_WIF_PROVIDER != '' && vars.GCP_SA != ''
@@ -98,7 +125,7 @@ jobs:
 
             1. Đọc `.may/yeu-cau.md`: nội dung đã ĐỦ ngữ cảnh (đề xuất, hội thoại, các lượt trước). Phần cần trả lời là
                LƯỢT MỚI NHẤT (bình luận cuối có `may-tu-van`), trong đó có câu hỏi và KHUÔN TRẢ LỜI JSON.
-            2. Tệp đính kèm (nếu có) ở `.may/tep/` (Excel / Word đã đổi sang `.txt` cạnh tệp gốc).
+            2. Tệp đính kèm (nếu có, tối đa 40, đánh số theo thứ tự gửi — số nhỏ là mới nhất) ở `.may/tep/`: Excel / Word / HTML đã đổi sang `.txt` cạnh tệp gốc, zip đã giải nén vào thư mục `*_giai_nen/`. ĐỌC HẾT mọi tệp (PDF, ảnh đọc thẳng).
             3. Đọc `CLAUDE.md`, `SRS.md`, `TONG_HOP_LOGIC.md` và mã liên quan để trả lời ĐÚNG theo app đang chạy.
             4. Cần số liệu thật thì đọc dữ liệu của chính app (CHỈ ĐỌC): `node .github/may-du-lieu.mjs doc|list|query|count …`
                (cách dùng ở đầu tệp đó; không có quyền thì nói rõ là chưa đọc được dữ liệu). Không chép số điện thoại, CCCD,
