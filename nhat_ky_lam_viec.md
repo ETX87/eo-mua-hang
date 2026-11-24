@@ -4,6 +4,14 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 24/11/2026 — Tách CLAUDE.md thành bản rút gọn + CLAUDE-full.md (không đổi code)
+
+- Yêu cầu (Trợ lý Mây theo lời Giám đốc): CLAUDE.md ~64 KB làm phiên Claude đám mây nặng bộ nhớ → rút dưới ~10 KB, chi tiết sang tệp riêng.
+  Anh Thái: *"tạo riêng 1 file claude.md rút gọn cho đối tác, 1 file claude-full.md để dành cho việc lưu chi tiết các công việc sau này"*.
+- Đã làm: `git mv CLAUDE.md CLAUDE-full.md` (giữ nguyên nội dung, thêm đầu đề); `CLAUDE.md` mới ~8 KB: hệ thống, lệnh, 14 luật, nguồn định nghĩa
+  duy nhất, kết nối, tài liệu, mục Trợ lý Mây. Từ nay chi tiết ghi vào `CLAUDE-full.md`.
+- Kiểm thử: `wc -c CLAUDE.md` = 7.978 byte. Không đổi mã nguồn, không deploy.
+
 ## 24/11/2026 — v0.119: Cửa sổ thông tin eOffice (popup Giám đốc)
 
 **Yêu cầu (nguyên văn):** "làm luôn cho toàn bộ hệ thống app dvbh: đặt lk, đổi trả, ông thợ, vi phạm, tiếp nhận..." (+ "thêm cả muahang", "cả ccdc") — tài liệu "API Cửa sổ thông tin — dành cho app ngoài (ETX87)".
