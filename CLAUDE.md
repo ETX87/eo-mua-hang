@@ -84,17 +84,7 @@ Service Binding `DVBH` → Worker `dvbh` (đồng bộ PO); app Đặt linh ki�
 - KHÔNG: sửa secrets / luật bảo mật, deploy trần, đổi tính năng ngoài issue, xoá dữ liệu. Không chắc → bình luận `MÂY: CẦN NGƯỜI` + lý do rồi dừng.
   Deploy do workflow `may-deploy` làm sau khi duyệt — không tự deploy trong lúc sửa.
 - Làm trong phiên thường mà giải quyết issue Mây đang mở (`gh issue list --label may:cho-duyet,may:tu-sua`) → ghi mã `MAY-xxxxx` ở dòng đầu commit.
-- **Ba làn** (Giám đốc chốt 18/11/2026; dòng đầu ý tưởng / BRD ghi `**Làn:** nhanh | thường | đầy đủ — <lý do>`; Mây xếp sai thì app ghi đúng làn):
-  - *Nhanh* (không qua duyệt): lệnh Giám đốc, cấp / thu quyền cá nhân, dữ liệu sai / trùng / kẹt, danh mục / cấu hình, lỗi rõ sửa nhỏ không đổi luật,
-    hỏi cách dùng, lấy số liệu → tra dữ liệu thật, ghi qua khối `may-thao-tac`, sửa nguyên nhân nếu là lỗi mã, báo `## BÁO CÁO KẾT QUẢ`
-    (Đã làm · Vì sao bị · Đã sửa · Không đụng tới). Cấp quyền: khai `cap_quyen` { nguoi, vai, vai_cao }.
-  - *Thường*: cải tiến nhỏ (cột, bộ lọc, nút, hiển thị, sắp xếp) — 1 bản cách làm cụ thể, duyệt 1 lần là làm.
-  - *Đầy đủ*: đổi luật / cách tính, tính năng lớn, tiền / lương / thưởng / công nợ, phân quyền nhóm, xoá thật, hồ sơ nhân sự, Upload Lada
-    → ý tưởng → BRD → thẩm định → duyệt.
-  - Phân vân → chọn làn cao hơn.
-- **Máy chạy sai luật đã chốt = LỖI → làn nhanh** (chốt 22/11/2026): sửa đúng luật, chạy lại hoặc đếm số bản ghi bị sai, báo ngắn
-  (lỗi gì · vì sao · đã sửa · bao nhiêu bản ghi). Không đụng dữ liệu đã đẩy sang hệ ngoài (Lada…) — chỉ liệt kê. Không biến lỗi thành đề xuất
-  đổi luật, không hỏi lại luật đã chốt. Việc khác trong cùng báo cáo → 1 dòng "Tách việc riêng: …".
+- Ba làn xử lý và luật "máy chạy sai luật = lỗi": xem 2 mục cuối file (workflow Mây tự đồng bộ, không sửa tay).
 
 <!-- may-ba-lan -->
 ## Ba làn xử lý của Trợ lý Mây (Giám đốc chốt 18/11/2026 — áp dụng VĨNH VIỄN cho app này)
