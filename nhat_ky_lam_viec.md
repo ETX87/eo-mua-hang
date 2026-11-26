@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.123: Bảng trách nhiệm dễ nhìn hơn + giải thích tổng PO
+
+- Yêu cầu (nguyên văn): "1. thiết kế hơn khó nhìn => xem lại cách thiết kế để người dùng dễ nhìn, dễ quan sát số liệu hơn 2. Tại sao tổng lại không bằng PO lỗi
+  lẻ cộng lại ví dụ 26 + 12 tổng lại là 30?"
+- Giải thích: 1 PO có thể có dòng ở cả 2 bên (một phần đã gửi đơn NCC, một phần chưa) → tính ở cả nhóm NCC và nhóm nội bộ, Tổng chỉ đếm 1 lần (26 + 12 − 8 = 30).
+  Ca lỗi gộp theo PO nên cũng vậy. Các cột đếm theo dòng (đơn đặt, SL, tồn > n ngày) cộng khớp.
+- Đã làm: tiêu đề 2 tầng theo nhóm chỉ số có màu nền; mỗi ô 1 số (căn phải, chữ số đều), phụ chỉ còn % ở Đơn đặt / SL tồn / > 30; ô xấu tô nền đỏ đậm dần theo
+  mức; số 0 hiện "·"; bỏ gạch chân, rê chuột vào số có viền xanh; hàng nhóm có vạch màu (xanh NCC, cam nội bộ), hàng con thụt lề; "Đã GT" thành nhãn % màu;
+  "Ai giữ" chỉ tên đầu + số (+n, rê xem đủ); cột tên cố định khi cuộn ngang; ghi chú dưới bảng số PO / ca lỗi nằm ở cả hai bên.
+- Kiểm thử local: typecheck + build; đọc DOM bảng: 4 nhóm tiêu đề, 17 cột, các hàng đúng số như trước (ô trống "·").
+  Chưa chụp được màn hình (khung trình duyệt đang ẩn) — xem bằng mắt trên production.
+
 ## 26/11/2026 — v0.122: Bảng trách nhiệm tồn đọng NCC / nội bộ cho CEO
 
 - Yêu cầu (nguyên văn): "với các vấn đề CEO quan tâm, có thể tạo 1 bảng table danh sách lỗi NCC, lỗi nội bộ rồi các tính số ca PO, số đơn đặt, số linh kiện tồn,

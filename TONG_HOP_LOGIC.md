@@ -92,6 +92,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   (không cộng vào tổng) · Tổng cộng. Cột: số PO, số đơn đặt (dòng) + % , SL tồn / SL đặt + %, tồn > 7 / 14 / 21 / 30 ngày (từ ngày ban hành, cộng dồn),
   tồn lâu nhất, quá ngày DK, chưa có ngày DK, không thúc NCC 7 ngày, cấp CEO, ca lỗi (vi phạm gộp; tách NCC / nội bộ), % đã giải trình (thật / (thật + chưa
   + không GT), ca tự khắc phục không tính), chưa giải trình, không giải trình, ai giữ nhiều nhất. Bấm ô số → danh sách dòng (Excel, bấm dòng = popup).
+  Trình bày (v0.123): tiêu đề 2 tầng theo nhóm chỉ số (Quy mô tồn · Tồn quá (ngày) · Ngày DK & thúc NCC · Lỗi & giải trình), ô xấu tô nền đỏ theo mức (so với ô lớn
+  nhất cùng cột), số 0 hiện "·". **Số PO và ca lỗi KHÔNG cộng dồn**: 1 PO có dòng ở cả NCC và nội bộ được đếm ở cả 2 nhóm, Tổng chỉ đếm 1 lần (ca lỗi gộp theo PO
+  nên tương tự) — bảng ghi chú số PO / ca nằm ở cả hai bên; các cột đếm theo dòng cộng khớp.
   Điều hành › Nguyên nhân & xu hướng có khối "Trách nhiệm chậm trễ theo bên": dòng đang trễ, lượt trễ bước 30 ngày, lỗi 30 ngày cho từng bên + vi phạm không giải trình theo người.
 - **Giai đoạn hiện tại = bước MỚI NHẤT đã bắt đầu mà chưa kết thúc** (theo thứ tự G1 → G2 → G3 → G5 → G6 → G8; không bước nào mở → bước mới nhất
   đã bắt đầu). PO đã qua nháp thì G1 luôn đóng: mốc = lần gửi trình đầu sau khi tạo dòng, không có thì lần trình đầu của PO, không có trình nào

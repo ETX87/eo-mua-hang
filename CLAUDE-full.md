@@ -389,6 +389,9 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.123** (chủ hệ thống 2026-11-26: "thiết kế hơn khó nhìn … Tại sao tổng lại không bằng PO lỗi lẻ cộng lại ví dụ 26 + 12 tổng lại là 30?"): `BangTrachNhiem` vẽ lại —
+mảng `COT` (nhom / v / tc / xau / phu / r), tiêu đề 2 tầng `nhomCot`, ô `O` tô nền đỏ theo `v / maxCot` (chỉ hàng con), CSS `.bt-tbl` trong `<style>` của component;
+ghi chú `poCa2` / `caCa2` (PO, ca lỗi ở cả 2 bên). Trả lời: PO / ca lỗi là đếm KHÁC NHAU (distinct) nên không cộng dồn được.
 **v0.122** (chủ hệ thống 2026-11-26: "tạo 1 bảng table danh sách lỗi NCC, lỗi nội bộ rồi các tính số ca PO, số đơn đặt, số linh kiện tồn, tỷ lệ %, số đơn tồn trên 7 ngày,
 14 ngày, 21 ngày, trên 30 ngày, tỷ lệ đã giải trình, số ca còn chưa giải trình … có thể click vào để xem danh sách chi tiết"): `DongDh.g4` / `ben` / `vb` (lib/dieuHanh.ts,
 cache `dh:goc:v5`, `hd.vb` = GROUP_CONCAT `VP_SQL~N|B~C|V|G|T`). FE `pages/dieuhanh/BangTrachNhiem.tsx` (`BangTrachNhiem`, `DanhSachDong`, `DanhSachDuyet`) dùng ở

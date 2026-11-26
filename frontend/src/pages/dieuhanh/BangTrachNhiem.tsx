@@ -107,41 +107,59 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
   }, [dong, mo]);
   const tong = hangs[hangs.length - 1];
 
-  const So = ({ h, v, tc, xau, sub }: { h: Hang; v: number; tc: string; xau?: boolean; sub?: ReactNode }) => (
-    <span role="button" onClick={(e) => { e.stopPropagation(); if (v) setXem({ hang: h, tc: TC[tc] }); }}
-      title={v ? `Bấm xem ${v} dòng: ${TC[tc].l} — ${h.nhomTxt}` : undefined}
-      style={{ cursor: v ? "pointer" : "default", fontWeight: h.cap < 2 ? 800 : 600, color: !v ? "var(--muted)" : xau ? "var(--danger-ink)" : undefined, textDecoration: v ? "underline dotted" : undefined }}>
-      {soLuong(v)}{sub && <div className="muted" style={{ fontSize: 10.5, fontWeight: 400, textDecoration: "none" }}>{sub}</div>}
-    </span>
-  );
-  const nenHang = (h: Hang) => (h.cap === 0 ? "#F3F4F6" : h.cap === 1 ? (h.ben === "NCC" ? "#EFF6FF" : "#FFFBEB") : undefined);
-  const cols: { h: ReactNode; title?: string; r: (h: Hang) => ReactNode; w?: number; left?: boolean }[] = [
-    { h: "Nhóm chịu trách nhiệm", left: true, w: 250, r: (h) => (
-      <span style={{ paddingLeft: h.cap === 2 ? 18 : 0, fontWeight: h.cap < 2 ? 800 : 500, display: "inline-flex", gap: 6, alignItems: "center" }}>
-        {h.cap === 1 && <span role="button" style={{ cursor: "pointer", width: 14 }} onClick={() => setMo((m) => ({ ...m, [h.ben]: !m[h.ben] }))}>{mo[h.ben] ? "▾" : "▸"}</span>}
-        {h.nhom}
-      </span>) },
-    { h: "Số PO", r: (h) => <So h={h} v={h.po} tc="tat_ca" /> },
-    { h: "Số đơn đặt", title: "Số dòng linh kiện đặt còn tồn (mỗi dòng = 1 đơn đặt)", r: (h) => <So h={h} v={h.dong} tc="tat_ca" sub={h.cap ? pct(h.dong, tong.dong) : undefined} /> },
-    { h: "SL linh kiện tồn", title: "Số lượng còn thiếu / số lượng đặt", r: (h) => <span style={{ fontWeight: h.cap < 2 ? 800 : 600 }}>{soLuong(h.thieu)}<div className="muted" style={{ fontSize: 10.5, fontWeight: 400 }}>/ {soLuong(h.dat)} · {pct(h.thieu, h.dat)}</div></span> },
-    { h: "> 7 ngày", r: (h) => <So h={h} v={h.t7} tc="t7" /> },
-    { h: "> 14 ngày", r: (h) => <So h={h} v={h.t14} tc="t14" xau /> },
-    { h: "> 21 ngày", r: (h) => <So h={h} v={h.t21} tc="t21" xau /> },
-    { h: "> 30 ngày", r: (h) => <So h={h} v={h.t30} tc="t30" xau sub={h.dong ? pct(h.t30, h.dong) : undefined} /> },
-    { h: "Tồn lâu nhất", r: (h) => <span style={{ color: h.tonMax > 30 ? "var(--danger-ink)" : undefined, fontWeight: 700 }}>{h.tonMax ? `${h.tonMax} ng` : "—"}</span> },
-    { h: "Quá ngày DK", r: (h) => <So h={h} v={h.qua_dk} tc="qua_dk" xau /> },
-    { h: "Chưa có ngày DK", r: (h) => <So h={h} v={h.chua_dk} tc="chua_dk" /> },
-    { h: "Không thúc NCC 7 ngày", title: "Dòng không có mail / push / gọi-Zalo với NCC trong 7 ngày", r: (h) => <So h={h} v={h.khong_thuc} tc="khong_thuc" xau /> },
-    { h: "Cấp CEO", r: (h) => <So h={h} v={h.ceo} tc="ceo" xau /> },
-    { h: "Ca lỗi", title: "Vi phạm gộp (cùng lỗi, cùng PO, cùng kỳ) trên các dòng của nhóm — kèm do NCC / do nội bộ", r: (h) => <So h={h} v={h.ca} tc="co_loi" sub={h.ca ? `NCC ${h.caNcc} · NB ${h.caNb}` : undefined} /> },
-    { h: "Đã giải trình", title: "Ca đã giải trình thật / (đã giải trình + chưa giải trình + không giải trình). Ca tự khắc phục không tính", r: (h) => {
+  // ---- v0.123 thiet ke lai (chu he thong: "kho nhin"): tieu de 2 tang theo nhom chi so, moi o 1 dong so (tabular), o xau to nen do theo muc do
+  //      (so voi o lon nhat cung cot), 0 hien "·" mo; hang nhom co vach mau ben trai; tach NCC-NB / ten day du dua vao tooltip.
+  const conHang = hangs.filter((h) => h.cap === 2);
+  const maxCot = (f: (h: Hang) => number) => Math.max(1, ...conHang.map(f));
+  type Cot = { k: string; h: ReactNode; title?: string; nhom: string; v?: (h: Hang) => number; tc?: string; xau?: boolean; r?: (h: Hang) => ReactNode; phu?: (h: Hang) => string };
+  const COT: Cot[] = [
+    { k: "po", nhom: "Quy mô tồn", h: "PO", v: (h) => h.po, tc: "tat_ca", title: "Số PO có dòng tồn trong nhóm (1 PO có thể có dòng ở cả NCC và nội bộ)" },
+    { k: "dong", nhom: "Quy mô tồn", h: "Đơn đặt", v: (h) => h.dong, tc: "tat_ca", phu: (h) => pct(h.dong, tong.dong), title: "Số dòng linh kiện đặt còn tồn — % so với tổng" },
+    { k: "thieu", nhom: "Quy mô tồn", h: "SL tồn", v: (h) => h.thieu, phu: (h) => pct(h.thieu, h.dat), title: "Số lượng linh kiện còn thiếu — % so với SL đặt" },
+    { k: "t7", nhom: "Tồn quá (ngày)", h: "> 7", v: (h) => h.t7, tc: "t7", xau: true, title: "Tính từ ngày ban hành" },
+    { k: "t14", nhom: "Tồn quá (ngày)", h: "> 14", v: (h) => h.t14, tc: "t14", xau: true },
+    { k: "t21", nhom: "Tồn quá (ngày)", h: "> 21", v: (h) => h.t21, tc: "t21", xau: true },
+    { k: "t30", nhom: "Tồn quá (ngày)", h: "> 30", v: (h) => h.t30, tc: "t30", xau: true, phu: (h) => pct(h.t30, h.dong) },
+    { k: "max", nhom: "Tồn quá (ngày)", h: "Lâu nhất", r: (h) => h.tonMax ? <span style={{ color: h.tonMax > 30 ? "var(--danger-ink)" : undefined, fontWeight: 700 }}>{h.tonMax}<span className="muted" style={{ fontWeight: 400 }}> ng</span></span> : <span className="muted">·</span> },
+    { k: "qua_dk", nhom: "Ngày DK & thúc NCC", h: "Quá DK", v: (h) => h.qua_dk, tc: "qua_dk", xau: true, title: "Đã quá ngày dự kiến mà chưa về đủ" },
+    { k: "chua_dk", nhom: "Ngày DK & thúc NCC", h: "Chưa DK", v: (h) => h.chua_dk, tc: "chua_dk", xau: true, title: "Chưa có ngày dự kiến" },
+    { k: "khong_thuc", nhom: "Ngày DK & thúc NCC", h: "Không thúc 7 ng", v: (h) => h.khong_thuc, tc: "khong_thuc", xau: true, title: "Không có mail / push / gọi-Zalo với NCC trong 7 ngày" },
+    { k: "ceo", nhom: "Ngày DK & thúc NCC", h: "Cấp CEO", v: (h) => h.ceo, tc: "ceo", xau: true },
+    { k: "ca", nhom: "Lỗi & giải trình", h: "Ca lỗi", v: (h) => h.ca, tc: "co_loi", title: "Vi phạm gộp (cùng lỗi, cùng PO, cùng kỳ) trên các dòng của nhóm" },
+    { k: "gt", nhom: "Lỗi & giải trình", h: "Đã GT", title: "Đã giải trình thật / (đã + chưa + không giải trình). Ca tự khắc phục không tính", r: (h) => {
       const m = h.g + h.c + h.v;
-      return <span style={{ fontWeight: 800, color: m && h.g / m < 0.5 ? "var(--danger-ink)" : m ? "var(--ok-ink)" : "var(--muted)" }}>{pct(h.g, m)}<div className="muted" style={{ fontSize: 10.5, fontWeight: 400 }}>{m ? `${h.g}/${m}` : ""}</div></span>;
+      if (!m) return <span className="muted">·</span>;
+      const t = h.g / m, mau = t < 0.5 ? "#DC2626" : t < 0.8 ? "#D97706" : "#16A34A";
+      return <span title={`${h.g} / ${m} ca đã giải trình`} style={{ display: "inline-block", minWidth: 44, padding: "1px 6px", borderRadius: 10, background: `${mau}1A`, color: mau, fontWeight: 800 }}>{Math.round(t * 100)}%</span>;
     } },
-    { h: "Chưa giải trình", title: "Ca lỗi còn trong hạn 16 giờ làm việc, chưa giải trình", r: (h) => <So h={h} v={h.c} tc="chua_gt" xau /> },
-    { h: "Không giải trình", title: "Hết 16 giờ làm việc không giải trình → vi phạm (lỗi của người phải giải trình, tính riêng)", r: (h) => <So h={h} v={h.v} tc="khong_gt" xau /> },
-    { h: "Ai đang giữ nhiều nhất", left: true, w: 170, r: (h) => <span style={{ fontSize: 11.5 }}>{h.giu.map((x) => `${ten(x.ai) || "(không rõ)"} (${x.n})`).join(", ")}</span> },
+    { k: "c", nhom: "Lỗi & giải trình", h: "Chưa GT", v: (h) => h.c, tc: "chua_gt", xau: true, title: "Ca lỗi còn trong hạn 16 giờ làm việc, chưa giải trình" },
+    { k: "v", nhom: "Lỗi & giải trình", h: "Không GT", v: (h) => h.v, tc: "khong_gt", xau: true, title: "Hết 16 giờ làm việc không giải trình → vi phạm (tính riêng cho người phải giải trình)" },
   ];
+  const nhomCot = COT.reduce<{ l: string; n: number }[]>((m, c) => { const x = m[m.length - 1]; if (x && x.l === c.nhom) x.n++; else m.push({ l: c.nhom, n: 1 }); return m; }, []);
+  const NEN_NHOM: Record<string, string> = { "Quy mô tồn": "#F8FAFC", "Tồn quá (ngày)": "#FFF7ED", "Ngày DK & thúc NCC": "#FEFCE8", "Lỗi & giải trình": "#FEF2F2" };
+  const VACH: Record<string, string> = { NCC: "#2563EB", NOI_BO: "#D97706", TONG: "#374151" };
+  const dauNhom = (i: number) => i === 0 || COT[i - 1].nhom !== COT[i].nhom;
+  const O = ({ h, c }: { h: Hang; c: Cot }) => {
+    if (c.r) return <>{c.r(h)}</>;
+    const v = c.v!(h);
+    if (!v) return <span className="muted">·</span>;
+    const muc = c.xau && h.cap === 2 ? Math.min(1, v / maxCot(c.v!)) : 0;
+    const bam = !!c.tc;
+    return (
+      <span className={bam ? "bt-o" : undefined} role={bam ? "button" : undefined}
+        onClick={bam ? (e) => { e.stopPropagation(); setXem({ hang: h, tc: TC[c.tc!] }); } : undefined}
+        title={`${bam ? `Bấm xem ${v} dòng: ${TC[c.tc!].l}` : soLuong(v)} — ${h.nhomTxt}${c.phu ? ` (${c.phu(h)})` : ""}`}
+        style={{ background: muc ? `rgba(220, 38, 38, ${0.08 + muc * 0.32})` : undefined, color: muc > 0.55 ? "#7F1D1D" : undefined }}>
+        {soLuong(v)}{c.phu && <span className="bt-phu">{c.phu(h)}</span>}
+      </span>
+    );
+  };
+  // PO / ca loi nam o CA 2 ben -> tong < cong 2 nhom (giai thich duoi bang)
+  const hN = hangs.find((h) => h.key === "NCC"), hB = hangs.find((h) => h.key === "NOI_BO");
+  const poN = new Set(hN?.ds.map((d) => d.eo)), poB = new Set(hB?.ds.map((d) => d.eo));
+  const poCa2 = [...poN].filter((x) => poB.has(x)).length;
+  const caCa2 = (hN?.ca ?? 0) + (hB?.ca ?? 0) - tong.ca;
+  const giuTxt = (h: Hang) => h.giu.map((x) => `${ten(x.ai) || "(không rõ)"} (${x.n})`).join(", ");
 
   const xuat = () => exportRowsToXlsx(hangs, [
     { header: "Nhóm", get: (h) => `${h.cap === 2 ? "   " : ""}${h.nhomTxt}` }, { header: "Số PO", get: (h) => h.po }, { header: "Số đơn đặt", get: (h) => h.dong },
@@ -155,42 +173,91 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
-        <b style={{ fontSize: 15 }}>Bảng trách nhiệm tồn đọng — nhà cung cấp & nội bộ</b>
-        <span className="muted" style={{ fontSize: 11.5 }}>
-          NCC = dòng đã gửi đơn và đang chờ NCC báo ngày / giao hàng / giao bù · Nội bộ = đang lập / thẩm định / duyệt hoặc chưa ghi nhận gửi đơn cho NCC.
-          {!gon && " Tồn tính từ ngày ban hành. Bấm số bất kỳ để xem danh sách."}</span>
+      <style>{`
+        .bt-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+        .bt-tbl th, .bt-tbl td { padding: 6px 8px; border-bottom: 1px solid #EEF0F3; white-space: nowrap; vertical-align: middle; }
+        .bt-tbl thead th { font-weight: 700; color: #4B5563; font-size: 12px; }
+        .bt-tbl .bt-nhom th { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #6B7280; border-bottom: 2px solid #E5E7EB; text-align: center; }
+        .bt-tbl td.so { text-align: right; }
+        .bt-tbl td.ten, .bt-tbl th.ten { position: sticky; left: 0; background: inherit; z-index: 2; text-align: left; }
+        .bt-tbl tr.cap1 td { font-weight: 800; }
+        .bt-tbl tr.cap2 td { font-weight: 500; }
+        .bt-tbl tbody tr:hover td { filter: brightness(0.97); }
+        .bt-tbl tr.tong td { font-weight: 800; border-top: 2px solid #374151; }
+        .bt-o { display: inline-block; min-width: 34px; padding: 1px 6px; border-radius: 6px; cursor: pointer; }
+        .bt-o:hover { outline: 2px solid #2563EB; }
+        .bt-phu { display: block; font-size: 10.5px; font-weight: 400; color: #6B7280; line-height: 1.1; }
+        .bt-sep { border-left: 1px solid #E5E7EB; }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+        <b style={{ fontSize: 15 }}>Bảng trách nhiệm tồn đọng</b>
+        <span style={{ fontSize: 12, display: "inline-flex", gap: 14, flexWrap: "wrap" }}>
+          <span><span style={{ display: "inline-block", width: 10, height: 10, background: VACH.NCC, borderRadius: 2, marginRight: 4 }} />Nhà cung cấp — đã gửi đơn, chờ NCC báo ngày / giao / giao bù</span>
+          <span><span style={{ display: "inline-block", width: 10, height: 10, background: VACH.NOI_BO, borderRadius: 2, marginRight: 4 }} />Nội bộ — lập / thẩm định / duyệt / chưa gửi đơn NCC</span>
+        </span>
+        <span className="muted" style={{ fontSize: 11.5 }}>Ô càng đỏ càng nặng · bấm số để xem danh sách{gon ? "" : " · tồn tính từ ngày ban hành"}</span>
         <button className="btn sm" style={{ marginLeft: "auto" }} onClick={xuat}>⬇ Excel</button>
       </div>
-      <div className="tbl-wrap" style={{ overflowX: "auto" }}>
-        <table className="tbl tbl-dense">
-          <thead><tr>{cols.map((c, i) => <th key={i} title={c.title} style={{ textAlign: c.left ? "left" : "right", minWidth: c.w, whiteSpace: "normal", verticalAlign: "bottom" }}>{c.h}</th>)}</tr></thead>
+      <div style={{ overflowX: "auto", border: "1px solid #E5E7EB", borderRadius: 10 }}>
+        <table className="bt-tbl">
+          <thead>
+            <tr className="bt-nhom">
+              <th className="ten" style={{ background: "#fff" }} />
+              {nhomCot.map((g) => <th key={g.l} colSpan={g.n} className="bt-sep" style={{ background: NEN_NHOM[g.l] }}>{g.l}</th>)}
+              <th className="bt-sep" style={{ background: "#fff" }} />
+            </tr>
+            <tr>
+              <th className="ten" style={{ background: "#fff", minWidth: 250 }}>Nhóm chịu trách nhiệm</th>
+              {COT.map((c, i) => <th key={c.k} title={c.title} className={dauNhom(i) ? "bt-sep" : undefined}
+                style={{ textAlign: "right", background: NEN_NHOM[c.nhom], minWidth: 60 }}>{c.h}</th>)}
+              <th className="bt-sep" style={{ textAlign: "left", background: "#fff", minWidth: 160 }}>Ai giữ nhiều nhất</th>
+            </tr>
+          </thead>
           <tbody>{hangs.map((h) => (<Fragment key={h.key}>
-            <tr key={h.key} style={{ background: nenHang(h), cursor: "pointer" }} onClick={() => h.dong && setXem({ hang: h, tc: TC.tat_ca })}>
-              {cols.map((c, i) => <td key={i} style={{ textAlign: c.left ? "left" : "right", verticalAlign: "top" }}>{c.r(h)}</td>)}
+            <tr className={h.cap === 0 ? "tong" : `cap${h.cap}`} style={{ background: h.cap === 1 ? (h.ben === "NCC" ? "#EFF6FF" : "#FFFBEB") : h.cap === 0 ? "#F3F4F6" : "#fff", cursor: "pointer" }}
+              onClick={() => h.dong && setXem({ hang: h, tc: TC.tat_ca })}>
+              <td className="ten" style={{ boxShadow: h.cap ? `inset 4px 0 0 ${VACH[h.ben]}` : undefined, paddingLeft: h.cap === 2 ? 32 : 12 }}>
+                {h.cap === 1 && <span role="button" style={{ cursor: "pointer", display: "inline-block", width: 16 }} onClick={(e) => { e.stopPropagation(); setMo((m) => ({ ...m, [h.ben]: !m[h.ben] })); }}>{mo[h.ben] ? "▾" : "▸"}</span>}
+                {h.nhom}
+              </td>
+              {COT.map((c, i) => <td key={c.k} className={`so${dauNhom(i) ? " bt-sep" : ""}`}><O h={h} c={c} /></td>)}
+              <td className="bt-sep" style={{ fontSize: 12, fontWeight: 500 }} title={giuTxt(h)}>
+                {h.giu[0] ? <>{ten(h.giu[0].ai) || "(không rõ)"} <span className="muted">· {h.giu[0].n}</span>{h.giu.length > 1 && <span className="muted"> +{h.giu.length - 1}</span>}</> : <span className="muted">·</span>}
+              </td>
             </tr>
             {h.key === "NOI_BO" && mo.NOI_BO && dd.length > 0 && (() => {
-              const DSo = ({ ds, l, xau }: { ds: DuyetTn[]; l: string; xau?: boolean }) => <span role="button" onClick={(e) => { e.stopPropagation(); if (ds.length) setXemDuyet({ l, ds }); }}
-                style={{ cursor: ds.length ? "pointer" : "default", fontWeight: 600, color: !ds.length ? "var(--muted)" : xau ? "var(--danger-ink)" : undefined, textDecoration: ds.length ? "underline dotted" : undefined }}>{soLuong(ds.length)}</span>;
+              const DSo = ({ ds, l }: { ds: DuyetTn[]; l: string }) => ds.length
+                ? <span className="bt-o" role="button" title={`Bấm xem ${ds.length} PO`} onClick={(e) => { e.stopPropagation(); setXemDuyet({ l, ds }); }}>{soLuong(ds.length)}</span>
+                : <span className="muted">·</span>;
               const giu = new Map<string, number>();
               for (const x of dd) giu.set(x.ai ?? "", (giu.get(x.ai ?? "") ?? 0) + 1);
+              const top = [...giu.entries()].sort((a, b) => b[1] - a[1]);
+              const maxNg = Math.max(...dd.map(ngCho));
+              const o: Record<string, ReactNode> = {
+                po: <DSo ds={dd} l="PO chờ thẩm định / duyệt" />, dong: soLuong(dd.reduce((s, x) => s + x.so_dong, 0)),
+                t7: <DSo ds={dDem(7)} l="PO chờ duyệt > 7 ngày" />, t14: <DSo ds={dDem(14)} l="PO chờ duyệt > 14 ngày" />,
+                t21: <DSo ds={dDem(21)} l="PO chờ duyệt > 21 ngày" />, t30: <DSo ds={dDem(30)} l="PO chờ duyệt > 30 ngày" />,
+                max: <span style={{ fontWeight: 700, color: maxNg > 7 ? "var(--danger-ink)" : undefined }}>{maxNg}<span className="muted" style={{ fontWeight: 400 }}> ng</span></span>,
+              };
               return (
-                <tr key="NB|DUYET" style={{ cursor: "pointer" }} onClick={() => setXemDuyet({ l: "PO chờ thẩm định / duyệt", ds: dd })}
-                  title="PO chưa ban hành nên chưa vào tồn — không cộng vào tổng. Số ở cột tồn = số PO chờ quá n ngày.">
-                  <td style={{ paddingLeft: 18 }}>G2–G3 PO chưa ban hành, đang chờ thẩm định / duyệt — người duyệt <span className="muted" style={{ fontSize: 11 }}>(không cộng vào tổng)</span></td>
-                  <td style={{ textAlign: "right" }}><DSo ds={dd} l="PO chờ thẩm định / duyệt" /></td>
-                  <td style={{ textAlign: "right" }}>{soLuong(dd.reduce((s, x) => s + x.so_dong, 0))}</td>
-                  <td />
-                  {[7, 14, 21, 30].map((n) => <td key={n} style={{ textAlign: "right" }}><DSo ds={dDem(n)} l={`PO chờ duyệt > ${n} ngày`} xau={n >= 14} /></td>)}
-                  <td style={{ textAlign: "right", fontWeight: 700, color: Math.max(...dd.map(ngCho)) > 7 ? "var(--danger-ink)" : undefined }}>{Math.max(...dd.map(ngCho))} ng</td>
-                  <td colSpan={8} />
-                  <td style={{ fontSize: 11.5 }}>{[...giu.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([ai, n]) => `${ten(ai) || "(không rõ)"} (${n})`).join(", ")}</td>
+                <tr key="NB|DUYET" className="cap2" style={{ background: "#FFFDF5", cursor: "pointer" }} onClick={() => setXemDuyet({ l: "PO chờ thẩm định / duyệt", ds: dd })}
+                  title="PO chưa ban hành nên chưa vào tồn — không cộng vào tổng. Cột tồn = số PO đã chờ duyệt quá n ngày.">
+                  <td className="ten" style={{ boxShadow: `inset 4px 0 0 ${VACH.NOI_BO}`, paddingLeft: 32, fontStyle: "italic" }}>PO chờ thẩm định / duyệt <span className="muted" style={{ fontSize: 11 }}>(chưa ban hành, không cộng tổng)</span></td>
+                  {COT.map((c, i) => <td key={c.k} className={`so${dauNhom(i) ? " bt-sep" : ""}`}>{o[c.k] ?? <span className="muted">·</span>}</td>)}
+                  <td className="bt-sep" style={{ fontSize: 12 }} title={top.map(([ai, n]) => `${ten(ai) || "(không rõ)"} (${n})`).join(", ")}>{top[0] ? <>{ten(top[0][0]) || "(không rõ)"} <span className="muted">· {top[0][1]}</span>{top.length > 1 && <span className="muted"> +{top.length - 1}</span>}</> : null}</td>
                 </tr>
               );
             })()}
           </Fragment>))}</tbody>
         </table>
       </div>
+      {(poCa2 > 0 || caCa2 > 0) && (
+        <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+          ⓘ Tổng PO ({soLuong(tong.po)}) nhỏ hơn cộng 2 nhóm ({soLuong(poN.size)} + {soLuong(poB.size)}) vì <b>{soLuong(poCa2)} PO có dòng ở cả hai bên</b> (một phần dòng đã gửi
+          đơn NCC, một phần chưa) — PO đó tính ở cả 2 nhóm nhưng tổng chỉ đếm 1 lần.{caCa2 > 0 && <> Ca lỗi gộp theo PO nên tương tự: {soLuong(caCa2)} ca nằm ở cả hai nhóm.</>} Các cột
+          đếm theo dòng (đơn đặt, SL tồn, tồn &gt; n ngày…) cộng khớp.
+        </div>
+      )}
       {xem && <DanhSachDong hang={xem.hang} tc={xem.tc} onClose={() => setXem(null)} />}
       {xemDuyet && <DanhSachDuyet l={xemDuyet.l} ds={xemDuyet.ds} onClose={() => setXemDuyet(null)} />}
     </div>
