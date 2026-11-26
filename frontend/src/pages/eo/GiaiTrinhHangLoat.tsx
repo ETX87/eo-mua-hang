@@ -66,7 +66,7 @@ export function GiaiTrinhHangLoatModal({ params, moTa, onClose }: { params: URLS
   return (
     <Modal title="Giải trình hàng loạt" onClose={onClose} width={1100}
       footer={<>
-        <span className="muted" style={{ fontSize: 12, marginRight: "auto" }}>Giải trình chung chỉ cho các vi phạm CÙNG loại lỗi. R1 / R4 bắt buộc ảnh bằng chứng.</span>
+        <span className="muted" style={{ fontSize: 12, marginRight: "auto" }}>Giải trình chung chỉ cho các vi phạm CÙNG loại lỗi. Ảnh bằng chứng tuỳ chọn.</span>
         <button className="btn" onClick={onClose}>Đóng</button>
         <button className="btn primary" disabled={!daChon.length || !q.data?.coTheGt} title={q.data && !q.data.coTheGt ? "Tài khoản của bạn không có quyền giải trình" : undefined} onClick={() => setGt(true)}>
           Giải trình chung ({daChon.length} vi phạm · {daChon.reduce((s, v) => s + soDong(v), 0)} dòng)</button>

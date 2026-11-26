@@ -293,7 +293,7 @@ export default function ViecCuaToi() {
       </Muc>
 
       <Muc id="m-gt" so="4" n={d.giai_trinh.length} mau="#7C3AED" tieuDe="Giải trình lỗi" xuat={() => xuatMuc(d.giai_trinh, "4-giai-trinh-loi", "Hạn tự đóng")}
-        lamGi={<>Bấm <b>✍ Giải trình</b> → chọn <b>Ai chịu</b> + <b>Lỗi gì</b> + ghi nội dung (lỗi chưa có ngày DK / quá ngày DK cần ảnh bằng chứng: mail, tin nhắn với NCC). Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Nếu do NCC, chọn Ai = <b>Đối tác / NCC</b>; có thư với NCC thì tick dùng thư làm bằng chứng (không cần chụp ảnh). Nhiều lỗi cùng nguyên nhân: xem <b>Theo PO</b> / <b>Theo mã linh kiện</b> → bấm <b>✍ Giải trình cả nhóm</b>, hoặc tick nhiều dòng → <b>✍ Giải trình chung</b> (1 nội dung cho mọi lỗi).</>}>
+        lamGi={<>Bấm <b>✍ Giải trình</b> → kiểm tra <b>Do ai</b> (hệ thống gợi ý theo giai đoạn: chưa có / quá ngày DK = <b>Nhà cung cấp</b>, không thúc NCC = <b>nội bộ</b>; đổi được) + <b>Lỗi gì</b> + ghi nội dung. Ảnh / thư bằng chứng: tuỳ chọn. Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Có thư với NCC thì tick kèm thư làm bằng chứng. Nhiều lỗi cùng nguyên nhân: xem <b>Theo PO</b> / <b>Theo mã linh kiện</b> → bấm <b>✍ Giải trình cả nhóm</b>, hoặc tick nhiều dòng → <b>✍ Giải trình chung</b> (1 nội dung cho mọi lỗi).</>}>
         <BangGiaiTrinh rows={d.giai_trinh} onMot={setGt} onNhieu={setGtNhieu} />
       </Muc>
 

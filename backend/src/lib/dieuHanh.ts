@@ -5,7 +5,7 @@ import { layGiaiDoan, GIAI_DOAN } from "./giaiDoan";
 import { nowVN, todayVN } from "./vnTime";
 import { weekStart } from "./week";
 import { versionTag } from "./dataVersions";
-import { VP_SQL } from "./maLoi";
+import { VP_SQL, BEN_SQL } from "./maLoi";
 import { demGioLV } from "./gioLamViec";
 import { dsLoiDayDu, trangThaiViPham } from "./baoCaoLoi";
 
@@ -25,7 +25,7 @@ export const IM_LANG_DO = 7;
 export const IM_LANG_VANG = 3;
 /** v0.103: loi cho giai trinh >= bay nhieu GIO LAM VIEC -> DO (= han giai trinh / tu dong cua lib/theoDoi GIO_TU_DONG; truoc la 7 ngay lich). */
 export const LOI_CHO_DO = 12; // v0.110: han giai trinh 16h LV -> con <= 4h la DO (truoc 56)
-const KHOA_CACHE = "dh:goc:v3"; // v3 (v0.110): loi30.vp = vi pham that (het han khong giai trinh)
+const KHOA_CACHE = "dh:goc:v4"; // v4 (v0.121): loi30.ben = ben chiu NCC / NOI_BO; v3 (v0.110): loi30.vp = vi pham that (het han khong giai trinh)
 // v2 (v0.093): them vp_cho, loi30 dem vi pham gop
 
 const ngayGiua = (a: string, b: string) =>
@@ -47,7 +47,7 @@ interface Goc {
   /** lich su giai doan: item -> {eo_id, ncc}, eo -> {created_by, final, reviewer cuoi} */
   item: Record<number, [number, string | null]>;
   eo: Record<number, { tao: string; final: string | null; tham_dinh: string | null; tt: string; bh: string | null; ma: string }>;
-  loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number; vp: number }[];
+  loi30: { qt: string; ai: string | null; ncc: string | null; ben: "NCC" | "NOI_BO"; cho: number; n: number; vp: number }[];
   loi_ngay: { d: string; n: number }[]; gt_ngay: { d: string; n: number }[]; nhac_ngay: { d: string; n: number }[];
   nguyen_nhan: { ai_ma: string; loi_ma: string; n: number }[];
   dm: { loai: string; ma: string; ten: string }[];
@@ -85,11 +85,12 @@ async function docGoc(env: Env): Promise<Goc> {
     db.prepare(`SELECT s.eo_id, a.approver_email ai, MAX(COALESCE(a.action_at, a.assigned_at)) luc FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
                 WHERE a.step_type = 'REVIEW' AND a.status IN ('APPROVED', 'PENDING') GROUP BY s.eo_id`),
     // v0.093: dem VI PHAM GOP (PO + loai + ky - lib/maLoi VP_SQL), khong dem tung dong
-    db.prepare(`SELECT l.quy_tac qt, COALESCE(l.ai_email, e.created_by) ai, i.supplier ncc,
+    // v0.121: ben chiu (NCC / NOI_BO - lib/maLoi BEN_SQL); vp = loi KHONG giai trinh (tinh rieng cho nguoi phai giai trinh)
+    db.prepare(`SELECT l.quy_tac qt, COALESCE(l.ai_email, e.created_by) ai, i.supplier ncc, ${BEN_SQL} ben,
                 COUNT(DISTINCT CASE WHEN l.trang_thai = 'CHO_GIAI_TRINH' THEN ${VP_SQL("l")} END) cho, COUNT(DISTINCT ${VP_SQL("l")}) n,
                 COUNT(DISTINCT CASE WHEN g.nhom = 'AUTO:QUA_HAN' THEN ${VP_SQL("l")} END) vp
                 FROM tl_loi l JOIN eo e ON e.id = l.eo_id JOIN eo_item i ON i.id = l.eo_item_id LEFT JOIN tl_giai_trinh g ON g.id = l.giai_trinh_id
-                WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1, 2, 3`).bind(d30, boQua),
+                WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1, 2, 3, 4`).bind(d30, boQua),
     db.prepare(`SELECT substr(l.created_at, 1, 10) d, COUNT(*) n FROM tl_loi l JOIN eo e ON e.id = l.eo_id WHERE l.created_at >= ?1 AND COALESCE(e.issued_at, e.created_at) >= ?2 GROUP BY 1`).bind(d60, boQua),
     db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_giai_trinh WHERE created_at >= ?1 AND COALESCE(pham_vi, '') <> 'AUTO' GROUP BY 1").bind(d60),
     db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_nhac_nho WHERE created_at >= ?1 GROUP BY 1").bind(d60),
@@ -279,7 +280,7 @@ async function viPhamTheoPo(env: Env): Promise<Map<number, VpPo>> {
 export function chiuTrachNhiem(k: string, eo: Goc["eo"][number] | undefined, ncc: string | null): string {
   if (k === "G2") return eo?.tham_dinh ?? "(chưa rõ người thẩm định)";
   if (k === "G3") return eo?.final ?? "(chưa rõ người duyệt mua)";
-  if (k === "G6" || k === "G8") return `NCC: ${ncc ?? "(trống)"}`;
+  if (k === "G5" || k === "G6" || k === "G8") return `NCC: ${ncc ?? "(trống)"}`; // v0.121: G5 (cho ngay DK sau khi gui don) = NCC
   if (k === "G7") return "Kho / Kế toán";
   return eo?.tao ?? "(không rõ)";
 }
@@ -287,7 +288,7 @@ export function chiuTrachNhiem(k: string, eo: Goc["eo"][number] | undefined, ncc
 /** Lich su giai doan 30 ngay (da qua / tre theo nguoi chiu) + dang o (moi dong chua xong, ke ca EO chua ban hanh). */
 export function thongKeGiaiDoan(goc: Goc, gd: Awaited<ReturnType<typeof layGiaiDoan>>) {
   const d30 = truNgay(todayVN(), 30);
-  const out = GIAI_DOAN.map((g) => ({ k: g.k, l: g.l, vai_tro: g.vai_tro, xong30: 0, tre30: 0, tre30_ai: {} as Record<string, number>, dang: 0, dang_tre: 0, dang_ai: {} as Record<string, number> }));
+  const out = GIAI_DOAN.map((g) => ({ k: g.k, l: g.l, vai_tro: g.vai_tro, ben: g.ben as string, xong30: 0, tre30: 0, tre30_ai: {} as Record<string, number>, dang: 0, dang_tre: 0, dang_ai: {} as Record<string, number> }));
   const by = new Map<string, (typeof out)[number]>(out.map((x) => [x.k, x]));
   for (const [idS, k] of gd.map) {
     const it = goc.item[idS];

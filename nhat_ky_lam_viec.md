@@ -4,6 +4,20 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.121: Giải trình chọn "Do ai" theo giai đoạn, bằng chứng tuỳ chọn, báo cáo trách nhiệm Nội bộ / NCC
+
+- Yêu cầu (nguyên văn): "Giải trình sẽ thêm mục lựa chọn do ai, thêm bằng chứng không bắt buộc. các giai đoạn sẽ đều có người chịu trách nhiệm: chờ duyệt lỗi do người
+  duyệt, chờ hàng lỗi do nhà nCC, gửi hàng muộn lỗi do ncc... còn việc chậm giải trình là lỗi do không giải trình tính riêng. => chia ra việc lên PO, duyệt, gửi mail
+  chậm.. là lỗi nội bộ, còn từ khi gửi mail yc đến khi hàng về chậm thì là do nhà cc".
+- Bối cảnh (D1 thật, chỉ đọc): 554 giải trình thật từ 01/11 đều để Ai = Người đặt, 0 giải trình chọn nguyên nhân NCC → báo cáo "do ai" không dùng được.
+- Đã làm: bên chịu theo giai đoạn (G1–G4, G7 nội bộ; G5, G6, G8 NCC; G5 đổi từ "NV đặt hàng" sang NCC); ô "Do ai" ở 4 form giải trình chia nhóm NCC / Nội bộ,
+  tự gợi ý theo giai đoạn của lỗi (R1/R4 → NCC, R3 → người đặt), đổi được; ảnh / thư bằng chứng tuỳ chọn cho mọi lỗi; lỗi hệ thống mới ghi sẵn Do ai theo gợi ý;
+  Điều hành › Nguyên nhân & xu hướng thêm khối "Trách nhiệm chậm trễ theo bên" (Nội bộ / NCC / Không giải trình đúng hạn tính riêng theo người); sửa chữ hướng dẫn cũ
+  "bắt buộc ảnh" ở Việc của tôi, Vi phạm, Giải trình hàng loạt, Bảng mã lỗi.
+- Kiểm thử local: typecheck + build; Điều hành hiện khối 3 bên; tạo lỗi R1 thử → form tự điền "Đối tác / NCC" + nhãn "Nhà cung cấp" + "G5 Chờ ngày DK — NCC chịu",
+  gửi không ảnh → lỗi "Đã giải trình", ai_ma DOI_TAC, hinh_anh rỗng; đã xoá dữ liệu thử.
+- Lưu ý: lỗi / giải trình cũ giữ nguyên dữ liệu; báo cáo bên chịu tính lỗi chưa giải trình theo giai đoạn nên số NCC sẽ tăng ngay cả với lỗi cũ.
+
 ## 26/11/2026 — v0.120: Đơn tồn của PO ban hành trước 21/10 cũng bị nhắc giải trình R4
 
 - Yêu cầu (nguyên văn): "tại sao ca này chậm ngày dự kiến lâu như vậy rồi mà chưa bị tính lỗi?" (dòng 2013080056, PO 3TDO-000714) → "Có, làm luôn".

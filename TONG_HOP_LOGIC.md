@@ -83,6 +83,10 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & ban hành · G4 Gửi đơn NCC (song song) · G5 Chờ ngày DK · G6 Chờ giao hàng ·
 G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo giờ làm việc (cấu hình được; mặc định 8h, G8 56h; G6 = ngày dự kiến lần đầu). Hiện chỉ báo cáo đúng / trễ hạn, chưa sinh lỗi.
+- **Bên chịu trễ theo giai đoạn (v0.121)**: **Nội bộ** — G1 Lập & trình (người tạo EO) · G2 Thẩm định (người thẩm định) · G3 Duyệt mua (người duyệt) ·
+  G4 Gửi đơn cho NCC (NV đặt hàng) · G7 Nhập kho (Kho / Kế toán). **Nhà cung cấp** — từ khi gửi mail yêu cầu đến khi hàng về: G5 Chờ ngày DK · G6 Chờ giao hàng ·
+  G8 Giao bù. **Không giải trình đúng hạn** (hết 16h làm việc) là lỗi riêng của người phải giải trình, tính tách khỏi 2 bên.
+  Điều hành › Nguyên nhân & xu hướng có khối "Trách nhiệm chậm trễ theo bên": dòng đang trễ, lượt trễ bước 30 ngày, lỗi 30 ngày cho từng bên + vi phạm không giải trình theo người.
 - **Giai đoạn hiện tại = bước MỚI NHẤT đã bắt đầu mà chưa kết thúc** (theo thứ tự G1 → G2 → G3 → G5 → G6 → G8; không bước nào mở → bước mới nhất
   đã bắt đầu). PO đã qua nháp thì G1 luôn đóng: mốc = lần gửi trình đầu sau khi tạo dòng, không có thì lần trình đầu của PO, không có trình nào
   (PO chuyển từ hệ cũ) thì ngày ban hành.
@@ -151,7 +155,12 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   Quá ngày hẹn chưa có ngày → dòng quay lại mục cần làm.
 - **Form giải trình (v0.113)**: "Ai chịu" không còn mặc định "Người đặt hàng" (phải chọn); dòng có thư NCC trả lời mà không có ngày → gợi ý 1 bấm điền Ai = Đối tác / NCC,
   Lỗi = NCC không phản hồi + nội dung; lỗi R1/R4 không cần ảnh nếu tick "dùng thư với NCC đã lưu ở hộp theo dõi" (nội dung ghi kèm "[Bằng chứng: … thư …]").
-- **Bằng chứng R1/R4 bằng thư (v0.114)**: 4 API giải trình (`/theo-doi/giai-trinh`, `/vi-pham/giai-trinh-po|nhieu|dong`) nhận `dung_mail: true` thay ảnh — server kiểm
+- **Do ai + bằng chứng (v0.121)**: form giải trình có ô **Do ai** chia nhóm Nhà cung cấp / Nội bộ (người đặt, người duyệt, kho, kế toán, khác), tự gợi ý theo
+  giai đoạn của lỗi: R1 chưa có ngày DK (G5) và R4 quá ngày DK (G6) = **Đối tác / NCC**, R3 không thúc NCC (G4) = **Người đặt**; người giải trình đổi được
+  (chọn khác gợi ý thì hiện nhắc ghi rõ lý do). Lỗi hệ thống mới ghi sẵn Do ai theo gợi ý này; người phải giải trình vẫn là người đặt. **Ảnh / thư bằng chứng không
+  bắt buộc** với mọi lỗi; tick "kèm thư NCC" mà dòng không có thư nào thì vẫn báo `THIEU_THU`. Báo cáo bên chịu: có giải trình thật → theo Do ai đã chọn;
+  chưa giải trình / hệ thống tự đóng → theo giai đoạn (R1/R4 NCC, R3 nội bộ).
+- **Bằng chứng R1/R4 bằng thư (v0.114; từ v0.121 bằng chứng là tuỳ chọn)**: 4 API giải trình (`/theo-doi/giai-trinh`, `/vi-pham/giai-trinh-po|nhieu|dong`) nhận `dung_mail: true` thay ảnh — server kiểm
   MỖI dòng có lỗi R1/R4 phải có ≥ 1 thư đã đồng bộ (theo dòng / theo đợt push) hoặc 1 ghi nhận liên hệ NCC; thiếu → 400 `THIEU_THU` (phải thêm ảnh). (`kiemBangChung`, lib/theoDoi.ts)
 - **Việc của tôi › ④ Giải trình (v0.114)**: xem Theo PO (mặc định) / Theo mã LK / Từng dòng; tick dòng / cả nhóm → "Giải trình chung" (1 nội dung đóng mọi lỗi chờ của các dòng,
   nhiều PO, nhiều loại — cùng API `/vi-pham/giai-trinh-dong` của LK đặt); tiêu đề nhóm có nút "Giải trình cả nhóm".

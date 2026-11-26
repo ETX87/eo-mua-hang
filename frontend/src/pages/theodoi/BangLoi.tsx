@@ -19,7 +19,7 @@ export function BangLoiModal({ onClose }: { onClose: () => void }) {
     <Modal title="Bảng lỗi & danh sách Ai" onClose={onClose} wide>
       {(["AI", "LOI"] as const).map((loai) => (
         <div key={loai} style={{ marginBottom: 14 }}>
-          <b style={{ fontSize: 13.5 }}>{loai === "AI" ? "Ai chịu trách nhiệm" : "Lỗi gì"}</b>
+          <b style={{ fontSize: 13.5 }}>{loai === "AI" ? "Do ai (bên chịu lỗi: Đối tác / NCC = nhà cung cấp, còn lại = nội bộ)" : "Lỗi gì"}</b>
           {(dm.data ?? []).filter((x) => x.loai === loai).map((x) => (
             <div key={x.ma} style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 0", fontSize: 13, opacity: x.active ? 1 : 0.5 }}>
               <code style={{ width: 170 }}>{x.ma}</code><span style={{ flex: 1 }}>{x.ten}</span>

@@ -11,7 +11,7 @@ import { krfMoiNhat } from "./KrfGoiY";
 import { Kho } from "../../lib/kho";
 import { KENH_LIEN_HE } from "../../lib/eventLabels";
 import { gioTxt } from "../../lib/giaiDoan";
-import { GIO_HAN_GT, NHAN_GT, demGt, ketLuanGt, mocLoi, nowVN, trangThaiGt, viSaoLoi, type TrangThaiGt } from "../../lib/giaiTrinh";
+import { ChonDoAi, aiGoiY, GIO_HAN_GT, NHAN_GT, demGt, ketLuanGt, mocLoi, nowVN, trangThaiGt, viSaoLoi, type TrangThaiGt } from "../../lib/giaiTrinh";
 
 // Dung chung cho man "Theo dõi linh kiện đặt" + "Cảnh báo CEO" (backend lib/theoDoi.ts).
 export interface Dong {
@@ -226,7 +226,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
   );
 }
 
-/** Giai trinh: chon loi dang cho (hoac ghi loi moi) + Ai + Loi gi + noi dung + anh bang chung (bat buoc voi R1/R4). */
+/** Giai trinh: chon loi dang cho (hoac ghi loi moi) + Do ai (goi y theo giai doan, v0.121) + Loi gi + noi dung + anh bang chung (tuy chon). */
 export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose: () => void; onSaved: () => void }) {
   const dm = useDanhMuc();
   const ls = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
@@ -248,7 +248,8 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     if (loiId || ls.isLoading) return;
     if (mo.length) { setLoiId(String(mo[0].id)); setLoiMa(mo[0].loi_ma ?? ""); } else setLoiId("moi");
   }, [ls.isLoading, mo.length, loiId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const canAnh = loiChon && (loiChon.quy_tac === "R1" || loiChon.quy_tac === "R4");
+  // v0.121: "Do ai" goi y theo giai doan cua loi dang chon (R1/R4 NCC, R3 noi bo); bang chung tuy chon
+  const aiDung = aiMa || aiGoiY(loiChon ? [loiChon.quy_tac] : []);
   // v0.113: thu NCC da luu cua dong (dung lam bang chung thay anh) + goi y "Doi tac / NCC" khi NCC tra loi ma KHONG co ngay
   const thuDong = (ls.data?.mail ?? []).filter((m: any) => m.eo_item_id === dong.item_id);
   const thuNhan = thuDong.filter((m: any) => m.huong === "NHAN").sort((a: any, b: any) => String(b.thoi_gian).localeCompare(String(a.thoi_gian)));
@@ -258,7 +259,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     setAiMa("DOI_TAC"); if (aiEmail === dong.nguoi_dat) setAiEmail("");
     setLoiMa("NCC_KHONG_PHAN_HOI");
     if (!noiDung.trim()) setNoiDung(`NCC trả lời ngày ${ngay(nccKhongNgay?.thoi_gian)} nhưng chưa có ngày dự kiến${traLoi ? `: "${traLoi}"` : ""}. Đã hỏi lại, chờ NCC báo ngày.`);
-    if (canAnh) setDungMail(true);
+    if (thuDong.length) setDungMail(true);
   };
 
   const upload = async (list: FileList | null) => {
@@ -275,15 +276,14 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
   };
   const save = async () => {
     setErr("");
-    if (!aiMa) return setErr("Chọn Ai chịu trách nhiệm.");
+    if (!aiDung) return setErr("Chọn Do ai: nhà cung cấp hay nội bộ.");
     if (!loiMa) return setErr("Chọn Lỗi gì.");
     if (!noiDung.trim()) return setErr("Nhập nội dung giải trình.");
-    if (canAnh && !anh.length && !dungMail) return setErr("Lỗi này bắt buộc có ảnh bằng chứng (hoặc tick dùng thư NCC đã lưu).");
     setBusy(true);
     try {
       await api.post("/theo-doi/giai-trinh", {
         eo_item_id: dong.item_id, loi_id: loiId && loiId !== "moi" ? Number(loiId) : undefined, cung_loai: true,
-        ai_ma: aiMa, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh, dung_mail: dungMail,
+        ai_ma: aiDung, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh, dung_mail: dungMail,
       });
       onSaved();
     } catch (e: any) {
@@ -315,11 +315,8 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div>
-              <label className="field-label">Ai <span className="req">*</span></label>
-              <select className="select" value={aiMa} onChange={(e) => { setAiMa(e.target.value); if (e.target.value !== "NGUOI_DAT" && aiEmail === dong.nguoi_dat) setAiEmail(""); }}>
-                <option value="">— Chọn ai chịu —</option>
-                {ai.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}
-              </select>
+              <ChonDoAi value={aiDung} ai={ai} quyTac={loiChon ? [loiChon.quy_tac] : []}
+                onChange={(v) => { setAiMa(v); if (v !== "NGUOI_DAT" && aiEmail === dong.nguoi_dat) setAiEmail(""); }} />
             </div>
             <div>
               <label className="field-label">Người cụ thể</label>
@@ -336,7 +333,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
           </select>
           <label className="field-label" style={{ marginTop: 12 }}>Nội dung giải trình <span className="req">*</span></label>
           <textarea className="textarea" value={noiDung} onChange={(e) => setNoiDung(e.target.value)} placeholder="Nguyên nhân, đã làm gì, khi nào có ngày dự kiến…" />
-          <label className="field-label" style={{ marginTop: 12 }}>Ảnh bằng chứng {canAnh ? <span className="req">* (bắt buộc)</span> : <span className="muted">(tuỳ chọn)</span>}</label>
+          <label className="field-label" style={{ marginTop: 12 }}>Ảnh bằng chứng <span className="muted">(tuỳ chọn)</span></label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {anh.map((a, i) => (
               <span key={a.drive_file_id} className="badge issued" style={{ gap: 6 }}>
@@ -347,10 +344,10 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
             <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>
             <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
           </div>
-          {canAnh && thuDong.length > 0 && (
+          {thuDong.length > 0 && (
             <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, marginTop: 6 }}>
               <input type="checkbox" checked={dungMail} onChange={(e) => setDungMail(e.target.checked)} />
-              Không cần ảnh: dùng <b>{thuDong.length} thư với NCC</b> đã lưu ở hộp theo dõi làm bằng chứng
+              Kèm bằng chứng: <b>{thuDong.length} thư với NCC</b> đã lưu ở hộp theo dõi
             </label>
           )}
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}

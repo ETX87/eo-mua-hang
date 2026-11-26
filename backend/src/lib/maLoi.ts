@@ -20,10 +20,10 @@ export interface MaLoiDef {
   yeu_cau_gt?: string; tu_dong?: string;
 }
 const YEU_CAU: Record<string, [string, string]> = {
-  R1_24: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
-  R1_48: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng (mail / tin nhắn với NCC).", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
-  R3: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung (không bắt buộc ảnh).", "Tự đóng khi sau đó có mail (CC hộp theo dõi) / push / gọi-Zalo với NCC (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
-  R4: ["Bắt buộc: Ai chịu + Lỗi gì + nội dung + ảnh bằng chứng.", "Tự đóng khi đã nhập ngày dự kiến mới muộn hơn ngày bị quá (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R1_24: ["Bắt buộc: Do ai (mặc định NCC — giai đoạn chờ NCC) + Lỗi gì + nội dung. Ảnh / thư bằng chứng: tuỳ chọn.", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R1_48: ["Bắt buộc: Do ai (mặc định NCC — giai đoạn chờ NCC) + Lỗi gì + nội dung. Ảnh / thư bằng chứng: tuỳ chọn.", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R3: ["Bắt buộc: Do ai (mặc định Nội bộ — người đặt, khâu gửi / thúc NCC) + Lỗi gì + nội dung. Bằng chứng: tuỳ chọn.", "Tự đóng khi sau đó có mail (CC hộp theo dõi) / push / gọi-Zalo với NCC (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R4: ["Bắt buộc: Do ai (mặc định NCC — giao trễ) + Lỗi gì + nội dung. Ảnh / thư bằng chứng: tuỳ chọn.", "Tự đóng khi đã nhập ngày dự kiến mới muộn hơn ngày bị quá (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
   TAY: ["Không — lỗi được ghi kèm giải trình ngay lúc giải trình.", "—"],
   CEO: ["Không giải trình riêng mã này — giải trình các lỗi 0xx / 1xx của dòng; theo dõi ở menu Ca tồn CEO.", "Hết khi dòng về đủ / kết thúc sớm / hủy, hoặc không còn chạm ngưỡng."],
   GIAI_DOAN: ["Không — chỉ đo để báo cáo đúng / trễ hạn từng bước.", "—"],
@@ -37,13 +37,13 @@ const R1_24H_TU = "2026-11-08";
 
 const CO_DINH: MaLoiDef[] = [
   { ma: "ER.MH-001", khoa: "R1_24", nhom: "HE_THONG", buoc: "G5", giai_trinh: true, ten: "Không có ngày dự kiến trong 8h làm việc (Karofi / Livotec / Korihome)",
-    mo_ta: "Sau khi dòng bắt đầu (PO ban hành / dòng thêm sau BH được duyệt) 8 giờ làm việc vẫn chưa có ngày dự kiến. Vẫn chưa có → ghi lại mỗi thứ 3 và thứ 6. Giải trình bắt buộc ảnh." },
+    mo_ta: "Sau khi dòng bắt đầu (PO ban hành / dòng thêm sau BH được duyệt) 8 giờ làm việc vẫn chưa có ngày dự kiến. Vẫn chưa có → ghi lại mỗi thứ 3 và thứ 6." },
   { ma: "ER.MH-002", khoa: "R1_48", nhom: "HE_THONG", buoc: "G5", giai_trinh: true, ten: "Không có ngày dự kiến trong 16h làm việc (đối tác khác)",
-    mo_ta: "Sau khi dòng bắt đầu 16 giờ làm việc vẫn chưa có ngày dự kiến. Vẫn chưa có → ghi lại mỗi thứ 3 và thứ 6. Giải trình bắt buộc ảnh." },
+    mo_ta: "Sau khi dòng bắt đầu 16 giờ làm việc vẫn chưa có ngày dự kiến. Vẫn chưa có → ghi lại mỗi thứ 3 và thứ 6." },
   { ma: "ER.MH-003", khoa: "R3", nhom: "HE_THONG", buoc: "G4", giai_trinh: true, ten: "Không thúc / push đối tác (thứ 2 / thứ 4)",
     mo_ta: "Hết thứ 2 / thứ 4, dòng chưa có ngày dự kiến mà trong kỳ không có push, mail với NCC (CC hộp theo dõi) hay ghi nhận gọi / Zalo. Mỗi ngày kiểm tra = 1 lỗi." },
   { ma: "ER.MH-004", khoa: "R4", nhom: "HE_THONG", buoc: "G6", giai_trinh: true, ten: "Quá ngày dự kiến không cập nhật ngày mới",
-    mo_ta: "Quá ngày dự kiến mà chưa về đủ, 8 giờ làm việc sau đó chưa nhập ngày dự kiến mới. Mỗi mốc quá hạn = 1 lỗi. Giải trình bắt buộc ảnh." },
+    mo_ta: "Quá ngày dự kiến mà chưa về đủ, 8 giờ làm việc sau đó chưa nhập ngày dự kiến mới. Mỗi mốc quá hạn = 1 lỗi." },
   { ma: "ER.MH-201", khoa: "LUI", nhom: "CEO", buoc: "G6", giai_trinh: false, ten: "Lùi ngày dự kiến nhiều lần", mo_ta: "Lùi ngày dự kiến ≥ 3 lần (đếm theo từng đợt)." },
   { ma: "ER.MH-202", khoa: "XA", nhom: "CEO", buoc: "G6", giai_trinh: false, ten: "Ngày dự kiến quá xa ngày đặt", mo_ta: "Ngày dự kiến gần nhất cách ngày đặt ≥ 30 ngày." },
   { ma: "ER.MH-203", khoa: "LOI", nhom: "CEO", buoc: null, giai_trinh: false, ten: "Tích lũy nhiều lỗi", mo_ta: "≥ 3 lỗi (hệ thống + ghi tay) trên dòng." },
@@ -51,16 +51,25 @@ const CO_DINH: MaLoiDef[] = [
   { ma: "ER.MH-302", khoa: "G2", nhom: "GIAI_DOAN", buoc: "G2", giai_trinh: false, ten: "Trễ hạn G2 Thẩm định", mo_ta: "Người thẩm định — 8 giờ làm việc." },
   { ma: "ER.MH-303", khoa: "G3", nhom: "GIAI_DOAN", buoc: "G3", giai_trinh: false, ten: "Trễ hạn G3 Duyệt mua & ban hành", mo_ta: "Người duyệt mua — 8 giờ làm việc." },
   { ma: "ER.MH-304", khoa: "G4", nhom: "GIAI_DOAN", buoc: "G4", giai_trinh: false, ten: "Trễ hạn G4 Gửi đơn cho NCC (mail)", mo_ta: "NV đặt hàng — 8 giờ làm việc." },
-  { ma: "ER.MH-305", khoa: "G5", nhom: "GIAI_DOAN", buoc: "G5", giai_trinh: false, ten: "Trễ hạn G5 Chờ ngày DK", mo_ta: "NV đặt hàng — 8 giờ làm việc (lỗi thật ghi theo 001 / 002)." },
+  { ma: "ER.MH-305", khoa: "G5", nhom: "GIAI_DOAN", buoc: "G5", giai_trinh: false, ten: "Trễ hạn G5 Chờ ngày DK", mo_ta: "Nhà cung cấp (từ khi gửi đơn) — 8 giờ làm việc (lỗi thật ghi theo 001 / 002)." },
   { ma: "ER.MH-306", khoa: "G6", nhom: "GIAI_DOAN", buoc: "G6", giai_trinh: false, ten: "Trễ hạn G6 Chờ giao hàng", mo_ta: "NCC — hạn theo ngày dự kiến lần đầu." },
   { ma: "ER.MH-307", khoa: "G7", nhom: "GIAI_DOAN", buoc: "G7", giai_trinh: false, ten: "Trễ hạn G7 Nhập kho & lên hệ thống", mo_ta: "Kho / Kế toán — 8 giờ làm việc." },
-  { ma: "ER.MH-308", khoa: "G8", nhom: "GIAI_DOAN", buoc: "G8", giai_trinh: false, ten: "Trễ hạn G8 Giao bù đến đủ", mo_ta: "NCC + NV theo dõi — 56 giờ làm việc." },
+  { ma: "ER.MH-308", khoa: "G8", nhom: "GIAI_DOAN", buoc: "G8", giai_trinh: false, ten: "Trễ hạn G8 Giao bù đến đủ", mo_ta: "Nhà cung cấp — 56 giờ làm việc." },
 ];
 /** Loi ghi tay da co ma co dinh (MA_LOI_HE_THONG.md muc 2); danh muc moi Admin them -> cap tiep 106, 107... theo thu tu */
 const TAY_CO_DINH: Record<string, [string, string | null]> = {
   NCC_KHONG_PHAN_HOI: ["ER.MH-101", "G6"], NCC_BAO_TRE: ["ER.MH-102", "G6"], NCC_HET_HANG: ["ER.MH-103", "G6"],
   DAT_SAI: ["ER.MH-104", "G1"], CHAM_DUYET: ["ER.MH-105", "G3"], KHAC: ["ER.MH-199", null],
 };
+/** v0.121: "Do ai" MAC DINH theo giai doan cua loi he thong (tl_danh_muc AI): R1 cho ngay DK (G5) / R4 qua ngay DK (G6) = NCC;
+ *  R3 khong thuc NCC (G4) = noi bo - nguoi dat. Nguoi giai trinh van doi duoc. FE lib/giaiTrinh.tsx AI_MAC_DINH dong bo tay. */
+export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT" };
+/** Ben chiu cua 1 ma "Do ai": DOI_TAC = NCC, con lai = noi bo. */
+export const benCuaAi = (ma: string | null | undefined): "NCC" | "NOI_BO" => (ma === "DOI_TAC" ? "NCC" : "NOI_BO");
+/** SQL ben chiu cua loi (alias l = tl_loi, g = tl_giai_trinh LEFT JOIN): co giai trinh THAT -> theo "Do ai" da chon; chua / tu dong -> mac dinh
+ *  theo quy tac (R1/R4 NCC, R3 noi bo, TAY theo ai_ma). Loi KHONG GIAI TRINH (AUTO:QUA_HAN) dem rieng, khong nam trong ben nay. */
+export const BEN_SQL = `CASE WHEN g.id IS NOT NULL AND COALESCE(g.pham_vi, '') <> 'AUTO' THEN (CASE WHEN l.ai_ma = 'DOI_TAC' THEN 'NCC' ELSE 'NOI_BO' END)
+  WHEN l.quy_tac IN ('R1', 'R4') THEN 'NCC' WHEN l.quy_tac = 'TAY' AND l.ai_ma = 'DOI_TAC' THEN 'NCC' ELSE 'NOI_BO' END`;
 const LOI_HE_THONG = new Set(["KHONG_NDK_24H", "KHONG_NDK_QUA_HAN", "KHONG_PUSH"]);
 
 export interface BangMaLoi { ds: MaLoiDef[]; tay: Map<string, MaLoiDef>; theoMa: Map<string, MaLoiDef> }

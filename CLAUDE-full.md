@@ -389,6 +389,12 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.121** (chủ hệ thống 2026-11-26: "Giải trình sẽ thêm mục lựa chọn do ai, thêm bằng chứng không bắt buộc. các giai đoạn sẽ đều có người chịu trách nhiệm…
+từ khi gửi mail yc đến khi hàng về chậm thì là do nhà cc"): `GIAI_DOAN[].ben` (lib/giaiDoan.ts, FE `components/TienTrinh.tsx` GD_8 đồng bộ tay) — G5/G6/G8 `NCC`, còn lại `NOI_BO`;
+`chiuTrachNhiem` G5 = NCC. `lib/maLoi.ts`: `AI_MAC_DINH` (R1/R4 DOI_TAC, R3 NGUOI_DAT — FE `lib/giaiTrinh.tsx` khớp), `benCuaAi`, `BEN_SQL` (bên của lỗi: giải trình thật → ai_ma, còn lại theo quy tắc).
+`danhGiaQuyTac` ghi `ai_ma` = AI_MAC_DINH (ai_email vẫn người đặt). `kiemBangChung` chỉ báo khi tick dung_mail mà thiếu thư (bỏ `CAN_HINH_ANH`). Điều hành `loi30.ben` (cache `dh:goc:v4`),
+`giai_doan[].ben`; FE DieuHanh `TrachNhiem` (3 khối Nội bộ / NCC / Không giải trình). FE `ChonDoAi` + `aiGoiY` (lib/giaiTrinh.tsx) dùng ở 4 form (shared GiaiTrinhModal,
+GiaiTrinhPo Po/Nhieu/Dong): chưa chọn → `aiDung` = gợi ý; `AnhBangChung` bỏ prop `batBuoc`.
 **v0.120**: `R4_TON_CU_TU` = 2026-11-27 08:00 (lib/theoDoi.ts) — `danhGiaQuyTac` vòng riêng cho dòng `!ap_dung` (PO trước `theo_doi_ap_dung_tu`, đã lọc ≥ `theo_doi_bo_qua_truoc`)
 còn mở + quá ngày DK: `han_cap_nhat_lai` < mốc → R4 khoá `…:TON` mốc R4_TON_CU_TU, sau mốc → R4 thường; bỏ nếu `daVe`. Chỉ R4. `viecCuaToi` (giai_trinh) và
 `viecCanLam` (loiCho) lấy dòng có lỗi chờ KHÔNG lọc `ap_dung`; các mục khác vẫn lọc `ap_dung`. Yêu cầu: "tại sao ca này chậm ngày dự kiến lâu như vậy rồi mà chưa bị tính lỗi?" → "Có, làm luôn".

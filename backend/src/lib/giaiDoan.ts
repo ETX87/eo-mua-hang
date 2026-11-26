@@ -12,24 +12,28 @@ import { nowVN } from "./vnTime";
  *  G3 Duyet cuoi & BH     Nguoi duyet cuoi  tham dinh xong -> ban hanh. Dong them sau BH: tao dong -> duoc duyet
  *  G4 Gui don cho NCC     NV dat hang       ban hanh -> mail GUI dau tien (CC theodoimuahang@gmail.com, bang tl_mail)
  *                                           - LUONG SONG SONG: khong chan giai doan hien tai (app mail chua dong bo thi chua co)
- *  G5 Co ngay du kien     NV dat hang       ban hanh -> lan nhap ke hoach dau tien (= quy tac R1)
+ *  G5 Co ngay du kien     NCC (v0.121)       ban hanh -> lan nhap ke hoach dau tien (= quy tac R1)
  *  G6 Cho san xuat & giao NCC               co ngay du kien -> hang ve lan dau (ngay chung tu AMIS). Dung hen = ve <= ngay DK lan dau
  *  G7 Nhap kho & len he thong Kho/Ke toan   ngay chung tu AMIS -> phieu duoc import vao app (chi do, khong bao gio "dang o")
- *  G8 Giao bu den du      NCC + NV theo doi hang ve lan dau -> ve du (luy ke >= SL dat)
+ *  G8 Giao bu den du      NCC (v0.121) hang ve lan dau -> ve du (luy ke >= SL dat)
  * Thoi gian & han tinh theo GIO LAM VIEC (lib/gioLamViec: T2-T6 8-12 + 13-17, T7 8-12, CN nghi; v0.103 - 24h cu = 8h LV).
  * Han cau hinh app_settings 'giai_doan_sla' (JSON gio LAM VIEC).
  * Moc ranh gioi cache theo version (eo, amis, settings, theo_doi); phan phu thuoc "bay gio" tinh luc request.
  */
+// v0.121 (chu he thong 2026-11-26): MOI giai doan co ben chiu tre - len PO / duyet / gui mail / nhap kho = NOI BO; tu khi gui mail yeu cau
+// den khi hang ve (cho ngay DK, cho giao, giao bu) = NCC. Cham giai trinh = loi "khong giai trinh" tinh rieng (nguoi phai giai trinh).
+// FE components/TienTrinh.tsx GIAI_DOAN dong bo tay.
 export const GIAI_DOAN = [
-  { k: "G1", l: "Lập & trình EO", vai_tro: "Người tạo EO" },
-  { k: "G2", l: "Thẩm định", vai_tro: "Người thẩm định" },
-  { k: "G3", l: "Duyệt mua & ban hành", vai_tro: "Người duyệt mua" },
-  { k: "G4", l: "Gửi đơn cho NCC (mail)", vai_tro: "NV đặt hàng" },
-  { k: "G5", l: "Chờ ngày DK", vai_tro: "NV đặt hàng" },
-  { k: "G6", l: "Chờ giao hàng", vai_tro: "Nhà cung cấp" },
-  { k: "G7", l: "Nhập kho & lên hệ thống", vai_tro: "Kho / Kế toán" },
-  { k: "G8", l: "Giao bù đến đủ", vai_tro: "NCC + NV theo dõi" },
+  { k: "G1", l: "Lập & trình EO", vai_tro: "Người tạo EO", ben: "NOI_BO" },
+  { k: "G2", l: "Thẩm định", vai_tro: "Người thẩm định", ben: "NOI_BO" },
+  { k: "G3", l: "Duyệt mua & ban hành", vai_tro: "Người duyệt mua", ben: "NOI_BO" },
+  { k: "G4", l: "Gửi đơn cho NCC (mail)", vai_tro: "NV đặt hàng", ben: "NOI_BO" },
+  { k: "G5", l: "Chờ ngày DK", vai_tro: "Nhà cung cấp", ben: "NCC" },
+  { k: "G6", l: "Chờ giao hàng", vai_tro: "Nhà cung cấp", ben: "NCC" },
+  { k: "G7", l: "Nhập kho & lên hệ thống", vai_tro: "Kho / Kế toán", ben: "NOI_BO" },
+  { k: "G8", l: "Giao bù đến đủ", vai_tro: "Nhà cung cấp", ben: "NCC" },
 ] as const;
+export type BenChiu = "NOI_BO" | "NCC";
 export type MaGd = (typeof GIAI_DOAN)[number]["k"];
 // v0.103: gio LAM VIEC (8h = 1 ngay lam viec = 24h cu; G8 56h LV = 7 ngay cu). G6: theo ngay du kien
 export const SLA_MAC_DINH: Record<string, number> = { G1: 8, G2: 8, G3: 8, G4: 8, G5: 8, G7: 8, G8: 56 };

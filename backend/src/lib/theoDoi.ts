@@ -5,6 +5,7 @@ import { cachedReport } from "./reportCache";
 import { bumpVersions } from "./dataVersions";
 import { nowVN, todayVN } from "./vnTime";
 import { laNhomR1_24h } from "./chuanHoa";
+import { AI_MAC_DINH } from "./maLoi";
 import { congGioLV, demGioLV, GIO_LV_TU } from "./gioLamViec";
 import { sendPushToUser } from "./webPush";
 
@@ -349,7 +350,7 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
     const dangChoNcc = (id: number, ngay: string) => (choNccBy.get(id) ?? []).some((k) => k.tu <= ngay && ngay <= k.den);
     const loi: unknown[][] = [];
     const add = (r: DongTheoDoi, quyTac: string, khoa: string, han: string, ngayTc: string | null, loiMa: string) =>
-      loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, "NGUOI_DAT", r.nguoi_dat, loiMa]);
+      loi.push([r.item_id, r.eo_id, quyTac, khoa, han, ngayTc, AI_MAC_DINH[quyTac] ?? "NGUOI_DAT", r.nguoi_dat, loiMa]); // v0.121 Do ai mac dinh theo giai doan; ai_email = nguoi phai giai trinh
     // Hang DA VE (lan dau, theo ngay chung tu AMIS) truoc / dung moc -> moi loi tu moc do bo qua (2026-11-08: "hang da ve nhung van bat loi")
     const daVe = (r: DongTheoDoi, moc: string) => !!r.ngay_ve_dau && r.ngay_ve_dau <= moc.slice(0, 10);
     // R1 vi pham? (hang da ve truoc han theo ngay chung tu -> khong loi)
@@ -671,13 +672,13 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
 }
 
 /**
- * BANG CHUNG loi R1/R4 (v0.114): anh HOAC "dung thu NCC da luu" (dung_mail) - khi dung_mail, MOI dong can bang chung phai co it nhat 1 thu
+ * BANG CHUNG loi R1/R4 (v0.114; v0.121 TUY CHON): anh HOAC "dung thu NCC da luu" (dung_mail) - khi dung_mail, MOI dong can bang chung phai co it nhat 1 thu
  * da dong bo (tl_mail theo dong / theo dot push - MAIL_DONG_BO_THEO_DONG) hoac 1 ghi nhan lien he (tl_lien_he). Tra ma loi hoac null.
  */
 export async function kiemBangChung(db: D1Database, canAnh: boolean, coAnh: boolean, dungMail: boolean | undefined, itemIds: number[]):
   Promise<{ error: "CAN_HINH_ANH" | "THIEU_THU"; dong?: number[] } | null> {
-  if (!canAnh || coAnh) return null;
-  if (!dungMail) return { error: "CAN_HINH_ANH" };
+  // v0.121 (chu he thong 2026-11-26 "bang chung khong bat buoc"): khong anh / khong tick thu van luu; chi khi TICK "dung thu NCC" ma dong khong co thu -> bao
+  if (!canAnh || coAnh || !dungMail) return null;
   const ids = [...new Set(itemIds)];
   if (!ids.length) return null;
   const co = new Set((await db.prepare(

@@ -123,3 +123,40 @@ export function demGt(loi: any[], gtBy: Map<number, any>, now = nowVN()) {
   for (const l of loi) d[trangThaiGt(l, gtBy, now).tt] += 1;
   return d;
 }
+
+// ------------------------------------------------------------------ v0.121 "Do ai" theo giai doan (chu he thong 2026-11-26)
+/** "Do ai" MAC DINH theo quy tac loi - khop backend lib/maLoi AI_MAC_DINH: R1 cho ngay DK (G5) / R4 qua ngay DK (G6) = NCC;
+ *  R3 khong thuc NCC (G4) = noi bo - nguoi dat. Nguoi giai trinh van doi duoc. */
+export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT" };
+/** Ben chiu cua ma "Do ai": DOI_TAC = NCC, con lai = noi bo (khop backend benCuaAi). */
+export const benCuaAi = (ma: string | null | undefined): "NCC" | "NOI_BO" | "" => (!ma ? "" : ma === "DOI_TAC" ? "NCC" : "NOI_BO");
+export const BEN_TEN = { NCC: "Nhà cung cấp", NOI_BO: "Nội bộ công ty" } as const;
+/** Goi y "Do ai" cho 1 nhom loi: moi loi cung goi y -> goi y do; tron lan / khong co -> "" (phai chon). */
+export function aiGoiY(quyTac: (string | null | undefined)[]): string {
+  const ds = [...new Set(quyTac.map((q) => AI_MAC_DINH[q ?? ""] ?? ""))];
+  return ds.length === 1 ? ds[0] : "";
+}
+const GD_CUA_QT: Record<string, string> = { R1: "G5 Chờ ngày DK — NCC chịu", R4: "G6 Chờ giao hàng — NCC chịu", R3: "G4 Gửi / thúc NCC — nội bộ chịu" };
+
+/** O chon "Do ai" chung cho moi form giai trinh: nhom NCC / Noi bo + dong goi y theo giai doan. */
+export function ChonDoAi({ value, onChange, ai, quyTac }: {
+  value: string; onChange: (ma: string) => void; ai: { ma: string; ten: string }[]; quyTac?: (string | null | undefined)[];
+}) {
+  const ncc = ai.filter((x) => benCuaAi(x.ma) === "NCC"), noiBo = ai.filter((x) => benCuaAi(x.ma) === "NOI_BO");
+  const goiY = aiGoiY(quyTac ?? []);
+  const gd = [...new Set((quyTac ?? []).map((q) => GD_CUA_QT[q ?? ""]).filter(Boolean))];
+  const ben = benCuaAi(value);
+  return (
+    <>
+      <label className="field-label">Do ai <span className="req">*</span>
+        {ben && <span className={`badge ${ben === "NCC" ? "final" : "review"}`} style={{ marginLeft: 6 }}>{BEN_TEN[ben]}</span>}</label>
+      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">— Chọn bên chịu lỗi —</option>
+        {ncc.length > 0 && <optgroup label="Nhà cung cấp">{ncc.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</optgroup>}
+        {noiBo.length > 0 && <optgroup label="Nội bộ công ty">{noiBo.map((x) => <option key={x.ma} value={x.ma}>{x.ten}</option>)}</optgroup>}
+      </select>
+      {gd.length > 0 && <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>
+        Theo giai đoạn: {gd.join(" · ")}{goiY && value && value !== goiY ? <b style={{ color: "var(--warn-ink)" }}> — bạn đang chọn khác gợi ý, ghi rõ lý do trong nội dung.</b> : null}</div>}
+    </>
+  );
+}

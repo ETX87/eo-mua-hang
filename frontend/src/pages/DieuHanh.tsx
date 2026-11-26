@@ -31,13 +31,13 @@ interface Dong {
   td_luc: string | null; td_loai: string | null; td_ai: string | null; td7: number; im_lang: number;
   nhac: number; nhac_luc: string | null; muc: Muc; ly_do: string[]; diem: number;
 }
-interface Gd { k: string; l: string; vai_tro: string; xong30: number; tre30: number; tre30_ai: { ai: string; n: number }[]; dang: number; dang_tre: number; dang_ai: { ai: string; n: number }[] }
+interface Gd { k: string; l: string; vai_tro: string; ben?: string; xong30: number; tre30: number; tre30_ai: { ai: string; n: number }[]; dang: number; dang_tre: number; dang_ai: { ai: string; n: number }[] }
 interface Duyet { eo_id: number; po: string; tieu_de: string | null; buoc: string; ai: string | null; tu: string; gio: number; so_dong: number; nguoi_tao: string }
 interface Data {
   luc: string; hom_nay: string; bo_qua_truoc: string; nguong: { im_lang_do: number; im_lang_vang: number; loi_cho_do: number };
   dong: Dong[]; giai_doan: Gd[]; xu_huong: { tuan: string; loi: number; gt: number; nhac: number }[];
   /** v0.110: vp = vi pham THAT (het han giai trinh ma khong giai trinh); n = moi loi; cho = loi con can giai trinh */
-  loi30: { qt: string; ai: string | null; ncc: string | null; cho: number; n: number; vp?: number }[];
+  loi30: { qt: string; ai: string | null; ncc: string | null; ben?: "NCC" | "NOI_BO"; cho: number; n: number; vp?: number }[];
   nguyen_nhan: { ai_ma: string; loi_ma: string; n: number }[]; do_phu: { tong_loi: number; da_gt: number; tu_dong?: number };
   dm: { loai: string; ma: string; ten: string }[]; duyet: Duyet[]; quan_ly: boolean;
 }
@@ -527,6 +527,8 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
     </div>
   );
   return (
+    <>
+    <TrachNhiem d={d} loi30={loi30} />
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
       <div>
         <b>Độ tin cậy của nguyên nhân</b>
@@ -569,6 +571,61 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
           </ResponsiveContainer>
         </div>
         <div className="muted" style={{ fontSize: 11 }}>Tuần bắt đầu Chủ nhật. Lỗi tính PO ban hành từ {ngay(d.bo_qua_truoc)}.</div>
+      </div>
+    </div>
+    </>
+  );
+}
+
+/**
+ * v0.121 (chu he thong 2026-11-26): TRACH NHIEM theo ben - moi giai doan co ben chiu: len PO / tham dinh / duyet / gui mail / nhap kho = NOI BO;
+ * tu khi gui mail den khi hang ve (cho ngay DK, cho giao, giao bu) = NCC. Loi he thong: ben theo "Do ai" cua giai trinh that, chua giai trinh
+ * -> mac dinh theo giai doan (R1/R4 NCC, R3 noi bo). KHONG GIAI TRINH (het han) = loi rieng cua nguoi phai giai trinh, tach khoi 2 ben.
+ */
+function TrachNhiem({ d, loi30 }: { d: Data; loi30: Data["loi30"] }) {
+  const BEN = { NOI_BO: { l: "Nội bộ công ty", mau: "#F59E0B", nen: "#FFFBEB" }, NCC: { l: "Nhà cung cấp", mau: "#3B82F6", nen: "#EFF6FF" } } as const;
+  const tk = (b: "NOI_BO" | "NCC") => {
+    const gd = d.giai_doan.filter((g) => (g.ben ?? (["G5", "G6", "G8"].includes(g.k) ? "NCC" : "NOI_BO")) === b);
+    const loi = loi30.filter((l) => (l.ben ?? "NOI_BO") === b);
+    return { gd, tre30: gd.reduce((s, g) => s + g.tre30, 0), xong30: gd.reduce((s, g) => s + g.xong30, 0), dangTre: gd.reduce((s, g) => s + g.dang_tre, 0),
+      loi: loi.reduce((s, l) => s + l.n, 0) };
+  };
+  const nb = tk("NOI_BO"), ncc = tk("NCC");
+  const vpNguoi = new Map<string, number>();
+  for (const l of loi30) if (l.vp) vpNguoi.set(l.ai ?? "", (vpNguoi.get(l.ai ?? "") ?? 0) + l.vp);
+  const vp = [...vpNguoi.values()].reduce((s, n) => s + n, 0);
+  const Khoi = ({ b, x }: { b: "NOI_BO" | "NCC"; x: ReturnType<typeof tk> }) => (
+    <div style={{ background: BEN[b].nen, border: `1px solid ${BEN[b].mau}55`, borderRadius: 10, padding: "10px 12px" }}>
+      <div style={{ fontWeight: 800, color: BEN[b].mau }}>{BEN[b].l}</div>
+      <div style={{ display: "flex", gap: 16, margin: "6px 0", flexWrap: "wrap" }}>
+        <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.dangTre)}</div><div className="muted" style={{ fontSize: 11 }}>dòng đang trễ</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.tre30)}</div><div className="muted" style={{ fontSize: 11 }}>lượt trễ bước 30 ngày / {soLuong(x.xong30)} ({pctTxt(x.tre30, x.xong30)})</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.loi)}</div><div className="muted" style={{ fontSize: 11 }}>lỗi 30 ngày (vi phạm gộp)</div></div>
+      </div>
+      {x.gd.map((g) => (
+        <div key={g.k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, borderTop: "1px dashed #E5E7EB", padding: "3px 0" }}
+          title={g.tre30_ai.length ? `Làm trễ 30 ngày:\n${g.tre30_ai.map((a) => `${tenAi(a.ai)}: ${a.n}`).join("\n")}` : "Không có lượt trễ trong 30 ngày"}>
+          <span>{g.k} {g.l} <span className="muted">· {g.vai_tro}</span></span>
+          <span><b style={{ color: g.dang_tre ? "var(--danger-ink)" : undefined }}>{soLuong(g.dang_tre)}</b> đang trễ · {soLuong(g.tre30)} trễ / 30 ng</span>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <b>Trách nhiệm chậm trễ theo bên</b> <span className="muted" style={{ fontSize: 11 }}>
+        lên PO / duyệt / gửi mail / nhập kho = nội bộ · từ khi gửi mail yêu cầu đến khi hàng về = nhà cung cấp · chậm giải trình tính riêng</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12, marginTop: 6 }}>
+        <Khoi b="NOI_BO" x={nb} />
+        <Khoi b="NCC" x={ncc} />
+        <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A555", borderRadius: 10, padding: "10px 12px" }}>
+          <div style={{ fontWeight: 800, color: "var(--danger-ink)" }}>Không giải trình đúng hạn</div>
+          <div style={{ fontSize: 22, fontWeight: 900, margin: "6px 0 0" }}>{soLuong(vp)}</div>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>vi phạm 30 ngày — hết 16 giờ làm việc không giải trình, lỗi của người phải giải trình (tính riêng, không cộng vào 2 bên)</div>
+          {[...vpNguoi.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([ai, n]) => (
+            <div key={ai} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span>{ten(ai) || "(không rõ)"}</span><b>{soLuong(n)}</b></div>
+          ))}
+        </div>
       </div>
     </div>
   );
