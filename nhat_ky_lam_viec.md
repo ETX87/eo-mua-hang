@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.120: Đơn tồn của PO ban hành trước 21/10 cũng bị nhắc giải trình R4
+
+- Yêu cầu (nguyên văn): "tại sao ca này chậm ngày dự kiến lâu như vậy rồi mà chưa bị tính lỗi?" (dòng 2013080056, PO 3TDO-000714) → "Có, làm luôn".
+- Nguyên nhân: PO ban hành 22/09, trước mốc áp dụng quy tắc `theo_doi_ap_dung_tu` = 21/10 → dòng chỉ được theo dõi, không sinh lỗi R1/R3/R4. Bản v0.115
+  ("tồn thì vẫn tiếp tục đẩy giải trình") đặt trong vòng lặp đã lọc `ap_dung` nên sót các PO 01/07 – 20/10.
+- Đã làm: `danhGiaQuyTac` ghi R4 cho dòng đó từ 27/11/2026 08:00 (không ghi lùi) — quá ngày DK trước mốc → 1 lỗi `…:TON`, sau mốc → R4 thường; chỉ R4.
+  Việc của tôi (mục giải trình) + số đỏ menu "Linh kiện đặt cần xử lý" tính cả dòng này khi có lỗi chờ.
+- Ước tính D1 thật (chỉ đọc) trước khi làm: ~54 dòng / 10 PO / 3 người đặt, ngày DK 04/08 – 15/11 (gồm 2 dòng 2013080056).
+- Kiểm thử local (tạm dời mốc sang 26/11 08:00 rồi trả lại, đã xoá dữ liệu thử): 4 dòng cũ quá ngày DK → 4 lỗi R4 `:TON`, quét lại không trùng; Việc của tôi
+  hiện 4 dòng ở mục giải trình, hạn 16h LV; typecheck + build qua.
+- Còn để ý: sáng 27/11 sau 08:00 kiểm số lỗi `:TON` mới trên production.
+
 ## 24/11/2026 — Tách CLAUDE.md thành bản rút gọn + CLAUDE-full.md (không đổi code)
 
 - Yêu cầu (Trợ lý Mây theo lời Giám đốc): CLAUDE.md ~64 KB làm phiên Claude đám mây nặng bộ nhớ → rút dưới ~10 KB, chi tiết sang tệp riêng.

@@ -322,7 +322,8 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
   if (!claim.meta.changes) return 0;
   let moi = 0;
   try {
-    const rows = (await layDongTheoDoi(env, "dang_mo")).filter((r) => r.ap_dung);
+    const dangMo = await layDongTheoDoi(env, "dang_mo");
+    const rows = dangMo.filter((r) => r.ap_dung);
     const today = todayVN();
     // R1 lap lai thu 3 / thu 6 ap dung tu ngay nay (khong ghi hoi to) - app_settings 'r1_lap_tu'
     const r1LapTu = ((await db.prepare("SELECT value FROM app_settings WHERE key = 'r1_lap_tu'").first<{ value: string }>())?.value || R1_LAP_TU_MAC_DINH).slice(0, 10);
@@ -400,6 +401,18 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
           const coMail = (mailBy.get(r.item_id) ?? []).some((m) => m > kyTu && m <= x) || dangChoNcc(r.item_id, x);
           if (!coMail) add(r, "R3", `R3:${r.item_id}:${x}`, hetNgay, x, "KHONG_PUSH");
         }
+      }
+    }
+    // v0.120 (chu he thong 2026-11-26, noi tiep v0.115 "ton thi van tiep tuc day giai trinh vi pham"): dong cua PO ban hanh TRUOC moc ap dung
+    // (theo_doi_ap_dung_tu, nhung >= theo_doi_bo_qua_truoc) van ton + qua ngay DK -> R4 TU NAY (khong ghi hoi to): qua ngay DK truoc
+    // R4_TON_CU_TU -> 1 loi khoa ':TON' moc R4_TON_CU_TU; qua ngay DK sau moc -> R4 thuong (moi ngay DK 1 loi). Chi R4 (khong R1/R3).
+    if (now > R4_TON_CU_TU) {
+      for (const r of dangMo) {
+        if (r.ap_dung || !r.han_cap_nhat_lai || !r.ngay_du_kien_gan_nhat || now <= r.han_cap_nhat_lai) continue;
+        const ton = r.han_cap_nhat_lai < R4_TON_CU_TU;
+        const moc = ton ? R4_TON_CU_TU : r.han_cap_nhat_lai;
+        if (daVe(r, moc)) continue;
+        add(r, "R4", `R4:${r.item_id}:${r.ngay_du_kien_gan_nhat}${ton ? ":TON" : ""}`, moc, r.ngay_du_kien_gan_nhat, "KHONG_NDK_QUA_HAN");
       }
     }
     // Dong bo loi R1 DANG CHO voi moc hien tai (doi 24h -> 48h 2026-11-05): het vi pham -> bo (ghi event_log); con -> cap nhat han.
@@ -585,6 +598,8 @@ export const GIO_TU_DONG = 16;
 export const VP_CU_TRUOC = "2026-11-01";
 /** v0.115: dong ton qua ngay DK tu truoc VP_CU_TRUOC -> 1 loi R4 moi voi moc nay (sau khi bo loi cu van tiep tuc day giai trinh). */
 export const R4_TON_TU = "2026-11-24 08:00:00";
+/** v0.120: dong cua PO ban hanh truoc moc ap dung quy tac (theo_doi_ap_dung_tu) van ton qua ngay DK -> R4 tu moc nay (khong hoi to). */
+export const R4_TON_CU_TU = "2026-11-27 08:00:00";
 export const GIO_TU_DONG_CU = 56;
 export const HAN_GT_16_TU = "2026-11-24 00:00:00";
 export const gioHanGt = (moc: string) => (moc >= HAN_GT_16_TU ? GIO_TU_DONG : GIO_TU_DONG_CU);

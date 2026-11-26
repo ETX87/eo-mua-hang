@@ -33,7 +33,8 @@ app.get("/", async (c) => {
   const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
   const khoCua = (u.khu_vuc_kho ?? "").split(",").map((x) => x.trim()).filter(Boolean);
   const cua = (r: DongTheoDoi) => tatCa || r.nguoi_dat === u.email || (u.vai_tro === "Kho" && (khoCua.length === 0 || khoCua.includes(r.kho)));
-  const rows = (await layDongTheoDoi(c.env, "dang_mo")).filter((r) => r.ap_dung && cua(r));
+  const cuaToi = (await layDongTheoDoi(c.env, "dang_mo")).filter(cua);
+  const rows = cuaToi.filter((r) => r.ap_dung);
   // gio LAM VIEC con lai den han (am = da tre)
   const conGio = (han: string | null) => (!han ? null : han >= now ? demGioLV(now, han) : -demGioLV(han, now));
   const gan = (r: DongTheoDoi, han: string | null): Viec => ({ ...r, han, con_gio: conGio(han) });
@@ -70,7 +71,8 @@ app.get("/", async (c) => {
   do sau.setUTCDate(sau.getUTCDate() + 1); while (![1, 3].includes(sau.getUTCDay()));
 
   // giai trinh: han tu dong = loi cho som nhat + GIO_TU_DONG gio LV
-  const coLoi = rows.filter((r) => r.so_loi_cho_gt > 0);
+  // v0.120: ca dong cua PO ban hanh truoc moc ap dung (co loi R4 ton tu lib/theoDoi) - giai trinh duoc o day
+  const coLoi = cuaToi.filter((r) => r.so_loi_cho_gt > 0);
   const mocLoi = coLoi.length ? new Map((await db.prepare(
     `SELECT eo_item_id, MIN(COALESCE(han, created_at)) moc, GROUP_CONCAT(DISTINCT quy_tac) qt FROM tl_loi
      WHERE trang_thai = 'CHO_GIAI_TRINH' AND eo_item_id IN (SELECT value FROM json_each(?)) GROUP BY eo_item_id`,

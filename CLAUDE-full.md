@@ -389,6 +389,9 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.120**: `R4_TON_CU_TU` = 2026-11-27 08:00 (lib/theoDoi.ts) — `danhGiaQuyTac` vòng riêng cho dòng `!ap_dung` (PO trước `theo_doi_ap_dung_tu`, đã lọc ≥ `theo_doi_bo_qua_truoc`)
+còn mở + quá ngày DK: `han_cap_nhat_lai` < mốc → R4 khoá `…:TON` mốc R4_TON_CU_TU, sau mốc → R4 thường; bỏ nếu `daVe`. Chỉ R4. `viecCuaToi` (giai_trinh) và
+`viecCanLam` (loiCho) lấy dòng có lỗi chờ KHÔNG lọc `ap_dung`; các mục khác vẫn lọc `ap_dung`. Yêu cầu: "tại sao ca này chậm ngày dự kiến lâu như vậy rồi mà chưa bị tính lỗi?" → "Có, làm luôn".
 **v0.115**: `R4_TON_TU` (lib/theoDoi.ts) — dòng quá ngày DK từ trước `VP_CU_TRUOC` vẫn tồn → thêm 1 lỗi R4 khoá `…:TON` mốc 24/11 08:00 (bỏ lỗi cũ, không bỏ theo dõi).
 **v0.114**: `kiemBangChung` (lib/theoDoi.ts) — mọi API giải trình nhận `dung_mail` thay ảnh R1/R4, kiểm thư / liên hệ từng dòng (`THIEU_THU`). Việc của tôi ④ `BangGiaiTrinh`
 (pages/ViecCuaToi.tsx, localStorage `vct-gt-xem`) nhóm PO / mã LK + tick → `GiaiTrinhDongModal`.

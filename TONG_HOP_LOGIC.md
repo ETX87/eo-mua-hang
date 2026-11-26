@@ -141,6 +141,10 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Bỏ LỖI cũ, KHÔNG bỏ theo dõi đơn tồn (v0.115)**: chỉ lỗi có mốc trước 01/11 bị bỏ; dòng tồn vẫn theo dõi và vẫn bị nhắc giải trình như mọi dòng.
   R1 / R3 lặp lại theo lịch nên tự tiếp tục; R4 chỉ ghi 1 lần / ngày DK → dòng quá ngày DK từ trước 01/11 mà vẫn tồn được ghi THÊM 1 lỗi R4 mốc 24/11/2026 08:00
   (khoá `R4:<dòng>:<ngày DK>:TON`, hạn giải trình 16h LV → 25/11 17:00; nhập ngày DK mới thì tự đóng "đã khắc phục").
+- **Đơn tồn của PO ban hành TRƯỚC mốc áp dụng quy tắc (v0.120)**: PO ban hành 01/07 → 20/10/2026 (trước `theo_doi_ap_dung_tu`) trước đây chỉ được theo dõi, không bao giờ
+  sinh lỗi. Nay dòng còn tồn + quá ngày DK + chưa về hàng lần nào bị **R4** từ 27/11/2026 08:00 (không ghi lùi): quá ngày DK trước mốc → 1 lỗi khoá `…:TON` mốc 27/11 08:00
+  (hạn giải trình 16h LV → 28/11 17:00); ngày DK mới về sau lại quá → R4 thường. Chỉ R4 — R1 / R3 và ngưỡng Ca tồn CEO vẫn chỉ cho dòng từ mốc áp dụng.
+  Lỗi này hiện ở màn Vi phạm, mục giải trình của Việc của tôi và số đỏ menu như mọi lỗi. Lúc làm: ~54 dòng / 10 PO / 3 người đặt.
 - **Chờ NCC báo ngày (v0.113)**: NCC trả lời nhưng chưa có ngày → NV ghi nhận nhắc đối tác (kênh gọi / Zalo / tin nhắn / **mail** / gặp) và tick "NCC chưa có ngày dự kiến",
   hẹn hỏi lại (sau hôm nay, tối đa 7 ngày; `tl_lien_he.hen_lai`). Từ ngày liên hệ đến ngày hẹn: KHÔNG ghi lỗi lặp R1 (thứ 3/6) và R3 (thứ 2/4) cho dòng; lỗi R1 đầu tiên vẫn ghi.
   Việc của tôi: dòng chuyển sang mục "Đang chờ NCC báo ngày" (hạn = ngày hẹn 17:00), không còn ở ① / ③ và không vào danh sách push; số đỏ menu cũng không tính.
