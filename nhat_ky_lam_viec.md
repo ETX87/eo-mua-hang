@@ -15,6 +15,14 @@
   (v1.568, `lib/dongBoNgayEo.ts`, cron mỗi giờ).
 - Kiểm thử: typecheck.
 
+## 26/11/2026 — v0.126: Cửa sổ mở sau luôn nằm trên
+
+- Yêu cầu (nguyên văn): "UI mở lên lại bị hiện phía sau UI cũ" (bấm 1 dòng trong danh sách chi tiết của Bảng trách nhiệm → popup đơn hàng nằm dưới danh sách).
+- Nguyên nhân: cửa sổ (Modal) cố định lớp 200, popup xem nhanh cố định lớp 80+ → popup mở từ trong cửa sổ luôn bị che.
+- Đã làm: lớp hiển thị theo thứ tự mở cho mọi cửa sổ và popup xem nhanh (cái mở sau nằm trên), Esc chỉ đóng lớp trên cùng; bộ lọc cột và menu ⋯ luôn nổi trên cùng.
+- Kiểm thử local: Tổng quan → bảng → "> 30 ngày" → bấm dòng: danh sách lớp 210, popup 220, popup nằm trên; Esc lần 1 đóng popup, lần 2 đóng danh sách;
+  chiều ngược: popup PO (210) → ⋯ → Lịch sử theo dõi (220) nằm trên; typecheck + build.
+
 ## 26/11/2026 — v0.125: Lỗi R5 "Chậm duyệt" — người duyệt trễ phải giải trình
 
 - Yêu cầu: "Có, làm luôn" (đề xuất: thẩm định / duyệt mua / duyệt dòng sau ban hành quá 8 giờ làm việc → ghi 1 lỗi "Chậm duyệt" cho người duyệt, giải trình 16 giờ).

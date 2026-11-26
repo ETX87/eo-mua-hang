@@ -35,7 +35,7 @@ export function MenuXo({ muc, title = "Thao tác" }: { muc: MucMenu[]; title?: s
       {mo && (
         <div ref={ref} onClick={(e) => e.stopPropagation()}
           style={{ position: "fixed", left: mo.x, [mo.len ? "bottom" : "top"]: mo.len ? window.innerHeight - mo.y : mo.y, width: 260, background: "#fff",
-            border: "1px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-pop)", zIndex: 1000, padding: 6 }}>
+            border: "1px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-pop)", zIndex: 2000, padding: 6 }}>
           {ds.map((m, i) => (
             <button key={i} type="button" className="btn ghost sm" title={m.title} onClick={() => { setMo(null); m.onClick(); }}
               style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "7px 10px", borderRadius: 7, color: m.nguy ? "var(--danger)" : undefined,

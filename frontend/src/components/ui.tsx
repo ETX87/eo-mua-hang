@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { I } from "../lib/icons";
+import { useLop, laTrenCung } from "../lib/lop";
 import { STATUS_META } from "../lib/nav";
 import { yNghiaLoaiHinh } from "../lib/loaiHinh";
 
@@ -105,13 +106,15 @@ export function EmptyState({ text }: { text: string }) {
 export function Modal({ title, onClose, children, footer, wide, width }: {
   title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; width?: number;
 }) {
+  // v0.126: lop theo thu tu mo (lib/lop) - Modal mo sau nam tren; Esc chi dong Modal dang tren cung
+  const { z, id } = useLop();
   useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape" && laTrenCung(id.current) && !document.querySelector(".hop-loc, [data-modal='']")) onClose(); };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
+  }, [onClose, id]);
   return (
-    <div data-modal="1" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.42)", display: "grid", placeItems: "center", zIndex: 200, padding: 20 }}>
+    <div data-modal="1" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.42)", display: "grid", placeItems: "center", zIndex: z, padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: width ?? (wide ? 720 : 460), maxWidth: "100%", padding: 0, boxShadow: "var(--shadow-pop)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderBottom: "1px solid var(--border)" }}>
           <strong style={{ fontSize: 15 }}>{title}</strong>

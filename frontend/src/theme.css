@@ -237,7 +237,7 @@ table.tbl thead th.qv-act { background: var(--panel-2); z-index: 2; }
 .th-loc { border: 0; background: none; padding: 2px 3px; border-radius: 5px; cursor: pointer; color: var(--text-faint, #94A3B8); display: inline-flex; line-height: 0; }
 .th-loc:hover { background: var(--panel-2); color: var(--text); }
 .th-loc.on { color: #fff; background: var(--link-amber, #B45309); }
-.hop-loc { position: fixed; z-index: 300; width: 280px; background: #fff; border: 1px solid var(--border); border-radius: 12px;
+.hop-loc { position: fixed; z-index: 2000; width: 280px; background: #fff; border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 16px 40px rgba(15,23,42,.22); padding: 10px 12px; font-weight: 400; text-align: left; white-space: normal; }
 
 /* ================= Mobile (< 768px) — AppShell dung useIsMobile() cung moc 767px ================= */
