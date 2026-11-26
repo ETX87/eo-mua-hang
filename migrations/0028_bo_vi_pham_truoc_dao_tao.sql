@@ -1,7 +1,7 @@
 -- v0.128 (2026-11-26, chu he thong): "Bỏ toàn bộ vi phạm bị chốt từ trước 20/11 => tính là bỏ qua trước thời điểm đào tạo 20/11".
 -- Vi pham = loi he thong tu chot "het han giai trinh" (tl_giai_trinh pham_vi 'AUTO', nhom 'AUTO:QUA_HAN'). Chot (g.created_at) truoc
 -- 2026-11-20 -> doi sang 'AUTO:CU' (nhom "bo qua", khong tinh vi pham o man Vi pham / Don PO / Dieu hanh / Ca CEO / bang ma loi), giu nguyen
--- ban ghi loi + lich su. Thuc te luc chay: 348 vi pham, deu chot 18/11 14:38 (luc tinh nang tu chot len production, ap hoi to) + 1 vi pham 20/11 10:52.
+-- ban ghi loi + lich su. Thuc te luc chay: 347 vi pham, deu chot 18/11 14:38 (luc tinh nang tu chot len production, ap hoi to); 1 vi pham chot 20/11 10:52 giu nguyen.
 UPDATE tl_giai_trinh
 SET nhom = 'AUTO:CU',
     noi_dung = 'Bỏ qua vi phạm: hệ thống chốt trước thời điểm đào tạo 20/11/2026 — không tính vi phạm. (Trước đó: ' || noi_dung || ')'

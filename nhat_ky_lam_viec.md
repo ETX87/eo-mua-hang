@@ -15,14 +15,14 @@
   popup nhắc (có từ v0.105, 19/11) hay thông báo đẩy (tài khoản chưa bật đẩy). Kết luận: lỗi được đẩy sang, người dùng chưa giải trình; nhưng việc "chốt" là do
   luật mới áp hồi tố, không có cảnh báo trước. Từ 18/11 16:04 đã giải trình 548 lần, hiện 0 lỗi chờ.
 - Đã làm: migration `0028_bo_vi_pham_truoc_dao_tao.sql` — vi phạm `AUTO:QUA_HAN` chốt trước 2026-11-20 → `AUTO:CU` (bỏ qua, không tính vi phạm), nội dung ghi
-  "chốt trước thời điểm đào tạo 20/11/2026" + giữ nội dung cũ; event `BO_VI_PHAM_CU`; tăng version `theo_doi`. Toàn hệ thống: 348 vi phạm / 3 người (312 · 28 · 8),
-  đều là toàn bộ vi phạm quá hạn đang có (sau 20/11 chưa chốt vi phạm nào). Lỗi mốc trước 20/11 còn chờ: 0 → không cần đổi luật tự chốt. Nhãn FE "Bỏ qua · lỗi cũ"
+  "chốt trước thời điểm đào tạo 20/11/2026" + giữ nội dung cũ; event `BO_VI_PHAM_CU`; tăng version `theo_doi`. Toàn hệ thống: 347 vi phạm / 3 người (311 · 28 · 8), chốt 18/11 14:38;
+  giữ nguyên 1 vi phạm chốt 20/11 10:52 (mốc lỗi 09/11) vì không thuộc "trước 20/11". Lỗi mốc trước 20/11 còn chờ: 0 → không cần đổi luật tự chốt. Nhãn FE "Bỏ qua · lỗi cũ"
   nêu thêm "chốt trước đào tạo 20/11/2026".
 - 5W1H: Who — người bị gán lỗi + quản lý xem màn Vi phạm / Điều hành / Ca CEO. When — áp 1 lần cho vi phạm đã chốt trước 20/11; vi phạm chốt từ 20/11 tính bình thường.
-  Where — màn Vi phạm & giải trình (cột Trạng thái "Bỏ qua · lỗi cũ"), Đơn PO cột Vi phạm, Điều hành, bảng mã lỗi, API đọc. What — 348 vi phạm thành "bỏ qua",
+  Where — màn Vi phạm & giải trình (cột Trạng thái "Bỏ qua · lỗi cũ"), Đơn PO cột Vi phạm, Điều hành, bảng mã lỗi, API đọc. What — 347 vi phạm thành "bỏ qua",
   không tính vào số vi phạm / % / CEO; lịch sử lỗi vẫn giữ. Why — nhân viên chưa được đào tạo và luật chốt áp hồi tố không báo trước. How — tự động khi deploy, người
   dùng không phải thao tác; mở lỗi cũ thấy dòng giải thích.
-- Kiểm thử: typecheck; migration chạy trên D1 local; sau khi chạy production kiểm lại còn 0 vi phạm `AUTO:QUA_HAN` chốt trước 20/11.
+- Kiểm thử: typecheck; migration chạy trên D1 local; production: 347 bản ghi ghi "đào tạo 20/11/2026", còn 0 vi phạm `AUTO:QUA_HAN` chốt trước 20/11, 1 vi phạm chốt 20/11 giữ nguyên.
 
 ## 26/11/2026 — v0.126: `POST /api/partner/theo-id` cho app Linh kiện đồng bộ ngày dự kiến sang ticket thiếu hàng
 

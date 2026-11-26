@@ -163,7 +163,7 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Vi phạm cũ bỏ qua (v0.113)**: lỗi có mốc trước **01/11/2026** không tính vi phạm — đang chờ thì hệ thống tự đóng "Tự bỏ vi phạm do vi phạm cũ" (`AUTO:CU`),
   các lỗi đã bị đóng "quá hạn" trước đó đổi sang `AUTO:CU` (migration 0026, 601 lỗi / 9 PO / 2 người). Hiển thị "Bỏ qua · lỗi cũ".
 - **Bỏ vi phạm chốt trước đào tạo 20/11/2026 (v0.128)**: mọi vi phạm "hết hạn giải trình" (`AUTO:QUA_HAN`) hệ thống chốt trước 20/11/2026 đổi sang `AUTO:CU`
-  (migration 0028, 348 vi phạm / 3 người — luật tự chốt áp hồi tố 18/11, trước khi đào tạo). Vi phạm chốt từ 20/11 tính bình thường.
+  (migration 0028, 347 vi phạm / 3 người — luật tự chốt áp hồi tố 18/11, trước khi đào tạo). Vi phạm chốt từ 20/11 tính bình thường.
 - **Bỏ LỖI cũ, KHÔNG bỏ theo dõi đơn tồn (v0.115)**: chỉ lỗi có mốc trước 01/11 bị bỏ; dòng tồn vẫn theo dõi và vẫn bị nhắc giải trình như mọi dòng.
   R1 / R3 lặp lại theo lịch nên tự tiếp tục; R4 chỉ ghi 1 lần / ngày DK → dòng quá ngày DK từ trước 01/11 mà vẫn tồn được ghi THÊM 1 lỗi R4 mốc 24/11/2026 08:00
   (khoá `R4:<dòng>:<ngày DK>:TON`, hạn giải trình 16h LV → 25/11 17:00; nhập ngày DK mới thì tự đóng "đã khắc phục").
