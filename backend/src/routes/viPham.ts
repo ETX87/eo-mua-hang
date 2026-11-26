@@ -3,7 +3,7 @@ import type { Env, AppVariables, AppUser } from "../types";
 import { nowVN, todayVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
-import { canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
+import { canEditPlan, duocGiaiTrinh, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { danhGiaQuyTac, layDongTheoDoi, GIO_TU_DONG, GIO_NHAC_HET_HAN, hanGiaiTrinh, kiemBangChung } from "../lib/theoDoi";
 import { congGioLV, demGioLV } from "../lib/gioLamViec";
 import { dsLoiDayDu, tongHopTheoMa, dsCaCeo, QUA_LAU_GIO, RAT_LAU_GIO } from "../lib/baoCaoLoi";
@@ -38,7 +38,7 @@ app.get("/nhac-cua-toi", async (c) => {
        GROUP_CONCAT(DISTINCT l.quy_tac) quy_tac, MIN(CASE WHEN l.quy_tac <> 'TAY' THEN COALESCE(l.han, l.created_at) END) moc,
        MAX(l.nhac_het_han_luc) nhac_luc
      FROM tl_loi l JOIN eo e ON e.id = l.eo_id LEFT JOIN eo_item i ON i.id = l.eo_item_id
-     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR e.created_by = ?1)
+     WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (COALESCE(l.ai_email, e.created_by) = ?1 OR (e.created_by = ?1 AND l.quy_tac <> 'R5'))
        AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')
      GROUP BY l.eo_item_id`,
   ).bind(u.email).all<{ item_id: number; eo_id: number; ma_po: string; part_code: string | null; part_name: string | null; so_loi: number;
@@ -69,10 +69,11 @@ app.get("/", async (c) => {
   const { rows: tatCa } = await dsLoiDayDu(c.env);
   const pv = phamVi(u);
   const rows = tatCa.filter((l) => pv.thay({ nguoi_dat: l.nguoi_dat, nguoi_vp: l.nguoi_vp, kho: l.kho }))
-    .map((l) => ({ ...l, cua_toi: l.nguoi_vp === u.email || l.nguoi_dat === u.email }));
+    .map((l) => ({ ...l, cua_toi: l.nguoi_vp === u.email || (l.nguoi_dat === u.email && l.quy_tac !== "R5") }));
   const st = await db.prepare("SELECT danh_gia_luc FROM tl_state WHERE id = 1").first<{ danh_gia_luc: string | null }>();
   return c.json({
-    rows, tat_ca: pv.tatCa, quan_ly: xemToanBoTheoDoi(u), co_the_gt: canEditPlan(u), me: u.email, vai_tro: u.vai_tro,
+    // v0.125: nguoi duyet co loi R5 cua minh cung giai trinh duoc (chi loi do - FE an nut giai trinh ca PO / ngay DK voi R5)
+    rows, tat_ca: pv.tatCa, quan_ly: xemToanBoTheoDoi(u), co_the_gt: canEditPlan(u) || rows.some((l) => l.quy_tac === "R5" && l.nguoi_vp === u.email), me: u.email, vai_tro: u.vai_tro,
     qua_lau_gio: QUA_LAU_GIO, rat_lau_gio: RAT_LAU_GIO, danh_gia_luc: st?.danh_gia_luc ?? null,
   });
 });
@@ -102,7 +103,7 @@ app.get("/po/:eoId", async (c) => {
     db.prepare("SELECT id, eo_code, approval_code, tieu_de, created_by FROM eo WHERE id = ?").bind(eoId).first(),
     db.prepare(
       `SELECT l.id, l.eo_item_id, l.quy_tac, l.han, l.ngay_tham_chieu, l.ai_email, i.part_code, i.part_name
-       FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id WHERE l.eo_id = ? AND l.trang_thai = 'CHO_GIAI_TRINH' ORDER BY i.id, l.han`,
+       FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id WHERE l.eo_id = ? AND l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'R5' ORDER BY i.id, l.han`,
     ).bind(eoId).all(),
     layDongTheoDoi(c.env, "dang_mo"),
   ]);
@@ -209,7 +210,8 @@ app.post("/giai-trinh-po", async (c) => {
     return c.json({ ok: true, so_dong: ids.length, so_loi: ids.length });
   }
 
-  const loc = `l.eo_id = ?1 AND l.trang_thai = 'CHO_GIAI_TRINH'
+  // v0.125: R5 (cham duyet) chi nguoi duyet tu giai trinh -> khong dong theo giai trinh ca PO
+  const loc = `l.eo_id = ?1 AND l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'R5'
     AND (?2 = '[]' OR l.quy_tac IN (SELECT value FROM json_each(?2)))
     AND (?3 = '[]' OR l.eo_item_id IN (SELECT value FROM json_each(?3)))`;
   const dem = await db.prepare(`SELECT COUNT(*) n, SUM(l.quy_tac IN ('R1', 'R4')) can_anh FROM tl_loi l WHERE ${loc}`)
@@ -256,12 +258,13 @@ app.post("/giai-trinh-nhieu", async (c) => {
   const dm = await db.prepare("SELECT loai FROM tl_danh_muc WHERE (loai = 'AI' AND ma = ?) OR (loai = 'LOI' AND ma = ?)").bind(b.ai_ma, b.loi_ma).all();
   if (dm.results.length < 2) return c.json({ error: "BAD_CATALOG" }, 400);
   const ds = (await db.prepare(
-    `SELECT l.id, l.quy_tac, l.eo_id, l.eo_item_id, e.created_by FROM tl_loi l JOIN eo e ON e.id = l.eo_id
+    `SELECT l.id, l.quy_tac, l.eo_id, l.eo_item_id, l.ai_email, e.created_by FROM tl_loi l JOIN eo e ON e.id = l.eo_id
      WHERE l.id IN (SELECT value FROM json_each(?)) AND l.trang_thai = 'CHO_GIAI_TRINH'`,
-  ).bind(ids).all<{ id: number; quy_tac: string; eo_id: number; eo_item_id: number; created_by: string }>()).results;
+  ).bind(ids).all<{ id: number; quy_tac: string; eo_id: number; eo_item_id: number; ai_email: string | null; created_by: string }>()).results;
   if (!ds.length) return c.json({ error: "KHONG_CO_LOI" }, 400);
   if (new Set(ds.map((l) => l.quy_tac)).size > 1) return c.json({ error: "KHAC_LOAI" }, 400);
-  if (ds.some((l) => !canEditPlan(u, l))) return c.json({ error: "READ_ONLY" }, 403);
+  // v0.125: R5 (cham duyet) - chinh nguoi duyet (hoac Admin) giai trinh; loi khac - nguoi sua duoc ke hoach (nguoi dat / KH cung ung / Admin)
+  if (ds.some((l) => !duocGiaiTrinh(u, l))) return c.json({ error: "READ_ONLY" }, 403);
   const hinh = JSON.stringify((Array.isArray(b.hinh_anh) ? b.hinh_anh : []).filter((x: any) => x && x.url).slice(0, 10));
   const bc = await kiemBangChung(db, ds[0].quy_tac === "R1" || ds[0].quy_tac === "R4", hinh !== "[]", b.dung_mail, ds.map((l) => l.eo_item_id));
   if (bc) return c.json(bc, 400);
@@ -276,7 +279,7 @@ app.post("/giai-trinh-nhieu", async (c) => {
        WHERE id IN (SELECT value FROM json_each(?1)) AND trang_thai = 'CHO_GIAI_TRINH' GROUP BY eo_item_id`,
     ).bind(chon, b.ai_ma, aiEmail, b.loi_ma, noiDung, hinh, u.email, now, nhom),
     db.prepare(
-      `UPDATE tl_loi AS l SET trang_thai = 'DA_GIAI_TRINH', ai_ma = ?2, ai_email = ?3, loi_ma = ?4,
+      `UPDATE tl_loi AS l SET trang_thai = 'DA_GIAI_TRINH', ai_ma = ?2, ai_email = CASE WHEN l.quy_tac = 'R5' THEN l.ai_email ELSE ?3 END, loi_ma = ?4,
          giai_trinh_id = (SELECT g.id FROM tl_giai_trinh g WHERE g.nhom = ?5 AND g.eo_item_id = l.eo_item_id)
        WHERE l.id IN (SELECT value FROM json_each(?1)) AND l.trang_thai = 'CHO_GIAI_TRINH'
          AND l.eo_item_id IN (SELECT g.eo_item_id FROM tl_giai_trinh g WHERE g.nhom = ?5)`,
@@ -312,7 +315,7 @@ app.post("/giai-trinh-dong", async (c) => {
   const ids = JSON.stringify(idList);
   const loiCho = (await db.prepare(
     `SELECT eo_item_id, quy_tac, COUNT(*) n FROM tl_loi
-     WHERE eo_item_id IN (SELECT value FROM json_each(?)) AND trang_thai = 'CHO_GIAI_TRINH' GROUP BY eo_item_id, quy_tac`,
+     WHERE eo_item_id IN (SELECT value FROM json_each(?)) AND trang_thai = 'CHO_GIAI_TRINH' AND quy_tac <> 'R5' GROUP BY eo_item_id, quy_tac`,
   ).bind(ids).all<{ eo_item_id: number; quy_tac: string; n: number }>()).results;
   const dangMo = (await layDongTheoDoi(c.env, "dang_mo")).filter((r) => idList.includes(r.item_id)).map((r) => ({ i: r.item_id, e: r.eo_id }));
   if (b.xem) return c.json({ loi: loiCho, dong_mo: dangMo.map((x) => x.i) });
@@ -360,7 +363,7 @@ app.post("/giai-trinh-dong", async (c) => {
   const bcD = await kiemBangChung(db, loiCho.some((l) => l.quy_tac === "R1" || l.quy_tac === "R4"), hinh !== "[]", b.dung_mail,
     loiCho.filter((l) => l.quy_tac === "R1" || l.quy_tac === "R4").map((l) => l.eo_item_id));
   if (bcD) return c.json(bcD, 400);
-  const loc = "l.eo_item_id IN (SELECT value FROM json_each(?1)) AND l.trang_thai = 'CHO_GIAI_TRINH'";
+  const loc = "l.eo_item_id IN (SELECT value FROM json_each(?1)) AND l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'R5'";
   const res = await db.batch([
     db.prepare(`INSERT INTO tl_giai_trinh (${gtCols})
       SELECT l.eo_item_id, l.eo_id, MIN(l.id), ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'NHIEU', ?9 FROM tl_loi l WHERE ${loc} GROUP BY l.eo_item_id`)

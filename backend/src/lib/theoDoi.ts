@@ -8,6 +8,7 @@ import { laNhomR1_24h } from "./chuanHoa";
 import { AI_MAC_DINH } from "./maLoi";
 import { congGioLV, demGioLV, GIO_LV_TU } from "./gioLamViec";
 import { sendPushToUser } from "./webPush";
+import { CHO_DUYET_SAU_BH_SQL } from "./choDuyetSauBh";
 
 /**
  * "Theo doi linh kien dat" - kiem soat ngay du kien hang ve tung dong EO (migrations/0012). Quy tac:
@@ -406,6 +407,35 @@ export async function danhGiaQuyTac(env: Env, force = false): Promise<number> {
         }
       }
     }
+    // v0.125 R5 CHAM DUYET (chu he thong 2026-11-26 "Co, lam luon"): buoc tham dinh / duyet mua dang cho (eo_approval PENDING cua lan trinh dang cho)
+    // va dong them sau BH dang cho duyet (lib/choDuyetSauBh) qua han G2 / G3 (app_settings giai_doan_sla, mac dinh 8h LV tu luc giao) -> 1 loi cho
+    // NGUOI DUYET (ai_ma NGUOI_DUYET, ai_email = nguoi duyet). Khong ghi hoi to: han < R5_TU -> han = R5_TU. PO ban hanh / tao truoc theo_doi_bo_qua_truoc: bo.
+    if (now > R5_TU) {
+      let sla: Record<string, number> = { G2: 8, G3: 8 };
+      try { sla = { ...sla, ...JSON.parse((await db.prepare("SELECT value FROM app_settings WHERE key = 'giai_doan_sla'").first<{ value: string }>())?.value || "{}") }; } catch { /* mac dinh */ }
+      const boQua = ((await db.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'").first<{ value: string }>())?.value || "2026-07-01").slice(0, 10);
+      const [buoc, sauBh] = await Promise.all([
+        db.prepare(
+          `SELECT a.id, a.step_type, a.approver_email ai, a.assigned_at tu, s.eo_id, (SELECT MIN(i.id) FROM eo_item i WHERE i.eo_id = s.eo_id) item
+           FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id JOIN eo e ON e.id = s.eo_id
+           WHERE a.status = 'PENDING' AND s.status = 'PENDING' AND e.trang_thai IN ('IN_REVIEW', 'WAITING_FINAL_APPROVAL')
+             AND a.assigned_at IS NOT NULL AND a.approver_email IS NOT NULL AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= ?`,
+        ).bind(boQua).all<{ id: number; step_type: string; ai: string; tu: string; eo_id: number; item: number | null }>(),
+        db.prepare(
+          `SELECT i.id item, i.eo_id, i.created_at tu, e.final_approver_email ai FROM eo_item i JOIN eo e ON e.id = i.eo_id
+           WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED' AND e.final_approver_email IS NOT NULL
+             AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= ?`,
+        ).bind(boQua).all<{ item: number; eo_id: number; tu: string; ai: string }>(),
+      ]);
+      const ghiR5 = (khoa: string, item: number | null, eoId: number, tu: string, gio: number, ai: string) => {
+        if (!item) return;
+        const han0 = congGioLV(tu.slice(0, 19), gio);
+        const han = han0 < R5_TU ? R5_TU : han0;
+        if (now > han) loi.push([item, eoId, "R5", khoa, han, tu.slice(0, 10), "NGUOI_DUYET", ai, "CHAM_DUYET"]);
+      };
+      for (const a of buoc.results) ghiR5(`R5:A:${a.id}`, a.item, a.eo_id, a.tu, a.step_type === "REVIEW" ? sla.G2 : sla.G3, a.ai);
+      for (const x of sauBh.results) ghiR5(`R5:S:${x.item}`, x.item, x.eo_id, x.tu, sla.G3, x.ai);
+    }
     // v0.120 (chu he thong 2026-11-26, noi tiep v0.115 "ton thi van tiep tuc day giai trinh vi pham"): dong cua PO ban hanh TRUOC moc ap dung
     // (theo_doi_ap_dung_tu, nhung >= theo_doi_bo_qua_truoc) van ton + qua ngay DK -> R4 TU NAY (khong ghi hoi to): qua ngay DK truoc
     // R4_TON_CU_TU -> 1 loi khoa ':TON' moc R4_TON_CU_TU; qua ngay DK sau moc -> R4 thuong (moi ngay DK 1 loi). Chi R4 (khong R1/R3).
@@ -603,6 +633,8 @@ export const VP_CU_TRUOC = "2026-11-01";
 export const R4_TON_TU = "2026-11-24 08:00:00";
 /** v0.120: dong cua PO ban hanh truoc moc ap dung quy tac (theo_doi_ap_dung_tu) van ton qua ngay DK -> R4 tu moc nay (khong hoi to). */
 export const R4_TON_CU_TU = "2026-11-27 08:00:00";
+/** v0.125: loi R5 cham duyet ap dung tu moc nay (khong ghi hoi to - buoc da qua han tu truoc duoc tinh han = moc nay). */
+export const R5_TU = "2026-11-27 08:00:00";
 export const GIO_TU_DONG_CU = 56;
 export const HAN_GT_16_TU = "2026-11-24 00:00:00";
 export const gioHanGt = (moc: string) => (moc >= HAN_GT_16_TU ? GIO_TU_DONG : GIO_TU_DONG_CU);
@@ -623,9 +655,15 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
                 UNION ALL SELECT p.ngay FROM tl_push_item p WHERE p.eo_item_id = l.eo_item_id AND p.ngay > l.ngay_tham_chieu))
               WHEN l.quy_tac = 'R1' THEN (SELECT substr(MIN(p.created_at), 1, 10) FROM item_plan p WHERE p.eo_item_id = l.eo_item_id)
               WHEN l.quy_tac = 'R4' THEN (SELECT substr(MIN(p.created_at), 1, 10) FROM item_plan p WHERE p.eo_item_id = l.eo_item_id AND p.deleted_at IS NULL AND p.planned_date > l.ngay_tham_chieu)
+              -- v0.125 R5: buoc duyet khong con cho (da duyet / tu choi / lan trinh doi) | dong sau BH khong con cho duyet
+              WHEN l.quy_tac = 'R5' AND l.khoa LIKE 'R5:A:%' THEN (SELECT substr(COALESCE(a.action_at, ?1), 1, 10) FROM eo_approval a JOIN eo_submission s ON s.id = a.submission_id
+                   WHERE a.id = CAST(substr(l.khoa, 6) AS INTEGER) AND NOT (a.status = 'PENDING' AND s.status = 'PENDING'))
+              WHEN l.quy_tac = 'R5' THEN (SELECT substr(COALESCE(i.post_issue_approved_at, i.post_issue_rejected_at, ?1), 1, 10) FROM eo_item i
+                   WHERE i.id = l.eo_item_id AND NOT ${CHO_DUYET_SAU_BH_SQL("i")})
          END khac_phuc,
          (SELECT substr(MIN(g.created_at), 1, 10) FROM tl_loi l2 JOIN tl_giai_trinh g ON g.id = l2.giai_trinh_id
-          WHERE l2.eo_item_id = l.eo_item_id AND l2.quy_tac = l.quy_tac AND l2.id <> l.id AND COALESCE(g.pham_vi, '') <> 'AUTO' AND g.created_at > COALESCE(l.han, l.created_at)) gt_cung,
+          WHERE l2.eo_item_id = l.eo_item_id AND l2.quy_tac = l.quy_tac AND l2.id <> l.id AND COALESCE(g.pham_vi, '') <> 'AUTO' AND g.created_at > COALESCE(l.han, l.created_at)
+            AND (l.quy_tac <> 'R5' OR l2.ai_email IS l.ai_email)) gt_cung,
          date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') qua_han, COALESCE(l.han, l.created_at) moc
        FROM l)
      SELECT id, quy_tac, khac_phuc, gt_cung, qua_han, moc, moc < ?2 cu FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1 OR moc < ?2`,
@@ -636,6 +674,7 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
   const dmy = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
   const KP: Record<string, string> = {
     R3: "đã thúc NCC sau đó (mail / push / gọi-Zalo ngày %)", R1: "dòng đã có ngày dự kiến (nhập ngày %)", R4: "đã cập nhật ngày dự kiến mới (ngày %)",
+    R5: "người duyệt đã xử lý / không còn chờ duyệt (ngày %)",
   };
   const ds = rs.map((r) => r.khac_phuc
     ? [r.id, `Tự đóng lỗi do ${KP[r.quy_tac].replace("%", dmy(r.khac_phuc))} — đã khắc phục trong hạn, không tính vi phạm.`, "AUTO:KHAC_PHUC"]

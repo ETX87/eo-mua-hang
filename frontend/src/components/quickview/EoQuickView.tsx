@@ -35,7 +35,7 @@ const TT: Record<string, { l: string; c: string }> = {
   CHO_NDK: { l: "Chờ ngày DK", c: "final" }, TRE_NDK: { l: "Trễ hạn chưa ngày DK", c: "reject" },
   QUA_HAN_NDK: { l: "Quá ngày DK", c: "reject" }, CHO_HANG: { l: "Chờ hàng", c: "review" }, DONG: { l: "Đã đóng", c: "issued" },
 };
-const QUY_TAC: Record<string, string> = { R1: "Không có ngày DK trong 8h/16h LV", R3: "Không push đối tác", R4: "Quá hạn không cập nhật ngày DK", TAY: "Lỗi ghi khi giải trình" };
+const QUY_TAC: Record<string, string> = { R5: "Chậm duyệt (người duyệt)", R1: "Không có ngày DK trong 8h/16h LV", R3: "Không push đối tác", R4: "Quá hạn không cập nhật ngày DK", TAY: "Lỗi ghi khi giải trình" };
 const APR: Record<string, { l: string; c: string }> = {
   PENDING: { l: "Chờ xử lý", c: "final" }, APPROVED: { l: "Đồng ý", c: "issued" }, REJECTED: { l: "Từ chối", c: "reject" },
   REQUEST_UPDATE: { l: "Yêu cầu cập nhật", c: "final" }, WITHDRAWN: { l: "Đã rút", c: "nhap" }, SKIPPED: { l: "Bỏ qua", c: "nhap" },

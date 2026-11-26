@@ -10,7 +10,7 @@ import { gioTxt } from "../lib/giaiDoan";
  */
 export interface GdDef { k: string; l: string; vai_tro: string }
 type Row = Record<string, any>;
-export const LOI_GD: Record<string, string> = { R3: "G4", R1: "G5", R4: "G6" };
+export const LOI_GD: Record<string, string> = { R3: "G4", R1: "G5", R4: "G6", R5: "G3" };
 const PHU: Record<string, string> = { G4: "song song", G7: "chỉ đo" };
 
 type TrangThai = "xong" | "dang" | "tre" | "mot_phan" | "chua";
@@ -187,7 +187,7 @@ export function GiaiThichCeo({ ct, lyDo }: { ct?: CeoCt[]; lyDo?: string[] }) {
  *  - Hang ve nhieu dot: thanh tien do SL ve / SL dat, moi dot 1 moc (ngay CT AMIS + SL), con thieu -> giao bu.
  *  - Van de theo buoc: moi giai doan co loi / tre han -> ai mac (nguoi vi pham / phu trach), loai loi, so lan, cho giai trinh.
  * ==================================================================================================================== */
-const QT_TEN: Record<string, string> = { R1: "Không có ngày DK đúng hạn", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
+const QT_TEN: Record<string, string> = { R5: "Chậm duyệt (người duyệt)", R1: "Không có ngày DK đúng hạn", R3: "Không push đối tác (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi khi giải trình" };
 const AI_TEN: Record<string, string> = { NGUOI_DAT: "Người đặt", DOI_TAC: "Đối tác / NCC", KHO: "Kho", KE_TOAN: "Kế toán", NGUOI_DUYET: "Người duyệt", KHAC: "Khác" };
 const ngan = (d?: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "");
 

@@ -3,7 +3,7 @@ import type { Env, AppVariables } from "../types";
 import { nowVN, todayVN } from "../lib/vnTime";
 import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
-import { canEditPlan } from "../lib/eoAccess";
+import { canEditPlan, duocGiaiTrinh } from "../lib/eoAccess";
 import { layGiaiDoan } from "../lib/giaiDoan";
 import { requireAdmin } from "../middleware/guards";
 import { uploadPublicFile } from "../lib/googleDrive";
@@ -133,7 +133,7 @@ app.post("/giai-trinh", async (c) => {
   const it = await c.env.DB.prepare("SELECT i.id, i.eo_id, e.created_by FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?")
     .bind(itemId).first<{ id: number; eo_id: number; created_by: string }>();
   if (!it) return c.json({ error: "ITEM_NOT_FOUND" }, 404);
-  if (!canEditPlan(u, it)) return c.json({ error: "READ_ONLY" }, 403);
+  // v0.125: quyen xet sau khi biet loi (R5 cham duyet: chinh nguoi duyet giai trinh) - xem duocGiaiTrinh
   const noiDung = (b.noi_dung ?? "").trim();
   if (!b.ai_ma || !b.loi_ma || !noiDung) return c.json({ error: "MISSING_FIELDS" }, 400);
   const dm = await c.env.DB.prepare("SELECT loai, ma FROM tl_danh_muc WHERE (loai = 'AI' AND ma = ?) OR (loai = 'LOI' AND ma = ?)")
@@ -146,9 +146,11 @@ app.post("/giai-trinh", async (c) => {
     loi = await c.env.DB.prepare("SELECT * FROM tl_loi WHERE id = ? AND eo_item_id = ?").bind(b.loi_id, itemId).first();
     if (!loi) return c.json({ error: "LOI_NOT_FOUND" }, 404);
     if (loi.trang_thai !== "CHO_GIAI_TRINH") return c.json({ error: "DA_GIAI_TRINH" }, 409);
+    if (!duocGiaiTrinh(u, { quy_tac: loi.quy_tac, ai_email: loi.ai_email, created_by: it.created_by })) return c.json({ error: "READ_ONLY" }, 403);
     const bc = await kiemBangChung(c.env.DB, loi.quy_tac === "R1" || loi.quy_tac === "R4", hinh.length > 0, b.dung_mail, [itemId]);
     if (bc) return c.json(bc, 400);
   }
+  if (!loi && !canEditPlan(u, it)) return c.json({ error: "READ_ONLY" }, 403);
   const now = nowVN();
   const gt = await c.env.DB.prepare(
     `INSERT INTO tl_giai_trinh (eo_item_id, eo_id, loi_id, ai_ma, ai_email, loi_ma, noi_dung, hinh_anh, created_by, created_at)
@@ -158,10 +160,10 @@ app.post("/giai-trinh", async (c) => {
     loi
       ? (b.cung_loai !== false
           ? c.env.DB.prepare(
-              `UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = ?, loi_ma = ?
-               WHERE eo_item_id = ? AND quy_tac = ? AND trang_thai = 'CHO_GIAI_TRINH'`,
-            ).bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, itemId, loi.quy_tac)
-          : c.env.DB.prepare("UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = ?, loi_ma = ? WHERE id = ?")
+              `UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = CASE WHEN quy_tac = 'R5' THEN ai_email ELSE ? END, loi_ma = ?
+               WHERE eo_item_id = ? AND quy_tac = ? AND trang_thai = 'CHO_GIAI_TRINH' AND (quy_tac <> 'R5' OR ai_email IS ?)`,
+            ).bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, itemId, loi.quy_tac, loi.ai_email ?? null)
+          : c.env.DB.prepare("UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = CASE WHEN quy_tac = 'R5' THEN ai_email ELSE ? END, loi_ma = ? WHERE id = ?")
               .bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, loi.id))
       : c.env.DB.prepare(
           `INSERT INTO tl_loi (eo_item_id, eo_id, quy_tac, khoa, han, ai_ma, ai_email, loi_ma, trang_thai, giai_trinh_id, created_at)

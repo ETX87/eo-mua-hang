@@ -389,6 +389,12 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.125** (chủ hệ thống 2026-11-26 "Có, làm luôn" — ghi lỗi giải trình cho người duyệt khi duyệt trễ): migration 0027 dựng lại `tl_loi` (CHECK thêm `R5`) cùng 2 bảng con
+`tl_giai_trinh` / `tl_nhac_nho` (DROP thẳng bảng cha đang bị tham chiếu → bộ đếm FK trễ không về 0, D1 rollback; `legacy_alter_table` không có tác dụng trên D1).
+`danhGiaQuyTac` khối R5 (`R5_TU`, khoá `R5:A:<eo_approval.id>` neo dòng MIN(id) của PO | `R5:S:<item>`, ai_email = người duyệt); `tuGiaiTrinh` KHAC_PHUC R5 + gt_cung R5 chỉ cùng ai_email.
+`lib/maLoi`: ER.MH-005, `AI_MAC_DINH.R5 = NGUOI_DUYET`, `khoaViPham` / `VP_SQL` nhánh R5 (PO|R5|email|ngày) — PHẢI khớp. `lib/eoAccess` `duocGiaiTrinh` (R5: ai_email hoặc Admin) dùng ở
+`/theo-doi/giai-trinh` + `/vi-pham/giai-trinh-nhieu`; cập nhật lỗi giữ `ai_email` của R5; `/giai-trinh-po|dong` + `/vi-pham/po/:id` bỏ R5; `nhac-cua-toi` / viecCanLam vi_pham: người đặt
+không nhận R5. `dsLoiDayDu` hiện R5 cả khi dòng chưa vào theo dõi. FE: nhãn R5 ở các bảng QT, `AI_MAC_DINH`, ViPham ẩn "Giải trình cả PO" với R5.
 **v0.124** (chủ hệ thống 2026-11-26: "1. đơn đã kết thúc, bỏ việc duyệt hoặc từ chối 2. hiện quá nhiều thao tác, rút gọn lại 1 nút xổ xuống hoặc click vào để mở UI
 đơn chi tiết 3. Các đơn bị quá hạn do người duyệt không duyệt này có hiện trong danh sách cần giải trình không?"): `lib/choDuyetSauBh.ts` `CHO_DUYET_SAU_BH_SQL(a)`
 (PENDING + ACTIVE + chưa KTS + lũy kế AMIS < SL đặt) thay `post_issue_status = 'PENDING'` ở approvals /count + /post-issue, viecCanLam, routes/dieuHanh, dashboard,

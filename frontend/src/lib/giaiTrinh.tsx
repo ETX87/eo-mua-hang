@@ -127,7 +127,7 @@ export function demGt(loi: any[], gtBy: Map<number, any>, now = nowVN()) {
 // ------------------------------------------------------------------ v0.121 "Do ai" theo giai doan (chu he thong 2026-11-26)
 /** "Do ai" MAC DINH theo quy tac loi - khop backend lib/maLoi AI_MAC_DINH: R1 cho ngay DK (G5) / R4 qua ngay DK (G6) = NCC;
  *  R3 khong thuc NCC (G4) = noi bo - nguoi dat. Nguoi giai trinh van doi duoc. */
-export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT" };
+export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT", R5: "NGUOI_DUYET" };
 /** Ben chiu cua ma "Do ai": DOI_TAC = NCC, con lai = noi bo (khop backend benCuaAi). */
 export const benCuaAi = (ma: string | null | undefined): "NCC" | "NOI_BO" | "" => (!ma ? "" : ma === "DOI_TAC" ? "NCC" : "NOI_BO");
 export const BEN_TEN = { NCC: "Nhà cung cấp", NOI_BO: "Nội bộ công ty" } as const;
@@ -136,7 +136,7 @@ export function aiGoiY(quyTac: (string | null | undefined)[]): string {
   const ds = [...new Set(quyTac.map((q) => AI_MAC_DINH[q ?? ""] ?? ""))];
   return ds.length === 1 ? ds[0] : "";
 }
-const GD_CUA_QT: Record<string, string> = { R1: "G5 Chờ ngày DK — NCC chịu", R4: "G6 Chờ giao hàng — NCC chịu", R3: "G4 Gửi / thúc NCC — nội bộ chịu" };
+const GD_CUA_QT: Record<string, string> = { R1: "G5 Chờ ngày DK — NCC chịu", R4: "G6 Chờ giao hàng — NCC chịu", R3: "G4 Gửi / thúc NCC — nội bộ chịu", R5: "G2–G3 Thẩm định / duyệt mua — người duyệt chịu" };
 
 /** O chon "Do ai" chung cho moi form giai trinh: nhom NCC / Noi bo + dong goi y theo giai doan. */
 export function ChonDoAi({ value, onChange, ai, quyTac }: {

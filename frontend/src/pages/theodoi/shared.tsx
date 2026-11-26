@@ -40,7 +40,7 @@ export const TINH_TRANG: Record<Dong["tinh_trang"], { l: string; c: string }> = 
   DONG: { l: "Đã đóng", c: "issued" },
 };
 export const QUY_TAC: Record<string, string> = {
-  R1: "Không có ngày dự kiến trong 8h/16h LV", R3: "Không push đối tác (thứ 2/4)", R4: "Quá hạn không cập nhật ngày dự kiến", TAY: "Ghi khi giải trình",
+  R5: "Chậm duyệt (người duyệt)", R1: "Không có ngày dự kiến trong 8h/16h LV", R3: "Không push đối tác (thứ 2/4)", R4: "Quá hạn không cập nhật ngày dự kiến", TAY: "Ghi khi giải trình",
 };
 
 export const timKhongDau = (r: Dong, q: string) => {

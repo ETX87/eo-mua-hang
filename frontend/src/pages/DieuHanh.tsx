@@ -51,8 +51,8 @@ const MUC: Record<Muc, { l: string; mau: string; nen: string }> = {
   XANH: { l: "XANH", mau: "#15803D", nen: "#DCFCE7" },
 };
 const TT: Record<string, string> = { CHO_NDK: "Chờ ngày DK", TRE_NDK: "Trễ hạn chưa có ngày DK", QUA_HAN_NDK: "Quá ngày DK", CHO_HANG: "Có ngày DK, chờ hàng" };
-const QT_GD: Record<string, string> = { R3: "G4", R1: "G5", R4: "G6" };
-const QT_TEN: Record<string, string> = { R1: "R1 · Không có ngày DK đúng hạn", R3: "R3 · Không push NCC thứ 2/4", R4: "R4 · Quá ngày DK không cập nhật", TAY: "Lỗi ghi tay khi giải trình" };
+const QT_GD: Record<string, string> = { R3: "G4", R1: "G5", R4: "G6", R5: "G3" };
+const QT_TEN: Record<string, string> = { R5: "R5 · Chậm duyệt (người duyệt)", R1: "R1 · Không có ngày DK đúng hạn", R3: "R3 · Không push NCC thứ 2/4", R4: "R4 · Quá ngày DK không cập nhật", TAY: "Lỗi ghi tay khi giải trình" };
 const BUOC: Record<string, string> = { REVIEW: "Thẩm định", FINAL: "Duyệt mua", SAU_BH: "Dòng thêm sau BH" };
 /** tieu chi loc nhanh (o suc khoe / ket luan) */
 const TIEU_CHI: Record<string, { l: string; f: (d: Dong, n: Data["nguong"]) => boolean }> = {

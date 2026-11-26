@@ -21,7 +21,7 @@ interface Dong {
 interface Data { rows: Dong[]; tong_loi: number; gio_nhac: number; gio_tu_dong: number; }
 
 const KHOA_AN = "nhac-giai-trinh-an";
-const QT: Record<string, string> = { R1: "chưa có ngày DK", R3: "không push NCC", R4: "quá ngày DK", TAY: "lỗi ghi tay" };
+const QT: Record<string, string> = { R1: "chưa có ngày DK", R3: "không push NCC", R4: "quá ngày DK", R5: "chậm duyệt", TAY: "lỗi ghi tay" };
 const hanTxt = (h: string | null) => (h ? `${h.slice(11, 16)} ${h.slice(8, 10)}/${h.slice(5, 7)}` : "—");
 
 export function NhacGiaiTrinhPopup() {

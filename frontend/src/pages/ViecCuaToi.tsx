@@ -24,7 +24,7 @@ const THU = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 
 const thuNgay = (d: string) => `${THU[new Date(`${d}T00:00:00Z`).getUTCDay()]} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const hanTxt = (h: string | null) => (h ? `${thuNgay(h.slice(0, 10))} ${h.slice(11, 16)}` : "");
 const CC = "theodoimuahang@gmail.com";
-const QT: Record<string, string> = { R1: "chưa có ngày DK", R3: "không push NCC", R4: "quá ngày DK", TAY: "lỗi ghi tay" };
+const QT: Record<string, string> = { R1: "chưa có ngày DK", R3: "không push NCC", R4: "quá ngày DK", R5: "chậm duyệt", TAY: "lỗi ghi tay" };
 const dm = (s: string | null | undefined) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "");
 
 /** Xuat Excel 1 muc (v0.107, yeu cau 2026-11-20 "xuat file excel cua moi 1 phan loai"). */

@@ -39,7 +39,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 
 - Ngày hàng về thực tế KHÔNG nhập tay (chỉ từ AMIS); import Excel kế hoạch chặn cả file nếu có cột mang nghĩa thực tế.
 - Tổng SL kế hoạch ≤ SL đặt; giảm SL đặt thì tự cắt đợt xa nhất (có log).
-- Hủy dòng, kết thúc sớm, hủy dữ liệu AMIS, từ chối dòng thêm sau ban hành: bắt buộc lý do. Giải trình: bắt buộc chọn **Do ai** (gợi ý theo giai đoạn — chờ ngày DK / quá ngày DK = nhà cung cấp, không thúc NCC = nội bộ) + lỗi gì + nội dung; ảnh / thư bằng chứng tuỳ chọn (v0.121).
+- Hủy dòng, kết thúc sớm, hủy dữ liệu AMIS, từ chối dòng thêm sau ban hành: bắt buộc lý do. Người duyệt chậm (thẩm định / duyệt mua / dòng sau BH quá 8 giờ làm việc) bị ghi lỗi R5 và tự giải trình (v0.125). Giải trình: bắt buộc chọn **Do ai** (gợi ý theo giai đoạn — chờ ngày DK / quá ngày DK = nhà cung cấp, không thúc NCC = nội bộ) + lỗi gì + nội dung; ảnh / thư bằng chứng tuỳ chọn (v0.121).
 - Đính kèm: Excel / ảnh / PDF / Word ≤ 20MB; xoá là xoá mềm.
 
 ## 5. Yêu cầu chung / phi chức năng

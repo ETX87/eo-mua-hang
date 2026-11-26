@@ -24,6 +24,7 @@ const YEU_CAU: Record<string, [string, string]> = {
   R1_48: ["Bắt buộc: Do ai (mặc định NCC — giai đoạn chờ NCC) + Lỗi gì + nội dung. Ảnh / thư bằng chứng: tuỳ chọn.", "Tự đóng khi dòng đã có ngày dự kiến (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
   R3: ["Bắt buộc: Do ai (mặc định Nội bộ — người đặt, khâu gửi / thúc NCC) + Lỗi gì + nội dung. Bằng chứng: tuỳ chọn.", "Tự đóng khi sau đó có mail (CC hộp theo dõi) / push / gọi-Zalo với NCC (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
   R4: ["Bắt buộc: Do ai (mặc định NCC — giao trễ) + Lỗi gì + nội dung. Ảnh / thư bằng chứng: tuỳ chọn.", "Tự đóng khi đã nhập ngày dự kiến mới muộn hơn ngày bị quá (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
+  R5: ["Bắt buộc (người duyệt): Do ai (mặc định Người duyệt) + Lỗi gì + nội dung — vì sao chưa duyệt kịp. Bằng chứng: tuỳ chọn.", "Tự đóng khi người đó đã duyệt / từ chối / bước không còn chờ (không tính vi phạm). Hết hạn giải trình 16 giờ làm việc mà không giải trình → ghi VI PHẠM."],
   TAY: ["Không — lỗi được ghi kèm giải trình ngay lúc giải trình.", "—"],
   CEO: ["Không giải trình riêng mã này — giải trình các lỗi 0xx / 1xx của dòng; theo dõi ở menu Ca tồn CEO.", "Hết khi dòng về đủ / kết thúc sớm / hủy, hoặc không còn chạm ngưỡng."],
   GIAI_DOAN: ["Không — chỉ đo để báo cáo đúng / trễ hạn từng bước.", "—"],
@@ -44,6 +45,9 @@ const CO_DINH: MaLoiDef[] = [
     mo_ta: "Hết thứ 2 / thứ 4, dòng chưa có ngày dự kiến mà trong kỳ không có push, mail với NCC (CC hộp theo dõi) hay ghi nhận gọi / Zalo. Mỗi ngày kiểm tra = 1 lỗi." },
   { ma: "ER.MH-004", khoa: "R4", nhom: "HE_THONG", buoc: "G6", giai_trinh: true, ten: "Quá ngày dự kiến không cập nhật ngày mới",
     mo_ta: "Quá ngày dự kiến mà chưa về đủ, 8 giờ làm việc sau đó chưa nhập ngày dự kiến mới. Mỗi mốc quá hạn = 1 lỗi." },
+  // v0.125: R5 cham duyet - nguoi duyet giu buoc tham dinh / duyet mua / dong sau BH qua han G2 / G3 (8h LV). buoc G3 (G2 khi tham dinh - xem mo_ta)
+  { ma: "ER.MH-005", khoa: "R5", nhom: "HE_THONG", buoc: "G3", giai_trinh: true, ten: "Chậm duyệt (thẩm định / duyệt mua / dòng thêm sau BH)",
+    mo_ta: "Bước thẩm định hoặc duyệt mua của PO, hoặc dòng thêm sau ban hành, chờ người duyệt quá hạn G2 / G3 (mặc định 8 giờ làm việc từ lúc được giao). Mỗi lượt chờ = 1 lỗi cho đúng người duyệt. Áp dụng từ 27/11/2026 08:00." },
   { ma: "ER.MH-201", khoa: "LUI", nhom: "CEO", buoc: "G6", giai_trinh: false, ten: "Lùi ngày dự kiến nhiều lần", mo_ta: "Lùi ngày dự kiến ≥ 3 lần (đếm theo từng đợt)." },
   { ma: "ER.MH-202", khoa: "XA", nhom: "CEO", buoc: "G6", giai_trinh: false, ten: "Ngày dự kiến quá xa ngày đặt", mo_ta: "Ngày dự kiến gần nhất cách ngày đặt ≥ 30 ngày." },
   { ma: "ER.MH-203", khoa: "LOI", nhom: "CEO", buoc: null, giai_trinh: false, ten: "Tích lũy nhiều lỗi", mo_ta: "≥ 3 lỗi (hệ thống + ghi tay) trên dòng." },
@@ -63,7 +67,7 @@ const TAY_CO_DINH: Record<string, [string, string | null]> = {
 };
 /** v0.121: "Do ai" MAC DINH theo giai doan cua loi he thong (tl_danh_muc AI): R1 cho ngay DK (G5) / R4 qua ngay DK (G6) = NCC;
  *  R3 khong thuc NCC (G4) = noi bo - nguoi dat. Nguoi giai trinh van doi duoc. FE lib/giaiTrinh.tsx AI_MAC_DINH dong bo tay. */
-export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT" };
+export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT", R5: "NGUOI_DUYET" };
 /** Ben chiu cua 1 ma "Do ai": DOI_TAC = NCC, con lai = noi bo. */
 export const benCuaAi = (ma: string | null | undefined): "NCC" | "NOI_BO" => (ma === "DOI_TAC" ? "NCC" : "NOI_BO");
 /** SQL ben chiu cua loi (alias l = tl_loi, g = tl_giai_trinh LEFT JOIN): co giai trinh THAT -> theo "Do ai" da chon; chua / tu dong -> mac dinh
@@ -95,6 +99,7 @@ export function maCuaLoi(b: BangMaLoi, l: { quy_tac: string; loi_ma: string | nu
   if (l.quy_tac === "R1") return CO_DINH[laNhomR1_24h(doiTac) && String(l.han ?? "").slice(0, 10) > R1_24H_TU ? 0 : 1];
   if (l.quy_tac === "R3") return CO_DINH[2];
   if (l.quy_tac === "R4") return CO_DINH[3];
+  if (l.quy_tac === "R5") return CO_DINH.find((x) => x.khoa === "R5")!;
   return b.tay.get(String(l.loi_ma ?? "")) ?? b.tay.get("KHAC")!;
 }
 /** Ma CEO (201-203) theo CeoChiTiet.ma, ma tre giai doan (301-308) theo G1..G8. */
@@ -116,10 +121,12 @@ export function ganMaLoi<T extends { quy_tac: string; loi_ma: string | null; han
  * Trang thai 1 vi pham: con dong CHO -> cho giai trinh; het cho: co giai trinh THAT -> da giai trinh; con lai -> tu dong (qua han neu moi dong qua han).
  * khoaViPham (JS) va VP_SQL (SQL, alias bang tl_loi) phai khop nhau.
  */
-export const khoaViPham = (l: { eo_id: number; quy_tac: string; ngay_tham_chieu?: string | null; han?: string | null; loi_ma?: string | null; created_at?: string | null }) =>
-  l.quy_tac === "R1" ? (l.ngay_tham_chieu ? `${l.eo_id}|R1|${l.ngay_tham_chieu}` : `${l.eo_id}|R1`)
+// v0.125: R5 gop theo PO + NGUOI DUYET + ngay bat dau cho (2 nguoi tham dinh cung PO = 2 vi pham, moi nguoi giai trinh phan minh)
+export const khoaViPham = (l: { eo_id: number; quy_tac: string; ngay_tham_chieu?: string | null; han?: string | null; loi_ma?: string | null; created_at?: string | null; ai_email?: string | null }) =>
+  l.quy_tac === "R5" ? `${l.eo_id}|R5|${l.ai_email ?? ""}|${l.ngay_tham_chieu ?? String(l.han ?? "").slice(0, 10)}`
+  : l.quy_tac === "R1" ? (l.ngay_tham_chieu ? `${l.eo_id}|R1|${l.ngay_tham_chieu}` : `${l.eo_id}|R1`)
     : l.quy_tac === "TAY" ? `${l.eo_id}|TAY|${l.loi_ma ?? ""}|${String(l.created_at ?? "").slice(0, 10)}`
       : `${l.eo_id}|${l.quy_tac}|${l.ngay_tham_chieu ?? String(l.han ?? "").slice(0, 10)}`;
 export const VP_SQL = (a = "l") =>
-  `CASE ${a}.quy_tac WHEN 'R1' THEN ${a}.eo_id || '|R1' || CASE WHEN ${a}.ngay_tham_chieu IS NOT NULL THEN '|' || ${a}.ngay_tham_chieu ELSE '' END WHEN 'TAY' THEN ${a}.eo_id || '|TAY|' || COALESCE(${a}.loi_ma, '') || '|' || substr(${a}.created_at, 1, 10)
+  `CASE ${a}.quy_tac WHEN 'R5' THEN ${a}.eo_id || '|R5|' || COALESCE(${a}.ai_email, '') || '|' || COALESCE(${a}.ngay_tham_chieu, substr(${a}.han, 1, 10)) WHEN 'R1' THEN ${a}.eo_id || '|R1' || CASE WHEN ${a}.ngay_tham_chieu IS NOT NULL THEN '|' || ${a}.ngay_tham_chieu ELSE '' END WHEN 'TAY' THEN ${a}.eo_id || '|TAY|' || COALESCE(${a}.loi_ma, '') || '|' || substr(${a}.created_at, 1, 10)
    ELSE ${a}.eo_id || '|' || ${a}.quy_tac || '|' || COALESCE(${a}.ngay_tham_chieu, substr(${a}.han, 1, 10)) END`;

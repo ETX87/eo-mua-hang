@@ -4,6 +4,17 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.125: Lỗi R5 "Chậm duyệt" — người duyệt trễ phải giải trình
+
+- Yêu cầu: "Có, làm luôn" (đề xuất: thẩm định / duyệt mua / duyệt dòng sau ban hành quá 8 giờ làm việc → ghi 1 lỗi "Chậm duyệt" cho người duyệt, giải trình 16 giờ).
+- Đã làm: migration 0027 (thêm quy tắc R5 vào bảng lỗi, dựng lại kèm 2 bảng con, giữ nguyên dữ liệu); ghi lỗi R5 cho đúng người đang giữ bước duyệt / dòng chờ duyệt,
+  từ 27/11/2026 08:00, không ghi lùi; tự đóng khi đã duyệt / từ chối; chỉ người duyệt (hoặc Admin) giải trình; hiện ở Vi phạm / popup nhắc / số đỏ kể cả PO chưa ban hành;
+  người đặt không bị tính; giải trình cả PO không đóng R5.
+- Kiểm thử local (tạm dời mốc về 20/11 rồi trả lại, đã xoá dữ liệu thử): migration giữ nguyên 22 lỗi / 20 giải trình / 11 nhắc; quét ra 6 lỗi R5 (4 bước + 2 dòng sau BH)
+  đúng người duyệt; màn Vi phạm hiện đủ 6 (mã ER.MH-005); giải trình lỗi người khác → READ_ONLY, lỗi của mình → lưu; PO view không gồm R5; duyệt bước → lỗi tự đóng
+  "đã khắc phục"; typecheck + build.
+- Ước tính production (chỉ đọc): 1 bước duyệt mua + 1 bước thẩm định đang chờ, 12 dòng sau BH chờ duyệt (1 người duyệt, cũ nhất từ 29/09) → khoảng 14 lỗi R5 từ 27/11.
+
 ## 26/11/2026 — v0.124: Bỏ duyệt dòng đã kết thúc, gom thao tác dòng vào nút ⋯, dòng chờ duyệt chưa tính lỗi
 
 - Yêu cầu (nguyên văn): "1. đơn đã kết thúc, bỏ việc duyệt hoặc từ chối 2. hiện quá nhiều thao tác, rút gọn lại 1 nút xổ xuống hoặc click vào để mở UI đơn chi

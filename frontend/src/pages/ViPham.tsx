@@ -37,12 +37,14 @@ const CACH_XU_LY: Record<string, string> = {
   R1: "Nhập ngày dự kiến cho dòng (nút “Ngày DK”), rồi giải trình (Do ai mặc định Nhà cung cấp; ảnh / thư bằng chứng tuỳ chọn).",
   R3: "Thứ 2 / thứ 4: tạo push đối tác cho dòng chưa có ngày dự kiến (LK đặt › tick › Push), hoặc nhắc bằng gọi điện / Zalo rồi bấm “📞 Đã nhắc đối tác” (ghi muộn trong 7 ngày vẫn tự bỏ lỗi). Có ngày dự kiến là hết lỗi lặp lại.",
   R4: "Đã quá ngày dự kiến mà chưa đủ hàng: nhập ngày dự kiến MỚI (nút “Ngày DK”), rồi giải trình (Do ai mặc định Nhà cung cấp). Không nhập → mỗi mốc quá hạn ghi thêm 1 lỗi.",
+  R5: "Người duyệt: vào PO duyệt / từ chối ngay (lỗi tự đóng khi đã xử lý), rồi giải trình vì sao chậm. Chỉ chính người duyệt giải trình lỗi này.",
   TAY: "Lỗi ghi tay lúc giải trình (NCC trễ, hết hàng…) — đã có giải trình, chỉ để thống kê.",
 };
 const QT_DAI: Record<string, string> = {
   R1: "Sau khi EO ban hành (hoặc dòng thêm sau ban hành được duyệt) phải có ngày dự kiến trong 8 giờ làm việc với đối tác Karofi / Livotec / Korihome (dòng bắt đầu từ 08/11/2026), 16 giờ làm việc với hãng khác (T2–T6 8h, T7 4h, CN nghỉ).",
   R3: "Mỗi thứ 2 / thứ 4, dòng chưa từng có ngày dự kiến phải được push đối tác trong ngày (có mail với đối tác qua theodoimuahang@gmail.com, hoặc ghi nhận “Đã nhắc đối tác” bằng gọi điện / Zalo / tin nhắn trong kỳ cũng tính là đã push).",
   R4: "Quá ngày dự kiến mà hàng chưa về đủ → phải nhập ngày dự kiến mới trong 8 giờ làm việc.",
+  R5: "Bước thẩm định / duyệt mua của PO, hoặc dòng thêm sau ban hành, chờ người duyệt quá 8 giờ làm việc từ lúc được giao (áp dụng từ 27/11/2026 08:00). Mỗi lượt chờ = 1 lỗi cho đúng người duyệt.",
   TAY: "Lỗi do người giải trình tự xác định.",
 };
 const MucBadge = ({ m }: { m: string }) => <span className={`badge ${MUC[m]?.c ?? "nhap"}`} title={MUC[m]?.gt} style={m === "CEO" ? { background: "#7F1D1D", color: "#fff" } : undefined}>{MUC[m]?.l ?? m}</span>;
@@ -209,7 +211,7 @@ export default function ViPham() {
   })).sort((a, b) => b.cho - a.cho || MUC[b.muc].thu - MUC[a.muc].thu);
   const colsPo: Col<(typeof theoPo)[number]>[] = [
     { key: "act", header: "", render: (p) => <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-      {p.cho > 0 && d.co_the_gt && <button className="btn sm primary" onClick={() => setMd({ k: "po", eo: p.x.eo_id })}>Giải trình cả PO</button>}
+      {p.cho > 0 && d.co_the_gt && p.x.quy_tac !== "R5" && <button className="btn sm primary" onClick={() => setMd({ k: "po", eo: p.x.eo_id })}>Giải trình cả PO</button>}
       {p.cho > 0 && d.quan_ly && <button className="btn sm" onClick={() => setMd({ k: "nhac", ids: p.ds.filter(cho).map((l) => l.id), ten: maPo(p.x) })}>Nhắc</button>}
     </div> },
     { key: "po", header: "PO (mã phê duyệt)", render: (p) => <EoLink id={p.x.eo_id}>{maPo(p.x)}</EoLink> },
@@ -445,7 +447,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
         <button className="btn" onClick={onDong}>Mở đơn hàng</button>
         {choN > 0 && (x.quy_tac === "R1" || x.quy_tac === "R4") && d.co_the_gt && <button className="btn" onClick={onNdk}>Cập nhật ngày DK</button>}
         {choN > 0 && d.quan_ly && <button className="btn" onClick={onNhac}><I.bell width={13} height={13} /> Nhắc nhở</button>}
-        {choN > 0 && d.co_the_gt && <button className="btn" onClick={onPo}>Giải trình cả PO</button>}
+        {choN > 0 && d.co_the_gt && x.quy_tac !== "R5" && <button className="btn" onClick={onPo}>Giải trình cả PO</button>}
         {choN > 0 && d.co_the_gt && <button className="btn primary" onClick={onGt}>Giải trình{choN > 1 ? ` (${choN} lần)` : ""}</button>}
       </>}>
       <div style={{ fontSize: 13 }}>

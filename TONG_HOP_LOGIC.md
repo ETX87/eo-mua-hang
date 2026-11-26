@@ -84,7 +84,12 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 - **Dòng thêm sau ban hành chờ duyệt (v0.124)**: chỉ tính là việc chờ duyệt khi dòng CÒN MỞ (đang hoạt động, chưa kết thúc sớm, chưa về đủ theo phiếu nhập AMIS) —
   một điều kiện chung `lib/choDuyetSauBh.ts` cho số đỏ menu, Phiếu chờ bạn duyệt, Duyệt đang treo, Tổng quan, Đơn PO, App Nhiệm vụ eOffice. Dòng đã về đủ / kết thúc:
   ẩn nút Duyệt / Từ chối, nhãn "Đã về đủ · bỏ duyệt" (dữ liệu giữ nguyên). Dòng còn chờ duyệt **chưa bắt đầu** tính giờ R1 / R3 / R4 (trễ là do người duyệt).
-  Trễ duyệt (G2 / G3, dòng sau BH chờ duyệt) hiện CHƯA sinh lỗi giải trình — chỉ hiện ở Duyệt đang treo, Bảng trách nhiệm, App Nhiệm vụ.
+- **Lỗi R5 — Chậm duyệt (ER.MH-005, v0.125)**: bước thẩm định / duyệt mua của PO (phiếu duyệt đang chờ của lần trình đang chờ) hoặc dòng thêm sau ban hành
+  còn chờ duyệt (dòng còn mở) quá hạn G2 / G3 (cấu hình `giai_doan_sla`, mặc định 8 giờ làm việc từ lúc được giao) → 1 lỗi cho **đúng người duyệt đang giữ**
+  (Do ai = Người duyệt, bên nội bộ). Áp dụng từ 27/11/2026 08:00 (bước đã quá hạn từ trước tính hạn = mốc này). Tự đóng "đã khắc phục" khi bước đã duyệt / từ chối /
+  lần trình đổi, hoặc dòng không còn chờ duyệt; hết 16 giờ làm việc không giải trình → vi phạm. **Chỉ chính người duyệt (hoặc Admin) giải trình** lỗi R5;
+  "Giải trình cả PO" / giải trình chung theo dòng không đóng R5. Lỗi R5 hiện ở màn Vi phạm, popup nhắc, số đỏ "Lỗi của bạn" kể cả PO chưa ban hành; người đặt
+  không bị tính lỗi R5 của người duyệt. Vi phạm gộp R5 = PO + người duyệt + ngày bắt đầu chờ.
 
 
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & ban hành · G4 Gửi đơn NCC (song song) · G5 Chờ ngày DK · G6 Chờ giao hàng ·

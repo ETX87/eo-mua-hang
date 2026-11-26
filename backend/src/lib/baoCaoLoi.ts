@@ -58,7 +58,9 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
   const vpBy = new Map<number, boolean>(loiRs.results.map((l: any) => [l.id, laViPham(l)]));
   const rows: any[] = [];
   for (const l of loiRs.results) {
-    if (!dongBy.has(l.eo_item_id)) continue;
+    // v0.125: R5 (cham duyet) thuong nam o PO CHUA ban hanh (dong chua vao theo doi) - van hien; loi khac chi dong trong pham vi theo doi
+    const d = dongBy.get(l.eo_item_id);
+    if (!d && l.quy_tac !== "R5") continue;
     const ds = nhomLoai.get(`${l.eo_item_id}|${l.quy_tac}`)!;
     const soLan = ds.length;
     const cho = l.trang_thai === "CHO_GIAI_TRINH";
@@ -69,8 +71,7 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
     const moc = (l.han ?? l.created_at) as string;
     const tuoi = cho ? soNgay(moc, today) : gt ? soNgay(moc, gt.created_at) : 0;
     const tuoiGio = cho ? demGioLV(moc, now) : gt ? demGioLV(moc, gt.created_at) : 0;
-    const d = dongBy.get(l.eo_item_id)!;
-    const ceo = d.ceo_ly_do.length > 0;
+    const ceo = (d?.ceo_ly_do.length ?? 0) > 0;
     const muc = ceo ? "CEO" : soLanXau >= 3 || (cho && tuoiGio >= RAT_LAU_GIO) ? "CAO" : soLanXau >= 2 || (cho && tuoiGio >= QUA_LAU_GIO) ? "TB" : "THAP";
     const nn = nnBy.get(l.eo_item_id);
     const m = maCuaLoi(bang, l, l.doi_tac);
@@ -83,8 +84,8 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
       // v0.113: AUTO:CU = vi pham cu truoc 01/11/2026, bo qua (khong tinh vi pham)
       tu_dong: gt?.pham_vi === "AUTO" ? (gt.nhom === "AUTO:QUA_HAN" ? "QUA_HAN" : gt.nhom === "AUTO:CU" ? "CU" : "KHAC_PHUC") : null,
       so_nhac: nn?.n ?? 0, so_nhac_tay: nn?.tay ?? 0, nhac_gan_nhat: nn?.moi ?? null,
-      ceo, ceo_ly_do: d.ceo_ly_do, so_lan_lui: d.so_lan_lui, tinh_trang: d.tinh_trang,
-      ngay_du_kien: d.ngay_du_kien_gan_nhat, so_luong_dat: d.so_luong_dat, sl_ve: d.sl_nhap_amis,
+      ceo, ceo_ly_do: d?.ceo_ly_do ?? [], so_lan_lui: d?.so_lan_lui ?? 0, tinh_trang: d?.tinh_trang ?? null,
+      ngay_du_kien: d?.ngay_du_kien_gan_nhat ?? null, so_luong_dat: d?.so_luong_dat ?? null, sl_ve: d?.sl_nhap_amis ?? null,
     });
   }
   return { rows, bang };

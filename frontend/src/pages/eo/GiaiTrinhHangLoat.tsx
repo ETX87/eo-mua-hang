@@ -16,7 +16,7 @@ import { GiaiTrinhNhieuModal } from "../theodoi/GiaiTrinhPo";
  */
 type L = Record<string, any>;
 interface Vp { khoa: string; x: L; ds: L[] }
-const LOAI: Record<string, string> = { R1: "Chưa có ngày DK (8h/16h LV)", R3: "Không push NCC (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi tay" };
+const LOAI: Record<string, string> = { R5: "Chậm duyệt (người duyệt)", R1: "Chưa có ngày DK (8h/16h LV)", R3: "Không push NCC (thứ 2/4)", R4: "Quá ngày DK không cập nhật", TAY: "Lỗi ghi tay" };
 
 export function GiaiTrinhHangLoatModal({ params, moTa, onClose }: { params: URLSearchParams; moTa: string; onClose: () => void }) {
   const qc = useQueryClient();

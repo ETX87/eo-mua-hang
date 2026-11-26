@@ -191,7 +191,7 @@ export function GiaiTrinhNhieuModal({ nhom, onClose, onSaved }: {
   const [aiMa, setAiMa] = useState(""); // v0.113: khong mac dinh "Nguoi dat"; v0.121: chua chon -> goi y theo giai doan (aiDung)
   const [dungMail, setDungMail] = useState(false);
   const [aiEmail, setAiEmail] = useState("");
-  const [loiMa, setLoiMa] = useState(quyTac === "R1" ? "KHONG_NDK_24H" : quyTac === "R3" ? "KHONG_PUSH" : quyTac === "R4" ? "KHONG_NDK_QUA_HAN" : "");
+  const [loiMa, setLoiMa] = useState(quyTac === "R1" ? "KHONG_NDK_24H" : quyTac === "R3" ? "KHONG_PUSH" : quyTac === "R4" ? "KHONG_NDK_QUA_HAN" : quyTac === "R5" ? "CHAM_DUYET" : "");
   const [noiDung, setNoiDung] = useState("");
   const [anh, setAnh] = useState<Anh[]>([]);
   const [busy, setBusy] = useState(false);

@@ -52,3 +52,9 @@ export function canSuaThongTinDong(u: AppUser, eo: { created_by: string }): bool
 export function canImportAmis(u: AppUser): boolean {
   return u.vai_tro === "Admin" || u.vai_tro === "Ke toan" || u.la_ke_toan === 1;
 }
+
+/** v0.125: ai duoc giai trinh 1 loi - R5 (cham duyet): chinh nguoi duyet bi ghi loi (ai_email) hoac Admin; loi khac: canEditPlan (nguoi dat / KH cung ung / Admin). */
+export function duocGiaiTrinh(u: AppUser, l: { quy_tac: string; ai_email: string | null; created_by: string }): boolean {
+  if (l.quy_tac === "R5") return u.vai_tro === "Admin" || (!!l.ai_email && l.ai_email.toLowerCase() === u.email.toLowerCase());
+  return canEditPlan(u, l);
+}
