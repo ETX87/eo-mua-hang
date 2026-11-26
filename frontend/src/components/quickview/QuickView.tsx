@@ -21,7 +21,7 @@ export function useQuickView(): Api {
   return useContext(Ctx) ?? NOOP;
 }
 
-/** 1 lop popup xem nhanh - v0.126: z theo thu tu mo (lib/lop) -> mo tu trong Modal van nam TREN Modal; Esc chi dong khi day la lop tren cung
+/** 1 lop popup xem nhanh - v0.127: z theo thu tu mo (lib/lop) -> mo tu trong Modal van nam TREN Modal; Esc chi dong khi day la lop tren cung
  *  (va khong dang mo bo loc cot / o chon nhieu). */
 function LopXemNhanh({ i, onPop, children }: { i: number; onPop: () => void; children: ReactNode }) {
   const { z, id } = useLop();

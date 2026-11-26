@@ -15,7 +15,7 @@
   (v1.568, `lib/dongBoNgayEo.ts`, cron mỗi giờ).
 - Kiểm thử: typecheck.
 
-## 26/11/2026 — v0.126: Cửa sổ mở sau luôn nằm trên
+## 26/11/2026 — v0.127: Cửa sổ mở sau luôn nằm trên
 
 - Yêu cầu (nguyên văn): "UI mở lên lại bị hiện phía sau UI cũ" (bấm 1 dòng trong danh sách chi tiết của Bảng trách nhiệm → popup đơn hàng nằm dưới danh sách).
 - Nguyên nhân: cửa sổ (Modal) cố định lớp 200, popup xem nhanh cố định lớp 80+ → popup mở từ trong cửa sổ luôn bị che.

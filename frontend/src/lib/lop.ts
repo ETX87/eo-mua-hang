@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * LOP HIEN THI theo THU TU MO (v0.126, chu he thong 2026-11-26: "UI mo len lai bi hien phia sau UI cu").
+ * LOP HIEN THI theo THU TU MO (v0.127, chu he thong 2026-11-26: "UI mo len lai bi hien phia sau UI cu").
  * Truoc: Modal co dinh z 200, popup xem nhanh (QuickView) z 80+ -> mo popup xem nhanh TU TRONG Modal thi popup nam duoi.
  * Nay: moi Modal / popup xem nhanh lay z = Z_GOC + (so lop dang mo + 1) * 10 luc mo -> cai mo sau luon nam tren; Esc chi dong lop tren cung.
  * O noi (bo loc cot .hop-loc, MenuXo...) dat z 2000 - luon tren moi lop.

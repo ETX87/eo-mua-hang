@@ -106,7 +106,7 @@ export function EmptyState({ text }: { text: string }) {
 export function Modal({ title, onClose, children, footer, wide, width }: {
   title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; width?: number;
 }) {
-  // v0.126: lop theo thu tu mo (lib/lop) - Modal mo sau nam tren; Esc chi dong Modal dang tren cung
+  // v0.127: lop theo thu tu mo (lib/lop) - Modal mo sau nam tren; Esc chi dong Modal dang tren cung
   const { z, id } = useLop();
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape" && laTrenCung(id.current) && !document.querySelector(".hop-loc, [data-modal='']")) onClose(); };
