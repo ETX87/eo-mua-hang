@@ -65,7 +65,7 @@ export const NHAN_GT: Record<TrangThaiGt, { l: string; cls: string; mau: string;
   DA_GT: { l: "Đã giải trình", cls: "issued", mau: "#15803D", mo: "Đã giải trình trong hạn" },
   KHAC_PHUC: { l: "Đã khắc phục", cls: "nhap", mau: "#475569", mo: "Hệ thống tự đóng vì đã khắc phục / đã giải trình cùng lỗi" },
   VI_PHAM: { l: "VI PHẠM", cls: "reject", mau: "#B91C1C", mo: "Hết hạn giải trình mà không giải trình" },
-  BO_QUA: { l: "Bỏ qua · lỗi cũ", cls: "nhap", mau: "#64748B", mo: "Lỗi cũ trước 01/11/2026 — hệ thống tự bỏ, không tính vi phạm" },
+  BO_QUA: { l: "Bỏ qua · lỗi cũ", cls: "nhap", mau: "#64748B", mo: "Lỗi cũ trước 01/11/2026 hoặc vi phạm chốt trước đào tạo 20/11/2026 — hệ thống tự bỏ, không tính vi phạm" },
   TAY: { l: "Ghi khi giải trình", cls: "nhap", mau: "#475569", mo: "Lỗi do người giải trình tự ghi nhận" },
 };
 
@@ -111,7 +111,7 @@ export function ketLuanGt(k: KqGt): string {
     case "CAN_GT": return `Hạn giải trình ${han} (${k.gio ?? GIO_HAN_GT} giờ làm việc, còn ${gioTxt(k.conGio ?? 0)}). Giải trình trước hạn → không bị ghi vi phạm.`;
     case "DA_GT": return `Đã giải trình lúc ${ngayGio(k.gt?.created_at)} — trước hạn ${han}.`;
     case "KHAC_PHUC": return k.gt?.noi_dung ?? "Hệ thống tự đóng vì đã khắc phục.";
-    case "BO_QUA": return "Lỗi cũ (mốc trước 01/11/2026) — hệ thống tự bỏ, không tính vi phạm.";
+    case "BO_QUA": return "Lỗi cũ (mốc trước 01/11/2026) hoặc vi phạm chốt trước đào tạo 20/11/2026 — hệ thống tự bỏ, không tính vi phạm.";
     case "VI_PHAM": return `Hết hạn giải trình ${han} (${k.gio ?? GIO_HAN_GT} giờ làm việc) mà không có giải trình → ghi nhận VI PHẠM.`;
     default: return "";
   }

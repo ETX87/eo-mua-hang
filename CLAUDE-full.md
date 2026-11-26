@@ -389,6 +389,10 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.128** (chủ hệ thống 2026-11-26: "Bỏ toàn bộ vi phạm bị chốt từ trước 20/11 => tính là bỏ qua trước thời điểm đào tạo 20/11"): migration `0028` đổi
+`tl_giai_trinh` AUTO `AUTO:QUA_HAN` có `created_at < 2026-11-20` → `AUTO:CU` (dùng lại nhóm "bỏ qua" của v0.113 để mọi chỗ đếm vi phạm tự loại; nhãn FE nêu cả 2 lý do).
+Rà soát kèm: vai trò KH cung ứng thấy + giải trình được; 311 vi phạm của 1 NV bị chốt cùng lúc 18/11 14:38 (luật tự chốt v0.092 áp hồi tố) dù đã nhận 59 thông báo + 335 nhắc.
+
 **v0.127** (chủ hệ thống 2026-11-26: "UI mở lên lại bị hiện phía sau UI cũ"): `lib/lop.ts` — lớp hiển thị theo thứ tự mở: `Modal` (components/ui) và mỗi lớp popup xem nhanh
 (`LopXemNhanh` trong QuickView.tsx) lấy z = 200 + (số lớp đang mở + 1) × 10 lúc mở (`useLop`); Esc chỉ đóng lớp trên cùng (`laTrenCung`), không đóng khi đang mở bộ lọc cột
 `.hop-loc` / ô chọn nhiều `[data-modal=""]`. Ô nổi `.hop-loc` và `MenuXo` z 2000 (trên mọi lớp). Trước: Modal cố định 200, popup 80+i → mở popup từ trong Modal bị nằm dưới.

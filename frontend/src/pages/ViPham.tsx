@@ -281,7 +281,7 @@ export default function ViPham() {
 
   const xuat = () => exportRowsToXlsx(loc, [
     { header: "Mã lỗi", get: (l) => l.ma_loi }, { header: "Tên mã lỗi", get: (l) => l.ten_ma }, { header: "Bước", get: (l) => l.buoc },
-    { header: "Mức độ", get: (l) => MUC[l.muc]?.l }, { header: "Trạng thái", get: (l) => vp(l) ? "Vi phạm (hết hạn không giải trình)" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua (lỗi cũ trước 01/11/2026)" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình" },
+    { header: "Mức độ", get: (l) => MUC[l.muc]?.l }, { header: "Trạng thái", get: (l) => vp(l) ? "Vi phạm (hết hạn không giải trình)" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua (lỗi cũ trước 01/11 / chốt trước đào tạo 20/11/2026)" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình" },
     { header: "Hạn giải trình", get: (l) => ngayGio(l.han_gt) },
     { header: "Lỗi", get: (l) => QUY_TAC[l.quy_tac] ?? l.quy_tac }, { header: "Lần thứ", get: (l) => `${l.lan_thu}/${l.so_lan}` },
     { header: "Mã phê duyệt", get: (l) => l.approval_code }, { header: "Mã EO", get: (l) => l.eo_code },
@@ -475,7 +475,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
           <b>Kết luận:</b>{" "}
           {vp(x) ? <>Hết hạn giải trình <b>{ngayGio(x.han_gt)}</b> (từ mốc lỗi {ngayGio(x.han)}) mà không có giải trình → <b>ghi nhận VI PHẠM</b>, không giải trình được nữa.</>
             : cho(x) ? <>Lỗi <b>cần giải trình</b> — chưa phải vi phạm. Hạn giải trình <b>{ngayGio(x.han_gt)}</b> (còn {x.con_gio_gt} giờ làm việc). Giải trình hoặc khắc phục trước hạn thì không bị ghi vi phạm.</>
-            : x.tu_dong === "CU" ? <>Lỗi cũ (mốc trước 01/11/2026) — hệ thống <b>tự bỏ, không tính vi phạm</b>.</>
+            : x.tu_dong === "CU" ? <>Lỗi cũ (mốc trước 01/11/2026) hoặc vi phạm chốt trước đào tạo 20/11/2026 — hệ thống <b>tự bỏ, không tính vi phạm</b>.</>
             : tuDong(x) ? <>Hệ thống tự đóng vì đã khắc phục trong hạn — <b>không tính vi phạm</b>. {x.gt_noi_dung}</>
             : x.quy_tac === "TAY" ? <>Lỗi do người giải trình tự ghi nhận (nguyên nhân) — không tính vi phạm.</>
             : <>Đã giải trình lúc {ngayGio(x.gt_luc)} — trước hạn {ngayGio(x.han_gt)}, <b>không tính vi phạm</b>.</>}
