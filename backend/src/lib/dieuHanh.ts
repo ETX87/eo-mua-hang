@@ -25,7 +25,7 @@ export const IM_LANG_DO = 7;
 export const IM_LANG_VANG = 3;
 /** v0.103: loi cho giai trinh >= bay nhieu GIO LAM VIEC -> DO (= han giai trinh / tu dong cua lib/theoDoi GIO_TU_DONG; truoc la 7 ngay lich). */
 export const LOI_CHO_DO = 12; // v0.110: han giai trinh 16h LV -> con <= 4h la DO (truoc 56)
-const KHOA_CACHE = "dh:goc:v4"; // v4 (v0.121): loi30.ben = ben chiu NCC / NOI_BO; v3 (v0.110): loi30.vp = vi pham that (het han khong giai trinh)
+const KHOA_CACHE = "dh:goc:v5"; // v5 (v0.122): hd.vb = loi theo dong (khoa vi pham gop ~ ben ~ trang thai); // v4 (v0.121): loi30.ben = ben chiu NCC / NOI_BO; v3 (v0.110): loi30.vp = vi pham that (het han khong giai trinh)
 // v2 (v0.093): them vp_cho, loi30 dem vi pham gop
 
 const ngayGiua = (a: string, b: string) =>
@@ -41,6 +41,8 @@ interface HdDong {
   gt?: number; gt7?: number; gt_luc?: string; gt_ai?: string; gt_ai_ma?: string; gt_loi_ma?: string; gt_nd?: string;
   loi?: number; loi_cho?: number; loi_cho_tu?: string; vp_cho?: string; r1?: number; r3?: number; r4?: number; tay?: number;
   nhac?: number; nhac_luc?: string;
+  /** v0.122: loi cua dong "khoa~ben~tt;..." - ben N (NCC) / B (noi bo); tt C cho GT / V khong GT (vi pham) / G da GT that / T tu dong (khac phuc, cu) */
+  vb?: string;
 }
 interface Goc {
   hd: Record<number, HdDong>;
@@ -60,7 +62,7 @@ async function docGoc(env: Env): Promise<Goc> {
   const d7 = truNgay(hom, 7), d30 = truNgay(hom, 30), d60 = truNgay(hom, 63);
   const boQua = ((await db.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'").first<{ value: string }>())?.value || "2026-07-01").slice(0, 10);
   // SQLite: cot "tran" (khong gop) trong SELECT co MAX(...) lay tu dong dat MAX -> nguoi / noi dung cua lan cuoi.
-  const [kh, push, mail, nhanTt, lh, gt, loi, nhac, items, eos, thamDinh, loi30, loiNgay, gtNgay, nhacNgay, nn, dm] = await db.batch([
+  const [kh, push, mail, nhanTt, lh, gt, loi, nhac, items, eos, thamDinh, loi30, loiNgay, gtNgay, nhacNgay, nn, dm, vb] = await db.batch([
     db.prepare(`SELECT eo_item_id id, MAX(t) luc, ai, SUM(t >= ?1) n7 FROM (SELECT eo_item_id, COALESCE(updated_at, created_at) t, COALESCE(updated_by, created_by) ai FROM item_plan
                 UNION ALL SELECT eo_item_id, deleted_at, deleted_by FROM item_plan WHERE deleted_at IS NOT NULL) GROUP BY eo_item_id`).bind(d7),
     db.prepare(`SELECT pi.eo_item_id id, COUNT(*) n, SUM(substr(m.xac_nhan_luc, 1, 10) >= ?1) n7, MAX(m.xac_nhan_luc) luc, p.created_by ai
@@ -96,6 +98,10 @@ async function docGoc(env: Env): Promise<Goc> {
     db.prepare("SELECT substr(created_at, 1, 10) d, COUNT(*) n FROM tl_nhac_nho WHERE created_at >= ?1 GROUP BY 1").bind(d60),
     db.prepare("SELECT ai_ma, loi_ma, COUNT(*) n FROM tl_giai_trinh WHERE COALESCE(pham_vi, '') <> 'AUTO' GROUP BY 1, 2 ORDER BY n DESC"),
     db.prepare("SELECT loai, ma, ten FROM tl_danh_muc"),
+    // v0.122 bang trach nhiem cho CEO: moi loi cua dong (vi pham gop + ben chiu + trang thai giai trinh)
+    db.prepare(`SELECT l.eo_item_id id, GROUP_CONCAT(${VP_SQL("l")} || '~' || CASE WHEN ${BEN_SQL} = 'NCC' THEN 'N' ELSE 'B' END || '~' ||
+                CASE WHEN l.trang_thai = 'CHO_GIAI_TRINH' THEN 'C' WHEN g.nhom = 'AUTO:QUA_HAN' THEN 'V' WHEN COALESCE(g.pham_vi, '') <> 'AUTO' THEN 'G' ELSE 'T' END, ';') vb
+                FROM tl_loi l LEFT JOIN tl_giai_trinh g ON g.id = l.giai_trinh_id GROUP BY l.eo_item_id`),
   ]);
   const hd: Record<number, HdDong> = {};
   const lay = (id: number) => (hd[id] ??= {});
@@ -107,6 +113,7 @@ async function docGoc(env: Env): Promise<Goc> {
   for (const r of gt.results as any[]) Object.assign(lay(r.id), { gt: r.n, gt7: r.n7, gt_luc: r.luc, gt_ai: r.ai, gt_ai_ma: r.ai_ma, gt_loi_ma: r.loi_ma, gt_nd: r.nd });
   for (const r of loi.results as any[]) Object.assign(lay(r.id), { loi: r.n, loi_cho: r.cho, loi_cho_tu: r.cho_tu ?? undefined, r1: r.r1, r3: r.r3, r4: r.r4, tay: r.tay, vp_cho: r.vp_cho ?? undefined });
   for (const r of nhac.results as any[]) Object.assign(lay(r.id), { nhac: r.n, nhac_luc: r.luc });
+  for (const r of vb.results as any[]) if (r.vb) lay(r.id).vb = r.vb;
   const td = new Map((thamDinh.results as any[]).map((r) => [r.eo_id, r.ai as string]));
   return {
     hd,
@@ -140,9 +147,13 @@ export interface DongDh {
   td_luc: string | null; td_loai: string | null; td_ai: string | null; td7: number; im_lang: number;
   nhac: number; nhac_luc: string | null;
   muc: "DO" | "VANG" | "XANH"; ly_do: string[]; diem: number;
+  /** v0.122: trang thai G4 (gui don NCC) + BEN DANG GIU dong: G5/G6/G8 da gui don NCC = NCC; con lai (G1-G3, chua ghi nhan gui don) = noi bo */
+  g4: string | null; ben: "NCC" | "NOI_BO";
+  /** v0.122: loi cua dong [khoa vi pham gop, ben N/B, trang thai C/V/G/T] */
+  vb: [string, string, string][];
 }
 
-function danhGiaDong(r: DongTheoDoi, h: HdDong, gdK: { gd: string | null; tre: boolean }, poMa: string, today: string): DongDh {
+function danhGiaDong(r: DongTheoDoi, h: HdDong, gdK: { gd: string | null; tre: boolean; g4?: string | null }, poMa: string, today: string): DongDh {
   const bd = r.bat_dau ?? r.ngay_ban_hanh;
   const ton = bd ? ngayGiua(bd, today) : 0;
   // tac dong cuoi cua nguoi mua hang (ke hoach / push / mail gui / lien he / giai trinh)
@@ -186,6 +197,8 @@ function danhGiaDong(r: DongTheoDoi, h: HdDong, gdK: { gd: string | null; tre: b
     td_luc: tdLuc, td_loai: cuoi?.[1] ?? null, td_ai: cuoi?.[2] ?? null,
     td7: (h.kh7 ?? 0) + thuc7 + (h.gt7 ?? 0), im_lang: imLang, nhac: h.nhac ?? 0, nhac_luc: h.nhac_luc ?? null,
     muc, ly_do: muc === "DO" ? do_ : vang, diem,
+    g4: gdK.g4 ?? null, ben: ["G5", "G6", "G8"].includes(gdK.gd ?? "") && gdK.g4 === "DA_GUI" ? "NCC" : "NOI_BO",
+    vb: h.vb ? h.vb.split(";").map((x) => x.split("~") as [string, string, string]) : [],
   };
 }
 
@@ -199,7 +212,7 @@ export async function layDongDieuHanh(env: Env): Promise<{ dong: DongDh[]; goc: 
   const today = todayVN();
   const dong = ds.map((r) => {
     const g = gd.map.get(r.item_id);
-    return danhGiaDong(r, goc.hd[r.item_id] ?? {}, { gd: g?.gd_hien_tai ?? null, tre: !!g?.gd_tre }, r.ma_phe_duyet || r.eo_code, today);
+    return danhGiaDong(r, goc.hd[r.item_id] ?? {}, { gd: g?.gd_hien_tai ?? null, tre: !!g?.gd_tre, g4: g?.g4_trang_thai ?? null }, r.ma_phe_duyet || r.eo_code, today);
   });
   return { dong, goc, gd };
 }

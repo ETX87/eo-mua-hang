@@ -389,6 +389,10 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.122** (chủ hệ thống 2026-11-26: "tạo 1 bảng table danh sách lỗi NCC, lỗi nội bộ rồi các tính số ca PO, số đơn đặt, số linh kiện tồn, tỷ lệ %, số đơn tồn trên 7 ngày,
+14 ngày, 21 ngày, trên 30 ngày, tỷ lệ đã giải trình, số ca còn chưa giải trình … có thể click vào để xem danh sách chi tiết"): `DongDh.g4` / `ben` / `vb` (lib/dieuHanh.ts,
+cache `dh:goc:v5`, `hd.vb` = GROUP_CONCAT `VP_SQL~N|B~C|V|G|T`). FE `pages/dieuhanh/BangTrachNhiem.tsx` (`BangTrachNhiem`, `DanhSachDong`, `DanhSachDuyet`) dùng ở
+DieuHanh tab `bang` (mặc định) và Dashboard `TrachNhiemLanhDao` (vai trò Admin / KH cung ung / Theo doi tien do / View, query `["dieu-hanh"]` dùng chung).
 **v0.121** (chủ hệ thống 2026-11-26: "Giải trình sẽ thêm mục lựa chọn do ai, thêm bằng chứng không bắt buộc. các giai đoạn sẽ đều có người chịu trách nhiệm…
 từ khi gửi mail yc đến khi hàng về chậm thì là do nhà cc"): `GIAI_DOAN[].ben` (lib/giaiDoan.ts, FE `components/TienTrinh.tsx` GD_8 đồng bộ tay) — G5/G6/G8 `NCC`, còn lại `NOI_BO`;
 `chiuTrachNhiem` G5 = NCC. `lib/maLoi.ts`: `AI_MAC_DINH` (R1/R4 DOI_TAC, R3 NGUOI_DAT — FE `lib/giaiTrinh.tsx` khớp), `benCuaAi`, `BEN_SQL` (bên của lỗi: giải trình thật → ai_ma, còn lại theo quy tắc).

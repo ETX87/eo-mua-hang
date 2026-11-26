@@ -86,6 +86,12 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Bên chịu trễ theo giai đoạn (v0.121)**: **Nội bộ** — G1 Lập & trình (người tạo EO) · G2 Thẩm định (người thẩm định) · G3 Duyệt mua (người duyệt) ·
   G4 Gửi đơn cho NCC (NV đặt hàng) · G7 Nhập kho (Kho / Kế toán). **Nhà cung cấp** — từ khi gửi mail yêu cầu đến khi hàng về: G5 Chờ ngày DK · G6 Chờ giao hàng ·
   G8 Giao bù. **Không giải trình đúng hạn** (hết 16h làm việc) là lỗi riêng của người phải giải trình, tính tách khỏi 2 bên.
+  **Bảng trách nhiệm tồn đọng (v0.122)** — đầu màn Tổng quan (vai trò Admin / KH cung ứng / Theo dõi tiến độ / View) và tab mặc định của Điều hành:
+  mỗi dòng LK đang tồn thuộc **bên đang giữ** — NCC khi đã ở G5 / G6 / G8 **và** đã ghi nhận gửi đơn cho NCC (G4 = DA_GUI); còn lại nội bộ (G1–G3, hoặc
+  chưa ghi nhận gửi đơn → khâu "G4 chưa gửi đơn NCC"). Hàng: Lỗi nhà cung cấp (từng NCC) · Lỗi nội bộ (từng khâu) · PO chưa ban hành đang chờ thẩm định / duyệt
+  (không cộng vào tổng) · Tổng cộng. Cột: số PO, số đơn đặt (dòng) + % , SL tồn / SL đặt + %, tồn > 7 / 14 / 21 / 30 ngày (từ ngày ban hành, cộng dồn),
+  tồn lâu nhất, quá ngày DK, chưa có ngày DK, không thúc NCC 7 ngày, cấp CEO, ca lỗi (vi phạm gộp; tách NCC / nội bộ), % đã giải trình (thật / (thật + chưa
+  + không GT), ca tự khắc phục không tính), chưa giải trình, không giải trình, ai giữ nhiều nhất. Bấm ô số → danh sách dòng (Excel, bấm dòng = popup).
   Điều hành › Nguyên nhân & xu hướng có khối "Trách nhiệm chậm trễ theo bên": dòng đang trễ, lượt trễ bước 30 ngày, lỗi 30 ngày cho từng bên + vi phạm không giải trình theo người.
 - **Giai đoạn hiện tại = bước MỚI NHẤT đã bắt đầu mà chưa kết thúc** (theo thứ tự G1 → G2 → G3 → G5 → G6 → G8; không bước nào mở → bước mới nhất
   đã bắt đầu). PO đã qua nháp thì G1 luôn đóng: mốc = lần gửi trình đầu sau khi tạo dòng, không có thì lần trình đầu của PO, không có trình nào

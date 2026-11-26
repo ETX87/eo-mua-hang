@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import { Card, Spinner } from "../components/ui";
 import { soLuong } from "../lib/format";
 import QuanLyPanel from "./QuanLyPanel";
+import { BangTrachNhiem } from "./dieuhanh/BangTrachNhiem";
 
 const DONUT_COLOR: Record<string, string> = {
   "Nháp": "#B6BAC2", "Đang thẩm định": "#F5CC18", "Chờ duyệt mua": "#FC7000",
@@ -24,6 +25,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <TrachNhiemLanhDao />
       <QuanLyPanel />
       <ViecCanXuLy />
       {/* bieu do (Tong quan = bao cao tong quan; danh sach EO / viec cho duyet / dem trang thai nam o man Quan ly EO) */}
@@ -121,6 +123,22 @@ function ViecCanXuLy() {
           ))}
         </div>
       )}
+    </Card>
+  );
+}
+
+/** v0.122: lanh dao (Admin / KH cung ung / Theo doi tien do / View) mo app thay NGAY bang trach nhiem NCC / noi bo (cung du lieu man Dieu hanh). */
+function TrachNhiemLanhDao() {
+  const nav = useNavigate();
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
+  const laLanhDao = ["Admin", "KH cung ung", "Theo doi tien do", "View"].includes(me.data?.vai_tro ?? "");
+  const q = useQuery({ queryKey: ["dieu-hanh"], queryFn: () => api.get<any>("/dieu-hanh"), enabled: laLanhDao, refetchInterval: 180000 });
+  if (!laLanhDao) return null;
+  return (
+    <Card>
+      {q.isLoading || !q.data ? <div className="muted" style={{ padding: 12 }}>Đang tổng hợp bảng trách nhiệm…</div>
+        : <BangTrachNhiem dong={q.data.dong} duyet={q.data.duyet} gon />}
+      <div style={{ textAlign: "right", marginTop: 6 }}><button className="btn sm" onClick={() => nav("/dieu-hanh")}>Mở Điều hành (lọc theo người / NCC / kho) ›</button></div>
     </Card>
   );
 }

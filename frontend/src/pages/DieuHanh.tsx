@@ -9,6 +9,7 @@ import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
 import { ChonNhieu } from "../components/ChonNhieu";
+import { BangTrachNhiem } from "./dieuhanh/BangTrachNhiem";
 
 /** gia tri trong (NCC chua co...) trong bo loc chon nhieu */
 const TRONG_K = "∅";
@@ -30,6 +31,8 @@ interface Dong {
   gt: number; gt_luc: string | null; gt_ai_ma: string | null; gt_loi_ma: string | null; gt_nd: string | null;
   td_luc: string | null; td_loai: string | null; td_ai: string | null; td7: number; im_lang: number;
   nhac: number; nhac_luc: string | null; muc: Muc; ly_do: string[]; diem: number;
+  /** v0.122 bang trach nhiem: trang thai gui don NCC, ben dang giu, loi [khoa, ben N/B, tt C/V/G/T] */
+  g4?: string | null; ben?: "NCC" | "NOI_BO"; vb?: [string, string, string][];
 }
 interface Gd { k: string; l: string; vai_tro: string; ben?: string; xong30: number; tre30: number; tre30_ai: { ai: string; n: number }[]; dang: number; dang_tre: number; dang_ai: { ai: string; n: number }[] }
 interface Duyet { eo_id: number; po: string; tieu_de: string | null; buoc: string; ai: string | null; tu: string; gio: number; so_dong: number; nguoi_tao: string }
@@ -75,7 +78,8 @@ export default function DieuHanh() {
   const [pv, setPv] = useState<{ nguoi: string[]; ncc: string[]; kho: string[] }>({ nguoi: [], ncc: [], kho: [] });
   const [tieuChi, setTieuChi] = useState("");
   const [gdChon, setGdChon] = useState("");
-  const [tab, setTab] = useState<"nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet">("nong");
+  // v0.122: tab mac dinh = Bang trach nhiem (NCC / noi bo) cho lanh dao
+  const [tab, setTab] = useState<"bang" | "nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet">("bang");
   // v0.118 tab Theo PO: bam so o 1 PO -> Diem nong chi dong cua PO do
   const [poChon, setPoChon] = useState<{ eo: number; po: string } | null>(null);
   const d = q.data;
@@ -206,11 +210,12 @@ export default function DieuHanh() {
       {/* 4. TAB CHI TIET */}
       <Card>
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-          {([["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["po", `📦 Theo PO (${soLuong(theoPo.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
+          {([["bang", "📊 Trách nhiệm NCC / nội bộ"], ["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["po", `📦 Theo PO (${soLuong(theoPo.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
             ["nn", "🧭 Nguyên nhân & xu hướng"], ["duyet", `⏳ Duyệt đang treo (${duyetPv.length})`]] as const).map(([k, l]) => (
             <button key={k} className={`qv-chip ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
+        {tab === "bang" && <BangTrachNhiem dong={dongPv} duyet={duyetPv} />}
         {tab === "nong" && <DiemNong rows={dongDs} dmTen={dmTen}
           empty={["G1", "G2", "G3"].includes(gdChon) ? `${gdChon} là PO chưa ban hành (chưa vào theo dõi hàng về) — người đang giữ xem ở khung giai đoạn phía trên, phiếu chờ duyệt ở tab ⏳ Duyệt đang treo.` : undefined} />}
         {tab === "po" && <BangPo rows={theoPo} onXem={(r, tc) => { setPoChon({ eo: r.eo, po: r.po }); setTieuChi(tc); setTab("nong"); }} />}

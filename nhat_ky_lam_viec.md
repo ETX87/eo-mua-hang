@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.122: Bảng trách nhiệm tồn đọng NCC / nội bộ cho CEO
+
+- Yêu cầu (nguyên văn): "với các vấn đề CEO quan tâm, có thể tạo 1 bảng table danh sách lỗi NCC, lỗi nội bộ rồi các tính số ca PO, số đơn đặt, số linh kiện tồn,
+  tỷ lệ %, số đơn tồn trên 7 ngày, 14 ngày, 21 ngày, trên 30 ngày, tỷ lệ đã giải trình, số ca còn chưa giải trình + các chỉ số nếu bạn cảm thấy CEO cần quan tâm ...
+  nhìn nhanh là thấy vấn đề. có thể click vào để xem danh sách chi tiết".
+- Đã làm: bảng ở đầu Tổng quan (lãnh đạo) + tab mặc định Điều hành. Hàng Lỗi NCC (từng NCC), Lỗi nội bộ (từng khâu), PO chờ thẩm định / duyệt (không cộng tổng), Tổng.
+  Thêm chỉ số: quá / chưa có ngày DK, không thúc NCC 7 ngày, cấp CEO, tồn lâu nhất, ca lỗi tách NCC / nội bộ, không giải trình, ai giữ nhiều nhất. Bấm ô số →
+  danh sách dòng (lọc / sắp xếp kiểu Excel, xuất Excel, bấm dòng mở popup). Backend thêm bên đang giữ + lỗi theo dòng vào /api/dieu-hanh.
+- Kiểm thử local: typecheck + build; Tổng quan và Điều hành hiện bảng; bấm "> 30 ngày" ra 7 dòng; bấm hàng PO chờ duyệt ra 6 PO; console không lỗi.
+- Lưu ý: dòng ở G5 / G6 / G8 nhưng hệ thống chưa ghi nhận thư gửi đơn cho NCC (thư không CC hộp theo dõi / không gắn được dòng) được tính là nội bộ
+  "chưa gửi đơn NCC" — đúng luật "gửi mail chậm là lỗi nội bộ", nhưng nếu thư thật có gửi mà không đồng bộ thì cần soát cách gửi.
+
 ## 26/11/2026 — v0.121: Giải trình chọn "Do ai" theo giai đoạn, bằng chứng tuỳ chọn, báo cáo trách nhiệm Nội bộ / NCC
 
 - Yêu cầu (nguyên văn): "Giải trình sẽ thêm mục lựa chọn do ai, thêm bằng chứng không bắt buộc. các giai đoạn sẽ đều có người chịu trách nhiệm: chờ duyệt lỗi do người
