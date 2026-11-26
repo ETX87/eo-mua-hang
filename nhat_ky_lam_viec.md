@@ -4,6 +4,17 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.126: `POST /api/partner/theo-id` cho app Linh kiện đồng bộ ngày dự kiến sang ticket thiếu hàng
+
+- Báo lỗi (nguyên văn): "Nhân viên báo bug: 3004022213 linh kiện này nhân viên đã cập nhật trên EO Mua hàng ngày dự kiến hàng về rồi. Nhưng trên app đặt hàng vẫn chưa có
+  thông tin => kiểm tra các app liên kết xem logic nhận thông tin ngày dự kiến có bị bug không". Chốt cách sửa: "Có, EO ghi đè luôn".
+- Tra D1 thật (chỉ đọc): dòng EO 9154 (PO 3TDO-000847, ID CRM `THB-000147`) có ngày dự kiến 07/12 từ 20/11; ticket THB-000147 bên app Linh kiện chỉ có ngày từ 26/11
+  14:04 do Mua hàng gõ tay lại. Nguyên nhân: app Linh kiện không có đường nhận ngày từ EO (chỉ hiện khung xem). Phía EO trả dữ liệu đúng.
+  Ảnh hưởng: 3 ticket THB + 39 ticket TLK đang mở trống / lệch ngày so với EO.
+- Đã làm (bên này): tách lõi `GET /theo-id` thành `traTheoId`, thêm `POST /theo-id` { ids[], po_lk[] } tối đa 1000 mã / 1000 cặp. Phần ghi đè nằm ở app Linh kiện
+  (v1.568, `lib/dongBoNgayEo.ts`, cron mỗi giờ).
+- Kiểm thử: typecheck.
+
 ## 26/11/2026 — v0.125: Lỗi R5 "Chậm duyệt" — người duyệt trễ phải giải trình
 
 - Yêu cầu: "Có, làm luôn" (đề xuất: thẩm định / duyệt mua / duyệt dòng sau ban hành quá 8 giờ làm việc → ghi 1 lỗi "Chậm duyệt" cho người duyệt, giải trình 16 giờ).

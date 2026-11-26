@@ -187,12 +187,14 @@ async function layChiMucMa(db: D1Database): Promise<Map<string, number[]>> {
   chiMucMa = { tag, map };
   return map;
 }
-app.get("/theo-id", docKey, async (c) => {
-  const db = c.env.DB;
-  const ids = [...new Set((c.req.query("ids") ?? "").split("|").flatMap(tachMa))].slice(0, 50);
-  const cap = [...new Set((c.req.query("po_lk") ?? "").split("|").map((x) => x.trim().toUpperCase()).filter((x) => x.includes("~")))].slice(0, 50)
+// v0.126 (26/11/2026): POST /theo-id { ids: string[], po_lk: string[] } - cung ket qua nhung toi da 1000 ma / 1000 cap mot lan. App linh kien
+// goi moi gio de DONG BO ngay du kien EO -> ticket thieu hang THB / TLK (ben do ghi de ngay tren ticket theo EO; xem linh-kien-app lib/dongBoNgayEo.ts).
+async function traTheoId(env: Env, idsVao: string[], capVao: string[], toiDa: number) {
+  const db = env.DB;
+  const ids = [...new Set(idsVao.flatMap(tachMa))].slice(0, toiDa);
+  const cap = [...new Set(capVao.map((x) => String(x).trim().toUpperCase()).filter((x) => x.includes("~")))].slice(0, toiDa)
     .map((x) => { const [po, lk] = x.split("~"); return { k: x, po: po.trim(), lk: lk.trim() }; }).filter((x) => x.po && x.lk);
-  if (!ids.length && !cap.length) return c.json({ error: "THIEU_THAM_SO", chi_tiet: "Cần ids hoặc po_lk" }, 400);
+  if (!ids.length && !cap.length) return null;
   const khop = new Map<number, Set<string>>();
   const ghi = (id: number, ma: string) => khop.set(id, (khop.get(id) ?? new Set()).add(ma));
   if (ids.length) {
@@ -207,7 +209,7 @@ app.get("/theo-id", docKey, async (c) => {
     for (const r of rs) { const v = JSON.parse(r.k); ghi(r.id, `${v.po}~${v.lk}`); }
   }
   const itemIds = [...khop.keys()];
-  const dong = itemIds.length ? await dongCacheTheo(c.env, "item_id IN (SELECT value FROM json_each(?1))", JSON.stringify(itemIds), (r) => khop.has(r.item_id)) : [];
+  const dong = itemIds.length ? await dongCacheTheo(env, "item_id IN (SELECT value FROM json_each(?1))", JSON.stringify(itemIds), (r) => khop.has(r.item_id)) : [];
   const rows = dong.map((r: any) => ({
     khop_theo: [...(khop.get(r.item_id) ?? [])],
     eo_item_id: r.item_id, eo_id: r.eo_id, eo_code: r.eo_code, ma_phe_duyet: r.ma_phe_duyet ?? null, link: `https://muahang.dichvu3t.workers.dev/eo/${r.eo_id}`,
@@ -219,7 +221,17 @@ app.get("/theo-id", docKey, async (c) => {
     ngay_du_kien: r.ngay_du_kien_gan_nhat ?? null, ngay_nm_cam_ket: r.ngay_nm_cam_ket ?? null, ngay_ve_gan_nhat: r.ngay_nhap_kho_amis_theo_eo ?? null,
     canh_bao: r.canh_bao || null, so_lan_lui: r.so_lan_doi_ngay_du_kien ?? 0,
   })).sort((a, b) => String(b.ngay_dat_hang ?? "").localeCompare(String(a.ngay_dat_hang ?? "")) || b.eo_item_id - a.eo_item_id);
-  return c.json({ so_dong: rows.length, khong_khop: [...ids, ...cap.map((x) => `${x.po}~${x.lk}`)].filter((m) => !rows.some((r) => r.khop_theo.includes(m))), rows });
+  return { so_dong: rows.length, khong_khop: [...ids, ...cap.map((x) => `${x.po}~${x.lk}`)].filter((m) => !rows.some((r) => r.khop_theo.includes(m))), rows };
+}
+app.get("/theo-id", docKey, async (c) => {
+  const kq = await traTheoId(c.env, (c.req.query("ids") ?? "").split("|"), (c.req.query("po_lk") ?? "").split("|"), 50);
+  return kq ? c.json(kq) : c.json({ error: "THIEU_THAM_SO", chi_tiet: "Cần ids hoặc po_lk" }, 400);
+});
+app.post("/theo-id", docKey, async (c) => {
+  const b = (await c.req.json().catch(() => null)) as { ids?: unknown; po_lk?: unknown } | null;
+  const ds = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x ?? "")) : []);
+  const kq = await traTheoId(c.env, ds(b?.ids), ds(b?.po_lk), 1000);
+  return kq ? c.json(kq) : c.json({ error: "THIEU_THAM_SO", chi_tiet: "Cần ids hoặc po_lk" }, 400);
 });
 
 export default app;

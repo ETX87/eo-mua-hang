@@ -456,6 +456,9 @@ Chỉ số hoạt động (im lặng, thúc NCC 7 ngày), R3 thứ 2/4, R1 lặp
 - **v0.091 mã lỗi ER.MH** `lib/maLoi.ts` (`layBangMaLoi`, `maCuaLoi`, `ganMaLoi`; TAY theo danh mục LOI, mã mới cấp 106+ theo thứ tự) + `lib/baoCaoLoi.ts`
   (`dsLoiDayDu` = danh sách lỗi của màn Vi phạm, đã tách khỏi `routes/viPham`; `tongHopTheoMa`; `dsCaCeo`). Dùng ở `/vi-pham` (+ `/vi-pham/ma-loi`, `/bang-ma`),
   `/ca-ceo` (`routes/caCeo.ts`), `/theo-doi/dong/:id`, `/xem/eo/:id/bo-sung`, API đọc `routes/partner.ts` (secret `DOC_API_KEY`, middleware `docKey`).
+- **v0.126** `POST /api/partner/theo-id` { ids[], po_lk[] } (≤1000 mỗi loại, cùng lõi `traTheoId` với GET ≤50): app Linh kiện `lib/dongBoNgayEo.ts` gọi mỗi giờ, lấy dòng EO
+  ISSUED + chưa kết thúc + có `ngay_du_kien` (sớm nhất) rồi GHI ĐÈ ngày + mã PO lên ticket THB / TLK đang mở (chốt 26/11/2026 "EO ghi đè luôn" — bug LK 3004022213 /
+  THB-000147: ngày nhập EO 20/11 không sang app Linh kiện). Đổi dạng trả của theo-id thì sửa cả bên đó.
 - **v0.108** `GET /api/partner/theo-id` cho app linh kiện (`../../linh-kien-app` `lib/muaHangClient.ts`, Service Binding `MUAHANG_SERVICE`, secret `MUAHANG_DOC_API_KEY` = `DOC_API_KEY` bên này):
   chỉ mục mã (tách từng mã trong ô `crm_id` / `order_id`) giữ trong bộ nhớ isolate theo version `eo`, chi tiết dòng đọc `dong_cache` theo `item_id` (~30 dòng D1 / lượt).
   Đo SQL từng API trên fixture demo: `node scripts/do-sql-api.mjs <năm> <đường dẫn…>` (Git Bash cần `MSYS_NO_PATHCONV=1`; fixture chung `scripts/demo-d1-seed.mjs`).
