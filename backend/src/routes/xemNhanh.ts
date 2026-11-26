@@ -7,6 +7,7 @@ import { computeTienDo01, TRANG_THAI_DONG } from "./reports";
 import { layDongTheoDoi } from "../lib/theoDoi";
 import { nowVN } from "../lib/vnTime";
 import { dongCacheTheo } from "../lib/dongCache";
+import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
 
 /**
  * /api/xem - du lieu cho 2 popup xem nhanh (FE components/quickview):
@@ -64,7 +65,7 @@ app.get("/eo/:id/bo-sung", async (c) => {
       `SELECT a.approver_email, a.step_type, a.assigned_at FROM eo_approval a
        WHERE a.submission_id = ? AND a.status = 'PENDING'`,
     ).bind(eo.current_submission_id ?? -1).all<any>(),
-    db.prepare("SELECT COUNT(*) n FROM eo_item WHERE eo_id = ? AND post_issue_status = 'PENDING'").bind(id).first<{ n: number }>(),
+    db.prepare(`SELECT COUNT(*) n FROM eo_item i WHERE i.eo_id = ? AND ${CHO_DUYET_SAU_BH_SQL("i")}`).bind(id).first<{ n: number }>(),
     db.prepare("SELECT status, note FROM eo_submission WHERE eo_id = ? ORDER BY version DESC LIMIT 1").bind(id).first<{ status: string; note: string | null }>(),
   ]);
 

@@ -389,6 +389,12 @@ Hiển thị lỗi theo trạng thái CAN_GT (còn hạn) / DA_GT / KHAC_PHUC / 
 **v0.113** (migration 0026): `VP_CU_TRUOC` = 2026-11-01 (`lib/theoDoi.ts`, FE `lib/giaiTrinh.tsx`) — lỗi mốc trước đó = `AUTO:CU`, không tính vi phạm (`tu_dong` "CU",
 FE "Bỏ qua · lỗi cũ"). `tl_lien_he` dựng lại (CHECK kênh thêm `MAIL`, cột `hen_lai`) — "Chờ NCC báo ngày": `danhGiaQuyTac` `dangChoNcc` bỏ R1 lặp / R3 trong [ngày liên hệ, hen_lai];
 `viecCuaToi` nhóm `cho_ncc` + loại khỏi ndk / ngay_moi / push; `viecCanLam` không đếm. `MoiBatDay` (NhacGiaiTrinhPopup.tsx, mount App.tsx) mời bật push.
+**v0.124** (chủ hệ thống 2026-11-26: "1. đơn đã kết thúc, bỏ việc duyệt hoặc từ chối 2. hiện quá nhiều thao tác, rút gọn lại 1 nút xổ xuống hoặc click vào để mở UI
+đơn chi tiết 3. Các đơn bị quá hạn do người duyệt không duyệt này có hiện trong danh sách cần giải trình không?"): `lib/choDuyetSauBh.ts` `CHO_DUYET_SAU_BH_SQL(a)`
+(PENDING + ACTIVE + chưa KTS + lũy kế AMIS < SL đặt) thay `post_issue_status = 'PENDING'` ở approvals /count + /post-issue, viecCanLam, routes/dieuHanh, dashboard,
+eo list `so_dong_cho_duyet`, xemNhanh, congNhiemVu `gomViecChoDuyet` (giữ đồng bộ). FE `components/MenuXo.tsx` (nút ⋯, menu position fixed) thay cột Thao tác
+EoQuickView; bấm dòng = `qv.openDong`; `dongKetThuc` ẩn Duyệt / Từ chối; `NhanSauBH` nhãn "Đã về đủ · bỏ duyệt". Sửa lỗi máy: `tinhGocTheoDoi` dòng sau BH
+PENDING → `bat_dau` null (trước lấy created_at → ghi R1 khi chưa được đặt; 7 lỗi R1 PO 3TDO-000858 ngày 24/11, đã được NV giải trình — giữ nguyên); cache `tl:goc-theo-doi:v9`.
 **v0.123** (chủ hệ thống 2026-11-26: "thiết kế hơn khó nhìn … Tại sao tổng lại không bằng PO lỗi lẻ cộng lại ví dụ 26 + 12 tổng lại là 30?"): `BangTrachNhiem` vẽ lại —
 mảng `COT` (nhom / v / tc / xau / phu / r), tiêu đề 2 tầng `nhomCot`, ô `O` tô nền đỏ theo `v / maxCot` (chỉ hàng con), CSS `.bt-tbl` trong `<style>` của component;
 ghi chú `poCa2` / `caCa2` (PO, ca lỗi ở cả 2 bên). Trả lời: PO / ca lỗi là đếm KHÁC NHAU (distinct) nên không cộng dồn được.

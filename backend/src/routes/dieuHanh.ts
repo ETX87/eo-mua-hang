@@ -6,6 +6,7 @@ import { danhGiaQuyTac } from "../lib/theoDoi";
 import { layDongDieuHanh, thongKeGiaiDoan, xuHuong, IM_LANG_DO, IM_LANG_VANG, LOI_CHO_DO } from "../lib/dieuHanh";
 import { ghiNhacNho } from "./viPham";
 import { VP_SQL } from "../lib/maLoi";
+import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
 
 /**
  * /api/dieu-hanh - man "Dieu hanh" cho lanh dao (v0.084, ../QUAN_TRI_DIEU_HANH.md). 1 payload: moi dong LK dang mo (muc canh bao,
@@ -27,7 +28,7 @@ app.get("/", async (c) => {
     ).all<any>(),
     db.prepare(
       `SELECT e.id eo_id, COALESCE(e.approval_code, e.eo_code) po, e.tieu_de, 'SAU_BH' buoc, e.final_approver_email ai, MIN(i.created_at) tu, e.created_by nguoi_tao, COUNT(*) so_dong
-       FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' GROUP BY e.id ORDER BY tu`,
+       FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED' GROUP BY e.id ORDER BY tu`,
     ).all<any>(),
   ]);
   // do phu giai trinh (moi loi trong pham vi theo doi, moi thoi diem) - kem moi so "nguyen nhan" de khong ket luan tu mau qua nho

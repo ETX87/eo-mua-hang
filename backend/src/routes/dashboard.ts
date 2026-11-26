@@ -5,6 +5,7 @@ import { computeTienDo01 } from "./reports";
 import { nowVN } from "../lib/vnTime";
 import { weekLabel, weekStart } from "../lib/week";
 import { layGiaiDoan, GIAI_DOAN } from "../lib/giaiDoan";
+import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -226,7 +227,7 @@ async function tinhQuanLy(c: { env: Env }) {
       `SELECT e.id, e.trang_thai, COALESCE(s.submitted_at, e.updated_at, e.created_at) t FROM eo e
        LEFT JOIN eo_submission s ON s.id = e.current_submission_id WHERE e.trang_thai IN ('IN_REVIEW','WAITING_FINAL_APPROVAL')`,
     ).all<{ id: number; trang_thai: string; t: string }>(),
-    db.prepare("SELECT COUNT(*) n FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED'").first<{ n: number }>(),
+    db.prepare(`SELECT COUNT(*) n FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED'`).first<{ n: number }>(),
     db.prepare("SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'").first<{ value: string }>(),
     layGiaiDoan(c.env),
   ]);

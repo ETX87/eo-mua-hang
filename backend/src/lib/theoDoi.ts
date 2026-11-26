@@ -117,7 +117,7 @@ export function tinhTrangBayGio(r: { trang_thai_don_hang: string; ngay_du_kien_g
 }
 
 export async function layDongTheoDoi(env: Env, phamVi: "dang_mo" | "tat_ca" = "dang_mo"): Promise<DongTheoDoi[]> {
-  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v8", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
+  const goc = await cachedReport(env.DB, "tl:goc-theo-doi:v9", ["eo", "amis", "settings", "theo_doi"], () => tinhGocTheoDoi(env));
   const now = nowVN();
   const today = todayVN();
   const out: DongTheoDoi[] = [];
@@ -167,7 +167,7 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
   const ids = JSON.stringify(base.map((r) => r.item_id));
   const [meta, firstPlan, loi, ev, veDau] = await Promise.all([
     db.prepare(
-      `SELECT i.id, i.created_after_issue, i.post_issue_approved_at, i.created_at, e.created_by, e.issued_at
+      `SELECT i.id, i.created_after_issue, i.post_issue_status, i.post_issue_approved_at, i.created_at, e.created_by, e.issued_at
        FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id IN (SELECT value FROM json_each(?))`,
     ).bind(ids).all<any>(),
     db.prepare(
@@ -221,7 +221,9 @@ async function tinhGocTheoDoi(env: Env): Promise<GocDong[]> {
 
   return base.map((r) => {
     const m = metaBy.get(r.item_id);
-    const batDau: string | null = m ? (m.created_after_issue ? (m.post_issue_approved_at || m.created_at) : m.issued_at) : null;
+    // v0.124 (sua loi may): dong them sau BH CON CHO DUYET -> chua bat dau (truoc lay created_at -> ghi R1 "chua co ngay DK" khi NV chua duoc dat;
+    // tre do nguoi duyet, khong phai NV / NCC). Da duyet -> tu luc duyet; du lieu cu khong co moc duyet -> created_at nhu truoc.
+    const batDau: string | null = m ? (m.created_after_issue ? (m.post_issue_status === "PENDING" ? null : (m.post_issue_approved_at || m.created_at)) : m.issued_at) : null;
     const apDungDong = !!batDau && batDau.slice(0, 10) >= apDung;
     const gioR1Dong = gioR1(r.doi_tac, batDau, r1Tu);
     const han = batDau ? congGioLamViec(batDau, gioR1Dong) : null;

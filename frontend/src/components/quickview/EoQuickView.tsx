@@ -25,6 +25,7 @@ import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac,
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
 import { Kho, khoGon } from "../../lib/kho";
 import { DataTable, type Col } from "../DataTable";
+import { MenuXo } from "../MenuXo";
 
 /**
  * Popup xem nhanh 1 EO (95% man hinh). Du lieu: GET /eo/:id (goc) + GET /xem/eo/:id/bo-sung (theo doi, loi, giai trinh,
@@ -162,6 +163,8 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
 
   // ---- #29 bang dong linh kien (DataTable): an don huy mac dinh, dong con thieu len dau (thieu nhieu truoc)
   const huy = (r: any) => r.line_status === "CANCELLED_LINE";
+  // v0.124: dong da ket thuc (huy / ket thuc som / ve du) -> khong con viec duyet dong sau BH (khop backend lib/choDuyetSauBh)
+  const dongKetThuc = (r: any) => r.line_status !== "ACTIVE" || !!r.ket_thuc_som_at || (r.da_dat ?? 0) >= r.current_qty;
   const soHuy = d.items.filter(huy).length;
   const lkRows = d.items.map((r: any, i: number) => {
     const t = tdBy.get(r.id) as any;
@@ -178,19 +181,28 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     });
   const lkCols: Col<any>[] = [
     { key: "act", header: <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>{coChon && <input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} />}Thao tác</span>,
-      render: ({ r, t }: any) => { const active = !huy(r); return (
-      <span style={{ display: "inline-flex", gap: 2, alignItems: "center", opacity: active ? 1 : 0.6 }} onClick={(e) => e.stopPropagation()}>
+      // v0.124 (chu he thong 2026-11-26 "hien qua nhieu thao tac, rut gon lai 1 nut xo xuong hoac click vao de mo UI don chi tiet"): moi thao tac dong
+      // gom vao 1 nut "⋯" (MenuXo); bam dong -> popup don dat (DongQuickView). Duyet / Tu choi dong sau BH chi con khi dong CHUA ket thuc
+      // (chua ve du / chua ket thuc som / chua huy - khop backend lib/choDuyetSauBh), van de ngoai vi la thao tac chinh.
+      render: ({ r, t }: any) => { const active = !huy(r); const ketThuc = dongKetThuc(r); const ic = { width: 14, height: 14 }; return (
+      <span style={{ display: "inline-flex", gap: 4, alignItems: "center", opacity: active ? 1 : 0.6 }} onClick={(e) => e.stopPropagation()}>
         {coChon && (active && r.chua_dat > 0 ? <input type="checkbox" checked={chon.has(r.id)} onChange={() => doiChon(r.id)} title="Chọn để push đối tác" /> : <span style={{ width: 13 }} />)}
-        <button className="btn ghost sm" title="Xem đơn hàng: tiến trình giai đoạn, thời gian, lỗi" onClick={() => qv.openDong(r.id)}><I.trend width={14} height={14} /></button>
-        {P.issued && active && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
-        {P.canEditQty && active && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: r })}><I.edit width={14} height={14} /></button>}
-        {P.canSuaThongTin && r.line_status === "ACTIVE" && !poDone && <button className="btn ghost sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd({ k: "sua-tt", x: r })}><I.tag width={14} height={14} /></button>}
-        {P.issued && P.canManage && r.line_status === "ACTIVE" && <button className="btn ghost sm" title="Thay mã linh kiện tương đương" onClick={() => setMd({ k: "thay", x: r })}><I.refresh width={14} height={14} /></button>}
-        {P.issued && P.canEditPlan && active && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
-        {P.issued && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
-        {P.canApprovePostIssue && r.post_issue_status === "PENDING" && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button> <button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
-        {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && (r.da_dat ?? 0) > 0 && (r.da_dat ?? 0) < r.current_qty && <button className="btn ghost sm" title={`Kết thúc sớm — SL đặt về đúng SL đã về (${soLuong(r.da_dat)}), không chờ phần còn lại`} onClick={() => setMd({ k: "kts", x: r })}><I.check width={14} height={14} /></button>}
-        {P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && <button className="btn ghost sm danger" title="Hủy đơn đặt (không đặt nữa, SL đã về không tính) — bắt buộc lý do" onClick={() => setMd({ k: "huy", x: r })}><I.trash width={14} height={14} /></button>}
+        <MenuXo title="Thao tác dòng này" muc={[
+          { l: "Xem chi tiết đơn đặt", icon: <I.trend {...ic} />, onClick: () => qv.openDong(r.id), title: "Tiến trình giai đoạn, thời gian, lỗi" },
+          { l: "Ngày NM cam kết / dự kiến / hàng về", icon: <I.calendar {...ic} />, onClick: () => setMd({ k: "ndk", x: asDong(r) }), an: !(P.issued && active) },
+          { l: <>Giải trình lỗi{t?.so_loi_cho_gt ? <b style={{ color: "var(--danger)" }}> ({t.so_loi_cho_gt} chờ)</b> : null}</>, icon: <b style={{ color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }}>!</b>,
+            onClick: () => setMd({ k: "gt", x: asDong(r) }), an: !(P.issued && P.canEditPlan && active) },
+          { l: "Lịch sử theo dõi", icon: <I.clock {...ic} />, onClick: () => setMd({ k: "ls", x: asDong(r) }), title: "Lỗi, giải trình, push, mail", an: !P.issued },
+          { l: "Sửa số lượng / ghi chú / ID CRM", icon: <I.edit {...ic} />, onClick: () => setMd({ k: "qty", x: r }), an: !(P.canEditQty && active), ngan: true },
+          { l: "Sửa mã LK / kho / đối tác", icon: <I.tag {...ic} />, onClick: () => setMd({ k: "sua-tt", x: r }), title: "Nhập sai — ghi lịch sử", an: !(P.canSuaThongTin && r.line_status === "ACTIVE" && !poDone) },
+          { l: "Thay mã linh kiện tương đương", icon: <I.refresh {...ic} />, onClick: () => setMd({ k: "thay", x: r }), an: !(P.issued && P.canManage && r.line_status === "ACTIVE") },
+          { l: `Kết thúc sớm (về ${soLuong(r.da_dat)})`, icon: <I.check {...ic} />, onClick: () => setMd({ k: "kts", x: r }), ngan: true,
+            title: `SL đặt về đúng SL đã về (${soLuong(r.da_dat)}), không chờ phần còn lại`,
+            an: !(P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING" && (r.da_dat ?? 0) > 0 && (r.da_dat ?? 0) < r.current_qty) },
+          { l: "Hủy đơn đặt", icon: <I.trash {...ic} />, nguy: true, onClick: () => setMd({ k: "huy", x: r }), title: "Không đặt nữa, SL đã về không tính — bắt buộc lý do",
+            an: !(P.canCancelLine && r.line_status === "ACTIVE" && r.post_issue_status !== "PENDING") },
+        ]} />
+        {P.canApprovePostIssue && r.post_issue_status === "PENDING" && !ketThuc && <><button className="btn sm primary" onClick={() => duyetDong(r)}>Duyệt</button><button className="btn sm danger" onClick={() => setMd({ k: "tuchoi", x: r })}>Từ chối</button></>}
       </span>); } },
     { key: "stt", header: "#", align: "right", sapXep: true, gt: (x: any) => x.i + 1, render: (x: any) => <span className="muted">{x.i + 1}</span> },
     { key: "ma", header: "Mã LK", loc: "chu", gt: ({ r }: any) => `${r.part_code} ${r.part_code_goc ?? ""}`, gtSap: ({ r }: any) => r.part_code, wrap: true,
@@ -304,7 +316,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
                 {P.issued && P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
-                <span className="sp muted" style={{ fontSize: 11.5 }}>Cột Thao tác: 3 loại ngày · sửa dòng · thay mã · ! giải trình · lịch sử</span>
+                <span className="sp muted" style={{ fontSize: 11.5 }}>Bấm dòng: xem chi tiết đơn đặt · nút ⋯: ngày DK, giải trình, lịch sử, sửa, thay mã, kết thúc / hủy</span>
               </div>
             )}
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
@@ -316,7 +328,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <input type="checkbox" checked={xemHuy} onChange={(e) => setXemHuy(e.target.checked)} />
                   Xem cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}
                 </label>
-                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} empty="Không có dòng linh kiện khớp bộ lọc" khungCao="max(300px, calc(95vh - 420px))" />
+                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" khungCao="max(300px, calc(95vh - 420px))" />
               </>
             )}
             {tab === "kh" && (

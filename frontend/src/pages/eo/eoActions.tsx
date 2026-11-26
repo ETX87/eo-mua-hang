@@ -763,6 +763,9 @@ export function NhanSauBH({ r, nguoiDuyet }: { r: any; nguoiDuyet?: string | nul
   const huy = r.line_status === "CANCELLED_LINE" && !r.post_issue_rejected_at
     ? <span className="badge reject" style={{ marginLeft: 6 }} title="Dòng đã hủy — không đặt hàng (xem lý do ở Lịch sử)">Đã hủy</span> : null;
   if (huy) return huy;
+  // v0.124: dong da ve du / ket thuc som -> khong con cho duyet (backend lib/choDuyetSauBh)
+  if (r.post_issue_status === "PENDING" && (r.ket_thuc_som_at || (r.da_dat != null && r.da_dat >= r.current_qty)))
+    return <span className="badge nhap" style={{ marginLeft: 6 }} title="Dòng thêm sau ban hành chưa được duyệt nhưng hàng đã về đủ / đã kết thúc — không cần duyệt nữa">Đã về đủ · bỏ duyệt</span>;
   if (r.post_issue_status === "PENDING")
     return <span className="badge final" style={{ marginLeft: 6 }} title={`Dòng thêm sau khi EO đã ban hành — chờ người duyệt mua của EO (${ten(nguoiDuyet)}) hoặc Admin duyệt / từ chối. Chưa duyệt thì chưa đặt hàng.`}>Chờ {ten(nguoiDuyet)} duyệt</span>;
   if (r.post_issue_status === "APPROVED")

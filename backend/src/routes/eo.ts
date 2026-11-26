@@ -11,6 +11,7 @@ import { recomputeMatch } from "../lib/amisMatch";
 import { cachedReport } from "../lib/reportCache";
 import { layBoChuan, chuanHoaDong } from "../lib/chuanHoa";
 import { tomTatTheoPo, IM_LANG_DO, VP_TT_TEN, type DhPo, type GdPo, type VpPo } from "../lib/dieuHanh";
+import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
 
 /** Doi tac / ly do PS khong nam trong danh muc chuan (migration 0020) -> 400 kem gia tri sai de FE bao ro. */
 const loiChuan = (loi: { loai: string; gia_tri: string }[]) => ({ error: "GIA_TRI_KHONG_CHUAN", loi });
@@ -50,7 +51,7 @@ async function dsEo(env: Env): Promise<DongEo[]> {
     `WITH ve AS (SELECT matched_eo_item_id id, SUM(qty_in) q FROM amis_receipt WHERE match_status = 'MATCHED_EO' AND matched_eo_item_id IS NOT NULL GROUP BY matched_eo_item_id),
      it AS (
        SELECT i.eo_id, COUNT(*) so_dong, COALESCE(SUM(i.current_qty), 0) tong_sl,
-              SUM(i.created_after_issue = 1) so_dong_sau_bh, SUM(i.post_issue_status = 'PENDING') so_dong_cho_duyet,
+              SUM(i.created_after_issue = 1) so_dong_sau_bh, SUM(${CHO_DUYET_SAU_BH_SQL("i")}) so_dong_cho_duyet,
               SUM(CASE WHEN i.line_status = 'ACTIVE' THEN MIN(i.current_qty, COALESCE(ve.q, 0)) ELSE 0 END) sl_ve,
               SUM(CASE WHEN i.line_status = 'ACTIVE' AND i.current_qty > COALESCE(ve.q, 0) THEN 1 ELSE 0 END) so_dong_chua_du,
               SUM(i.line_status = 'ACTIVE') so_dong_song,

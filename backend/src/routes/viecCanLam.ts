@@ -6,6 +6,7 @@ import { todayVN, nowVN } from "../lib/vnTime";
 import { kyR3Tu, layDongTheoDoi, type DongTheoDoi } from "../lib/theoDoi";
 import { canImportAmis, canEditPlan, isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
 import { dvbhEnabled } from "../lib/dvbhSync";
+import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
 
 /**
  * GET /api/viec-can-lam - "viec can xu ly" theo vai tro: so dem hien sau ten menu (sidebar) + khung tong hop o Tong quan.
@@ -57,7 +58,7 @@ app.get("/", async (c) => {
     ).bind(u.email).first<{ n: number }>(),
     db.prepare(
       `SELECT COUNT(*) n FROM eo_item i JOIN eo e ON e.id = i.eo_id
-       WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?`,
+       WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?`,
     ).bind(u.email).first<{ n: number }>(),
   ]);
   if ((pa?.n ?? 0) + (pi?.n ?? 0) > 0) out.push({ key: "duyet", to: "/eo?chip=cho_toi_duyet", label: "Phiếu chờ bạn duyệt", count: (pa?.n ?? 0) + (pi?.n ?? 0),

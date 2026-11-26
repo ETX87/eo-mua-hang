@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 26/11/2026 — v0.124: Bỏ duyệt dòng đã kết thúc, gom thao tác dòng vào nút ⋯, dòng chờ duyệt chưa tính lỗi
+
+- Yêu cầu (nguyên văn): "1. đơn đã kết thúc, bỏ việc duyệt hoặc từ chối 2. hiện quá nhiều thao tác, rút gọn lại 1 nút xổ xuống hoặc click vào để mở UI đơn chi
+  tiết rồi thao tác trên đó. 3. Các đơn bị quá hạn do người duyệt không duyệt này có hiện trong danh sách cần giải trình không?"
+- D1 thật (chỉ đọc): 64 dòng sau BH đang "chờ duyệt", 52 dòng đã về đủ / kết thúc / hủy → chỉ 12 dòng thật sự còn cần duyệt (11 PO). 7 lỗi R1 bị ghi
+  lên dòng còn chờ duyệt (PO 3TDO-000858, 24/11) — NV đã giải trình, giữ nguyên dữ liệu.
+- Đã làm: điều kiện chờ duyệt chung (dòng còn mở) cho mọi nơi đếm / liệt kê + App Nhiệm vụ; popup PO ẩn Duyệt / Từ chối ở dòng đã kết thúc, nhãn "Đã về đủ · bỏ duyệt";
+  cột Thao tác thành 1 nút ⋯ (xem chi tiết, ngày DK, giải trình, lịch sử, sửa, sửa mã, thay mã, kết thúc sớm, hủy), bấm dòng mở chi tiết đơn đặt; sửa lỗi máy:
+  dòng chờ duyệt chưa bắt đầu tính giờ R1/R3/R4.
+- Trả lời câu 3: trễ do người duyệt hiện KHÔNG vào danh sách cần giải trình — chỉ hiện ở Duyệt đang treo, Bảng trách nhiệm, App Nhiệm vụ.
+- Kiểm thử local: typecheck + build; popup PO có 5 nút ⋯, menu 8 mục có chữ; API approvals/count, post-issue, viec-can-lam, eo, dieu-hanh, dashboard/quan-ly, xem bổ sung 200.
+
 ## 26/11/2026 — v0.123: Bảng trách nhiệm dễ nhìn hơn + giải thích tổng PO
 
 - Yêu cầu (nguyên văn): "1. thiết kế hơn khó nhìn => xem lại cách thiết kế để người dùng dễ nhìn, dễ quan sát số liệu hơn 2. Tại sao tổng lại không bằng PO lỗi

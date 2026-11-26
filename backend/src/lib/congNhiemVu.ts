@@ -17,6 +17,7 @@ import { nowVN } from "./vnTime";
 import { congGioLV } from "./gioLamViec";
 import { docSla } from "./giaiDoan";
 import { sha256Hex } from "./sha";
+import { CHO_DUYET_SAU_BH_SQL } from "./choDuyetSauBh";
 
 const CONG = "https://asia-southeast1-etx-nhan-su.cloudfunctions.net/taskFeedNhan";
 const APP = "mua-hang";
@@ -56,7 +57,7 @@ export async function gomViecChoDuyet(env: Env): Promise<{ ds: { nguoi: { maNS: 
        FROM eo_item i
        JOIN eo e ON e.id = i.eo_id
        LEFT JOIN users u ON u.email = e.final_approver_email
-       WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email IS NOT NULL
+       WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED' AND e.final_approver_email IS NOT NULL
        GROUP BY e.id`,
     ).all<{ eo_id: number; eo_code: string; approval_code: string | null; tieu_de: string | null; email: string; n: number; tu: string; ma_nhan_su: string | null }>(),
     docSla(env),

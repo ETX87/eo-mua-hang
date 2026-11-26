@@ -81,6 +81,12 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
 
 ## 7. 8 giai đoạn đơn hàng (chỉ đo)
 
+- **Dòng thêm sau ban hành chờ duyệt (v0.124)**: chỉ tính là việc chờ duyệt khi dòng CÒN MỞ (đang hoạt động, chưa kết thúc sớm, chưa về đủ theo phiếu nhập AMIS) —
+  một điều kiện chung `lib/choDuyetSauBh.ts` cho số đỏ menu, Phiếu chờ bạn duyệt, Duyệt đang treo, Tổng quan, Đơn PO, App Nhiệm vụ eOffice. Dòng đã về đủ / kết thúc:
+  ẩn nút Duyệt / Từ chối, nhãn "Đã về đủ · bỏ duyệt" (dữ liệu giữ nguyên). Dòng còn chờ duyệt **chưa bắt đầu** tính giờ R1 / R3 / R4 (trễ là do người duyệt).
+  Trễ duyệt (G2 / G3, dòng sau BH chờ duyệt) hiện CHƯA sinh lỗi giải trình — chỉ hiện ở Duyệt đang treo, Bảng trách nhiệm, App Nhiệm vụ.
+
+
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & ban hành · G4 Gửi đơn NCC (song song) · G5 Chờ ngày DK · G6 Chờ giao hàng ·
 G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo giờ làm việc (cấu hình được; mặc định 8h, G8 56h; G6 = ngày dự kiến lần đầu). Hiện chỉ báo cáo đúng / trễ hạn, chưa sinh lỗi.
 - **Bên chịu trễ theo giai đoạn (v0.121)**: **Nội bộ** — G1 Lập & trình (người tạo EO) · G2 Thẩm định (người thẩm định) · G3 Duyệt mua (người duyệt) ·

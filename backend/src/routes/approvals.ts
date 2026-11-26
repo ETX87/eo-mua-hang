@@ -5,6 +5,7 @@ import { bumpVersions } from "../lib/dataVersions";
 import { eventStmt } from "../lib/audit";
 import { notifyStmt } from "../lib/notify";
 import { recomputeMatch } from "../lib/amisMatch";
+import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -16,7 +17,7 @@ app.get("/count", async (c) => {
   ).bind(c.get("user").email).first<{ n: number }>();
   const p = await c.env.DB.prepare(
     `SELECT COUNT(*) n FROM eo_item i JOIN eo e ON e.id = i.eo_id
-     WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?`,
+     WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?`,
   ).bind(c.get("user").email).first<{ n: number }>();
   return c.json({ count: (r?.n ?? 0) + (p?.n ?? 0) });
 });
@@ -27,7 +28,7 @@ app.get("/post-issue", async (c) => {
     `SELECT i.id, i.eo_id, i.part_code, i.part_name, i.warehouse, i.current_qty, i.reason, i.ghi_chu, i.created_by, i.created_at,
             e.eo_code, e.approval_code, e.tieu_de
      FROM eo_item i JOIN eo e ON e.id = i.eo_id
-     WHERE i.post_issue_status = 'PENDING' AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?
+     WHERE ${CHO_DUYET_SAU_BH_SQL("i")} AND e.trang_thai = 'ISSUED' AND e.final_approver_email = ?
      ORDER BY i.created_at`,
   ).bind(c.get("user").email).all();
   return c.json(rows.results);
