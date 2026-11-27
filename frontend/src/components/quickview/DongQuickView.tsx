@@ -12,8 +12,9 @@ import { QuyTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
 import { GdBadge } from "../../lib/giaiDoan";
-import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, quyenEo } from "../../pages/eo/eoActions";
+import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, QtyModal, ReplacePartModal, TuChoiDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
+import { MenuXo } from "../MenuXo";
 import { khopTim } from "../../lib/tonDong";
 import { O_TIM } from "./QuickView";
 import { NHAN_GT, demGt, ketLuanGt, trangThaiGt, viSaoLoi } from "../../lib/giaiTrinh";
@@ -37,7 +38,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const [tab, setTab] = useState<Tab>("gd");
   const [tim, setTim] = useState(""); // o tim CHUNG cho moi tab (2026-11-23)
   const qv = useQuickView();
-  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | "lh" | null>(null);
+  const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | "lh" | "qty" | "thay" | "tuchoi" | null>(null);
+  const [loiDuyet, setLoiDuyet] = useState("");
   const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
   const [anPhu, setAnPhu] = useAnPhu();
 
@@ -52,7 +54,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const issued = r.trang_thai_eo === "ISSUED";
   const dong = { ...r, item_id: id, eo_id: it.eo_id, eo_code: it.eo_code, ma_phe_duyet: it.approval_code, part_code: it.part_code, part_name: it.part_name,
     kho: it.warehouse, doi_tac: it.supplier, so_luong_dat: r.so_luong_dat ?? it.current_qty } as Dong;
-  const xong = () => { setMd(null); ["so-don-hang", "tl-dong", "theo-doi", "inbox-count", "eo-bo-sung"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
+  // v0.138: sua SL / thay ma / duyet dong doi ca popup PO, danh sach don, bao cao -> tai lai moi du lieu
+  const xong = () => { setMd(null); qc.invalidateQueries(); };
   const tt = r.tinh_trang ? TINH_TRANG[r.tinh_trang as Dong["tinh_trang"]] : null;
   const loiCho = loi.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
   const gtBy = new Map<number, any>((ls.data.giai_trinh ?? []).map((g: any) => [g.id, g]));
@@ -60,16 +63,39 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const daVe = (ls.data.phieu_nhap ?? []).reduce((s: number, p: any) => s + (p.qty_in || 0), 0);
   const moDong = issued && it.line_status === "ACTIVE" && r.phan_loai_thoi_diem_dat !== "Tạo sau ban hành (chờ duyệt)";
   const itemHuy = { id, part_code: it.part_code, part_name: it.part_name, warehouse: it.warehouse, current_qty: it.current_qty, da_dat: daVe };
+  // v0.138: quyen theo EO (giong menu ⋯ dong o popup PO) -> sua SL / ghi chu / ID CRM, thay ma tuong duong, duyet / tu choi dong sau BH
+  const P = quyenEo({ trang_thai: it.eo_trang_thai ?? r.trang_thai_eo ?? "", created_by: it.created_by, final_approver_email: it.final_approver_email ?? r.nguoi_duyet_cuoi }, me.data);
+  const conSong = it.line_status === "ACTIVE";
+  const ketThuc = !!r.ket_thuc_som_at || daVe >= it.current_qty;
+  const itemSua = { id, part_code: it.part_code, part_name: it.part_name, warehouse: it.warehouse, current_qty: it.current_qty,
+    ghi_chu: it.ghi_chu, crm_id: it.crm_id, order_id: it.order_id, part_code_goc: it.part_code_goc };
+  const duyetDong = async () => {
+    if (!confirm(`Duyệt dòng ${it.part_code} (SL ${soLuong(it.current_qty)}) thêm sau ban hành?`)) return;
+    setLoiDuyet("");
+    try { await api.post(`/eo/items/${id}/approve-post-issue`); xong(); }
+    catch (e: any) { setLoiDuyet(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt mua của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
+  };
 
   return (
     <>
       <div className="qv-head">
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll} actions={<>
+          {P.canApprovePostIssue && it.post_issue_status === "PENDING" && conSong && !ketThuc && <>
+            <button className="btn sm primary" title="Dòng thêm sau ban hành đang chờ bạn duyệt" onClick={duyetDong}>Duyệt dòng</button>
+            <button className="btn sm danger" onClick={() => setMd("tuchoi")}>Từ chối dòng</button></>}
           {issued && <button className="btn sm primary" onClick={() => setMd("ndk")}><I.calendar width={13} height={13} /> Ngày NM / dự kiến / hàng về</button>}
           {moDong && r.theo_doi && (r.so_luong_con_thieu ?? 1) > 0 && <button className="btn sm" title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn (không mail) — tính như đã push (R3)" onClick={() => setMd("lh")}>📞 Đã nhắc đối tác</button>}
           {moDong && daVe > 0 && daVe < it.current_qty && <button className="btn sm" title="SL đặt về đúng SL đã về, không chờ phần còn lại" onClick={() => setMd("kts")}><I.check width={13} height={13} /> Kết thúc sớm</button>}
-          {/* sua ma LK / kho / doi tac (nhap sai) - quyen khop backend canSuaThongTinDong; PO het hang cho -> backend tu chan */}
-          {it.line_status === "ACTIVE" && quyenEo({ trang_thai: r.trang_thai_eo ?? "", created_by: r.nguoi_tao ?? it.created_by, final_approver_email: r.nguoi_duyet_cuoi }, me.data).canSuaThongTin && (r.so_luong_con_thieu ?? 1) > 0 && <button className="btn sm" title="Sửa mã LK / kho / đối tác (nhập sai) — ghi lịch sử" onClick={() => setMd("sua")}><I.tag width={13} height={13} /> Sửa mã / kho / NCC</button>}
+          {/* v0.138: gom 3 thao tac SUA vao 1 nut co chu "Sửa đơn ▾" (giong menu ⋯ dong o popup PO): sua SL / ghi chu / ID CRM (truoc day
+              chi co o popup PO), sua ma / kho / NCC (nhap sai), thay ma tuong duong. Quyen khop backend (quyenEo). */}
+          <MenuXo nhan={<><I.edit width={13} height={13} /> Sửa đơn ▾</>} title="Sửa SL đặt / ghi chú / ID CRM, sửa mã / kho / NCC, thay mã tương đương" muc={[
+            { l: "Sửa SL đặt / ghi chú / ID CRM", icon: <I.edit width={14} height={14} />, onClick: () => setMd("qty"), an: !(P.canEditQty && conSong),
+              title: "Đổi SL đặt (ghi lý do; SL < tổng kế hoạch thì tự giảm kế hoạch từ đợt xa nhất), ghi chú, ID CRM, ID đặt hàng — ghi lịch sử" },
+            { l: "Sửa mã LK / kho / đối tác", icon: <I.tag width={14} height={14} />, onClick: () => setMd("sua"), title: "Nhập sai — ghi lịch sử",
+              an: !(conSong && quyenEo({ trang_thai: r.trang_thai_eo ?? "", created_by: r.nguoi_tao ?? it.created_by, final_approver_email: r.nguoi_duyet_cuoi }, me.data).canSuaThongTin && (r.so_luong_con_thieu ?? 1) > 0) },
+            { l: "Thay mã linh kiện tương đương", icon: <I.refresh width={14} height={14} />, onClick: () => setMd("thay"), an: !(issued && P.canManage && conSong),
+              title: "NCC giao mã tương đương — đổi mã đang dùng, giữ mã gốc để khớp AMIS" },
+          ]} />
           {moDong && <button className="btn sm ghost danger" title="Không đặt nữa — SL đã về (nếu có) không tính" onClick={() => setMd("huy")}><I.x width={13} height={13} /> Hủy đơn</button>}
           {r.theo_doi && <button className="btn sm" onClick={() => setMd("gt")} style={{ color: loiCho ? "var(--danger)" : undefined }}><I.edit width={13} height={13} /> Giải trình{loiCho ? ` (${loiCho})` : ""}</button>}
         </>}>
@@ -99,6 +125,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
               {" "}· DK <b style={{ color: r.canh_bao === "Quá dự kiến" ? "var(--danger-ink)" : undefined }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}</b>{r.so_lan_lui > 0 && <b style={{ color: r.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến (ngày mới muộn hơn ngày trước)"> · lùi {r.so_lan_lui} lần</b>}{r.ngay_nm_cam_ket && <> · NM <b>{ngay(r.ngay_nm_cam_ket)}</b></>}</span>
           </div>
         </QvHeader>
+        {loiDuyet && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "4px 0" }}>{loiDuyet}</div>}
       </div>
 
       <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
@@ -211,6 +238,9 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
         </CotPhu>
       </div>
 
+      {md === "qty" && <QtyModal item={itemSua} issued={issued} onClose={() => setMd(null)} onSaved={xong} />}
+      {md === "thay" && <ReplacePartModal item={itemSua} onClose={() => setMd(null)} onSaved={xong} />}
+      {md === "tuchoi" && <TuChoiDongModal item={itemSua} onClose={() => setMd(null)} onDone={xong} />}
       {md === "ndk" && <NgayHangVeModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
       {md === "gt" && <GiaiTrinhModal dong={dong} onClose={() => setMd(null)} onSaved={xong} />}
       {md === "lh" && <LienHeDoiTacModal ids={[id]} nhan={`${it.part_code} (${it.approval_code || it.eo_code})`} onClose={() => setMd(null)}

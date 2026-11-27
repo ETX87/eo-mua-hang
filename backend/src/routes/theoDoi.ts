@@ -68,7 +68,11 @@ app.get("/dong/:itemId", async (c) => {
     ).bind(id, id).all(),
     // 3 loai ngay cua 1 dong tren cung 1 man: dong + cac dot ke hoach (ngay du kien / ngay NM cam ket) + phieu nhap AMIS (ngay hang ve thuc te)
     db.prepare(
-      `SELECT i.id, i.eo_id, i.part_code, i.part_name, i.warehouse, i.supplier, i.current_qty, i.line_status, e.eo_code, e.approval_code, e.created_by
+      // v0.138: them ghi_chu / crm_id / order_id / post_issue_status / part_code_goc + trang thai & nguoi duyet EO
+      // -> popup don hang co du thao tac nhu menu ⋯ popup PO (sua SL, thay ma, duyet / tu choi dong sau BH)
+      `SELECT i.id, i.eo_id, i.part_code, i.part_name, i.warehouse, i.supplier, i.current_qty, i.line_status,
+              i.ghi_chu, i.crm_id, i.order_id, i.post_issue_status, i.part_code_goc,
+              e.eo_code, e.approval_code, e.created_by, e.trang_thai eo_trang_thai, e.final_approver_email
        FROM eo_item i JOIN eo e ON e.id = i.eo_id WHERE i.id = ?`,
     ).bind(id).first(),
     db.prepare(

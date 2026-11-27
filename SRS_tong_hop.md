@@ -38,6 +38,9 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   code với trang. Bố cục 2 khu: **Theo dõi chính** (trái: luồng tiến trình 8 giai đoạn 1 dòng + tab + bảng) và **Tiến độ · lịch sử** (phải: số liệu, cảnh báo, chờ duyệt,
   nhật ký — thu gọn được). Không có tab lặp lại nội dung nhật ký (PO: Linh kiện · Kế hoạch & hàng về · Lỗi & giải trình · Tài liệu; đơn hàng: Chi tiết giai đoạn ·
   Kế hoạch & hàng về · Lỗi & giải trình).
+- **Thao tác trên popup đơn hàng phải đủ như menu ⋯ của dòng ở popup PO** (v0.138): Ngày NM / dự kiến / hàng về · Đã nhắc đối tác · Kết thúc sớm ·
+  **✎ Sửa đơn ▾** (Sửa SL đặt / ghi chú / ID CRM · Sửa mã LK / kho / đối tác · Thay mã linh kiện tương đương) · Hủy đơn · Giải trình ·
+  Duyệt dòng / Từ chối dòng (dòng thêm sau ban hành đang chờ, chỉ người duyệt mua / Admin). Mỗi nút chỉ hiện khi có quyền (khớp backend).
 - **ID case / ID đặt hàng luôn nhìn thấy** (v0.108): mở 1 đơn phải biết đơn đặt cho ca / đơn nào — popup EO có 2 cột riêng "ID case", "ID đặt hàng"
   (không cắt chữ, lọc được, tách khỏi Ghi chú); popup đơn hàng ghi "ID case … · ID đặt hàng …" ngay đầu dòng thông tin; popup mã LK có cột "ID case · ID đặt hàng".
 - **Trả kết quả cho app linh kiện** (v0.108): app linh kiện hỏi theo mã đơn / ticket / case → thấy PO nào, đã về bao nhiêu, ngày dự kiến (API đọc `theo-id`).
@@ -91,6 +94,6 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   tài liệu, mail & push, mã lỗi & giải trình, chi tiết giai đoạn, trao đổi NCC); giữ chữ khi đổi tab; bảng trong tab không còn ô tìm riêng.
 - Bảng linh kiện trong popup PO cuộn trong khung: tiêu đề cột luôn ở trên, thanh kéo dọc + ngang luôn thấy, thêm thanh kéo ngang ở trên đầu bảng.
 - Mọi lỗi / cảnh báo hiển thị mã ER.MH và bước; mỗi đơn hàng / PO có tab "Mã lỗi & giải trình"; Vi phạm có cách xem "Theo mã lỗi" → chi tiết.
-- Popup đơn hàng có tab "Trao đổi NCC" (đường ngang 3T thúc / NCC trả lời / cập nhật ngày DK). Trạng thái luôn ghi kèm bước.
+- Popup đơn hàng: trao đổi NCC (3T thúc / NCC trả lời / cập nhật ngày DK) nằm ở khu "Tiến độ · lịch sử" (v0.131 bỏ tab riêng). Trạng thái luôn ghi kèm bước.
 - API đọc có khoá cho hệ khác: ca tồn CEO, tổng hợp lỗi theo mã, chi tiết lỗi + giải trình, bảng mã.
 - Thông tin quản trị đọc được trong 3–5 giây: mọi màu cảnh báo có lý do bằng chữ; mọi tỷ lệ nguyên nhân hiện kèm độ phủ giải trình.

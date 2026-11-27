@@ -215,6 +215,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   Độ hot của ca: mọi dòng đã xong → Đã xong · có dòng rất hot → Rất hot · còn lại → Giảm hot. Mọi số đếm CEO (màn Ca tồn CEO, số đỏ menu, Bảng mã lỗi 2xx,
   API đọc `so_ca` / `dem.*.ca`, ô "Ca CEO đang theo dõi" ở màn Vi phạm — v0.101) tính theo ca; số vi phạm trên các ca chỉ là dòng phụ. Màn có tab **Đang theo dõi** (rất hot + giảm hot) và tab nhỏ **Đã xong**.
 - Trạng thái luôn gắn bước: Đơn PO / popup PO = luồng tiến trình; popup đơn hàng = giai đoạn hiện tại; LK đặt "Tình trạng đơn" có tiền tố bước.
+- Popup đơn hàng có cùng bộ thao tác dòng như menu ⋯ ở popup PO (v0.138): sửa SL đặt (`PATCH /eo/items/:id`, EO đã ban hành bắt buộc lý do; SL < tổng kế hoạch
+  → tự giảm kế hoạch từ đợt xa nhất), sửa mã / kho / NCC, thay mã tương đương, duyệt / từ chối dòng thêm sau ban hành, kết thúc sớm, hủy. Quyền theo `quyenEo`
+  (FE) ↔ `eoAccess.ts` (BE); `GET /theo-doi/dong/:id` trả thêm ghi chú, ID CRM, ID đặt hàng, trạng thái duyệt sau BH, mã gốc, trạng thái EO, người duyệt mua.
 - Luồng trao đổi NCC theo dòng: 3T thúc (mail gửi có CC hộp theo dõi, push, gọi/Zalo) ↔ NCC trả lời (mail NCC) ↔ cập nhật ngày DK.
 
 ## 9. Kết nối hệ khác

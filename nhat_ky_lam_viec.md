@@ -4,6 +4,20 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.138: Popup đơn hàng có lại đủ thao tác (Sửa SL đặt…) — nút "✎ Sửa đơn ▾"
+
+- Yêu cầu (nguyên văn): "phiên gần đây tôi có yêu cầu sửa UI chi tiết, nhưng AI đã làm mất hết các chức năng trên UI. ví dụ chức năng sửa lại số lượng đặt không thấy đâu cả. check lại toàn bộ"
+- Rà toàn bộ thay đổi giao diện v0.129 → v0.137: không thao tác nào bị xoá. v0.131 chỉ bỏ 3 tab trùng nhật ký (PO: Quy trình duyệt, Mail & push; đơn hàng: Trao đổi NCC) —
+  nội dung vẫn ở khu "Tiến độ · lịch sử" bên phải. Thiếu thật: popup **đơn hàng** không có Sửa SL đặt / ghi chú / ID CRM, Thay mã tương đương, Duyệt / Từ chối dòng thêm sau BH
+  (chỉ có trong nút ⋯ của dòng ở popup PO).
+- Đã làm: thêm nút **✎ Sửa đơn ▾** trên thanh công cụ popup đơn hàng (Sửa SL đặt / ghi chú / ID CRM · Sửa mã LK / kho / đối tác — chuyển từ nút cũ vào đây · Thay mã tương đương);
+  thêm Duyệt dòng / Từ chối dòng khi dòng thêm sau BH đang chờ. API `GET /theo-doi/dong/:id` trả thêm các trường cần cho form sửa và quyền.
+- 5W1H: Who — người tạo EO / KH cung ứng / Admin (sửa SL, thay mã), kế toán / NV đặt hàng (sửa mã-kho-NCC), người duyệt mua (duyệt dòng). When — đơn đang mở cần đổi SL,
+  ghi chú, ID CRM, nhập sai mã, NCC giao mã tương đương. Where — popup Đơn hàng (bấm mã LK ở bất kỳ đâu) › nút "✎ Sửa đơn ▾". What — mở đúng hộp sửa như ở popup PO,
+  lưu xong số liệu popup tự cập nhật. Why — mở chi tiết đơn không thấy nút sửa SL, phải quay về popup PO tìm nút ⋯. How — bấm "✎ Sửa đơn ▾" → chọn việc → nhập SL mới
+  + lý do (EO đã ban hành bắt buộc; SL nhỏ hơn tổng kế hoạch thì tick "Tự giảm kế hoạch") → Lưu. Không có quyền → mục đó không hiện.
+- Kiểm thử: typecheck xanh; chạy local, mở đơn SAC-TYPEC-25W → Sửa đơn ▾ → Sửa SL 100 → 90 + lý do → lưu được, kế hoạch tự giảm 50 → 40, popup cập nhật SL đặt 90.
+
 ## 27/11/2026 — v0.137: Hiện tên người duyệt chịu lỗi chậm duyệt ở Việc của tôi ④
 
 - Yêu cầu (nguyên văn): "sao tôi không lỗi người duyệt mua? Nguyễn Thị Phương Hoa" (dòng lỗi chỉ ghi "chậm duyệt (người duyệt)", không rõ ai chịu).

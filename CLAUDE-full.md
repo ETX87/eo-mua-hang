@@ -620,6 +620,17 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   `chonTc(k)` luôn đặt tiêu chí + chuyển `nong` (không bật / tắt). Menu cấp 2 đầu tiên `/dieu-hanh?tab=tong`.
 - v0.135: bỏ hàng chip tab trong Card bảng → `<select>` tab đầu `FilterBar`; `DataTable` prop `congCu` (nút / ⓘ cùng hàng ô tìm) — dùng ở DiemNong, BangNguoi.
 
+## Popup đơn hàng đủ thao tác dòng — nút "✎ Sửa đơn ▾" (v0.138, 27/11/2026)
+
+- Yêu cầu: "phiên gần đây tôi có yêu cầu sửa UI chi tiết, nhưng AI đã làm mất hết các chức năng trên UI. ví dụ chức năng sửa lại số lượng đặt không thấy đâu cả. check lại toàn bộ".
+- Rà v0.129 → v0.137: không thao tác nào bị xoá code — v0.131 chỉ bỏ 3 tab trùng nhật ký (PO: Quy trình duyệt, Mail & push; đơn hàng: Trao đổi NCC), nội dung vẫn ở khu
+  "Tiến độ · lịch sử" (sự kiện duyệt kèm ý kiến, push, mail gửi / nhận). Thiếu thật: popup **đơn hàng** (`DongQuickView`) chưa từng có Sửa SL đặt / Thay mã / Duyệt–Từ chối
+  dòng sau BH — các việc này chỉ nằm trong menu ⋯ của dòng ở bảng Linh kiện popup PO, nên mở đơn hàng thì không thấy.
+- Sửa: `DongQuickView` thêm `MenuXo` có chữ "✎ Sửa đơn ▾" (prop mới `nhan` của `MenuXo`) gồm QtyModal / SuaThongTinDongModal / ReplacePartModal; nút Duyệt dòng / Từ chối dòng
+  khi `post_issue_status = PENDING` và dòng chưa kết thúc. Quyền: `quyenEo` với `eo_trang_thai`, `final_approver_email` lấy từ `GET /theo-doi/dong/:id` (route thêm cột
+  `ghi_chu, crm_id, order_id, post_issue_status, part_code_goc, e.trang_thai eo_trang_thai, e.final_approver_email`). Lưu xong `invalidateQueries()` toàn bộ (SL đổi ảnh hưởng PO, danh sách, báo cáo).
+- Luật: popup đơn hàng và menu ⋯ dòng ở popup PO phải luôn cùng bộ thao tác — thêm thao tác dòng mới thì thêm ở CẢ HAI nơi.
+
 ## Lỗi R5 về đúng người duyệt ở Việc của tôi (v0.136, 27/11/2026)
 
 - Chủ hệ thống: "lỗi phê duyệt chậm thì là do người được yêu cầu phê duyệt giải trình. và tính lỗi cho người cần phê duyệt."

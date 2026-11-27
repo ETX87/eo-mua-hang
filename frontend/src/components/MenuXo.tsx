@@ -7,7 +7,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  */
 export interface MucMenu { l: ReactNode; icon?: ReactNode; onClick: () => void; title?: string; nguy?: boolean; an?: boolean; ngan?: boolean }
 
-export function MenuXo({ muc, title = "Thao tác" }: { muc: MucMenu[]; title?: string }) {
+/** nhan (v0.138): nut co chu (vd "✎ Sửa đơn ▾") thay cho "⋯" - dung o thanh cong cu popup. */
+export function MenuXo({ muc, title = "Thao tác", nhan }: { muc: MucMenu[]; title?: string; nhan?: ReactNode }) {
   const [mo, setMo] = useState<{ x: number; y: number; len: boolean } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const nut = useRef<HTMLButtonElement>(null);
@@ -30,8 +31,9 @@ export function MenuXo({ muc, title = "Thao tác" }: { muc: MucMenu[]; title?: s
   };
   return (
     <>
-      <button ref={nut} type="button" className="btn ghost sm" title={title} onClick={bat}
-        style={{ fontWeight: 900, letterSpacing: 1, minWidth: 30, background: mo ? "var(--panel-2)" : undefined }}>⋯</button>
+      {nhan ? <button ref={nut} type="button" className="btn sm" title={title} onClick={bat} style={{ background: mo ? "var(--panel-2)" : undefined }}>{nhan}</button>
+        : <button ref={nut} type="button" className="btn ghost sm" title={title} onClick={bat}
+        style={{ fontWeight: 900, letterSpacing: 1, minWidth: 30, background: mo ? "var(--panel-2)" : undefined }}>⋯</button>}
       {mo && (
         <div ref={ref} onClick={(e) => e.stopPropagation()}
           style={{ position: "fixed", left: mo.x, [mo.len ? "bottom" : "top"]: mo.len ? window.innerHeight - mo.y : mo.y, width: 260, background: "#fff",
