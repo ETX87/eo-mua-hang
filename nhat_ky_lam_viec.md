@@ -18,6 +18,22 @@
   + lý do (EO đã ban hành bắt buộc; SL nhỏ hơn tổng kế hoạch thì tick "Tự giảm kế hoạch") → Lưu. Không có quyền → mục đó không hiện.
 - Kiểm thử: typecheck xanh; chạy local, mở đơn SAC-TYPEC-25W → Sửa đơn ▾ → Sửa SL 100 → 90 + lý do → lưu được, kế hoạch tự giảm 50 → 40, popup cập nhật SL đặt 90.
 
+## 27/11/2026 — v0.138: Màn "Lỗi theo PO" — 1 màn trả lời PO nào, lỗi gì, ai lỗi, đối tác hay nội bộ
+
+- Yêu cầu (nguyên văn, nhận xét của Giám đốc): "Ko đạt. Lỗi đối tác vẫn ko thể dễ sử dụng 1 tí nào. 1/Thống kê theo đơn hàng --, 1s phải biết ngay mắc lỗi gì.
+  Lại đi tìm mỏi mắt, xong rồi vào mục nào để biết lỗi nào lỗi đối tác, lỗi nào lỗi nội bộ? 2/Thống kê.lọc theo mã lỗi => chúng ta cần làm mọi người đơn giản hóa đi,
+  hiện tại nó phức tạp quá. hãy xác định lại toàn bộ hệ thống => vấn đề cần quan tâm làm gì, tập trung nhữn gạch đầu dòng đó ra. PO đặt hàng - LK trong PO - các giai đoạn
+  của PO - Lỗi theo từng giai đoạn - Ai lỗi - là lỗi Nội bộ/đối tác - số lượng đặt, số lượng về, số lượng thiếu, tỷ lệ đáp ứng - ai vi phạm, vi phạm lỗi gì, bao nhiêu lần."
+- Nguyên nhân: thông tin lỗi nằm rải ở 6–7 nơi (Đơn PO › Lỗi đối tác / nội bộ, Vi phạm › theo bên / theo mã, Điều hành 8 tab), mỗi nơi đếm 1 kiểu (vi phạm gộp / dòng / PO).
+- Đã làm: API `GET /api/loi-po` + màn `/loi-po` (menu gốc ngay dưới Việc của tôi): 6 ô số · dải lỗi theo giai đoạn G1–G8 (đối tác cam / nội bộ tím) · 1 bộ lọc chọn nhiều
+  (bên, mã lỗi, giai đoạn, NCC, ai lỗi, trạng thái) · 4 cách xem PO / linh kiện / mã lỗi / ai lỗi · xuất Excel. Đếm theo số lần lỗi. Giao diện theo skill "giao-dien-apple".
+  Các màn cũ giữ nguyên (chưa gỡ).
+- 5W1H: Who — Giám đốc, quản lý, KH cung ứng (nhân viên chỉ thấy PO / lỗi của mình). When — xem tình hình lỗi bất kỳ lúc nào, họp giao ban.
+  Where — menu "Lỗi theo PO". What — mỗi PO 1 dòng: giai đoạn, thiếu, đáp ứng, lỗi đối tác / nội bộ, lỗi gì, ai lỗi, cần GT / vi phạm. Why — trước phải đi 6–7 màn mới biết.
+  How — nhìn 6 ô số; bấm "Lỗi đối tác" / "Lỗi nội bộ" hoặc 1 giai đoạn để lọc; đổi cách xem "Theo mã lỗi" / "Theo ai lỗi", bấm 1 dòng → các PO bị lỗi đó; bấm PO → popup chi tiết LK.
+- Kiểm thử: typecheck + build; local 1440px: bảng PO, theo mã lỗi, bấm mã 004 → còn 2 PO, ô số / dải giai đoạn tính lại; điện thoại 375px: ô số 2 cột, dải giai đoạn cuộn ngang; không lỗi console.
+- Còn dở: gỡ / gộp các màn trùng (Đơn PO › Lỗi đối tác / nội bộ, Vi phạm › Lỗi đối tác / nội bộ / theo mã) — chờ Giám đốc xem màn mới rồi chốt.
+
 ## 27/11/2026 — v0.137: Hiện tên người duyệt chịu lỗi chậm duyệt ở Việc của tôi ④
 
 - Yêu cầu (nguyên văn): "sao tôi không lỗi người duyệt mua? Nguyễn Thị Phương Hoa" (dòng lỗi chỉ ghi "chậm duyệt (người duyệt)", không rõ ai chịu).

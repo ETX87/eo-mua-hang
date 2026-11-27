@@ -125,6 +125,18 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Giai đoạn của 1 PO** (v0.132) = giai đoạn TỒN LÂU NHẤT = mốc sớm nhất trong quy trình còn dòng (vd 1 đơn giao bù G8 + 1 đơn thêm sau BH chờ duyệt G3 → PO tính G3).
   Dùng cho lọc cột Tiến trình và số đếm menu cấp 2 (`GET /api/eo/dem` `theo_moc[nhóm][giai đoạn]`, mỗi PO đếm 1 lần). Theo LK lọc theo giai đoạn riêng từng dòng.
 
+## 7c. Màn "Lỗi theo PO" (v0.138) — 1 màn trả lời: PO nào, lỗi gì, ai lỗi, đối tác hay nội bộ
+
+- Menu gốc **Lỗi theo PO** (`/loi-po`, ngay dưới Việc của tôi), API `GET /api/loi-po` (`routes/loiPo.ts`): danh sách phẳng dòng LK + từng LẦN lỗi; màn tự lọc / gom.
+- **Đếm theo số lần lỗi**: mỗi bản ghi `tl_loi` = 1 lần (khác màn Vi phạm đếm "vi phạm gộp"). Bỏ lỗi "vi phạm cũ" đã tự bỏ (AUTO:CU).
+- Mỗi lần lỗi có: mã ER.MH, **giai đoạn** của mã (buoc), **bên** (`benLoi`: đối tác / nội bộ), **ai lỗi** (bên đối tác = tên NCC, nội bộ = người phải giải trình — `ai_email`,
+  mặc định người đặt; R5 = người duyệt), **trạng thái**: Cần giải trình (còn hạn) · Vi phạm (hết hạn không giải trình) · Đã giải trình · Tự khắc phục.
+- 6 ô số trên cùng (tổng lần · đối tác · nội bộ · cần GT · vi phạm · tỷ lệ đáp ứng = về/đặt, mỗi dòng về tối đa bằng đặt) + dải "Lỗi theo giai đoạn" G1–G8
+  (cột cam đối tác, tím nội bộ); bấm ô / giai đoạn = lọc. Bộ lọc chọn nhiều: bên, mã lỗi, giai đoạn, NCC, người / NCC lỗi, trạng thái (lưu trên URL).
+- 4 cách xem cùng bộ lọc: **Theo PO** (mặc định; chỉ PO có lỗi, tick "Cả PO không lỗi" để xem hết; giai đoạn PO = giai đoạn tồn lâu nhất như 7b) ·
+  **Theo linh kiện** · **Theo mã lỗi** (số lần, số PO / LK, ai lỗi nhiều nhất) · **Theo ai lỗi** (người & NCC, lỗi gì × lần). Bấm mã / người → về Theo PO đã lọc.
+- Phạm vi xem như màn Vi phạm: người xem toàn bộ / chỉ xem → tất cả; còn lại PO mình đặt, lỗi của mình, kho mình phụ trách.
+
 ## 8. Báo cáo & tổng quan
 
 - 3 menu phụ dưới Tổng quan, mỗi menu 1 màn (v0.133 — bản gộp v0.130 tách lại vì chọn tab không đổi phần đầu trang): **Tổng quan** (`/`) = việc cần xử lý của bạn + bảng điều khiển

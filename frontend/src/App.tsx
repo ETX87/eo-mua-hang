@@ -10,6 +10,7 @@ import { NhacGiaiTrinhPopup, MoiBatDay } from "./components/NhacGiaiTrinhPopup";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DieuHanh = lazy(() => import("./pages/DieuHanh"));
 const CaCeo = lazy(() => import("./pages/CaCeo"));
+const LoiTheoPo = lazy(() => import("./pages/LoiTheoPo"));
 const ViecCuaToi = lazy(() => import("./pages/ViecCuaToi"));
 const BangMaLoi = lazy(() => import("./pages/BangMaLoi"));
 const EoList = lazy(() => import("./pages/eo/EoList"));
@@ -64,6 +65,7 @@ export default function App() {
         {/* v0.133: Dieu hanh tach lai thanh menu phu rieng (cap 2 = tab ?tab=) */}
         <Route path="/dieu-hanh" element={<DieuHanh />} />
         <Route path="/ca-ceo" element={<CaCeo />} />
+        <Route path="/loi-po" element={<LoiTheoPo />} />
         <Route path="/viec-cua-toi" element={<ViecCuaToi />} />
         <Route path="/ma-loi" element={<BangMaLoi />} />
         <Route path="/eo" element={<EoList />} />

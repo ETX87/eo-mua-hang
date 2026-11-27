@@ -40,6 +40,8 @@ const qtCua = (base: string, chi?: string[]): NavCap2[] =>
 export const NAV: NavItem[] = [
   // Viec cua toi (v0.104): nhan vien nhin 1 lan biet phai lam gi truoc han nao - backend routes/viecCuaToi.ts (so do = viecCanLam theo_doi)
   { to: "/viec-cua-toi", label: "Việc của tôi", icon: "check" },
+  // v0.138 (Giam doc 2026-11-27 "1s phai biet ngay mac loi gi, loi doi tac / noi bo, loc theo ma loi"): 1 man duy nhat - PO / LK / ma loi / ai loi
+  { to: "/loi-po", label: "Lỗi theo PO", icon: "trend" },
   // v0.133: Tong quan = 3 menu phu, moi menu 1 man rieng (chu he thong: "chon menu phu nhung bao cao khong thay doi -> tach rieng"):
   // Tong quan (viec cua ban + bang dieu khien + xu huong) · Dieu hanh (cap 2 = tab ?tab=, doi dung noi dung chinh) · Bao cao dat LK.
   { to: "/", label: "Tổng quan", icon: "home", children: [

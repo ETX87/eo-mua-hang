@@ -641,3 +641,14 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - Giải trình R5: `/theo-doi/giai-trinh` và `/vi-pham/giai-trinh-nhieu` ép `ai_ma = NGUOI_DUYET`, `ai_email` = của lỗi (cả `tl_giai_trinh` lẫn `tl_loi`).
 - FE `GiaiTrinhModal`: ẩn R5 không phải của mình (trừ Admin), R5 khoá Do ai + người cụ thể. `ViecCuaToi` mục ④: dòng chỉ R5 không có checkbox, "Giải trình cả nhóm" bỏ dòng chỉ R5.
 - v0.137: `giaiTrinhCuaToi` trả thêm `nguoi_duyet_r5` (LEFT JOIN users theo `ai_email` của R5, họ tên hoặc email); FE `loaiLoi()` hiện "chậm duyệt — lỗi của <tên>", Excel thêm cột.
+
+## Màn "Lỗi theo PO" (v0.138, 27/11/2026)
+
+- Giám đốc: "Ko đạt… 1s phải biết ngay mắc lỗi gì… lỗi đối tác / nội bộ… lọc theo mã lỗi… đơn giản hoá" (nguyên văn ở nhat_ky_lam_viec.md).
+- BE `routes/loiPo.ts` `GET /api/loi-po`: `dsLoiDayDu` (bỏ `tu_dong = CU`) + `layDongTheoDoi('tat_ca')` + `layGiaiDoan`. Trả `dong[]` gọn (i, e, po, lk, ncc, nguoi_dat, gd, dat, ve, thieu)
+  và `loi[]` gọn (ma, ten, gd = buoc, ben, ai, tt CHO/VI_PHAM/DA_GT/KHAC_PHUC, ngay). ai: bên NCC = "NCC · <doi_tac>", nội bộ = họ tên `nguoi_vp`.
+  Dòng có lỗi R5 ở PO chưa ban hành (ngoài theo dõi) dựng tối thiểu từ bản ghi lỗi (gd G3). Phạm vi = màn Vi phạm (`phamVi`).
+- FE `pages/LoiTheoPo.tsx`: lọc trên URL (`ben ma gd ncc ai tt xem het`, chọn nhiều nối "|"), gom phía FE. Giai đoạn PO = giai đoạn sớm nhất còn dòng.
+  Đáp ứng = Σ min(về, đặt) / Σ đặt. Kiểu Apple: KPI nền #f5f5f7 r16 không viền, segmented 4 cách xem, viên thuốc, cam = đối tác, tím = nội bộ, đỏ = vi phạm.
+- Menu: `nav.ts` mục gốc "Lỗi theo PO" (icon trend) ngay dưới Việc của tôi; route `/loi-po` trong `App.tsx`.
+
