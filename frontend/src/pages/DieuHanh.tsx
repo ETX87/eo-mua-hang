@@ -170,6 +170,11 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {!nhung && <PageHeader title="Điều hành mua hàng" />}
       <FilterBar>
+        {/* v0.135 (chu he thong "thu gon giao dien"): bo hang chip tab tren bang - chon bang o day / menu cap 2 */}
+        <select className="select tb" style={{ width: 230, fontWeight: 700 }} value={tab} onChange={(e) => setTab(e.target.value as Tab)} title="Bảng đang xem (cũng chọn được ở menu bên trái)">
+          {([["tong", "🧾 Kết luận & sức khoẻ"], ["bang", "📊 Trách nhiệm NCC / nội bộ"], ["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["po", `📦 Theo PO (${soLuong(theoPo.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
+            ["nn", "🧭 Nguyên nhân & xu hướng"], ["duyet", `⏳ Duyệt đang treo (${duyetPv.length})`]] as const).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
         <b style={{ fontSize: 13 }}>Phạm vi:</b>
         <S k="nguoi" w={210} ph="Mọi người phụ trách" o={opts(d.dong.map((x) => x.nguoi), (v) => ten(v))} />
         <S k="ncc" w={170} ph="Mọi NCC" o={opts(d.dong.map((x) => x.ncc))} />
@@ -219,13 +224,7 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
       </>}
 
       {/* 4. TAB CHI TIET - v0.134: chi hien khi chon 1 bang (menu cap 2), khong kem phan tong hop phia tren */}
-      {tab !== "tong" && <Card>
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-          {([["tong", "🧾 Kết luận & sức khoẻ"], ["bang", "📊 Trách nhiệm NCC / nội bộ"], ["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["po", `📦 Theo PO (${soLuong(theoPo.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
-            ["nn", "🧭 Nguyên nhân & xu hướng"], ["duyet", `⏳ Duyệt đang treo (${duyetPv.length})`]] as const).map(([k, l]) => (
-            <button key={k} className={`qv-chip ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>
-          ))}
-        </div>
+      {tab !== "tong" && <Card style={{ padding: 12 }}>
         {tab === "bang" && <BangTrachNhiem dong={dongPv} duyet={duyetPv} />}
         {tab === "nong" && <DiemNong rows={dongDs} dmTen={dmTen}
           empty={["G1", "G2", "G3"].includes(gdChon) ? `${gdChon} là PO chưa ban hành (chưa vào theo dõi hàng về) — người đang giữ xem ở khung giai đoạn phía trên, phiếu chờ duyệt ở tab ⏳ Duyệt đang treo.` : undefined} />}
@@ -354,13 +353,9 @@ function DiemNong({ rows, dmTen, empty }: { rows: Dong[]; dmTen: (loai: string, 
     { header: "Im lặng (ngày)", get: (r) => r.im_lang }, { header: "Bị nhắc", get: (r) => r.nhac },
   ], "diem_nong.xlsx", "Diem nong");
   return (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span className="muted" style={{ fontSize: 12 }}>Sắp theo mức độ ưu tiên (đỏ → vàng, cấp CEO, quá DK, lỗi chờ, im lặng, tồn). Bấm dòng → popup đơn hàng.</span>
-        <button className="btn sm" onClick={xuat} title="Xuất Excel danh sách đang lọc"><I.download width={14} height={14} /></button>
-      </div>
-      <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} pageSize={20} onRowClick={(r) => qv.openDong(r.id)} empty={empty ?? "Không có dòng nào khớp — tốt!"} />
-    </>
+    <DataTable cols={cols} rows={rows} keyOf={(r) => r.id} pageSize={20} onRowClick={(r) => qv.openDong(r.id)} empty={empty ?? "Không có dòng nào khớp — tốt!"}
+      congCu={<><button className="btn sm" style={{ padding: "0 9px" }} onClick={xuat} title="Xuất Excel danh sách đang lọc"><I.download width={14} height={14} /></button>
+        <span className="muted" style={{ cursor: "help" }} title="Sắp theo mức độ ưu tiên (đỏ → vàng, cấp CEO, quá DK, lỗi chờ, im lặng, tồn). Bấm dòng → popup đơn hàng.">ⓘ</span></>} />
   );
 }
 
@@ -412,13 +407,8 @@ function BangNguoi({ rows, quanLy, onNhac, onXem }: { rows: Nguoi[]; quanLy: boo
     { key: "act", header: "", render: (r) => quanLy && r.loi_cho > 0 && r.ai ? <button className="btn sm" title="Nhắc người này giải trình MỌI lỗi đang chờ (gửi thông báo + ghi nhận)" onClick={(e) => { e.stopPropagation(); onNhac(r.ai); }}><I.bell width={13} height={13} /> Nhắc</button> : null },
   ];
   return (
-    <>
-      <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
-        Người phụ trách = người lập PO (giữ dòng sau ban hành) hoặc người đang giữ phiếu duyệt. Lỗi do hệ thống <b>gán mặc định cho người lập PO</b> — nguyên nhân thật xem tab Nguyên nhân.
-        Bấm số → danh sách dòng của người đó.
-      </div>
-      <DataTable cols={cols} rows={rows} keyOf={(r) => r.ai} pageSize={20} onRowClick={(r) => onXem(r.ai, "")} />
-    </>
+    <DataTable cols={cols} rows={rows} keyOf={(r) => r.ai} pageSize={20} onRowClick={(r) => onXem(r.ai, "")}
+      congCu={<span className="muted" style={{ cursor: "help" }} title="Người phụ trách = người lập PO (giữ dòng sau ban hành) hoặc người đang giữ phiếu duyệt. Lỗi do hệ thống gán mặc định cho người lập PO — nguyên nhân thật xem tab Nguyên nhân. Bấm số → danh sách dòng của người đó.">ⓘ Cách tính người phụ trách</span>} />
   );
 }
 

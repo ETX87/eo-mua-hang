@@ -618,3 +618,4 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 
 - `DieuHanh` Tab thêm `tong` (mặc định, luôn ghi `?tab=` lên URL): khối Kết luận nhanh / ô sức khoẻ / `LuongGiaiDoan` chỉ render khi `tab === "tong"`; Card bảng chỉ khi khác `tong`.
   `chonTc(k)` luôn đặt tiêu chí + chuyển `nong` (không bật / tắt). Menu cấp 2 đầu tiên `/dieu-hanh?tab=tong`.
+- v0.135: bỏ hàng chip tab trong Card bảng → `<select>` tab đầu `FilterBar`; `DataTable` prop `congCu` (nút / ⓘ cùng hàng ô tìm) — dùng ở DiemNong, BangNguoi.

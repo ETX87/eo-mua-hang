@@ -4,6 +4,15 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.135: Thu gọn giao diện các bảng Điều hành
+
+- Yêu cầu (nguyên văn): "thu gọn giao diện" (màn Điều hành › Điểm nóng: thanh Phạm vi, hàng chip tab, dòng hướng dẫn, nút Excel, ô tìm mỗi thứ 1 hàng).
+- Đã làm: bỏ hàng chip tab trên bảng → ô chọn "Bảng" đặt đầu thanh Phạm vi (menu cấp 2 vẫn chọn được); dòng hướng dẫn chuyển vào ⓘ; nút Excel nằm cùng hàng ô tìm của bảng
+  (`DataTable` thêm prop `congCu`); khung bảng bớt lề. Còn 2 hàng trên bảng (Phạm vi · tìm / Excel).
+- 5W1H: Who — lãnh đạo, KH cung ứng. When — xem các bảng Điều hành. Where — Tổng quan › Điều hành. What — bảng lên gần đầu màn. Why — 5 hàng công cụ chiếm chỗ trước khi thấy dữ liệu.
+  How — đổi bảng ở ô chọn đầu thanh / menu cấp 2; rê chuột ⓘ xem cách sắp / cách tính.
+- Kiểm thử: typecheck + build; local Điểm nóng 1600×800: 2 hàng công cụ rồi tới bảng.
+
 ## 27/11/2026 — v0.134: Điều hành — phần tổng hợp thành menu cấp 2 riêng, các mục khác hiện thẳng bảng
 
 - Yêu cầu (nguyên văn): "mục đầu của điều hành tách menu phụ => các filter dưới sẽ bỏ đoạn đầu này và hiện luôn table liên quan đang filter".

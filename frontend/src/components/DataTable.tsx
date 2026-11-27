@@ -99,7 +99,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren, congCu,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -138,6 +138,8 @@ export function DataTable<T>({
   luuSoDong?: string;
   /** v0.117: hien them thanh cuon ngang o TREN dau bang (khong can khungCao) - bang rong, khong phai cuon xuong cuoi moi keo ngang duoc. */
   thanhTren?: boolean;
+  /** v0.135: nut / chu thich dat CUNG HANG o tim cua bang (ben trai) - khoi them 1 hang rieng tren bang */
+  congCu?: ReactNode;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const tren = useRef<HTMLDivElement>(null);
@@ -231,8 +233,9 @@ export function DataTable<T>({
 
   return (
     <>
-      {(coTim || soLoc > 0 || nhom) && (
+      {(coTim || soLoc > 0 || nhom || congCu) && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+          {congCu && <span style={{ display: "inline-flex", gap: 6, alignItems: "center", marginRight: soLoc > 0 || nhom ? undefined : "auto" }}>{congCu}</span>}
           {soLoc > 0 && (
             <span style={{ fontSize: 12, display: "inline-flex", gap: 6, alignItems: "center", marginRight: "auto" }}>
               <I.filter width={13} height={13} style={{ color: "var(--link-amber)" }} />
