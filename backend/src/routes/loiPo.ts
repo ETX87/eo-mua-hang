@@ -17,6 +17,32 @@ import { layGiaiDoan } from "../lib/giaiDoan";
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
+/** Pham vi xem (giong man Vi pham): xem toan bo / chi xem -> tat ca; con lai dong minh dat, loi cua minh, kho minh phu trach. */
+function phamViXem(u: AppVariables["user"]) {
+  const tatCa = xemToanBoTheoDoi(u) || isViewOnly(u);
+  const khoCua = (u.khu_vuc_kho ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  const thay = (nguoiDat: string | null, nguoiVp: string | null, kho: string) =>
+    tatCa || nguoiDat === u.email || nguoiVp === u.email || (u.vai_tro === "Kho" && (khoCua.length === 0 || khoCua.includes(kho)));
+  return { tatCa, thay };
+}
+const ttLoi = (l: any) => (l.vi_pham ? "VI_PHAM" : l.trang_thai === "CHO_GIAI_TRINH" ? "CHO" : l.tu_dong ? "KHAC_PHUC" : "DA_GT");
+
+/**
+ * GET /dem (v0.142, chu he thong 2026-11-27 "loi theo PO cung chia theo cac menu phu"): so LAN loi cho so dem menu phu / cap 2 (FE lib/nav.ts khoa "loi:...").
+ * Khoa: "" tong · NCC / NOI_BO · CHO / VI_PHAM · "gd|G5" · "NCC|ER.MH-004" / "NOI_BO|ER.MH-003". Cung pham vi + cung bo "vi pham cu" (AUTO:CU) voi GET /.
+ */
+app.get("/dem", async (c) => {
+  const { thay } = phamViXem(c.get("user"));
+  const { rows } = await dsLoiDayDu(c.env);
+  const out: Record<string, number> = {};
+  const cong = (k: string) => { out[k] = (out[k] ?? 0) + 1; };
+  for (const l of rows) {
+    if (l.tu_dong === "CU" || !thay(l.nguoi_dat, l.nguoi_vp, l.kho)) continue;
+    cong(""); cong(l.ben); cong(ttLoi(l)); if (l.buoc) cong(`gd|${l.buoc}`); cong(`${l.ben}|${l.ma_loi}`);
+  }
+  return c.json(out);
+});
+
 app.get("/", async (c) => {
   const u = c.get("user");
   await danhGiaQuyTac(c.env).catch((e) => console.error("danhGiaQuyTac", e));
@@ -24,15 +50,12 @@ app.get("/", async (c) => {
     dsLoiDayDu(c.env), layDongTheoDoi(c.env, "tat_ca"), layGiaiDoan(c.env),
     c.env.DB.prepare("SELECT email, ho_ten FROM users").all<{ email: string; ho_ten: string }>(),
   ]);
-  const tatCa = xemToanBoTheoDoi(u) || isViewOnly(u);
-  const khoCua = (u.khu_vuc_kho ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-  const thay = (nguoiDat: string | null, nguoiVp: string | null, kho: string) =>
-    tatCa || nguoiDat === u.email || nguoiVp === u.email || (u.vai_tro === "Kho" && (khoCua.length === 0 || khoCua.includes(kho)));
+  const { tatCa, thay } = phamViXem(u);
   const tenBy = new Map(users.results.map((x) => [x.email.toLowerCase(), x.ho_ten || x.email]));
   const ten = (e: string | null) => (e ? tenBy.get(e.toLowerCase()) ?? e : "");
 
   const loi = loiAll.filter((l) => l.tu_dong !== "CU" && thay(l.nguoi_dat, l.nguoi_vp, l.kho)).map((l) => {
-    const tt = l.vi_pham ? "VI_PHAM" : l.trang_thai === "CHO_GIAI_TRINH" ? "CHO" : l.tu_dong ? "KHAC_PHUC" : "DA_GT";
+    const tt = ttLoi(l);
     return {
       id: l.id as number, i: l.eo_item_id as number, e: l.eo_id as number, ma: l.ma_loi as string, ten: l.ten_ma as string, gd: (l.buoc as string | null) ?? "",
       ben: l.ben as "NCC" | "NOI_BO",

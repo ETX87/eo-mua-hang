@@ -252,7 +252,7 @@ export default function LoiTheoPo() {
               <input type="checkbox" checked={hetPo} onChange={(e) => dat("het", e.target.checked ? "1" : null)} /> Cả PO không lỗi</label>
           )}
           <div style={{ flex: 1 }} />
-          <button className="btn sm" style={{ padding: "0 9px" }} onClick={() => qc.invalidateQueries({ queryKey: ["loi-po"] })} title="Tải lại"><I.refresh width={13} height={13} /></button>
+          <button className="btn sm" style={{ padding: "0 9px" }} onClick={() => (qc.invalidateQueries({ queryKey: ["loi-po"] }), qc.invalidateQueries({ queryKey: ["loi-po-dem"] }))} title="Tải lại"><I.refresh width={13} height={13} /></button>
           <button className="btn sm" style={{ padding: "0 9px" }} onClick={xuat} title="Xuất Excel bảng đang xem"><I.download width={14} height={14} /></button>
         </FilterBar>
         <div className="muted" style={{ fontSize: 12, margin: "2px 0 6px" }}>
@@ -277,7 +277,7 @@ export default function LoiTheoPo() {
       {moPo != null && <PopupPo e={moPo} dong={d.dong} loi={d.loi} tenMa={tenMa} hep={hep} onClose={() => setMoPo(null)}
         onDayDu={() => { const e = moPo; setMoPo(null); qv.openEo(e, { loi: true }); }} onGiaiTrinh={(ds) => setGt(ds)} />}
       {gt && <GiaiTrinhDongModal dongs={gt.map((x) => ({ item_id: x.i, eo_id: x.e, ma_po: x.po, part_code: x.lk, part_name: x.ten_lk }))}
-        onClose={() => setGt(null)} onSaved={() => { setGt(null); qc.invalidateQueries({ queryKey: ["loi-po"] }); }} />}
+        onClose={() => setGt(null)} onSaved={() => { setGt(null); (qc.invalidateQueries({ queryKey: ["loi-po"] }), qc.invalidateQueries({ queryKey: ["loi-po-dem"] })); }} />}
     </div>
   );
 }

@@ -666,4 +666,6 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - v0.141: **Bẫy `backdrop-filter`**: phần tử có backdrop-filter / transform / filter là "khung chứa" của con `position: fixed` → menu / hộp nổi phải render qua `createPortal(document.body)`
   (đã làm cho `MenuXo`, hộp lọc cột `DataTable`). Thêm popup nổi mới bên trong popup PO / thanh trên → dùng portal.
   `QuickView.openEo(id, { loi: true })` → `EoQuickView` prop `locLoi` (lọc sẵn LK có lỗi).
+- v0.142: menu "Lỗi theo PO" 3 cấp (`nav.ts` GD_LOI / MA_LOI_MENU / maLoiCua); số đếm `GET /api/loi-po/dem` (khoá "" / NCC / NOI_BO / CHO / VI_PHAM / "gd|G5" / "NCC|ER.MH-004"),
+  AppShell `demCua` đọc khoá "loi:…" từ query `loi-po-dem`. Thêm mã lỗi ghi tay mới → bổ sung MA_LOI_MENU.
 

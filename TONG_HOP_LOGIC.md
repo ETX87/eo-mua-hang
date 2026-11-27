@@ -129,6 +129,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 ## 7c. Màn "Lỗi theo PO" (v0.138) — 1 màn trả lời: PO nào, lỗi gì, ai lỗi, đối tác hay nội bộ
 
 - Menu gốc **Lỗi theo PO** (`/loi-po`, ngay dưới Việc của tôi), API `GET /api/loi-po` (`routes/loiPo.ts`): danh sách phẳng dòng LK + từng LẦN lỗi; màn tự lọc / gom.
+- **Menu phụ** (v0.142): Theo PO (cấp 2 = giai đoạn phát sinh lỗi G1–G8) · Theo linh kiện · Theo mã lỗi · Theo ai lỗi · Lỗi đối tác (cấp 2 = mã lỗi bên NCC) ·
+  Lỗi nội bộ (cấp 2 = mã lỗi bên nội bộ) · Cần giải trình · Vi phạm (hết hạn). Bấm = `/loi-po?xem|ben|ma|gd|tt=…` (màn tự lọc theo URL). Số cạnh menu = số LẦN lỗi
+  (`GET /api/loi-po/dem`, cùng phạm vi xem); cấp 2 bằng 0 thì ẩn.
 - **Đếm theo số lần lỗi**: mỗi bản ghi `tl_loi` = 1 lần (khác màn Vi phạm đếm "vi phạm gộp"). Bỏ lỗi "vi phạm cũ" đã tự bỏ (AUTO:CU).
 - Mỗi lần lỗi có: mã ER.MH, **giai đoạn** của mã (buoc), **bên** (`benLoi`: đối tác / nội bộ), **ai lỗi** (bên đối tác = tên NCC, nội bộ = người phải giải trình — `ai_email`,
   mặc định người đặt; R5 = người duyệt), **trạng thái**: Cần giải trình (còn hạn) · Vi phạm (hết hạn không giải trình) · Đã giải trình · Tự khắc phục.

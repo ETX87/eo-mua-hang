@@ -4,6 +4,15 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.142: Menu "Lỗi theo PO" chia menu phụ + cấp 2
+
+- Yêu cầu (nguyên văn): "lỗi theo PO cũng chia theo các menu phụ".
+- Đã làm: `nav.ts` menu gốc Lỗi theo PO có 8 menu phụ — Theo PO (cấp 2 G1–G8) · Theo linh kiện · Theo mã lỗi · Theo ai lỗi · Lỗi đối tác (cấp 2 mã 001/002/003/004/101–103…) ·
+  Lỗi nội bộ (cấp 2 mã 003/005/102/104…) · Cần giải trình · Vi phạm; API `GET /api/loi-po/dem` đếm số lần lỗi cho menu (AppShell khoá "loi:…"); cấp 2 = 0 lần thì ẩn.
+- 5W1H: Who — Giám đốc, quản lý, KH cung ứng. When — xem lỗi theo nhóm. Where — menu bên › Lỗi theo PO › menu phụ / cấp 2. What — bấm menu là màn đã lọc sẵn, số đếm cạnh menu.
+  Why — đồng bộ cách dùng với Đơn PO / Vi phạm (menu 3 cấp, bấm là lọc). How — bấm "Lỗi đối tác" → bấm "004 · Quá ngày DK" → bảng PO chỉ còn PO dính lỗi 004; bấm lại cấp 2 để bỏ lọc.
+- Kiểm thử: typecheck backend + frontend; local: /loi-po/dem khớp màn (29 / 16 / 13); Lỗi đối tác → 004 = 6 lần / 2 PO, menu sáng 2 cấp; Theo mã lỗi sáng 1 mục; Theo PO › G6 = 14 lần.
+
 ## 27/11/2026 — v0.141: Sửa nút thao tác popup PO không hiện + lọc sẵn LK có lỗi + dọn nốt giao diện Apple
 
 - Yêu cầu (nguyên văn): "1. fix nốt các vấn đền còn sót 2. các nút thao tác trong UI chi tiết PO ấn vào không hiện nút nào" · "3. danh sách lỗi, ấn vào sẽ filter sẵn các lk có lỗi trong PO đó".

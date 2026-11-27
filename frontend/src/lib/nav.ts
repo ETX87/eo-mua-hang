@@ -37,11 +37,33 @@ const QT_VP: [string, string][] = [["R5", "G2–G3 · Chậm duyệt"], ["R3", "
 const qtCua = (base: string, chi?: string[]): NavCap2[] =>
   QT_VP.filter(([k]) => !chi || chi.includes(k)).map(([k, l]) => ({ to: `${base}${base.includes("?") ? "&" : "?"}qt=${k}`, label: l }));
 
+/** Cap 2 "Lỗi theo PO": giai doan phat sinh loi (gd = buoc cua ma loi) + ma loi theo ben chiu (an khi = 0 lan). */
+const GD_LOI: NavCap2[] = [["G1", "Lập EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua"], ["G4", "Gửi / thúc NCC"], ["G5", "Chờ ngày DK"], ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù"]]
+  .map(([k, l]) => ({ to: `/loi-po?gd=${k}`, label: `${k} · ${l}`, dem: `loi:gd|${k}`, anRong: true }));
+const MA_LOI_MENU: [string, string][] = [
+  ["ER.MH-001", "001 · Chưa có ngày DK (8h)"], ["ER.MH-002", "002 · Chưa có ngày DK (16h)"], ["ER.MH-003", "003 · Không thúc NCC"],
+  ["ER.MH-004", "004 · Quá ngày DK"], ["ER.MH-005", "005 · Chậm duyệt"], ["ER.MH-101", "101 · NCC không phản hồi"], ["ER.MH-102", "102 · NCC báo trễ"],
+  ["ER.MH-103", "103 · NCC hết hàng"], ["ER.MH-104", "104 · Đặt sai"], ["ER.MH-105", "105 · Chậm duyệt (ghi tay)"], ["ER.MH-199", "199 · Lỗi khác"],
+];
+const maLoiCua = (ben: "NCC" | "NOI_BO"): NavCap2[] =>
+  MA_LOI_MENU.map(([ma, l]) => ({ to: `/loi-po?ben=${ben}&ma=${ma}`, label: l, dem: `loi:${ben}|${ma}`, anRong: true }));
+
 export const NAV: NavItem[] = [
   // Viec cua toi (v0.104): nhan vien nhin 1 lan biet phai lam gi truoc han nao - backend routes/viecCuaToi.ts (so do = viecCanLam theo_doi)
   { to: "/viec-cua-toi", label: "Việc của tôi", icon: "check" },
   // v0.138 (Giam doc 2026-11-27 "1s phai biet ngay mac loi gi, loi doi tac / noi bo, loc theo ma loi"): 1 man duy nhat - PO / LK / ma loi / ai loi
-  { to: "/loi-po", label: "Lỗi theo PO", icon: "trend" },
+  // v0.142 (chu he thong 2026-11-27 "loi theo PO cung chia theo cac menu phu"): menu phu = cach xem / nhom loi, cap 2 = giai doan / ma loi.
+  // So dem = so LAN loi (GET /api/loi-po/dem, khoa "loi:..." - AppShell demCua). Bam = /loi-po?... (man tu loc theo URL).
+  { to: "/loi-po", label: "Lỗi theo PO", icon: "trend", children: [
+    { to: "/loi-po", label: "Theo PO", icon: "clipboard", dem: "loi:", con: GD_LOI },
+    { to: "/loi-po?xem=lk", label: "Theo linh kiện", icon: "list" },
+    { to: "/loi-po?xem=ma", label: "Theo mã lỗi", icon: "tag" },
+    { to: "/loi-po?xem=ai", label: "Theo ai lỗi", icon: "users" },
+    { to: "/loi-po?ben=NCC", label: "Lỗi đối tác", icon: "user", dem: "loi:NCC", con: maLoiCua("NCC") },
+    { to: "/loi-po?ben=NOI_BO", label: "Lỗi nội bộ", icon: "home", dem: "loi:NOI_BO", con: maLoiCua("NOI_BO") },
+    { to: "/loi-po?tt=CHO", label: "Cần giải trình", icon: "edit", dem: "loi:CHO", demDo: true },
+    { to: "/loi-po?tt=VI_PHAM", label: "Vi phạm (hết hạn)", icon: "x", dem: "loi:VI_PHAM" },
+  ] },
   // v0.133: Tong quan = 3 menu phu, moi menu 1 man rieng (chu he thong: "chon menu phu nhung bao cao khong thay doi -> tach rieng"):
   // Tong quan (viec cua ban + bang dieu khien + xu huong) · Dieu hanh (cap 2 = tab ?tab=, doi dung noi dung chinh) · Bao cao dat LK.
   { to: "/", label: "Tổng quan", icon: "home", children: [

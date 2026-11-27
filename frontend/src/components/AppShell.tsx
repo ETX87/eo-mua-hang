@@ -197,7 +197,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   // so dem menu phu Don PO: GET /eo/dem (dung chung cache voi man Don PO) - "chip" = so PO nhom; "chip:moc" = so PO cua nhom o giai doan
   const demQ = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, any>>("/eo/dem"), enabled: me.data?.trang_thai_duyet === "Da duyet",
     staleTime: 60_000, refetchInterval: 180_000, refetchIntervalInBackground: false });
+  // v0.142: so LAN loi cho menu "Lỗi theo PO" (khoa "loi:<...>") - GET /loi-po/dem
+  const loiDemQ = useQuery({ queryKey: ["loi-po-dem"], queryFn: () => api.get<Record<string, number>>("/loi-po/dem"), enabled: me.data?.trang_thai_duyet === "Da duyet",
+    staleTime: 60_000, refetchInterval: 180_000, refetchIntervalInBackground: false });
   const demCua = (k?: string): number | null => {
+    if (k?.startsWith("loi:")) return loiDemQ.data ? loiDemQ.data[k.slice(4)] ?? 0 : null;
     if (!k || !demQ.data) return null;
     const [chip, moc] = k.split(":");
     return moc ? demQ.data.theo_moc?.[chip]?.[moc] ?? 0 : typeof demQ.data[chip] === "number" ? demQ.data[chip] : null;
