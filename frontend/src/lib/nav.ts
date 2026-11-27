@@ -45,7 +45,7 @@ export const NAV: NavItem[] = [
   { to: "/", label: "Tổng quan", icon: "home", children: [
     { to: "/", label: "Tổng quan", icon: "home" },
     { to: "/dieu-hanh", label: "Điều hành", icon: "trend", con: [
-      { to: "/dieu-hanh?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/dieu-hanh?tab=nong", label: "Điểm nóng" },
+      { to: "/dieu-hanh?tab=tong", label: "Kết luận & sức khoẻ" }, { to: "/dieu-hanh?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/dieu-hanh?tab=nong", label: "Điểm nóng" },
       { to: "/dieu-hanh?tab=po", label: "Theo PO" }, { to: "/dieu-hanh?tab=nguoi", label: "Theo người" }, { to: "/dieu-hanh?tab=ncc", label: "Theo NCC" },
       { to: "/dieu-hanh?tab=nn", label: "Nguyên nhân & xu hướng" }, { to: "/dieu-hanh?tab=duyet", label: "Duyệt đang treo" },
     ] },

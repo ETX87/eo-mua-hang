@@ -613,3 +613,8 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 
 - Bản gộp v0.130 bị chủ hệ thống phản hồi "chọn menu phụ nhưng báo cáo không thay đổi" → nguyên tắc: **menu phụ / cấp 2 phải đổi nội dung CHÍNH của màn**; không đặt cấp 2 cho
   phần nằm dưới cùng của 1 trang dài. `/` = `ViecCanXuLy` + `QuanLyPanel` + `XuHuongEo` (`/?tab=` → `Navigate /dieu-hanh?tab=`); `/dieu-hanh` = `DieuHanh` (bỏ tab `xu_huong`).
+
+## Điều hành: tab "tong" (v0.134, 27/11/2026)
+
+- `DieuHanh` Tab thêm `tong` (mặc định, luôn ghi `?tab=` lên URL): khối Kết luận nhanh / ô sức khoẻ / `LuongGiaiDoan` chỉ render khi `tab === "tong"`; Card bảng chỉ khi khác `tong`.
+  `chonTc(k)` luôn đặt tiêu chí + chuyển `nong` (không bật / tắt). Menu cấp 2 đầu tiên `/dieu-hanh?tab=tong`.

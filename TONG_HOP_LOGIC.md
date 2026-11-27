@@ -126,7 +126,7 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 ## 8. Báo cáo & tổng quan
 
 - 3 menu phụ dưới Tổng quan, mỗi menu 1 màn (v0.133 — bản gộp v0.130 tách lại vì chọn tab không đổi phần đầu trang): **Tổng quan** (`/`) = việc cần xử lý của bạn + bảng điều khiển
-  (tỷ lệ đáp ứng, tồn theo mốc, giai đoạn) + xu hướng EO; **Điều hành** (`/dieu-hanh`, cấp 2 = tab Trách nhiệm / Điểm nóng / Theo PO / người / NCC / Nguyên nhân / Duyệt treo);
+  (tỷ lệ đáp ứng, tồn theo mốc, giai đoạn) + xu hướng EO; **Điều hành** (`/dieu-hanh`, cấp 2 = Kết luận & sức khoẻ (mặc định: kết luận nhanh, ô số, luồng giai đoạn) + các bảng — v0.134 mỗi bảng 1 màn không kèm phần tổng hợp: Trách nhiệm / Điểm nóng / Theo PO / người / NCC / Nguyên nhân / Duyệt treo);
   **Báo cáo đặt LK** = số liệu theo kỳ của dòng linh kiện. Link `/?tab=` cũ chuyển sang `/dieu-hanh?tab=`.
 
 - 4 báo cáo (tiến độ 0.1 là nguồn chung), báo cáo giai đoạn. Tổng quan: tỷ lệ đáp ứng tuần / tháng = Σmin(về, đặt) / Σđặt,

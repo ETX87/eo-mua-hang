@@ -4,6 +4,15 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.134: Điều hành — phần tổng hợp thành menu cấp 2 riêng, các mục khác hiện thẳng bảng
+
+- Yêu cầu (nguyên văn): "mục đầu của điều hành tách menu phụ => các filter dưới sẽ bỏ đoạn đầu này và hiện luôn table liên quan đang filter".
+- Đã làm: cấp 2 mới **Kết luận & sức khoẻ** (`/dieu-hanh?tab=tong`, mặc định khi mở Điều hành) = Kết luận nhanh + ô số + luồng giai đoạn. 7 cấp 2 còn lại (Trách nhiệm, Điểm nóng,
+  Theo PO / người / NCC, Nguyên nhân, Duyệt treo) chỉ còn thanh Phạm vi + bảng. Bấm ô số / câu kết luận / mốc giai đoạn → mở thẳng bảng tương ứng đã lọc (chip lọc hiện trên thanh Phạm vi).
+- 5W1H: Who — lãnh đạo, KH cung ứng. When — xem điều hành. Where — Tổng quan › Điều hành › cấp 2. What — tổng hợp 1 màn, mỗi bảng 1 màn. Why — trước mỗi tab vẫn phải cuộn qua
+  phần tổng hợp mới tới bảng. How — mở Kết luận & sức khoẻ, bấm ô / câu cần xem → bảng đã lọc; đổi bảng ở menu cấp 2 hoặc hàng chip trên bảng.
+- Kiểm thử: typecheck; local `/dieu-hanh?tab=po` không còn Kết luận nhanh, có 1 bảng; `/dieu-hanh` hiện tổng hợp; bấm "Mức ĐỎ" → `?tab=nong` lọc "Mức ĐỎ", menu sáng Điểm nóng.
+
 ## 27/11/2026 — v0.133: Tách lại Tổng quan / Điều hành thành 2 menu phụ
 
 - Yêu cầu (nguyên văn): "chọn menu phụ nhưng báo cáo không thay đổi, nếu không thay đổi thì tách báo cáo không liên quan riêng ra menu phụ riêng".
