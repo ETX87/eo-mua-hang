@@ -136,6 +136,11 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - 4 cách xem cùng bộ lọc: **Theo PO** (mặc định; chỉ PO có lỗi, tick "Cả PO không lỗi" để xem hết; giai đoạn PO = giai đoạn tồn lâu nhất như 7b) ·
   **Theo linh kiện** · **Theo mã lỗi** (số lần, số PO / LK, ai lỗi nhiều nhất) · **Theo ai lỗi** (người & NCC, lỗi gì × lần). Bấm mã / người → về Theo PO đã lọc.
 - Phạm vi xem như màn Vi phạm: người xem toàn bộ / chỉ xem → tất cả; còn lại PO mình đặt, lỗi của mình, kho mình phụ trách.
+- **Bấm 1 PO / linh kiện** (v0.139, theo demo Giám đốc duyệt) → popup chi tiết PO: luồng ngang G1–G8 (đã qua xanh lá ✓, đang ở cam nhấp nháy, giai đoạn có lỗi
+  chấm đỏ "!" + số lỗi) · 6 ô số (đặt / về / thiếu / đáp ứng / lỗi đối tác / lỗi nội bộ) · bảng từng linh kiện (lỗi gì, ai lỗi) · "▾ Xem chi tiết" = nhật ký từng lần lỗi.
+  Nút: "Mở PO đầy đủ" (popup PO cũ) · "✍ Giải trình lỗi của PO" (chỉ khi còn lỗi cần GT / vi phạm; giải trình chung các dòng có lỗi — lỗi chậm duyệt vẫn do người duyệt tự giải trình).
+  Popup dùng toàn bộ dòng / lỗi của PO, không theo bộ lọc đang chọn.
+- **Điện thoại (< 980px)**: bảng thành thẻ (30 thẻ / lần + "Xem thêm"), popup thành bottom-sheet trượt từ đáy.
 
 ## 8. Báo cáo & tổng quan
 

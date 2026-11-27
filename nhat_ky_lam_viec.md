@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.139: "Lỗi theo PO" theo demo đã duyệt — popup PO luồng ngang + thẻ trên điện thoại
+
+- Yêu cầu (nguyên văn): "tạo 1 fiel html giao diện để tôi đánh giá trước" → đã tạo demo `../demo-loi-theo-po.html` (ngoài repo, dữ liệu giả lập) → "Giữ như demo".
+- Đã làm: bấm PO / linh kiện ở màn Lỗi theo PO mở popup mới (`pages/loiPo/PopupPo.tsx`): luồng ngang G1–G8, 6 ô số, bảng linh kiện, "▾ Xem chi tiết" nhật ký,
+  nút "Mở PO đầy đủ" + "✍ Giải trình lỗi của PO" (GiaiTrinhDongModal). Điện thoại: bảng → thẻ, popup → bottom-sheet. Hằng số / component nhỏ tách ra `lib/loiPo.tsx`.
+- 5W1H: Who — Giám đốc, quản lý, KH cung ứng. When — xem 1 PO cụ thể từ màn Lỗi theo PO. Where — menu Lỗi theo PO › bấm 1 dòng (web + điện thoại).
+  What — 1 popup nhìn ngay PO đang ở giai đoạn nào, lỗi ở giai đoạn nào, từng linh kiện lỗi gì / ai lỗi; giải trình ngay tại đó. Why — Giám đốc duyệt bản demo, popup PO cũ nhiều tab khó đọc.
+  How — bấm 1 PO → xem luồng ngang (đỏ "!" = giai đoạn có lỗi) → "▾ Xem chi tiết" xem nhật ký → "✍ Giải trình lỗi của PO" (nếu còn lỗi chờ) hoặc "Mở PO đầy đủ".
+- Kiểm thử: typecheck + build; local 1440px: mở popup 3TDO-000001, xổ nhật ký, mở form giải trình chung (đè lên popup), đóng; 375px: thẻ, bottom-sheet, không tràn ngang.
+
 ## 27/11/2026 — v0.138: Popup đơn hàng có lại đủ thao tác (Sửa SL đặt…) — nút "✎ Sửa đơn ▾"
 
 - Yêu cầu (nguyên văn): "phiên gần đây tôi có yêu cầu sửa UI chi tiết, nhưng AI đã làm mất hết các chức năng trên UI. ví dụ chức năng sửa lại số lượng đặt không thấy đâu cả. check lại toàn bộ"

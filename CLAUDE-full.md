@@ -651,4 +651,7 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - FE `pages/LoiTheoPo.tsx`: lọc trên URL (`ben ma gd ncc ai tt xem het`, chọn nhiều nối "|"), gom phía FE. Giai đoạn PO = giai đoạn sớm nhất còn dòng.
   Đáp ứng = Σ min(về, đặt) / Σ đặt. Kiểu Apple: KPI nền #f5f5f7 r16 không viền, segmented 4 cách xem, viên thuốc, cam = đối tác, tím = nội bộ, đỏ = vi phạm.
 - Menu: `nav.ts` mục gốc "Lỗi theo PO" (icon trend) ngay dưới Việc của tôi; route `/loi-po` trong `App.tsx`.
+- v0.139 (Giám đốc duyệt demo `../demo-loi-theo-po.html`: "Giữ như demo"): `pages/loiPo/PopupPo.tsx` — `PopupPo` (popup chi tiết PO, z theo `useLop`, Esc đóng lớp trên cùng),
+  `DsThe` (thẻ thay bảng), `useHep` (matchMedia < 980px). Hằng số + `ChipMa` / `SoBen` / `DapUng` / `gdSomNhat` chuyển sang `lib/loiPo.tsx`.
+  Lưu ý: `theme.css` có luật mobile ép `grid-template-columns` inline về 1 cột (`!important`) → khối 2 cột trên điện thoại dùng flex-wrap, không dùng grid.
 

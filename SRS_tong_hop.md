@@ -18,6 +18,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 - **Lỗi theo PO** (v0.138, Giám đốc 27/11/2026 "1s phải biết ngay mắc lỗi gì… lỗi đối tác / nội bộ… lọc theo mã lỗi… đơn giản hoá"): 1 màn duy nhất,
   mỗi PO 1 dòng: giai đoạn · thiếu · đáp ứng (về / đặt) · số lần lỗi đối tác · nội bộ · lỗi gì (mã × lần) · ai lỗi (× lần) · cần GT / vi phạm. 4 cách xem
   (PO / linh kiện / mã lỗi / ai lỗi), lọc chọn nhiều, xuất Excel từng cách xem. Giao diện theo chuẩn "kiểu Apple".
+  Bấm 1 PO → popup luồng ngang G1–G8 + ô số + linh kiện + "▾ Xem chi tiết" nhật ký + giải trình (v0.139). Điện thoại: thẻ + bottom-sheet.
 - **Menu 3 cấp** (v0.129): menu gốc xổ / thu; menu phụ cấp 1 = nhóm / cách xem; cấp 2 = giai đoạn PO (G1…G8, Đủ hàng, Từ chối, Hủy — chỉ giai đoạn có PO),
   giai đoạn LK, mã CEO, tab Điều hành, bước / loại lỗi vi phạm. Bấm menu phụ hoặc cấp 2 → danh sách tự lọc theo lựa chọn đó; bấm lại cấp 2 đang chọn = bỏ lọc.
   Menu phụ Đơn PO có số PO cạnh tên (đỏ = việc cần làm).

@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
@@ -9,65 +9,16 @@ import { useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong } from "../lib/format";
 import { exportRowsToXlsx, type ExportCol } from "../lib/exportXlsx";
+import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
+import { BEN, ChipMa, DapUng, GD, GD_TEN, SO, SoBen, THU_TU_GD, TT, dem, pt, soMa, topTxt, type Data, type Dong, type Loi } from "../lib/loiPo";
+import { DsThe, PopupPo, useHep } from "./loiPo/PopupPo";
 
 /**
  * MAN "LỖI THEO PO" (v0.138) - Giam doc 2026-11-27: "1s phai biet ngay mac loi gi ... loi doi tac / noi bo ... loc theo ma loi ... don gian hoa".
  * 1 man, 1 bo loc, 4 cach xem: Theo PO (mac dinh) · Theo linh kien · Theo mã lỗi · Theo ai lỗi. Dem = SO LAN loi (moi ban ghi tl_loi = 1 lan).
+ * v0.139: bam PO / linh kien -> popup PopupPo (luong ngang, theo demo da duyet); man hep -> the (DsThe).
  * Du lieu GET /api/loi-po (backend routes/loiPo.ts). Bo loc tren URL (chon nhieu, noi "|"): ben, ma, gd, ncc, ai, tt, xem, het (= hien ca PO khong loi).
  */
-interface Dong { i: number; e: number; po: string; lk: string; ten_lk: string; kho: string; ncc: string; nguoi_dat: string; ngay_bh: string; gd: string; gd_ten: string; dat: number; ve: number; thieu: number }
-interface Loi { id: number; i: number; e: number; ma: string; ten: string; gd: string; ben: "NCC" | "NOI_BO"; ai: string; tt: "CHO" | "VI_PHAM" | "DA_GT" | "KHAC_PHUC"; ngay: string }
-interface Data { luc: string; tat_ca: boolean; dong: Dong[]; loi: Loi[] }
-
-const GD: [string, string][] = [["G1", "Lập EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua"], ["G4", "Gửi / thúc NCC"], ["G5", "Chờ ngày DK"], ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù"]];
-const GD_TEN: Record<string, string> = { ...Object.fromEntries(GD), XONG: "Đủ hàng", HUY: "Đã hủy" };
-const THU_TU_GD = [...GD.map(([k]) => k), "XONG", "HUY", ""];
-const TT: Record<Loi["tt"], { l: string; mau: string }> = {
-  CHO: { l: "Cần giải trình", mau: "#c26400" }, VI_PHAM: { l: "Vi phạm (hết hạn không GT)", mau: "#d70015" },
-  DA_GT: { l: "Đã giải trình", mau: "#1d8a3c" }, KHAC_PHUC: { l: "Tự khắc phục", mau: "#6e6e73" },
-};
-// v0.138 kieu Apple (skill giao-dien-apple): doi tac = cam, noi bo = tim; nen nhat + chu dam cung tong, vien thuoc
-const BEN = { NCC: { l: "Đối tác (NCC)", mau: "#c26400", dac: "#ff9500", nen: "#fff1dc" }, NOI_BO: { l: "Nội bộ", mau: "#8240a8", dac: "#af52de", nen: "#f5ebfc" } } as const;
-const SO: CSSProperties = { fontVariantNumeric: "tabular-nums" };
-const soMa = (ma: string) => ma.replace("ER.MH-", "");
-const pt = (a: number, b: number) => (b > 0 ? Math.round((Math.min(a, b) / b) * 100) : null);
-
-/** Dem nhanh: map khoa -> so lan, tra top theo so lan giam dan */
-function dem<T>(ds: T[], k: (x: T) => string) {
-  const m = new Map<string, number>();
-  for (const x of ds) { const v = k(x); if (v) m.set(v, (m.get(v) ?? 0) + 1); }
-  return [...m.entries()].sort((a, b) => b[1] - a[1]);
-}
-/** Chuoi "A ×3 · B ×1" (top n) */
-const topTxt = (xs: [string, number][], n = 3) => xs.slice(0, n).map(([k, v]) => `${k} ×${v}`).join(" · ") + (xs.length > n ? ` · +${xs.length - n}` : "");
-
-function SoBen({ n, ben }: { n: number; ben: "NCC" | "NOI_BO" }) {
-  if (!n) return <span className="muted">—</span>;
-  return <span style={{ ...SO, background: BEN[ben].nen, color: BEN[ben].mau, fontWeight: 700, borderRadius: 999, padding: "2px 10px" }}>{soLuong(n)}</span>;
-}
-function ChipMa({ xs, tenMa, n = 3 }: { xs: [string, number][]; tenMa: Map<string, Loi>; n?: number }) {
-  if (!xs.length) return <span className="muted">—</span>;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-      {xs.slice(0, n).map(([ma, v]) => { const l = tenMa.get(ma); return (
-        <span key={ma} title={`${ma} · ${l?.ten ?? ""}`} style={{ fontSize: 11.5, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap",
-          background: l ? BEN[l.ben].nen : "#f5f5f7", color: l ? BEN[l.ben].mau : undefined, fontWeight: 600 }}>
-          {soMa(ma)} {ngan(l?.ten ?? "")} ×{v}</span>); })}
-      {xs.length > n && <span className="muted" style={{ fontSize: 11 }}>+{xs.length - n}</span>}
-    </div>
-  );
-}
-const ngan = (s: string) => (s.length > 26 ? `${s.slice(0, 24)}…` : s);
-function DapUng({ v, ve, dat }: { v: number | null; ve: number; dat: number }) {
-  if (v == null) return <span className="muted">—</span>;
-  const [mau, dac] = v >= 100 ? ["#1d8a3c", "#2fb350"] : v >= 70 ? ["#c26400", "#ff9500"] : ["#d70015", "#ff3b30"];
-  return (
-    <div style={{ minWidth: 70 }}>
-      <div style={{ whiteSpace: "nowrap" }}><b style={{ ...SO, color: mau }}>{v}%</b> <span style={{ ...SO, fontSize: 11.5, color: "#6e6e73" }}>về {soLuong(ve)}/{soLuong(dat)}</span></div>
-      <div style={{ height: 4, background: "#e8e8ed", borderRadius: 999, marginTop: 3 }}><div style={{ width: `${v}%`, height: 4, background: dac, borderRadius: 999 }} /></div>
-    </div>
-  );
-}
 
 type Xem = "po" | "lk" | "ma" | "ai";
 interface DongPo { e: number; po: string; ncc: string; nguoi_dat: string; ngay_bh: string; gd: string; gd_txt: string; so_lk: number; dat: number; ve: number; thieu: number; du: number | null;
@@ -75,6 +26,9 @@ interface DongPo { e: number; po: string; ncc: string; nguoi_dat: string; ngay_b
 
 export default function LoiTheoPo() {
   const qv = useQuickView();
+  const hep = useHep();
+  const [moPo, setMoPo] = useState<number | null>(null);
+  const [gt, setGt] = useState<Dong[] | null>(null);
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["loi-po"], queryFn: () => api.get<Data>("/loi-po") });
   const [sp, setSp] = useSearchParams();
@@ -306,11 +260,24 @@ export default function LoiTheoPo() {
           {" "}<b style={{ color: BEN.NOI_BO.mau }}>Nội bộ</b> = không thúc NCC, chậm duyệt, đặt sai… (đã giải trình thì theo "Do ai" đã chọn).
           {xem === "po" && " Bấm 1 PO → xem chi tiết từng linh kiện, tiến trình, lỗi."}{(xem === "ma" || xem === "ai") && " Bấm 1 dòng → xem các PO bị lỗi đó."}
         </div>
-        {xem === "po" && <DataTable cols={cotPo} rows={poRows} keyOf={(r) => r.e} pageSize={30} luuSoDong="loi-po" onRowClick={(r) => qv.openEo(r.e)} empty="Không có PO khớp bộ lọc." />}
-        {xem === "lk" && <DataTable cols={cotLk} rows={lkRows} keyOf={(r) => r.i} pageSize={30} luuSoDong="loi-po-lk" onRowClick={(r) => qv.openDong(r.i)} empty="Không có linh kiện khớp bộ lọc." />}
-        {xem === "ma" && <DataTable cols={cotMa} rows={maRows} keyOf={(r) => r.key} pageSize={30} onRowClick={(r) => setSp((s) => { const n = new URLSearchParams(s); n.delete("xem"); n.set("ma", r.key); return n; })} empty="Không có lỗi khớp bộ lọc." />}
-        {xem === "ai" && <DataTable cols={cotAi} rows={aiRows} keyOf={(r) => r.key} pageSize={30} onRowClick={(r) => setSp((s) => { const n = new URLSearchParams(s); n.delete("xem"); n.set("ai", r.key); return n; })} empty="Không có lỗi khớp bộ lọc." />}
+        {/* v0.139: man hep (< 980px) -> the; bam PO / linh kien -> popup chi tiet PO (luong ngang) */}
+        {(() => {
+          const veMa = (r: { key: string }) => setSp((s) => { const n = new URLSearchParams(s); n.delete("xem"); n.set("ma", r.key); return n; });
+          const veAi = (r: { key: string }) => setSp((s) => { const n = new URLSearchParams(s); n.delete("xem"); n.set("ai", r.key); return n; });
+          if (hep) return xem === "po" ? <DsThe cols={cotPo} rows={poRows} keyOf={(r) => r.e} onClick={(r) => setMoPo(r.e)} empty="Không có PO khớp bộ lọc." />
+            : xem === "lk" ? <DsThe cols={cotLk} rows={lkRows} keyOf={(r) => r.i} onClick={(r) => setMoPo(r.e)} empty="Không có linh kiện khớp bộ lọc." />
+            : xem === "ma" ? <DsThe cols={cotMa} rows={maRows} keyOf={(r) => r.key} onClick={veMa} empty="Không có lỗi khớp bộ lọc." />
+            : <DsThe cols={cotAi} rows={aiRows} keyOf={(r) => r.key} onClick={veAi} empty="Không có lỗi khớp bộ lọc." />;
+          return xem === "po" ? <DataTable cols={cotPo} rows={poRows} keyOf={(r) => r.e} pageSize={30} luuSoDong="loi-po" onRowClick={(r) => setMoPo(r.e)} empty="Không có PO khớp bộ lọc." />
+            : xem === "lk" ? <DataTable cols={cotLk} rows={lkRows} keyOf={(r) => r.i} pageSize={30} luuSoDong="loi-po-lk" onRowClick={(r) => setMoPo(r.e)} empty="Không có linh kiện khớp bộ lọc." />
+            : xem === "ma" ? <DataTable cols={cotMa} rows={maRows} keyOf={(r) => r.key} pageSize={30} onRowClick={veMa} empty="Không có lỗi khớp bộ lọc." />
+            : <DataTable cols={cotAi} rows={aiRows} keyOf={(r) => r.key} pageSize={30} onRowClick={veAi} empty="Không có lỗi khớp bộ lọc." />;
+        })()}
       </Card>
+      {moPo != null && <PopupPo e={moPo} dong={d.dong} loi={d.loi} tenMa={tenMa} hep={hep} onClose={() => setMoPo(null)}
+        onDayDu={() => { const e = moPo; setMoPo(null); qv.openEo(e); }} onGiaiTrinh={(ds) => setGt(ds)} />}
+      {gt && <GiaiTrinhDongModal dongs={gt.map((x) => ({ item_id: x.i, eo_id: x.e, ma_po: x.po, part_code: x.lk, part_name: x.ten_lk }))}
+        onClose={() => setGt(null)} onSaved={() => { setGt(null); qc.invalidateQueries({ queryKey: ["loi-po"] }); }} />}
     </div>
   );
 }
