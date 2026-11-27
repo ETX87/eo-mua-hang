@@ -126,7 +126,7 @@ export function PopupPo({ e, dong, loi, tenMa, hep, onClose, onDayDu, onGiaiTrin
                     background: tt === "qua" ? "#2fb350" : tt === "dang" ? "#ff9500" : "#fff", color: tt === "chua" ? "#86868b" : "#fff",
                     boxShadow: tt === "chua" ? "inset 0 0 0 2px #d1d1d6" : "none", animation: tt === "dang" ? "lp-pulse 2s infinite" : undefined }}>{tt === "qua" ? "✓" : k.slice(1)}</div>
                   {n > 0 && <span style={{ position: "absolute", top: -4, left: "calc(50% + 8px)", zIndex: 2, width: 16, height: 16, borderRadius: "50%", background: "#ff3b30", color: "#fff",
-                    fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center" }}>!</span>}
+                    fontSize: 10, fontWeight: 700, display: "grid", placeItems: "center" }}>!</span>}
                   <div style={{ fontSize: 12, marginTop: 6, fontWeight: tt === "dang" ? 650 : 500, color: tt === "dang" ? "#c26400" : "#515154" }}>{l}</div>
                   <div style={{ ...SO, fontSize: 11.5, color: n ? "#d70015" : "#6e6e73", minHeight: 16 }}>{n ? `${n} lỗi` : tt === "dang" ? "đang ở" : ""}</div>
                 </div>

@@ -237,7 +237,7 @@ export default function LoiTheoPo() {
         <FilterBar>
           <div role="tablist" style={{ display: "inline-flex", gap: 2, padding: 2, borderRadius: 9, background: "rgba(118,118,128,.12)" }}>
             {XEM.map(([k, l]) => <button key={k} role="tab" aria-selected={xem === k} onClick={() => dat("xem", k === "po" ? null : k)}
-              style={{ border: 0, borderRadius: 7, padding: "5px 14px", fontSize: 13, cursor: "pointer", color: "#1d1d1f", fontWeight: xem === k ? 600 : 500,
+              style={{ border: 0, borderRadius: 8, padding: "5px 14px", fontSize: 13, cursor: "pointer", color: "#1d1d1f", fontWeight: xem === k ? 600 : 500,
                 background: xem === k ? "#fff" : "transparent", boxShadow: xem === k ? "0 1px 3px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04)" : "none" }}>{l}</button>)}
           </div>
           <ChonNhieu placeholder="Mọi bên" width={150} value={fBen} onChange={(v) => dat("ben", v)} options={opt(dem(tat, (l) => l.ben), (k) => BEN[k as "NCC"].l)} />
@@ -275,7 +275,7 @@ export default function LoiTheoPo() {
         })()}
       </Card>
       {moPo != null && <PopupPo e={moPo} dong={d.dong} loi={d.loi} tenMa={tenMa} hep={hep} onClose={() => setMoPo(null)}
-        onDayDu={() => { const e = moPo; setMoPo(null); qv.openEo(e); }} onGiaiTrinh={(ds) => setGt(ds)} />}
+        onDayDu={() => { const e = moPo; setMoPo(null); qv.openEo(e, { loi: true }); }} onGiaiTrinh={(ds) => setGt(ds)} />}
       {gt && <GiaiTrinhDongModal dongs={gt.map((x) => ({ item_id: x.i, eo_id: x.e, ma_po: x.po, part_code: x.lk, part_name: x.ten_lk }))}
         onClose={() => setGt(null)} onSaved={() => { setGt(null); qc.invalidateQueries({ queryKey: ["loi-po"] }); }} />}
     </div>

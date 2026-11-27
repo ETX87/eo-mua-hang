@@ -142,6 +142,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   Nút: "Mở PO đầy đủ" (popup PO cũ) · "✍ Giải trình lỗi của PO" (chỉ khi còn lỗi cần GT / vi phạm; giải trình chung các dòng có lỗi — lỗi chậm duyệt vẫn do người duyệt tự giải trình).
   Popup dùng toàn bộ dòng / lỗi của PO, không theo bộ lọc đang chọn.
 - **Điện thoại (< 980px)**: bảng thành thẻ (30 thẻ / lần + "Xem thêm"), popup thành bottom-sheet trượt từ đáy.
+- **Lọc sẵn LK có lỗi trong popup PO** (v0.141): popup PO đầy đủ có nút "⚠ Chỉ LK có lỗi (n)" trên tab Linh kiện (dòng có lỗi = có bản ghi lỗi trên dòng hoặc theo dõi có số lỗi > 0).
+  Tự bật khi mở PO từ cột "Vi phạm" / "Lỗi đối tác / nội bộ" ở Đơn PO, từ "Mở PO đầy đủ" ở Lỗi theo PO; bấm ô "Lỗi chờ GT", cảnh báo về lỗi, hoặc nút "Xem các LK có lỗi" ở tab Lỗi & giải trình
+  → chuyển tab Linh kiện đã lọc. Màu cột Lỗi đối tác / nội bộ ở Đơn PO đồng bộ: đối tác cam, nội bộ tím.
 
 ## 8. Báo cáo & tổng quan
 

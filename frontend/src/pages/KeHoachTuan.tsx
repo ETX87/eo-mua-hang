@@ -67,7 +67,7 @@ export default function KeHoachTuan() {
           </button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </>} />
-      {msg && <div style={{ background: "#e2f6e7", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
+      {msg && <div style={{ background: "#e2f6e7", borderRadius: 10, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
       <Card style={{ marginBottom: 14, padding: "10px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <b style={{ fontSize: 13.5 }}>Kế hoạch theo tuần dùng khi nào, vì sao, nhập thế nào?</b>

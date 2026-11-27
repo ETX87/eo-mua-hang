@@ -36,7 +36,7 @@ export function AnhBangChung({ anh, setAnh, setErr, dungMail, setDungMail }: { a
         {anh.map((a, i) => (
           <span key={a.drive_file_id} className="badge issued" style={{ gap: 6 }}>
             <a href={a.url} target="_blank" rel="noopener" style={{ color: "inherit" }}>{a.name}</a>
-            <span role="button" style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
+            <span role="button" style={{ cursor: "pointer", fontWeight: 700, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
           </span>
         ))}
         <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>

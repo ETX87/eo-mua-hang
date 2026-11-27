@@ -468,7 +468,7 @@ function DanhSach() {
             <button className="btn sm" disabled={!idPush.length} onClick={() => setLh(idPush)} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn (không mail) — tính như đã push (R3)">📞 Đã nhắc đối tác ({idPush.length})</button>
           </>}
           <Popover align="right" width={290} title="Công cụ: push đối tác, ngày KRF từ mail, kế hoạch hàng về…"
-            label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
+            label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 700, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
             {(dong) => <>
               {BAT_TAO_MAIL_NHAC && <MenuItem icon={<I.send width={14} height={14} />} disabled={!idPush.length || busy} onClick={() => { dong(); taoPush(); }} title="Gộp các dòng đã chọn vào một file Excel đính kèm mail nhắc">Tạo mail nhắc ({idPush.length})</MenuItem>}
               <MenuItem icon={<I.calendar width={14} height={14} />} onClick={() => { dong(); setHop("krf"); }} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết"

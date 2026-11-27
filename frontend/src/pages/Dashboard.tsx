@@ -35,7 +35,7 @@ function ViecCanXuLy() {
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: items.length ? 12 : 0 }}>
         <strong style={{ fontSize: 15 }}>Việc cần xử lý của bạn</strong>
-        <span style={{ background: items.length ? "#ff3b30" : "#6CD13D", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 800, padding: "2px 10px" }}>{soLuong(q.data?.tong ?? 0)}</span>
+        <span style={{ background: items.length ? "#ff3b30" : "#6CD13D", color: "#fff", borderRadius: 10, fontSize: 13, fontWeight: 700, padding: "2px 10px" }}>{soLuong(q.data?.tong ?? 0)}</span>
         {!items.length && <span className="muted" style={{ fontSize: 13 }}>Không có việc tồn — tốt lắm!</span>}
       </div>
       {items.length > 0 && (
@@ -44,7 +44,7 @@ function ViecCanXuLy() {
             <div key={x.key} onClick={() => nav(x.to)} className="card card-pad" style={{ cursor: "pointer", transition: "box-shadow .18s, transform .18s" }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--shadow-lg)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.transform = ""; }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                 <span style={{ fontWeight: 700, fontSize: 13.5 }}>{x.label}</span>
-                <span style={{ fontWeight: 900, fontSize: 22, color: "#ff3b30" }}>{soLuong(x.count)}</span>
+                <span style={{ fontWeight: 700, fontSize: 22, color: "#ff3b30" }}>{soLuong(x.count)}</span>
               </div>
               {(x.chi_tiet ?? []).map((c: any) => (
                 <div key={c.label} className="muted" style={{ fontSize: 12, display: "flex", justifyContent: "space-between" }}><span>{c.label}</span><b>{c.label.startsWith("Lần nhập") ? "" : soLuong(c.count)}</b></div>

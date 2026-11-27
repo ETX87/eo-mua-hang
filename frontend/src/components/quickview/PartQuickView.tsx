@@ -119,7 +119,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span className="badge nhap">Mã linh kiện</span>
-            <span style={{ fontSize: 22, fontWeight: 900, fontFamily: "ui-monospace, monospace" }}>{d.ma}</span>
+            <span style={{ fontSize: 22, fontWeight: 700, fontFamily: "ui-monospace, monospace" }}>{d.ma}</span>
             <Clip w="min(55vw, 640px)" style={{ fontSize: 15, fontWeight: 600 }}>{d.ten || "(chưa có tên)"}</Clip>
             {d.thay_ma.map((x: string) => <span key={x} className="badge final" title="Thay mã tương đương">{x}</span>)}
             {/* UI ma LK trong 1 PO (#26) <-> UI chung */}
@@ -198,7 +198,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
                         <button className="btn ghost sm" title="Xem đơn hàng: mã này trong PO này (tiến trình, kế hoạch, lỗi)" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
                         {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
                         {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
-                        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 900, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+                        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 700, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
                         {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
                       </td>
                       <td>{chonDuoc(r) && <input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />}</td>
@@ -269,7 +269,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
         </div>
           </div>
           <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
-            <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 8 }}>Nhật ký chỉnh sửa / cập nhật ({log.length})</div>
+            <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>Nhật ký chỉnh sửa / cập nhật ({log.length})</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {([["all", "Tất cả"], ["sl", "Số lượng / mã"], ["kh", "Kế hoạch"], ["khac", "Khác"]] as const).map(([k, l]) =>
                 <button key={k} className={`qv-chip ${loaiLog === k ? "on" : ""}`} onClick={() => setLoaiLog(k)}>{l}</button>)}

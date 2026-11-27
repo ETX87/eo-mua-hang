@@ -4,6 +4,22 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.141: Sửa nút thao tác popup PO không hiện + lọc sẵn LK có lỗi + dọn nốt giao diện Apple
+
+- Yêu cầu (nguyên văn): "1. fix nốt các vấn đền còn sót 2. các nút thao tác trong UI chi tiết PO ấn vào không hiện nút nào" · "3. danh sách lỗi, ấn vào sẽ filter sẵn các lk có lỗi trong PO đó".
+- Nguyên nhân (2): v0.140 thêm kính mờ (`backdrop-filter`) cho tiêu đề popup PO / tiêu đề bảng → phần tử cha có backdrop-filter thành "khung chứa" của `position: fixed`
+  → menu "⋯" (MenuXo) và hộp lọc cột (DataTable) bị đặt lệch và bị khung cuộn popup cắt → bấm không thấy gì.
+- Đã làm:
+  - (2) MenuXo + hộp lọc cột render qua `createPortal(document.body)`; menu kiểu kính trắng.
+  - (3) `openEo(id, { loi: true })` + nút "⚠ Chỉ LK có lỗi (n)" trong popup PO; tự bật từ cột lỗi Đơn PO / "Mở PO đầy đủ"; ô "Lỗi chờ GT", cảnh báo lỗi, tab Lỗi → nút "Xem các LK có lỗi".
+  - (1) bỏ viền 1px / 2px quanh khối (khối có nền → bỏ viền; khối không nền → nền xám #f5f5f7; khung bảng → vòng 0 0 0 1px; ô đang chọn → vòng cam), bo góc nhỏ 6–8 → 8–10 (24 file),
+    chữ đậm 800–900 → 700 (24 file), ô số Việc của tôi thành ô KPI, màu cột lỗi Đơn PO đồng bộ (đối tác cam, nội bộ tím).
+- 5W1H: Who — mọi người dùng popup PO / Đơn PO. When — mở chi tiết PO, xử lý lỗi. Where — Đơn PO (cột Vi phạm, Lỗi đối tác / nội bộ), popup PO (nút ⋯, thanh tab Linh kiện, ô Lỗi chờ GT, tab Lỗi), Lỗi theo PO.
+  What — nút thao tác dòng hiện lại; bấm vào lỗi là thấy ngay các LK có lỗi. Why — thao tác dòng bị chặn hoàn toàn; tìm LK có lỗi trong PO nhiều dòng mất thời gian.
+  How — bấm ô lỗi ở Đơn PO → popup đã lọc; bấm nút "⚠ Chỉ LK có lỗi" (có ×) để bật / tắt.
+- Kiểm thử: typecheck; local 1440px: bấm ô lỗi Đơn PO → popup lọc 3/3, menu ⋯ hiện 9 mục đúng vị trí, bấm "Lịch sử theo dõi" mở hộp thoại; tab Lỗi → "Xem các LK có lỗi" → tab Linh kiện đã lọc;
+  PO 5 dòng: lọc 4 / tắt 5; 375px Việc của tôi không tràn ngang.
+
 ## 27/11/2026 — v0.140: Chuyển toàn bộ giao diện app sang phong cách Apple (skill giao-dien-apple)
 
 - Yêu cầu (nguyên văn): "chuyển đổi toàn bộ giao diện app sang skill apple đang lưu".

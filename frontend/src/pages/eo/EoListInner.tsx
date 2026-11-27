@@ -177,8 +177,8 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       key: "canh_bao", header: "Cảnh báo", loc: "so", render: (r) => !r.dh ? <span className="muted">—</span> : (
         <span title={[r.dh.ly_do.length ? `Đỏ vì: ${r.dh.ly_do.join("; ")}` : "", `${r.dh.mo} dòng đang mở · quá DK ${r.dh.qua_dk} · chưa có DK ${r.dh.chua_dk} · cấp CEO ${r.dh.ceo}`].filter(Boolean).join("\n")}
           style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
-          {r.dh.do > 0 && <span style={{ background: "#ffe7e5", color: "#d70015", fontWeight: 800, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.do} đỏ</span>}
-          {r.dh.vang > 0 && <span style={{ background: "#fff1dc", color: "#c26400", fontWeight: 700, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.vang} vàng</span>}
+          {r.dh.do > 0 && <span style={{ background: "#ffe7e5", color: "#d70015", fontWeight: 700, fontSize: 11, borderRadius: 8, padding: "1px 6px" }}>{r.dh.do} đỏ</span>}
+          {r.dh.vang > 0 && <span style={{ background: "#fff1dc", color: "#c26400", fontWeight: 700, fontSize: 11, borderRadius: 8, padding: "1px 6px" }}>{r.dh.vang} vàng</span>}
           {!r.dh.do && !r.dh.vang && <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ ổn</span>}
           {(r.dh.qua_dk > 0 || r.dh.ceo > 0) && <div className="muted" style={{ fontSize: 10.5, width: "100%" }}>{r.dh.qua_dk ? `quá DK ${r.dh.qua_dk}` : ""}{r.dh.qua_dk && r.dh.ceo ? " · " : ""}{r.dh.ceo ? `CEO ${r.dh.ceo}` : ""}</div>}
         </span>),
@@ -189,8 +189,9 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         if (!r.vp) return <span className="muted" title="PO ngoài phạm vi theo dõi vi phạm">—</span>;
         const m = VP_TT[r.vp.tt];
         return (
-          <span title={vpTomTat(r.vp) || "Chưa có lỗi"} style={{ display: "inline-block", lineHeight: 1.35 }}>
-            <span style={{ background: m.nen, color: m.mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: r.vp.tt === "KHONG" ? 0 : "1px 6px", whiteSpace: "nowrap" }}>
+          <span title={`${vpTomTat(r.vp) || "Chưa có lỗi"}${r.vp.tong > 0 ? "\nBấm: mở PO, lọc sẵn các LK có lỗi" : ""}`} style={{ display: "inline-block", lineHeight: 1.35, cursor: r.vp.tong > 0 ? "pointer" : undefined }}
+            onClick={r.vp.tong > 0 ? (e) => { e.stopPropagation(); qv.openEo(r.id, { loi: true }); } : undefined}>
+            <span style={{ background: m.nen, color: m.mau, fontWeight: 700, fontSize: 11.5, borderRadius: 999, padding: r.vp.tt === "KHONG" ? 0 : "1px 8px", whiteSpace: "nowrap" }}>
               {m.l}{r.vp.tt === "CEO" && r.vp.ceo > 1 ? ` · ${r.vp.ceo} dòng` : ""}</span>
             {r.vp.tong > 0 && <div style={{ fontSize: 11, whiteSpace: "nowrap" }}>
               {r.vp.vi_pham > 0 && <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.vp.vi_pham)} vi phạm</b>}
@@ -209,11 +210,13 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
         if (!ncc && !nb) return <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ không lỗi</span>;
         const O = ({ l, n, mo, mau, nen }: { l: string; n: number; mo: number; mau: string; nen: string }) => n ? (
           <div style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
-            <span style={{ background: mo ? nen : "transparent", color: mo ? mau : "var(--text-muted)", fontWeight: mo ? 800 : 500, borderRadius: 6, padding: mo ? "0 5px" : 0 }}>{l} {n}</span>
+            <span style={{ background: mo ? nen : "transparent", color: mo ? mau : "var(--text-muted)", fontWeight: mo ? 700 : 500, borderRadius: 999, padding: mo ? "1px 8px" : 0 }}>{l} {n}</span>
             {mo > 0 && <span style={{ color: mau, fontSize: 10.5 }}> · {mo} chưa xử lý</span>}
           </div>) : null;
-        return <span title={`Đối tác (NCC): ${ncc} lỗi, ${ncc_mo} chưa xử lý\nNội bộ: ${nb} lỗi, ${nb_mo} chưa xử lý\n(chưa xử lý = cần giải trình + vi phạm hết hạn)`}>
-          <O l="Đối tác" n={ncc} mo={ncc_mo} mau="#0062c4" nen="#e8f1fc" /><O l="Nội bộ" n={nb} mo={nb_mo} mau="#c26400" nen="#fff1dc" /></span>;
+        // v0.141: bam -> popup PO loc san LK co loi; mau dong bo man "Lỗi theo PO" (doi tac cam, noi bo tim)
+        return <span style={{ cursor: "pointer", display: "inline-block" }} onClick={(e) => { e.stopPropagation(); qv.openEo(r.id, { loi: true }); }}
+          title={`Đối tác (NCC): ${ncc} lỗi, ${ncc_mo} chưa xử lý\nNội bộ: ${nb} lỗi, ${nb_mo} chưa xử lý\n(chưa xử lý = cần giải trình + vi phạm hết hạn)\nBấm: mở PO, lọc sẵn các LK có lỗi`}>
+          <O l="Đối tác" n={ncc} mo={ncc_mo} mau="#c26400" nen="#fff1dc" /><O l="Nội bộ" n={nb} mo={nb_mo} mau="#8240a8" nen="#f5ebfc" /></span>;
       },
     },
     {

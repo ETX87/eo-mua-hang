@@ -97,7 +97,7 @@ const TT_DEF: { k: string; l: string; f: (l: L) => boolean }[] = [
   { k: "tu_dong", l: "Đã khắc phục (tự đóng)", f: (l) => tuDong(l) && !vp(l) },
 ];
 const BEN: Record<string, { l: string; mau: string; nen: string }> = { NCC: { l: "Đối tác", mau: "#0062c4", nen: "#e8f1fc" }, NOI_BO: { l: "Nội bộ", mau: "#c26400", nen: "#fff1dc" } };
-const BenBadge = ({ b }: { b?: string }) => b && BEN[b] ? <span style={{ background: BEN[b].nen, color: BEN[b].mau, fontWeight: 700, fontSize: 11.5, borderRadius: 6, padding: "1px 6px", whiteSpace: "nowrap" }}>{BEN[b].l}</span> : <span className="muted">—</span>;
+const BenBadge = ({ b }: { b?: string }) => b && BEN[b] ? <span style={{ background: BEN[b].nen, color: BEN[b].mau, fontWeight: 700, fontSize: 11.5, borderRadius: 8, padding: "1px 6px", whiteSpace: "nowrap" }}>{BEN[b].l}</span> : <span className="muted">—</span>;
 const ttTen = (l: L) => (vp(l) ? "Vi phạm" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua · lỗi cũ" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình");
 const THU_MA = (m: string) => (m?.startsWith("ER.MH-") ? Number(m.slice(6)) : 999);
 
@@ -519,7 +519,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
               </div>
 
               <L>Thông tin dòng linh kiện</L>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "10px 16px", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "10px 16px", padding: "12px 14px", background: "var(--panel-2)", borderRadius: 14 }}>
                 <Tt k="Kho · đối tác" v={`${khoGon(x.kho)} · ${x.doi_tac || "—"}`} />
                 <Tt k="Tình trạng dòng" v={x.tinh_trang ? TINH_TRANG[x.tinh_trang as Dong["tinh_trang"]]?.l : ""} />
                 <Tt k="Ngày dự kiến · số lần lùi" v={`${ngay(x.ngay_du_kien) || "Chưa có"} · ${x.so_lan_lui} lần`} />

@@ -317,7 +317,7 @@ function DiemNong({ rows, dmTen, empty }: { rows: Dong[]; dmTen: (loai: string, 
   const cols: Col<Dong>[] = [
     { key: "muc", header: "Mức", loc: "chon", gt: (r) => r.muc, nhanChon: (v) => MUC[v as Muc]?.l ?? v, gtSap: (r) => r.diem, maxW: 230,
       render: (r) => <span title={r.ly_do.join("\n") || "Ổn"} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-        <span style={{ background: MUC[r.muc].nen, color: MUC[r.muc].mau, fontWeight: 800, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{MUC[r.muc].l}</span>
+        <span style={{ background: MUC[r.muc].nen, color: MUC[r.muc].mau, fontWeight: 700, fontSize: 11, borderRadius: 8, padding: "1px 6px" }}>{MUC[r.muc].l}</span>
         <span style={{ fontSize: 12, color: MUC[r.muc].mau }}>{r.ly_do[0] ?? ""}{r.ly_do.length > 1 ? ` +${r.ly_do.length - 1}` : ""}</span></span> },
     { key: "po", header: "PO", loc: "chu", gt: (r) => r.po, render: (r) => <span className="cell-link" onClick={(e) => { e.stopPropagation(); qv.openEo(r.eo); }}>{r.po}</span> },
     { key: "ma", header: "Mã LK", loc: "chu", gt: (r) => `${r.ma} ${r.ten}`, gtSap: (r) => r.ma, maxW: 170, render: (r) => <><b style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{r.ma}</b><div className="muted" style={{ fontSize: 11 }}>{r.ten}</div></> },
@@ -538,7 +538,7 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
       <div>
         <b>Độ tin cậy của nguyên nhân</b>
-        <div style={{ fontSize: 28, fontWeight: 900, color: phu < 0.3 ? "var(--danger-ink)" : "var(--ok-ink)" }}>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: phu < 0.3 ? "var(--danger-ink)" : "var(--ok-ink)" }}>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</div>
         <div className="muted" style={{ fontSize: 12 }}>lỗi đã được giải trình ({soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}).
           {phu < 0.3 && <b style={{ color: "var(--danger-ink)" }}> Dưới 30% → các tỷ lệ nguyên nhân bên cạnh chỉ là mẫu nhỏ, chưa dùng để kết luận. Ưu tiên ép giải trình.</b>}</div>
         <div style={{ marginTop: 12 }}><b>Lỗi phát sinh 30 ngày theo quy tắc</b></div>
@@ -546,7 +546,7 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
           <Thanh key={k} l={`${QT_TEN[k] ?? k}${QT_GD[k] ? ` (${QT_GD[k]})` : ""}`} n={x.n} tong={tongQt} mau="#ff7b73" sub={`${soLuong(x.cho)} cần giải trình · ${soLuong(x.vp)} vi phạm (hết hạn không GT)`} />
         ))}
         {theoQt.get("R3") && tongQt && theoQt.get("R3")!.n / tongQt > 0.5 && (
-          <div style={{ fontSize: 11.5, background: "#fff1dc", borderRadius: 6, padding: "6px 8px", marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, background: "#fff1dc", borderRadius: 8, padding: "6px 8px", marginTop: 4 }}>
             R3 chiếm hơn nửa số lỗi: hệ thống chỉ coi là "đã push" khi hộp thư theo dõi đồng bộ mail <b>khớp mã nhắc hoặc gắn được dòng</b>, hoặc có ghi nhận gọi/Zalo. Mail thúc NCC không ghi mã PO + mã LK
             sẽ không được nhận — cần soát cách gửi mail trước khi kết luận nhân viên không thúc.
           </div>
@@ -601,12 +601,12 @@ function TrachNhiem({ d, loi30 }: { d: Data; loi30: Data["loi30"] }) {
   for (const l of loi30) if (l.vp) vpNguoi.set(l.ai ?? "", (vpNguoi.get(l.ai ?? "") ?? 0) + l.vp);
   const vp = [...vpNguoi.values()].reduce((s, n) => s + n, 0);
   const Khoi = ({ b, x }: { b: "NOI_BO" | "NCC"; x: ReturnType<typeof tk> }) => (
-    <div style={{ background: BEN[b].nen, border: `1px solid ${BEN[b].mau}55`, borderRadius: 10, padding: "10px 12px" }}>
-      <div style={{ fontWeight: 800, color: BEN[b].mau }}>{BEN[b].l}</div>
+    <div style={{ background: BEN[b].nen, borderRadius: 12, padding: "10px 12px" }}>
+      <div style={{ fontWeight: 700, color: BEN[b].mau }}>{BEN[b].l}</div>
       <div style={{ display: "flex", gap: 16, margin: "6px 0", flexWrap: "wrap" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.dangTre)}</div><div className="muted" style={{ fontSize: 11 }}>dòng đang trễ</div></div>
-        <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.tre30)}</div><div className="muted" style={{ fontSize: 11 }}>lượt trễ bước 30 ngày / {soLuong(x.xong30)} ({pctTxt(x.tre30, x.xong30)})</div></div>
-        <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.loi)}</div><div className="muted" style={{ fontSize: 11 }}>lỗi 30 ngày (vi phạm gộp)</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700 }}>{soLuong(x.dangTre)}</div><div className="muted" style={{ fontSize: 11 }}>dòng đang trễ</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700 }}>{soLuong(x.tre30)}</div><div className="muted" style={{ fontSize: 11 }}>lượt trễ bước 30 ngày / {soLuong(x.xong30)} ({pctTxt(x.tre30, x.xong30)})</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700 }}>{soLuong(x.loi)}</div><div className="muted" style={{ fontSize: 11 }}>lỗi 30 ngày (vi phạm gộp)</div></div>
       </div>
       {x.gd.map((g) => (
         <div key={g.k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, borderTop: "1px dashed #e8e8ed", padding: "3px 0" }}
@@ -624,9 +624,9 @@ function TrachNhiem({ d, loi30 }: { d: Data; loi30: Data["loi30"] }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12, marginTop: 6 }}>
         <Khoi b="NOI_BO" x={nb} />
         <Khoi b="NCC" x={ncc} />
-        <div style={{ background: "#fff2f1", border: "1px solid #FCA5A555", borderRadius: 10, padding: "10px 12px" }}>
-          <div style={{ fontWeight: 800, color: "var(--danger-ink)" }}>Không giải trình đúng hạn</div>
-          <div style={{ fontSize: 22, fontWeight: 900, margin: "6px 0 0" }}>{soLuong(vp)}</div>
+        <div style={{ background: "#fff2f1", borderRadius: 12, padding: "10px 12px" }}>
+          <div style={{ fontWeight: 700, color: "var(--danger-ink)" }}>Không giải trình đúng hạn</div>
+          <div style={{ fontSize: 22, fontWeight: 700, margin: "6px 0 0" }}>{soLuong(vp)}</div>
           <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>vi phạm 30 ngày — hết 16 giờ làm việc không giải trình, lỗi của người phải giải trình (tính riêng, không cộng vào 2 bên)</div>
           {[...vpNguoi.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([ai, n]) => (
             <div key={ai} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span>{ten(ai) || "(không rõ)"}</span><b>{soLuong(n)}</b></div>

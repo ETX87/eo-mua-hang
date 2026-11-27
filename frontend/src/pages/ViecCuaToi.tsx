@@ -63,7 +63,7 @@ function Han({ v, chu }: { v: V; chu?: string }) {
   const [nen, mau] = tre ? ["#ffe7e5", "#d70015"] : g <= 4 ? ["#ffeddc", "#c26400"] : g <= 8 ? ["#fff6e8", "#9c4f00"] : ["#ECFDF5", "#047857"];
   return (
     <div style={{ minWidth: 118 }}>
-      <span style={{ background: nen, color: mau, fontWeight: 800, fontSize: 12, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>
+      <span style={{ background: nen, color: mau, fontWeight: 700, fontSize: 12, borderRadius: 8, padding: "2px 8px", whiteSpace: "nowrap" }}>
         {tre ? `Trễ ${gioTxt(g)}` : `Còn ${gioTxt(g)}`}</span>
       <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{chu ?? "hạn"} {hanTxt(v.han)}</div>
     </div>
@@ -100,11 +100,11 @@ function Muc({ id, so, tieuDe, lamGi, n, mau, xuat, children }: { id: string; so
   return (
     <Card>
       <div id={id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-        <span style={{ width: 30, height: 30, borderRadius: 99, background: n ? mau : "#e8e8ed", color: "#fff", display: "grid", placeItems: "center", fontWeight: 800 }}>{so}</span>
-        <div style={{ fontSize: 16, fontWeight: 800 }}>{tieuDe} <span style={{ color: n ? mau : "var(--text-muted)" }}>({soLuong(n)})</span></div>
+        <span style={{ width: 30, height: 30, borderRadius: 99, background: n ? mau : "#e8e8ed", color: "#fff", display: "grid", placeItems: "center", fontWeight: 700 }}>{so}</span>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>{tieuDe} <span style={{ color: n ? mau : "var(--text-muted)" }}>({soLuong(n)})</span></div>
         {xuat && n > 0 && <button className="btn sm" style={{ marginLeft: "auto" }} onClick={xuat}>⬇ Xuất Excel</button>}
       </div>
-      <div style={{ fontSize: 13, background: "var(--panel-2, #f5f5f7)", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>{lamGi}</div>
+      <div style={{ fontSize: 13, background: "var(--panel-2, #f5f5f7)", borderRadius: 10, padding: "8px 12px", marginBottom: 10 }}>{lamGi}</div>
       {n ? children : <div style={{ color: "var(--ok-ink)", fontSize: 13 }}>✓ Không có việc ở mục này.</div>}
     </Card>
   );
@@ -225,9 +225,9 @@ export default function ViecCuaToi() {
   const tre = [...d.ndk, ...d.ngay_moi].filter((v) => (v.con_gio ?? 0) < 0).length;
   const O = ({ so, l, n, mau, toi }: { so: string; l: string; n: number; mau: string; toi: string }) => (
     <button className="card" onClick={() => document.getElementById(toi)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-      style={{ flex: "1 1 180px", textAlign: "left", padding: 14, border: `2px solid ${n ? mau : "var(--border)"}`, borderRadius: 12, background: "#fff", cursor: "pointer" }}>
+      style={{ flex: "1 1 180px", textAlign: "left", padding: "14px 16px", border: 0, borderRadius: 16, background: "var(--panel-2)", cursor: "pointer", transition: "background .15s" }}>
       <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>{so} {l}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, color: n ? mau : "var(--text-muted)" }}>{soLuong(n)}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: n ? mau : "var(--text-muted)" }}>{soLuong(n)}</div>
     </button>
   );
   const nutNgay = (v: V, l = "📅 Nhập ngày dự kiến") => <button className="btn sm primary" onClick={() => setNgay(v)}>{l}</button>;
@@ -279,7 +279,7 @@ export default function ViecCuaToi() {
             const m = mailNcc(ncc, ds);
             const gmail = `https://mail.google.com/mail/?view=cm&fs=1&cc=${encodeURIComponent(CC)}&su=${encodeURIComponent(m.tieuDe)}&body=${encodeURIComponent(m.noiDung)}`;
             return (
-              <div key={ncc} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}>
+              <div key={ncc} style={{ background: "var(--panel-2)", borderRadius: 14, padding: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
                   <b style={{ fontSize: 14 }}>{ncc}</b><span className="muted">· {ds.length} dòng</span>
                   <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>

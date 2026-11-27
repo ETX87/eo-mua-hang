@@ -255,7 +255,7 @@ function NhapAmis() {
           {filename && <div style={{ marginTop: 8, fontSize: 12.5 }}>Đã chọn: <b>{filename}</b>
             {docInfo && <span className="muted"> · {docInfo.nhanDang === "so_chi_tiet" ? `nhận dạng: báo cáo MISA "Sổ chi tiết" (tiêu đề cột ở dòng ${docInfo.dongTieuDe})` : "nhận dạng: file mẫu"} · {soLuong(rows?.length ?? 0)} dòng dữ liệu</span>}</div>}
           {docInfo && docInfo.thieuCot.length > 0 && (
-            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--danger-ink)", background: "#fff2f1", borderRadius: 8, padding: "6px 10px" }}>
+            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--danger-ink)", background: "#fff2f1", borderRadius: 10, padding: "6px 10px" }}>
               Không tìm thấy cột: <b>{docInfo.thieuCot.join(", ")}</b> — kiểm tra tên cột trong file (mã phê duyệt có thể đặt tên "Mã phê duyệt" hoặc "Mã PD EO").
             </div>
           )}
@@ -276,7 +276,7 @@ function NhapAmis() {
                 </div>)}
           </div>
           {canEdit && (
-            <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, marginBottom: 12, fontSize: 13 }}>
+            <div style={{ background: "var(--panel-2)", borderRadius: 14, padding: 12, marginBottom: 12, fontSize: 13 }}>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
                 <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <input type="radio" checked={mode === "APPEND"} onChange={() => { setMode("APPEND"); setCheck(null); }} />

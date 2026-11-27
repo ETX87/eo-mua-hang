@@ -66,7 +66,7 @@ export function XuHuongEo() {
               </ResponsiveContainer>
               <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none" }}>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 20, fontWeight: 800 }} className="mono-num">{soLuong(d.kpi.tong)}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700 }} className="mono-num">{soLuong(d.kpi.tong)}</div>
                   <div className="muted" style={{ fontSize: 10.5 }}>Tổng EO</div>
                 </div>
               </div>

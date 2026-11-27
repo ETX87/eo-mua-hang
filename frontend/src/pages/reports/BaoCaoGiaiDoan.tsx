@@ -137,9 +137,9 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
                   <td style={{ textAlign: "right", fontWeight: 700 }}>{gioTxt(s.tb) || "—"}</td>
                   <td style={{ textAlign: "right" }}>{gioTxt(s.tv) || "—"}</td>
                   <td style={{ textAlign: "right" }}>{gioTxt(s.p90) || "—"}</td>
-                  <td style={{ textAlign: "right", fontWeight: 800, color: mauPt(s.pt) }} title={`${s.dung} / ${s.coHan} dòng có hạn`}>{s.pt != null ? `${s.pt}%` : "—"}</td>
+                  <td style={{ textAlign: "right", fontWeight: 700, color: mauPt(s.pt) }} title={`${s.dung} / ${s.coHan} dòng có hạn`}>{s.pt != null ? `${s.pt}%` : "—"}</td>
                   <td style={{ textAlign: "right" }}>{s.dang ? <button className="qv-link" onClick={() => den2(s.k)}>{soLuong(s.dang)}</button> : "0"}</td>
-                  <td style={{ textAlign: "right" }}>{s.dangTre ? <button className="qv-link" style={{ color: "var(--danger-ink)", fontWeight: 800 }} onClick={() => den2(s.k, true)}>{soLuong(s.dangTre)}</button> : "0"}</td>
+                  <td style={{ textAlign: "right" }}>{s.dangTre ? <button className="qv-link" style={{ color: "var(--danger-ink)", fontWeight: 700 }} onClick={() => den2(s.k, true)}>{soLuong(s.dangTre)}</button> : "0"}</td>
                 </tr>
               ))}
             </tbody>
@@ -183,7 +183,7 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
                     <td style={{ textAlign: "right" }}>{soLuong(x.s.xong)}</td>
                     <td style={{ textAlign: "right", fontWeight: 700 }}>{gioTxt(x.s.tb) || "—"}</td>
                     <td style={{ textAlign: "right" }}>{gioTxt(x.s.p90) || "—"}</td>
-                    <td style={{ textAlign: "right", fontWeight: 800, color: mauPt(x.s.pt) }}>{x.s.pt != null ? `${x.s.pt}%` : "—"}</td>
+                    <td style={{ textAlign: "right", fontWeight: 700, color: mauPt(x.s.pt) }}>{x.s.pt != null ? `${x.s.pt}%` : "—"}</td>
                     <td style={{ textAlign: "right" }}>{x.s.dang}{x.s.dangTre ? <span style={{ color: "var(--danger-ink)", fontWeight: 700 }}> / {x.s.dangTre}</span> : ""}</td>
                   </tr>
                 ))}

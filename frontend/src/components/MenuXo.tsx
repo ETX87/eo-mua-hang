@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Nut "⋯" + menu xo xuong cho 1 DONG trong bang (v0.124, chu he thong 2026-11-26: "hien qua nhieu thao tac, rut gon lai 1 nut xo xuong").
@@ -33,19 +34,22 @@ export function MenuXo({ muc, title = "Thao tác", nhan }: { muc: MucMenu[]; tit
     <>
       {nhan ? <button ref={nut} type="button" className="btn sm" title={title} onClick={bat} style={{ background: mo ? "var(--panel-2)" : undefined }}>{nhan}</button>
         : <button ref={nut} type="button" className="btn ghost sm" title={title} onClick={bat}
-        style={{ fontWeight: 900, letterSpacing: 1, minWidth: 30, background: mo ? "var(--panel-2)" : undefined }}>⋯</button>}
-      {mo && (
-        <div ref={ref} onClick={(e) => e.stopPropagation()}
-          style={{ position: "fixed", left: mo.x, [mo.len ? "bottom" : "top"]: mo.len ? window.innerHeight - mo.y : mo.y, width: 260, background: "#fff",
-            border: "1px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-pop)", zIndex: 2000, padding: 6 }}>
+        style={{ fontWeight: 700, letterSpacing: 1, minWidth: 30, background: mo ? "var(--panel-2)" : undefined }}>⋯</button>}
+      {/* v0.141: PORTAL ra document.body - tieu de popup PO co backdrop-filter (kinh mo) lam khung chua cua position fixed -> menu bi lech + bi cat, bam "khong hien gi" */}
+      {mo && createPortal(
+        <div ref={ref} data-modal onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}
+          style={{ position: "fixed", left: mo.x, [mo.len ? "bottom" : "top"]: mo.len ? window.innerHeight - mo.y : mo.y, width: 260, background: "rgba(255,255,255,.96)",
+            WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", border: 0, borderRadius: 14,
+            boxShadow: "0 0 0 .5px rgba(0,0,0,.12), 0 18px 44px rgba(0,0,0,.18)", zIndex: 2000, padding: 6, animation: "ap-in .16s cubic-bezier(.2,.8,.2,1)" }}>
           {ds.map((m, i) => (
             <button key={i} type="button" className="btn ghost sm" title={m.title} onClick={() => { setMo(null); m.onClick(); }}
-              style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "7px 10px", borderRadius: 7, color: m.nguy ? "var(--danger)" : undefined,
-                borderTop: m.ngan ? "1px solid var(--border)" : undefined, marginTop: m.ngan ? 4 : 0 }}>
+              style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "7px 10px", borderRadius: 10, color: m.nguy ? "var(--danger-ink)" : "var(--text)",
+                borderTop: m.ngan ? "1px solid #f0f0f3" : undefined, marginTop: m.ngan ? 4 : 0 }}>
               <span style={{ width: 16, display: "inline-flex", justifyContent: "center" }}>{m.icon}</span><span style={{ flex: 1, textAlign: "left" }}>{m.l}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

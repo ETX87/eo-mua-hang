@@ -27,7 +27,7 @@ export function ChuGiaiNgay({ gon }: { gon?: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, fontSize: 12, marginBottom: 10 }}>
       {(Object.keys(NGAY) as LoaiNgay[]).map((k) => (
-        <div key={k} style={{ background: NGAY[k].nen, borderLeft: `3px solid ${NGAY[k].mau}`, borderRadius: 6, padding: gon ? "5px 8px" : "7px 10px" }}>
+        <div key={k} style={{ background: NGAY[k].nen, borderLeft: `3px solid ${NGAY[k].mau}`, borderRadius: 8, padding: gon ? "5px 8px" : "7px 10px" }}>
           <b style={{ color: NGAY[k].mau }}>{NGAY[k].l}</b>
           {!gon && <div className="muted" style={{ marginTop: 2, lineHeight: 1.4 }}>{NGAY[k].mo_ta}</div>}
         </div>

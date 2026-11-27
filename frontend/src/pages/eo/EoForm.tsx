@@ -381,7 +381,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       />
 
       {copyId && (
-        <div style={{ background: "#e8f1fc", border: "1px solid #c9e0fb", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12, color: "#003e7e" }}>
+        <div style={{ background: "#e8f1fc", borderRadius: 12, padding: "10px 14px", fontSize: 13, marginBottom: 12, color: "#003e7e" }}>
           {copyQ.isLoading ? "Đang lấy thông tin EO nguồn…" : copyQ.isError ? "Không lấy được EO nguồn — nhập thông tin như tạo mới." : <>
             Copy từ <b>{copyQ.data?.eo?.approval_code || copyQ.data?.eo?.eo_code}</b>: đã điền sẵn tiêu đề, nội dung, loại hình, phòng ban, người thẩm định &amp; người duyệt mua — sửa lại nếu cần.
             Danh sách linh kiện <b>không được chép</b>: nhập hoặc import Excel ở mục 2.
@@ -389,7 +389,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         </div>
       )}
       {noReviewer && (
-        <div style={{ background: "#fff1dc", border: "1px solid #ffd8a8", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, color: "#9c4f00" }}>
+        <div style={{ background: "#fff1dc", borderRadius: 12, padding: "10px 14px", fontSize: 13, marginBottom: 16, color: "#9c4f00" }}>
           Không chọn thẩm định → gửi thẳng người duyệt mua.
         </div>
       )}
@@ -490,7 +490,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
               <span className="badge nhap" style={{ fontSize: 13, marginLeft: "auto" }}>{items.filter((r) => r.part_code.trim()).length} dòng · Tổng SL: {soLuong(tongSL)}</span>
             </div>
             {importMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 8, background: importMsg.errs.length || importMsg.canhBao?.length ? "#fff1dc" : "#e2f6e7" }}>
+              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 10, background: importMsg.errs.length || importMsg.canhBao?.length ? "#fff1dc" : "#e2f6e7" }}>
                 Đã thêm <b>{importMsg.ok}</b> dòng từ Excel{importMsg.errs.length ? `, bỏ qua ${importMsg.errs.length} dòng lỗi:` : "."}
                 {importMsg.errs.length > 0 && (
                   <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
@@ -519,7 +519,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                     {reviewers.map((r) => (
                       <span key={r} className="badge nhap" style={{ gap: 6 }}>
                         {ten(r)}
-                        <span onClick={() => setReviewers(reviewers.filter((x) => x !== r))} style={{ cursor: "pointer", fontWeight: 800 }}>×</span>
+                        <span onClick={() => setReviewers(reviewers.filter((x) => x !== r))} style={{ cursor: "pointer", fontWeight: 700 }}>×</span>
                       </span>
                     ))}
                   </div>
@@ -544,7 +544,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                     <a href={f.drive_url || undefined} target="_blank" rel="noopener" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", gap: 4, alignItems: "center" }} title={`${ten(f.uploaded_by)} · ${f.uploaded_at}`}>
                       <I.file width={12} height={12} /> {f.file_name}
                     </a>
-                    <span role="button" title="Xóa tệp đính kèm" onClick={() => deleteSavedFile(f)} style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }}>×</span>
+                    <span role="button" title="Xóa tệp đính kèm" onClick={() => deleteSavedFile(f)} style={{ cursor: "pointer", fontWeight: 700, color: "var(--danger)" }}>×</span>
                   </span>
                 ))}
               </div>
@@ -554,7 +554,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
                 {pendingFiles.map((f, i) => (
                   <span key={`${f.name}-${i}`} className="badge nhap" style={{ gap: 6 }}>
                     <I.file width={12} height={12} /> {f.name} <span className="muted">{fileSize(f.size)}</span>
-                    <span role="button" title="Bỏ tệp này" onClick={() => setPendingFiles((fs) => fs.filter((_, j) => j !== i))} style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }}>×</span>
+                    <span role="button" title="Bỏ tệp này" onClick={() => setPendingFiles((fs) => fs.filter((_, j) => j !== i))} style={{ cursor: "pointer", fontWeight: 700, color: "var(--danger)" }}>×</span>
                   </span>
                 ))}
               </div>

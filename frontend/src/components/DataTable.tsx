@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { I } from "../lib/icons";
+import { createPortal } from "react-dom";
 import { Clip } from "./Clip";
 import { boDau } from "../lib/tonDong";
 
@@ -365,10 +366,11 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
   const ds = useMemo(() => { const t = boDau(tim); return chon.filter((v) => !t || boDau(nhanCua(v)).includes(t)); }, [chon, tim]); // eslint-disable-line react-hooks/exhaustive-deps
   const daChon = new Set(g.chon ?? []);
   const apDung = () => onApDung(g);
-  return (
+  // v0.141: portal ra document.body - to tien co backdrop-filter / transform (tieu de kinh mo, popup PO) lam "khung chua" cua position fixed -> hop bi lech / bi cat
+  return createPortal(
     <div ref={ref} data-modal className="hop-loc" style={{ top: vt.top, left: vt.left }} onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => { if (e.key === "Enter" && kieu !== "chon") apDung(); }}>
-      <div style={{ fontWeight: 800, fontSize: 12.5, marginBottom: 6 }}>Lọc: {tieuDe}</div>
+      <div style={{ fontWeight: 700, fontSize: 12.5, marginBottom: 6 }}>Lọc: {tieuDe}</div>
       {kieu === "chu" && (
         <input autoFocus className="input tb" placeholder="Gõ từ cần tìm (không dấu)…" value={g.q ?? ""} onChange={(e) => setG({ q: e.target.value })} />
       )}
@@ -408,7 +410,8 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
         <button className="btn sm ghost" onClick={() => onApDung({})}>Xóa lọc</button>
         <button className="btn sm primary" onClick={apDung}>Áp dụng</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

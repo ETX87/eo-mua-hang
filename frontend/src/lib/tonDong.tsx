@@ -30,7 +30,7 @@ export function MocTon({ tu, nho }: { tu?: string | null; nho?: boolean }) {
   if (n == null || !m) return <span className="muted">—</span>;
   const txt = n < 1 ? `${Math.max(1, Math.round(n * 24))} giờ` : `${Math.floor(n)} ngày`;
   return (
-    <span title={`Tồn ${txt} (mốc ${m.l}) — tính từ ${tu}`} style={{ display: "inline-block", whiteSpace: "nowrap", background: m.nen, color: m.mau, fontWeight: 700, fontSize: nho ? 11 : 12, borderRadius: 6, padding: nho ? "1px 6px" : "2px 8px" }}>
+    <span title={`Tồn ${txt} (mốc ${m.l}) — tính từ ${tu}`} style={{ display: "inline-block", whiteSpace: "nowrap", background: m.nen, color: m.mau, fontWeight: 700, fontSize: nho ? 11 : 12, borderRadius: 8, padding: nho ? "1px 6px" : "2px 8px" }}>
       {txt}
     </span>
   );

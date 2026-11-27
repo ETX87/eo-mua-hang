@@ -167,7 +167,7 @@ export const ceoTxt = (ct?: CeoCt[], lyDo?: string[]) =>
 export function GiaiThichCeo({ ct, lyDo }: { ct?: CeoCt[]; lyDo?: string[] }) {
   if (!ct?.length && !lyDo?.length) return null;
   return (
-    <div style={{ marginTop: 10, border: "1px solid #ffb3ad", background: "#fff2f1", borderRadius: 10, padding: "8px 12px", fontSize: 12.5 }}>
+    <div style={{ marginTop: 10, background: "#fff2f1", borderRadius: 12, padding: "8px 12px", fontSize: 12.5 }}>
       <b style={{ color: "var(--danger-ink)" }}>Vì sao đơn này ở cấp CEO</b>
       <span className="muted" style={{ marginLeft: 8, fontSize: 11.5 }}>Lên cấp CEO khi có 1 trong 3: lùi ngày dự kiến ≥ 3 lần · ngày dự kiến cách ngày đặt ≥ 30 ngày · ≥ 3 lỗi theo dõi</span>
       {(ct?.length ? ct : (lyDo ?? []).map((x) => ({ ma: "", tieu_de: x, nguong: "", gia_tri: "", dong: [] }))).map((c, i) => (

@@ -101,7 +101,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
             <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>Đơn hàng</span>
-            <span style={{ fontSize: 22, fontWeight: 900, color: "var(--brand-ink)" }}>{it.part_code}</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: "var(--brand-ink)" }}>{it.part_code}</span>
             <button type="button" className="btn ghost sm" style={{ flexShrink: 0 }} title="Mở UI chung: mọi đơn đặt / PO của mã linh kiện này" onClick={() => qv.openPart(it.part_code)}>⇄ Tất cả đơn của mã này</button>
             <span style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", minWidth: 60 }} title={it.part_name}>{it.part_name}</span>
             {r.trang_thai_don_hang && <span className="badge nhap">{r.trang_thai_don_hang}</span>}

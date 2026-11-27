@@ -663,4 +663,7 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   Lớp mới: `.seg` (segmented, nút `.on`), `.ptabs`, keyframes `ap-in` / `ap-sheet`.
 - Màn mới: dùng `.btn` / `.btn.primary` (1 nút chính / vùng) / `.input` / `.card` / `.seg`; KHÔNG viền 1px quanh thẻ / ô con, KHÔNG viền màu dày; màu hệ thống iOS (#ff3b30 / #2fb350 / #ff9500 / #0071e3 / #af52de).
 - Mobile: `[data-modal] > .card` thành bottom-sheet (CSS); luật cũ ép lưới inline về 1–2 cột (< 768px) vẫn giữ.
+- v0.141: **Bẫy `backdrop-filter`**: phần tử có backdrop-filter / transform / filter là "khung chứa" của con `position: fixed` → menu / hộp nổi phải render qua `createPortal(document.body)`
+  (đã làm cho `MenuXo`, hộp lọc cột `DataTable`). Thêm popup nổi mới bên trong popup PO / thanh trên → dùng portal.
+  `QuickView.openEo(id, { loi: true })` → `EoQuickView` prop `locLoi` (lọc sẵn LK có lỗi).
 

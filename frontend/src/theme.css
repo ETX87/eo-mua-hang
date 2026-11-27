@@ -173,12 +173,12 @@ table.tbl tbody tr { height: 40px; }
 .qv-body { flex: 1 1 0; min-height: max(320px, 45vh); display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) clamp(320px, 27vw, 460px); gap: 12px; padding: 10px 14px 14px; }
 /* v0.131: 2 khu - THEO DOI CHINH (trai) / TIEN DO - LICH SU (phai, thu gon duoc -> khu chinh gan ca popup) */
 .qv-body.an-phu { grid-template-columns: minmax(0, 1fr) 38px; }
-.qv-khu { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 11.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--panel-2); }
+.qv-khu { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 11.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--panel-2); }
 .qv-khu.chinh { color: var(--ocean-600); background: #fff; border-left: 3px solid var(--ocean-600); }
 .qv-khu.phu { border-left: 3px solid var(--line2); }
 .qv-khu .sp { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .qv-quytrinh { padding: 8px 12px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0; max-height: 45vh; overflow: auto; }
-.qv-phu-thu { writing-mode: vertical-rl; transform: rotate(180deg); border: 0; background: #fff; cursor: pointer; font-weight: 800; font-size: 12px; color: var(--text-muted); padding: 10px 0; height: 100%; width: 100%; }
+.qv-phu-thu { writing-mode: vertical-rl; transform: rotate(180deg); border: 0; background: #fff; cursor: pointer; font-weight: 700; font-size: 12px; color: var(--text-muted); padding: 10px 0; height: 100%; width: 100%; }
 .qv-phu-thu:hover { color: var(--ocean-600); background: var(--ocean-100); }
 .qv-phu-sec { padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .qv-col { min-height: 0; display: flex; flex-direction: column; background: #fff; border: 0; box-shadow: var(--shadow); border-radius: 18px; overflow: hidden; }
@@ -265,9 +265,9 @@ table.tbl thead th.qv-act { background: #fafafc; z-index: 2; }
 .ttq-line { display: flex; overflow-x: auto; margin-top: 6px; }
 .ttq-nut { position: relative; flex: 1 1 0; min-width: 84px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 2px; }
 .ttq-noi { position: absolute; top: 9px; right: 50%; width: 100%; height: 3px; z-index: 0; }
-.ttq-cham { position: relative; z-index: 1; width: 20px; height: 20px; border-radius: 50%; border: 2px solid; display: grid; place-items: center; font-weight: 900; font-size: 10.5px; }
+.ttq-cham { position: relative; z-index: 1; width: 20px; height: 20px; border-radius: 50%; border: 2px solid; display: grid; place-items: center; font-weight: 700; font-size: 10.5px; }
 .ttq-cham.on { box-shadow: 0 0 0 3px #fff, 0 0 0 5px currentColor; }
-.ttq-loi { position: absolute; top: -7px; right: -11px; min-width: 15px; height: 15px; border-radius: 8px; color: #fff; font-size: 9.5px; font-weight: 800; display: grid; place-items: center; padding: 0 3px; border: 1.5px solid #fff; }
+.ttq-loi { position: absolute; top: -7px; right: -11px; min-width: 15px; height: 15px; border-radius: 8px; color: #fff; font-size: 9.5px; font-weight: 700; display: grid; place-items: center; padding: 0 3px; border: 1.5px solid #fff; }
 .ttq-ten { font-size: 11px; line-height: 1.2; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .ttq-phu { font-size: 10.5px; color: var(--text-muted); line-height: 1.2; white-space: nowrap; }
 /* Tien trinh thu gon 1 dong (TienTrinhGon) */

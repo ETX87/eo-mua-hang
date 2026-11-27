@@ -167,7 +167,7 @@ export function Popover({ label, children, align = "left", width = 300, title, a
 export function MenuItem({ icon, children, onClick, disabled, title, right }: { icon?: ReactNode; children: ReactNode; onClick: () => void; disabled?: boolean; title?: string; right?: ReactNode }) {
   return (
     <button type="button" className="btn ghost sm" disabled={disabled} title={title} onClick={onClick}
-      style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8, color: "var(--text)" }}>
+      style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 10, color: "var(--text)" }}>
       {icon}<span style={{ flex: 1, textAlign: "left" }}>{children}</span>{right}
     </button>
   );

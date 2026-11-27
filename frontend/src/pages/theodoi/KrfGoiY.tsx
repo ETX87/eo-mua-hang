@@ -93,7 +93,7 @@ export function KrfGoiYModal({ onClose, onSaved, onMoDong }: { onClose: () => vo
                       <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>{soLuong(r.so_luong_dat)} / {soLuong(r.sl_nhap_amis)} / <b>{soLuong(r.so_luong_con_thieu)}</b></td>
                       <td style={{ ...td, color: NGAY.NM.mau }}>{ngay(r.ngay_nm_cam_ket) || "—"}</td>
                       <td style={{ ...td, color: NGAY.DK.mau }}>{ngay(r.ngay_du_kien_gan_nhat) || "—"}{r.so_lan_lui ? <div className="muted" style={{ fontSize: 11 }}>lùi {r.so_lan_lui} lần</div> : null}</td>
-                      <td style={{ ...td, fontWeight: 800, color: NGAY.NM.mau }}>{ngay(r.krf.ngay)}
+                      <td style={{ ...td, fontWeight: 700, color: NGAY.NM.mau }}>{ngay(r.krf.ngay)}
                         {r.ngay_nm_cam_ket && <div className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{r.krf.ngay > r.ngay_nm_cam_ket ? "trễ hơn" : "sớm hơn"} {Math.abs(Math.round((Date.parse(r.krf.ngay) - Date.parse(r.ngay_nm_cam_ket)) / 86400_000))} ngày</div>}</td>
                       <td style={{ ...td, maxWidth: 200 }}>{r.krf.note}{r.krf.ton_kho ? <div className="muted" style={{ fontSize: 11 }}>tồn KRF {soLuong(r.krf.ton_kho)}</div> : null}</td>
                       <td style={{ ...td, whiteSpace: "nowrap", fontSize: 11.5 }}>{ngayGio(r.krf.thoi_gian)}<div className="muted">{r.krf.tu}</div>

@@ -130,7 +130,7 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
       const m = h.g + h.c + h.v;
       if (!m) return <span className="muted">·</span>;
       const t = h.g / m, mau = t < 0.5 ? "#d70015" : t < 0.8 ? "#c26400" : "#1d8a3c";
-      return <span title={`${h.g} / ${m} ca đã giải trình`} style={{ display: "inline-block", minWidth: 44, padding: "1px 6px", borderRadius: 10, background: `${mau}1A`, color: mau, fontWeight: 800 }}>{Math.round(t * 100)}%</span>;
+      return <span title={`${h.g} / ${m} ca đã giải trình`} style={{ display: "inline-block", minWidth: 44, padding: "1px 6px", borderRadius: 10, background: `${mau}1A`, color: mau, fontWeight: 700 }}>{Math.round(t * 100)}%</span>;
     } },
     { k: "c", nhom: "Lỗi & giải trình", h: "Chưa GT", v: (h) => h.c, tc: "chua_gt", xau: true, title: "Ca lỗi còn trong hạn 16 giờ làm việc, chưa giải trình" },
     { k: "v", nhom: "Lỗi & giải trình", h: "Không GT", v: (h) => h.v, tc: "khong_gt", xau: true, title: "Hết 16 giờ làm việc không giải trình → vi phạm (tính riêng cho người phải giải trình)" },
@@ -198,7 +198,7 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
         <span className="muted" style={{ fontSize: 11.5 }}>Ô càng đỏ càng nặng · bấm số để xem danh sách{gon ? "" : " · tồn tính từ ngày ban hành"}</span>
         <button className="btn sm" style={{ marginLeft: "auto" }} onClick={xuat}>⬇ Excel</button>
       </div>
-      <div style={{ overflowX: "auto", border: "1px solid #e8e8ed", borderRadius: 10 }}>
+      <div style={{ overflowX: "auto", boxShadow: "0 0 0 1px var(--border)", borderRadius: 14 }}>
         <table className="bt-tbl">
           <thead>
             <tr className="bt-nhom">

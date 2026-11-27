@@ -50,7 +50,7 @@ export default function CaCeo() {
   const cols: Col<C>[] = [
     { key: "muc", header: "Mức xử lý", loc: "chon", gt: (r) => r.muc_xu_ly, nhanChon: (v) => MUC[v as Muc]?.ngan ?? v, gtSap: (r) => ({ RAT_HOT: 3, GIAM_HOT: 2, DA_XONG: 1 })[r.muc_xu_ly], maxW: 230,
       render: (r) => <div title={r.ly_do_xu_ly.join("\n")}>
-        <span style={{ background: mucCua(r.muc_xu_ly).nen, color: mucCua(r.muc_xu_ly).mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>{mucCua(r.muc_xu_ly).icon} {mucCua(r.muc_xu_ly).ngan}</span>
+        <span style={{ background: mucCua(r.muc_xu_ly).nen, color: mucCua(r.muc_xu_ly).mau, fontWeight: 700, fontSize: 11.5, borderRadius: 8, padding: "2px 8px", whiteSpace: "nowrap" }}>{mucCua(r.muc_xu_ly).icon} {mucCua(r.muc_xu_ly).ngan}</span>
         <div style={{ fontSize: 11.5, color: mucCua(r.muc_xu_ly).mau, marginTop: 2 }}>{r.ly_do_xu_ly.slice(0, 2).join(" · ")}{r.ly_do_xu_ly.length > 2 ? " …" : ""}</div></div> },
     { key: "ma", header: "Mã CEO · lý do", loc: "chon", gt: (r) => r._ma.ma, maxW: 280,
       render: (r) => <span title={`${r._ma.ten}: ${r._ma.gia_tri} (ngưỡng ${r._ma.nguong})\n${r._ma.chi_tiet.join("\n")}`} style={{ fontSize: 12 }}>
@@ -94,7 +94,7 @@ export default function CaCeo() {
       const tonMax = Math.max(0, ...mo.map((r) => r.ton ?? 0));
       const thuc = Math.max(0, ...mo.map((r) => r.thuc7));
       return <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12.5 }}>
-        <span style={{ background: mc.nen, color: mc.mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px" }}>{mc.icon} {mc.ngan}</span>
+        <span style={{ background: mc.nen, color: mc.mau, fontWeight: 700, fontSize: 11.5, borderRadius: 8, padding: "2px 8px" }}>{mc.icon} {mc.ngan}</span>
         <b style={{ fontFamily: "ui-monospace, monospace", color: "#8a0010" }}>{r0._ma.ma}</b><span>{tenMa(r0._ma.ma)}</span>
         <span className="cell-link" onClick={(e) => { e.stopPropagation(); qv.openEo(r0.eo_id); }}><b>{r0.po}</b></span>
         <span className="muted">{r0.doi_tac ?? "—"} · {ten(r0.nguoi_dat)}</span>

@@ -66,10 +66,10 @@ function NotificationBell() {
     <div ref={ref} style={{ position: "relative" }}>
       <button className="btn ghost sm" style={{ position: "relative" }} aria-label="Thông báo" onClick={() => setOpen((o) => !o)}>
         <I.bell />
-        {unread > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 800, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{unread}</span>}
+        {unread > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 700, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{unread}</span>}
       </button>
       {open && (
-        <div className="notif-pop" style={{ position: "absolute", right: 0, top: 42, width: 360, background:"#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
+        <div className="notif-pop" style={{ position: "absolute", right: 0, top: 42, width: 360, background: "rgba(255,255,255,.96)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", border: 0, borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
             <strong style={{ fontSize: 13.5 }}>Thông báo</strong>
             <span style={{ display: "flex", gap: 4 }}>
@@ -117,7 +117,7 @@ function AccountMenu({ uName, email, sub, subColor, nameColor, dropUp, compact }
           position: "absolute",
           // o cuoi sidebar (overflow hidden) -> mo len tren, gioi han trong be ngang the
           ...(dropUp ? { left: 0, right: 0, bottom: 48 } : { right: 0, top: 46, width: 220 }),
-          background: "#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
+          background: "rgba(255,255,255,.96)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", border: 0, borderRadius: 14, boxShadow: "0 0 0 .5px rgba(0,0,0,.12), 0 18px 44px rgba(0,0,0,.18)", zIndex: 50, overflow: "hidden" }}>
           {email && (
             <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{uName}</div>
@@ -280,7 +280,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       return (
                         <div key={c.to}>
                           <Link to={c.to} style={{
-                            display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 10px", borderRadius: 8, margin: "1px 0",
+                            display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 10px", borderRadius: 10, margin: "1px 0",
                             fontSize: 13, fontWeight: cOn ? 600 : 500, color: cOn ? "#fff" : "var(--text)",
                             background: cOn ? "var(--ocean-600)" : "transparent", boxShadow: "none",
                           }}>
@@ -294,7 +294,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                                 const xOn = khopCon(x.to);
                                 return (
                                   <Link key={x.to} to={xOn ? c.to : x.to} title={xOn ? "Bấm lần nữa để bỏ lọc giai đoạn" : `Lọc: ${x.label}`} style={{
-                                    display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 8, margin: "1px 0",
+                                    display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 10, margin: "1px 0",
                                     fontSize: 12.5, fontWeight: xOn ? 600 : 500, color: xOn ? "var(--ocean-600)" : "var(--text-muted)",
                                     background: xOn ? "var(--ocean-100)" : "transparent",
                                   }}>

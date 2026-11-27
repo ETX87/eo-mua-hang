@@ -137,9 +137,9 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
   const xong = () => (daDoi ? onSaved() : onClose());
 
   const The = ({ k, v, sub }: { k: "VE" | "DK" | "NM"; v: string; sub: ReactNode }) => (
-    <div style={{ background: NGAY[k].nen, borderLeft: `3px solid ${NGAY[k].mau}`, borderRadius: 8, padding: "8px 12px" }} title={NGAY[k].mo_ta}>
+    <div style={{ background: NGAY[k].nen, borderLeft: `3px solid ${NGAY[k].mau}`, borderRadius: 10, padding: "8px 12px" }} title={NGAY[k].mo_ta}>
       <div style={{ fontSize: 11.5, fontWeight: 700, color: NGAY[k].mau }}>{NGAY[k].l}</div>
-      <div style={{ fontSize: 20, fontWeight: 900, margin: "2px 0" }}>{v}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, margin: "2px 0" }}>{v}</div>
       <div className="muted" style={{ fontSize: 11.5 }}>{sub}</div>
       <div className="muted" style={{ fontSize: 11, marginTop: 4, lineHeight: 1.35 }}>{NGAY[k].mo_ta}</div>
     </div>
@@ -160,7 +160,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
           </div>
 
           {krf && (
-            <div style={{ display: "flex", gap: 10, alignItems: "center", border: `1px solid ${NGAY.NM.mau}`, background: NGAY.NM.nen, borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12.5 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", background: NGAY.NM.nen, borderRadius: 12, padding: "8px 12px", marginBottom: 12, fontSize: 12.5 }}>
               <div style={{ flex: 1 }}>
                 <b>Mail KRF</b> {ngayGio(krf.thoi_gian)} ({krf.tu}): đáp ứng <b style={{ color: NGAY.NM.mau, fontSize: 14 }}>{ngay(krf.ngay)}</b>
                 {krf.note && <span className="muted"> · {krf.note}</span>}
@@ -169,7 +169,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
               {krf.ngay !== nmGanNhat && <button className="btn sm" onClick={dienKrf} title={kh.length > 1 ? "Nhiều đợt: điền vào form thêm đợt — chọn Sửa ở đợt cần đổi nếu muốn sửa đợt cũ" : "Điền ngày KRF vào form bên dưới (chưa lưu)"}>Điền vào form</button>}
             </div>
           )}
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>Các đợt hàng về (kế hoạch)</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Các đợt hàng về (kế hoạch)</div>
           <div className="tbl-wrap">
             <table className="tbl tbl-dense">
               <thead><tr><th className="qv-act" style={th}>Thao tác</th><th style={th}>Đợt</th><th style={th}><NhanNgay k="NM" /></th><th style={th}><NhanNgay k="DK" /></th><th style={{ ...th, textAlign: "right" }}>SL</th><th style={th}>Ghi chú / nguồn</th><th style={th}>Cập nhật</th></tr></thead>
@@ -192,7 +192,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
             </table>
           </div>
 
-          <div style={{ border: "1px dashed var(--border)", borderRadius: 10, padding: 12, marginTop: 10, background: "var(--panel-2)" }}>
+          <div style={{ borderRadius: 14, padding: 12, marginTop: 10, background: "var(--panel-2)" }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>{sua ? `Sửa đợt ${kh.findIndex((p) => p.id === sua.id) + 1}` : "Thêm đợt hàng về"} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>— còn được lên kế hoạch {soLuong(Math.max(0, conDuocLen))}</span></div>
             <div style={{ display: "grid", gridTemplateColumns: "160px 160px 110px 1fr auto", gap: 10, alignItems: "end" }}>
               <div><label className="field-label"><NhanNgay k="NM" /></label><input className="input" type="date" value={nm} onChange={(e) => doiNm(e.target.value)} /></div>
@@ -210,7 +210,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 6 }}>{err}</div>}
           </div>
 
-          <div style={{ fontWeight: 800, margin: "14px 0 6px" }}><NhanNgay k="VE" /> <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>— phiếu nhập AMIS khớp dòng này (tự động, không nhập tay)</span></div>
+          <div style={{ fontWeight: 700, margin: "14px 0 6px" }}><NhanNgay k="VE" /> <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>— phiếu nhập AMIS khớp dòng này (tự động, không nhập tay)</span></div>
           <div className="tbl-wrap">
             <table className="tbl tbl-dense">
               <thead><tr><th style={th}>{NGAY.VE.l}</th><th style={th}>Số chứng từ</th><th style={th}>Kho</th><th style={{ ...th, textAlign: "right" }}>SL nhập</th></tr></thead>
@@ -314,7 +314,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
           </select>
           {!mo.length && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng này không có lỗi chờ giải trình — giải trình sẽ ghi thành 1 lỗi mới.</div>}
           {nccKhongNgay && (
-            <div style={{ background: "#e8f1fc", border: "1px solid #c9e0fb", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 10 }}>
+            <div style={{ background: "#e8f1fc", borderRadius: 12, padding: "8px 10px", fontSize: 12.5, marginTop: 10 }}>
               💡 NCC đã trả lời ngày <b>{ngay(nccKhongNgay.thoi_gian)}</b> nhưng <b>không có ngày dự kiến</b>{traLoi ? <> ("{traLoi}")</> : null}. Nguyên nhân có thể do NCC, không phải do bạn.
               <button className="btn sm" style={{ marginLeft: 8 }} onClick={goiYNcc}>Điền: Ai = Đối tác / NCC</button>
             </div>
@@ -347,7 +347,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
             {anh.map((a, i) => (
               <span key={a.drive_file_id} className="badge issued" style={{ gap: 6 }}>
                 <a href={a.url} target="_blank" rel="noopener" style={{ color: "inherit" }}>{a.name}</a>
-                <span role="button" style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
+                <span role="button" style={{ cursor: "pointer", fontWeight: 700, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
               </span>
             ))}
             <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>
@@ -411,7 +411,7 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved, choNcc: choNccM
   return (
     <Modal title={`Ghi nhận nhắc đối tác — ${nhan}`} onClose={onClose} width={640}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : `Ghi nhận ${ids.length} dòng`}</button></>}>
-      <div style={{ background: "var(--panel-2)", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 12, lineHeight: 1.5 }}>
+      <div style={{ background: "var(--panel-2)", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, marginBottom: 12, lineHeight: 1.5 }}>
         Dùng khi đã nhắc đối tác bằng <b>gọi điện / Zalo / tin nhắn / mail</b>. Kiểm tra push thứ 2 / thứ 4 (lỗi R3) tính như <b>đã push</b> trong kỳ của ngày liên hệ;
         ghi muộn mà R3 kỳ đó đã bị ghi lỗi (chưa giải trình) thì lỗi tự bỏ. Đối tác đã báo ngày → nhập luôn <b>ngày dự kiến</b> (nút 📅) để hết theo dõi R1 / R3.
       </div>
@@ -422,7 +422,7 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved, choNcc: choNccM
           <input className="input" type="date" value={ngayLh} min={tuNgay} max={homNay} onChange={(e) => setNgayLh(e.target.value)} /></div>
         <div><label className="field-label">Giờ</label><input className="input" type="time" value={gio} onChange={(e) => setGio(e.target.value)} /></div>
       </div>
-      <div style={{ marginTop: 12, border: `1px solid ${choNcc ? "#a8cdff" : "var(--border)"}`, background: choNcc ? "#e8f1fc" : undefined, borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ marginTop: 12, background: choNcc ? "#e8f1fc" : "var(--panel-2)", borderRadius: 12, padding: "8px 10px" }}>
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 700, fontSize: 13 }}>
           <input type="checkbox" checked={choNcc} onChange={(e) => setChoNcc(e.target.checked)} /> ⏳ NCC chưa có ngày dự kiến — chờ NCC báo ngày
         </label>
@@ -443,7 +443,7 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved, choNcc: choNccM
         {anh.map((a, i) => (
           <span key={a.drive_file_id} className="badge issued" style={{ gap: 6 }}>
             <a href={a.url} target="_blank" rel="noopener" style={{ color: "inherit" }}>{a.name}</a>
-            <span role="button" style={{ cursor: "pointer", fontWeight: 800, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
+            <span role="button" style={{ cursor: "pointer", fontWeight: 700, color: "var(--danger)" }} onClick={() => setAnh((x) => x.filter((_, j) => j !== i))}>×</span>
           </span>
         ))}
         <button className="btn sm" onClick={() => fileRef.current?.click()}><I.upload width={14} height={14} /> Thêm ảnh</button>
@@ -511,7 +511,7 @@ function DongGon({ luc, icon, chinh, phu, chiTiet, mo, onMo }: { luc?: string; i
         {chiTiet && <span className="muted" style={{ flexShrink: 0, fontSize: 11 }}>{mo ? "▴" : "›"}</span>}
       </div>
       {phu && <div style={{ fontSize: 11.5, color: NGAY.NM.mau, marginLeft: luc !== undefined ? 76 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: mo ? "normal" : "nowrap" }}>{phu}</div>}
-      {mo && chiTiet && <div style={{ margin: "4px 0 2px", padding: "6px 8px", background: "#f5f5f7", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}>{chiTiet}</div>}
+      {mo && chiTiet && <div style={{ margin: "4px 0 2px", padding: "6px 8px", background: "#f5f5f7", borderRadius: 10, fontSize: 12 }}>{chiTiet}</div>}
     </div>
   );
 }

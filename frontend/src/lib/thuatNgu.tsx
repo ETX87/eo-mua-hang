@@ -35,7 +35,7 @@ export function Hoi({ k, req, nhan }: { k: KhoaTN; req?: boolean; nhan?: string 
   return (
     <span title={`${t.l}: ${t.la}\nĐể làm gì: ${t.de}`} style={{ cursor: "help", whiteSpace: "nowrap" }}>
       {nhan ?? t.l}{req && <span className="req"> *</span>}
-      <span aria-hidden style={{ display: "inline-grid", placeItems: "center", width: 14, height: 14, borderRadius: 9, border: "1px solid currentColor", fontSize: 9.5, fontWeight: 800, marginLeft: 4, opacity: 0.55, verticalAlign: 1 }}>?</span>
+      <span aria-hidden style={{ display: "inline-grid", placeItems: "center", width: 14, height: 14, borderRadius: 9, border: "1px solid currentColor", fontSize: 9.5, fontWeight: 700, marginLeft: 4, opacity: 0.55, verticalAlign: 1 }}>?</span>
     </span>
   );
 }
@@ -45,14 +45,14 @@ export function NutGiaiThich() {
   const [mo, setMo] = useState(false);
   return (
     <>
-      <button className="btn ghost sm" title="Giải thích số liệu & cách nhập" onClick={() => setMo(true)} style={{ fontWeight: 800 }}>?</button>
+      <button className="btn ghost sm" title="Giải thích số liệu & cách nhập" onClick={() => setMo(true)} style={{ fontWeight: 700 }}>?</button>
       {mo && <BangGiaiThich onClose={() => setMo(false)} />}
     </>
   );
 }
 
 export function BangGiaiThich({ onClose }: { onClose: () => void }) {
-  const H = ({ children }: { children: ReactNode }) => <div style={{ fontWeight: 800, fontSize: 14, margin: "16px 0 6px" }}>{children}</div>;
+  const H = ({ children }: { children: ReactNode }) => <div style={{ fontWeight: 700, fontSize: 14, margin: "16px 0 6px" }}>{children}</div>;
   const Dong = ({ k }: { k: KhoaTN }) => (
     <tr><td style={{ fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "top" }}>{TN[k].l}</td><td>{TN[k].la}</td><td className="muted">{TN[k].de}</td></tr>
   );
@@ -63,7 +63,7 @@ export function BangGiaiThich({ onClose }: { onClose: () => void }) {
         <div className="muted" style={{ marginBottom: 6 }}>Ví dụ: đặt <b>100</b> · AMIS đã về <b>30</b> · đã lên kế hoạch 2 đợt (60 + 40 = <b>100</b>) → còn thiếu <b>70</b>, chưa lên kế hoạch <b>0</b>.</div>
         <table className="tbl tbl-dense"><thead><tr><th>Số</th><th>Là gì</th><th>Để làm gì</th></tr></thead>
           <tbody>{(["SL_DAT", "SL_VE", "SL_THIEU", "SL_KH", "SL_CHUA_KH", "DON_GIA"] as KhoaTN[]).map((k) => <Dong key={k} k={k} />)}</tbody></table>
-        <div style={{ marginTop: 6, background: "#fff6e8", borderRadius: 8, padding: "8px 10px" }}>
+        <div style={{ marginTop: 6, background: "#fff6e8", borderRadius: 10, padding: "8px 10px" }}>
           <b>Vì sao giảm SL đặt có khi bị chặn?</b> Tổng kế hoạch không được lớn hơn SL đặt (không thể hẹn giao nhiều hơn số đã đặt).
           Khi giảm SL đặt xuống dưới tổng kế hoạch, hộp "Sửa SL đặt" cho chọn <b>tự giảm kế hoạch từ đợt xa nhất</b> — làm 1 bước.
         </div>

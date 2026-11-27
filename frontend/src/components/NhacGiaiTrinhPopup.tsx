@@ -66,7 +66,7 @@ export function NhacGiaiTrinhPopup() {
     >
       <div style={{ display: "grid", gap: 10, fontSize: 13.5 }}>
         <div style={{
-          border: `2px solid ${sapHet.length ? "#d70015" : "#ff9500"}`, background: sapHet.length ? "#fff2f1" : "#fff6e8",
+          border: 0, background: sapHet.length ? "#fff2f1" : "#fff6e8",
           color: sapHet.length ? "#d70015" : "#9c4f00", borderRadius: 12, padding: "10px 14px", fontWeight: 700, fontSize: 14.5,
         }}>
           Bạn đang có {q.data?.tong_loi} lỗi chờ giải trình trên {rows.length} dòng linh kiện.
@@ -77,7 +77,7 @@ export function NhacGiaiTrinhPopup() {
         </div>
         <div style={{ maxHeight: "45vh", overflowY: "auto", display: "grid", gap: 6 }}>
           {rows.slice(0, 30).map((r) => (
-            <div key={r.item_id} style={{ display: "flex", gap: 10, alignItems: "center", border: `1px solid ${r.sap_het ? "#ffb3ad" : "var(--border)"}`, borderRadius: 10, padding: "8px 12px" }}>
+            <div key={r.item_id} style={{ display: "flex", gap: 10, alignItems: "center", background: r.sap_het ? "#fff2f1" : "var(--panel-2)", borderRadius: 12, padding: "8px 12px" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "baseline" }} onClick={an}>
                   <EoLink id={r.eo_id}>{r.ma_po}</EoLink>
@@ -91,7 +91,7 @@ export function NhacGiaiTrinhPopup() {
               </div>
               <div style={{ textAlign: "right", whiteSpace: "nowrap", fontSize: 12 }}>
                 {r.con_gio == null ? <span className="muted">Lỗi ghi tay</span> : (
-                  <span style={{ fontWeight: 800, color: r.con_gio < 0 ? "#d70015" : r.sap_het ? "#c26400" : "#047857" }}>
+                  <span style={{ fontWeight: 700, color: r.con_gio < 0 ? "#d70015" : r.sap_het ? "#c26400" : "#047857" }}>
                     {r.con_gio < 0 ? `Trễ ${gioTxt(-r.con_gio)}` : `Còn ${gioTxt(r.con_gio)}`}
                   </span>
                 )}
@@ -147,10 +147,10 @@ export function MoiBatDay() {
   return (
     <div style={{ position: "fixed", right: 16, bottom: 16, zIndex: 150, width: 340, background: "rgba(255,255,255,.96)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", border: 0,
       borderRadius: 18, boxShadow: "0 0 0 .5px rgba(0,0,0,.1), 0 18px 44px rgba(0,0,0,.16)", padding: "14px 16px", fontSize: 13, animation: "ap-in .22s cubic-bezier(.2,.8,.2,1)" }}>
-      <div style={{ fontWeight: 800, marginBottom: 4 }}>{chan ? "🔕 Trình duyệt đang chặn thông báo" : "🔔 Bật thông báo trên máy này?"}</div>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{chan ? "🔕 Trình duyệt đang chặn thông báo" : "🔔 Bật thông báo trên máy này?"}</div>
       <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Nhận nhắc ngay khi có lỗi mới cần giải trình và khi còn ≤ 6 giờ làm việc là hết hạn — kể cả lúc không mở app.
         Hết hạn mà không giải trình sẽ bị ghi vi phạm.</div>
-      {chan && <div style={{ fontSize: 12.5, marginTop: 6, background: "#fff1dc", borderRadius: 6, padding: "6px 8px" }}>
+      {chan && <div style={{ fontSize: 12.5, marginTop: 6, background: "#fff1dc", borderRadius: 8, padding: "6px 8px" }}>
         Mở chặn: bấm biểu tượng <b>🔒 / ⓘ</b> bên trái thanh địa chỉ → <b>Thông báo</b> → <b>Cho phép</b> → tải lại trang, rồi bấm "Bật thông báo".</div>}
       {loi && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6 }}>{loi}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>

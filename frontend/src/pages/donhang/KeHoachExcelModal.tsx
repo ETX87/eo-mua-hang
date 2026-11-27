@@ -37,7 +37,7 @@ export function KeHoachExcelModal({ onClose, onDone }: { onClose: () => void; on
       <div className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>
         Chỉ sửa 1–2 dòng? Dùng nút 📅 trên dòng. Đơn kế hoạch tháng (nhà máy báo SL theo tuần) → nút <b>Kế hoạch tuần KRF</b>.
       </div>
-      {msg && <div style={{ background: "#e2f6e7", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
+      {msg && <div style={{ background: "#e2f6e7", borderRadius: 10, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
         <div className="buoc">
           <div className="buoc-so">1</div>

@@ -64,7 +64,7 @@ export function ChonNhieu({ value, onChange, options, placeholder, width = 200, 
           <div style={{ maxHeight: 260, overflow: "auto", background: "var(--panel-2)", borderRadius: 10, padding: 4 }}>
             {loc.length === 0 && <div className="muted" style={{ fontSize: 12, padding: 6 }}>Không có giá trị.</div>}
             {loc.map((o) => (
-              <label key={o.v} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, padding: "6px 8px", borderRadius: 8, cursor: "pointer" }}
+              <label key={o.v} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, padding: "6px 8px", borderRadius: 10, cursor: "pointer" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#fff")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
                 <input type="checkbox" checked={chon.has(o.v)} onChange={() => doi(o.v)} style={{ accentColor: "var(--ocean-600)", width: 15, height: 15 }} />
                 <span style={{ flex: 1 }}>{ten(o)}</span>

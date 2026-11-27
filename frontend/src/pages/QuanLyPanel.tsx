@@ -109,7 +109,7 @@ export default function QuanLyPanel() {
                     <div key={m.k} onClick={() => nav(`/don-hang?ton=${m.k}`)} title={`${m.so_dong} dòng · ${m.so_eo} EO · thiếu ${soLuong(m.sl_thieu)} SL`}
                       style={{ cursor: "pointer", background: m.so_dong ? c.nen : "var(--panel-2)", borderRadius: 12, padding: "8px 10px" }}>
                       <div style={{ fontSize: 11, color: m.so_dong ? c.mau : "var(--text-muted)", fontWeight: 700 }}>{m.l}</div>
-                      <div style={{ fontSize: 19, fontWeight: 900, color: m.so_dong ? c.mau : "var(--text-muted)" }}>{soLuong(m.so_dong)}</div>
+                      <div style={{ fontSize: 19, fontWeight: 700, color: m.so_dong ? c.mau : "var(--text-muted)" }}>{soLuong(m.so_dong)}</div>
                       <div className="muted" style={{ fontSize: 10.5 }}>{m.so_eo} EO · thiếu {soLuong(m.sl_thieu)}</div>
                     </div>
                   );
@@ -120,7 +120,7 @@ export default function QuanLyPanel() {
                 {d.moc_cho_duyet.filter((m: any) => m.so_eo).length === 0 ? <span className="muted">không có</span>
                   : d.moc_cho_duyet.filter((m: any) => m.so_eo).map((m: any) => {
                     const c = MOC_TON.find((x) => x.k === m.k)!;
-                    return <span key={m.k} style={{ background: c.nen, color: c.mau, borderRadius: 6, padding: "1px 7px", marginRight: 4, fontWeight: 700 }}>{m.l}: {m.so_eo}</span>;
+                    return <span key={m.k} style={{ background: c.nen, color: c.mau, borderRadius: 8, padding: "1px 7px", marginRight: 4, fontWeight: 700 }}>{m.l}: {m.so_eo}</span>;
                   })}
               </div>
             </div>
@@ -164,7 +164,7 @@ function TraLinhKien() {
           {!r.isLoading && ds.length === 0 && <div className="muted" style={{ padding: 8, fontSize: 12.5 }}>Không thấy mã nào. Enter để tra đúng mã "{q.trim()}".</div>}
           {ds.map((x, k) => (
             <div key={x.ma} onMouseDown={(e) => { e.preventDefault(); chon(x.ma); }} onMouseEnter={() => setI(k)}
-              style={{ padding: "6px 8px", borderRadius: 6, cursor: "pointer", background: k === i ? "#fff6e8" : undefined, display: "flex", gap: 8, alignItems: "baseline" }}>
+              style={{ padding: "6px 8px", borderRadius: 8, cursor: "pointer", background: k === i ? "#fff6e8" : undefined, display: "flex", gap: 8, alignItems: "baseline" }}>
               <b style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{x.ma}</b>
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5 }}>{x.ten}</span>
               <span className="muted" style={{ fontSize: 11, whiteSpace: "nowrap" }}>{x.so_dong ? `${x.so_dong} dòng · ${soLuong(x.sl)}` : "chỉ có phiếu AMIS"}</span>

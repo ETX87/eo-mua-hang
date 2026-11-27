@@ -64,7 +64,7 @@ export default function DoiTacLyDo() {
       </div>
 
       {chua.length > 0 && (
-        <div style={{ border: "1px solid #ffd0cc", background: "#fff2f1", borderRadius: 10, padding: 10, marginBottom: 14 }}>
+        <div style={{ background: "#fff2f1", borderRadius: 12, padding: 10, marginBottom: 14 }}>
           <b>Giá trị chưa chuẩn còn trong dữ liệu ({chua.length})</b>
           <table className="tbl tbl-dense" style={{ marginTop: 6 }}>
             <thead><tr><th>Giá trị đang lưu</th><th style={{ textAlign: "right" }}>Số dòng</th><th>Chuyển thành</th><th /></tr></thead>
