@@ -6,10 +6,10 @@ import { useLop, laTrenCung } from "../../lib/lop";
  * Popup xem nhanh 95% man hinh: EO (theo id), don hang = 1 dong linh kien (theo item id) va ma linh kien (theo ma). Xep chong duoc (tu EO mo ma LK, tu ma LK mo EO),
  * nut ← quay lai popup duoi, Esc dong popup tren cung. Mo tu bat ky dau qua useQuickView() / <EoLink> / <PartLink>.
  */
-type Item = { loai: "eo"; id: number; loi?: boolean } | { loai: "dong"; id: number } | { loai: "lk"; ma: string; po?: string };
+type Item = { loai: "eo"; id: number; loi?: boolean | number[]; moTa?: string } | { loai: "dong"; id: number } | { loai: "lk"; ma: string; po?: string };
 /** openPart(ma, po?): po = ma phe duyet -> UI ma LK LOC theo PO do (dong khong xac dinh duoc dong dat, vd chung tu chua khop). */
-/** openEo(id, { loi: true }) (v0.141): mo popup PO o tab Linh kien, LOC SAN cac dong co loi. */
-interface Api { openEo: (id: number, tuy?: { loi?: boolean }) => void; openDong: (itemId: number) => void; openPart: (ma: string, po?: string) => void; closeAll: () => void }
+/** openEo(id, { loi: true }) (v0.141): mo popup PO o tab Linh kien, LOC SAN cac dong co loi; v0.143 loi = [item id] -> chi cac dong nay (vd LK dinh loi giai doan dang xem). */
+interface Api { openEo: (id: number, tuy?: { loi?: boolean | number[]; moTa?: string }) => void; openDong: (itemId: number) => void; openPart: (ma: string, po?: string) => void; closeAll: () => void }
 const Ctx = createContext<Api | null>(null);
 
 const EoQuickView = lazy(() => import("./EoQuickView"));
@@ -41,7 +41,7 @@ function LopXemNhanh({ i, onPop, children }: { i: number; onPop: () => void; chi
 export function QuickViewProvider({ children }: { children: ReactNode }) {
   const [stack, setStack] = useState<Item[]>([]);
   const api: Api = {
-    openEo: (id, tuy) => setStack((s) => [...s, { loai: "eo", id, loi: !!tuy?.loi }]),
+    openEo: (id, tuy) => setStack((s) => [...s, { loai: "eo", id, loi: Array.isArray(tuy?.loi) ? tuy!.loi : !!tuy?.loi, moTa: tuy?.moTa }]),
     openDong: (id) => setStack((s) => [...s, { loai: "dong", id }]),
     openPart: (ma, po) => ma.trim() && setStack((s) => [...s, { loai: "lk", ma: ma.trim(), po: po?.trim() || undefined }]),
     closeAll: () => setStack([]),
@@ -59,7 +59,7 @@ export function QuickViewProvider({ children }: { children: ReactNode }) {
       {stack.map((it, i) => (
         <LopXemNhanh key={i} i={i} onPop={pop}>
           <Suspense fallback={<Spinner />}>
-            {it.loai === "eo" ? <EoQuickView id={it.id} locLoi={it.loi} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />
+            {it.loai === "eo" ? <EoQuickView id={it.id} locLoi={it.loi} moTaLoc={it.moTa} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />
               : it.loai === "dong" ? <DongQuickView id={it.id} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />
               : <PartQuickView ma={it.ma} po={it.po} onClose={pop} onCloseAll={api.closeAll} coTruoc={i > 0} />}
           </Suspense>

@@ -140,10 +140,11 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - 4 cách xem cùng bộ lọc: **Theo PO** (mặc định; chỉ PO có lỗi, tick "Cả PO không lỗi" để xem hết; giai đoạn PO = giai đoạn tồn lâu nhất như 7b) ·
   **Theo linh kiện** · **Theo mã lỗi** (số lần, số PO / LK, ai lỗi nhiều nhất) · **Theo ai lỗi** (người & NCC, lỗi gì × lần). Bấm mã / người → về Theo PO đã lọc.
 - Phạm vi xem như màn Vi phạm: người xem toàn bộ / chỉ xem → tất cả; còn lại PO mình đặt, lỗi của mình, kho mình phụ trách.
-- **Bấm 1 PO / linh kiện** (v0.139, theo demo Giám đốc duyệt) → popup chi tiết PO: luồng ngang G1–G8 (đã qua xanh lá ✓, đang ở cam nhấp nháy, giai đoạn có lỗi
-  chấm đỏ "!" + số lỗi) · 6 ô số (đặt / về / thiếu / đáp ứng / lỗi đối tác / lỗi nội bộ) · bảng từng linh kiện (lỗi gì, ai lỗi) · "▾ Xem chi tiết" = nhật ký từng lần lỗi.
-  Nút: "Mở PO đầy đủ" (popup PO cũ) · "✍ Giải trình lỗi của PO" (chỉ khi còn lỗi cần GT / vi phạm; giải trình chung các dòng có lỗi — lỗi chậm duyệt vẫn do người duyệt tự giải trình).
-  Popup dùng toàn bộ dòng / lỗi của PO, không theo bộ lọc đang chọn.
+- **Bấm 1 PO / linh kiện** (v0.143, gộp 2 UI): mở **popup PO chung** (Đơn PO), lọc sẵn đúng các LK dính lỗi ĐANG LỌC (vd đang xem G4 → chỉ LK có lỗi G4; bấm 1 LK → chỉ dòng đó)
+  + dòng "Đang lọc: … — n/N LK"; nút "LK dính lỗi đang xem" bật / tắt. Popup PO có thêm ô Đáp ứng %, Lỗi đối tác, Lỗi nội bộ và cột "Lỗi gì (mã × lần)", "Ai lỗi (× lần)".
+- **Mốc tính lỗi 20/11/2026** (v0.143, luật 15 CLAUDE.md): màn Lỗi theo PO, số đếm menu, ô số / cột lỗi / nút "LK có lỗi" của popup PO chỉ tính lỗi có mốc từ 20/11/2026 (ngày đào tạo).
+- **Ô số / dải giai đoạn không bị chính bộ lọc của mình làm về 0** (v0.143): Tổng = bỏ qua lọc bên + trạng thái; Đối tác / Nội bộ = bỏ qua lọc bên; Cần GT / Vi phạm = bỏ qua lọc
+  trạng thái; dải giai đoạn = bỏ qua lọc giai đoạn. Bảng bên dưới vẫn áp đủ mọi bộ lọc.
 - **Điện thoại (< 980px)**: bảng thành thẻ (30 thẻ / lần + "Xem thêm"), popup thành bottom-sheet trượt từ đáy.
 - **Lọc sẵn LK có lỗi trong popup PO** (v0.141): popup PO đầy đủ có nút "⚠ Chỉ LK có lỗi (n)" trên tab Linh kiện (dòng có lỗi = có bản ghi lỗi trên dòng hoặc theo dõi có số lỗi > 0).
   Tự bật khi mở PO từ cột "Vi phạm" / "Lỗi đối tác / nội bộ" ở Đơn PO, từ "Mở PO đầy đủ" ở Lỗi theo PO; bấm ô "Lỗi chờ GT", cảnh báo về lỗi, hoặc nút "Xem các LK có lỗi" ở tab Lỗi & giải trình

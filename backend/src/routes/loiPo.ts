@@ -25,6 +25,10 @@ function phamViXem(u: AppVariables["user"]) {
     tatCa || nguoiDat === u.email || nguoiVp === u.email || (u.vai_tro === "Kho" && (khoCua.length === 0 || khoCua.includes(kho)));
   return { tatCa, thay };
 }
+/** v0.143 (chu he thong 2026-11-27 "Da chot bo loi tu truoc 20/11 roi ma? ... khong luu nguyen tac a?" - noi tiep v0.128 bo vi pham truoc dao tao 20/11):
+ *  man Loi theo PO + so dem menu CHI tinh loi co MOC (han, khong co thi luc ghi) tu ngay dao tao 20/11/2026. Loi truoc moc (ke ca da giai trinh / tu khac phuc) khong hien. */
+export const LOI_TINH_TU = "2026-11-20";
+const tinhLoi = (l: any) => l.tu_dong !== "CU" && String(l.han ?? l.created_at) >= LOI_TINH_TU;
 const ttLoi = (l: any) => (l.vi_pham ? "VI_PHAM" : l.trang_thai === "CHO_GIAI_TRINH" ? "CHO" : l.tu_dong ? "KHAC_PHUC" : "DA_GT");
 
 /**
@@ -37,7 +41,7 @@ app.get("/dem", async (c) => {
   const out: Record<string, number> = {};
   const cong = (k: string) => { out[k] = (out[k] ?? 0) + 1; };
   for (const l of rows) {
-    if (l.tu_dong === "CU" || !thay(l.nguoi_dat, l.nguoi_vp, l.kho)) continue;
+    if (!tinhLoi(l) || !thay(l.nguoi_dat, l.nguoi_vp, l.kho)) continue;
     cong(""); cong(l.ben); cong(ttLoi(l)); if (l.buoc) cong(`gd|${l.buoc}`); cong(`${l.ben}|${l.ma_loi}`);
   }
   return c.json(out);
@@ -54,7 +58,7 @@ app.get("/", async (c) => {
   const tenBy = new Map(users.results.map((x) => [x.email.toLowerCase(), x.ho_ten || x.email]));
   const ten = (e: string | null) => (e ? tenBy.get(e.toLowerCase()) ?? e : "");
 
-  const loi = loiAll.filter((l) => l.tu_dong !== "CU" && thay(l.nguoi_dat, l.nguoi_vp, l.kho)).map((l) => {
+  const loi = loiAll.filter((l) => tinhLoi(l) && thay(l.nguoi_dat, l.nguoi_vp, l.kho)).map((l) => {
     const tt = ttLoi(l);
     return {
       id: l.id as number, i: l.eo_item_id as number, e: l.eo_id as number, ma: l.ma_loi as string, ten: l.ten_ma as string, gd: (l.buoc as string | null) ?? "",
@@ -80,7 +84,7 @@ app.get("/", async (c) => {
     dong.push({ i: l.eo_item_id, e: l.eo_id, po: l.approval_code || l.eo_code, lk: l.part_code, ten_lk: l.part_name, kho: l.kho, ncc: l.doi_tac ?? "",
       nguoi_dat: ten(l.nguoi_dat), ngay_bh: "", gd: "G3", gd_ten: "Duyệt mua & ban hành", dat: l.so_luong_dat ?? 0, ve: l.sl_ve ?? 0, thieu: l.so_luong_dat ?? 0 });
   }
-  return c.json({ luc: nowVN(), tat_ca: tatCa, dong, loi });
+  return c.json({ luc: nowVN(), tat_ca: tatCa, dong, loi, tinh_tu: LOI_TINH_TU });
 });
 
 export default app;

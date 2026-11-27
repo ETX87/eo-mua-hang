@@ -9,9 +9,8 @@ import { useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong } from "../lib/format";
 import { exportRowsToXlsx, type ExportCol } from "../lib/exportXlsx";
-import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
 import { BEN, ChipMa, DapUng, GD, GD_TEN, SO, SoBen, THU_TU_GD, TT, dem, pt, soMa, topTxt, type Data, type Dong, type Loi } from "../lib/loiPo";
-import { DsThe, PopupPo, useHep } from "./loiPo/PopupPo";
+import { DsThe, useHep } from "./loiPo/DsThe";
 
 /**
  * MAN "LỖI THEO PO" (v0.138) - Giam doc 2026-11-27: "1s phai biet ngay mac loi gi ... loi doi tac / noi bo ... loc theo ma loi ... don gian hoa".
@@ -27,8 +26,6 @@ interface DongPo { e: number; po: string; ncc: string; nguoi_dat: string; ngay_b
 export default function LoiTheoPo() {
   const qv = useQuickView();
   const hep = useHep();
-  const [moPo, setMoPo] = useState<number | null>(null);
-  const [gt, setGt] = useState<Dong[] | null>(null);
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["loi-po"], queryFn: () => api.get<Data>("/loi-po") });
   const [sp, setSp] = useSearchParams();
@@ -49,10 +46,13 @@ export default function LoiTheoPo() {
   const dongBy = useMemo(() => new Map((d?.dong ?? []).map((x) => [x.i, x])), [d]);
   const tenMa = useMemo(() => { const m = new Map<string, Loi>(); for (const l of d?.loi ?? []) if (!m.has(l.ma)) m.set(l.ma, l); return m; }, [d]);
   const nccCua = (l: Loi) => dongBy.get(l.i)?.ncc ?? "";
-  // bo loc ap len LOI (ben, ma, gd loi, ai, trang thai, ncc cua dong)
-  const loi = useMemo(() => (d?.loi ?? []).filter((l) =>
-    (!fBen.length || fBen.includes(l.ben)) && (!fMa.length || fMa.includes(l.ma)) && (!fGd.length || fGd.includes(l.gd))
-    && (!fAi.length || fAi.includes(l.ai)) && (!fTt.length || fTt.includes(l.tt)) && (!fNcc.length || fNcc.includes(nccCua(l)))), [d, sp]); // eslint-disable-line react-hooks/exhaustive-deps
+  // bo loc ap len LOI (ben, ma, gd loi, ai, trang thai, ncc cua dong). v0.143 (chu he thong "bam cac nut ben tren so thay doi lung tung"):
+  // locTru(bo) = ap moi bo loc TRU cac chieu trong "bo" -> o so / dai giai doan cua 1 chieu KHONG bi chinh bo loc cua chieu do lam ve 0 (kieu loc chuan).
+  const locTru = (bo: string[]) => (d?.loi ?? []).filter((l) =>
+    (bo.includes("ben") || !fBen.length || fBen.includes(l.ben)) && (bo.includes("ma") || !fMa.length || fMa.includes(l.ma))
+    && (bo.includes("gd") || !fGd.length || fGd.includes(l.gd)) && (bo.includes("ai") || !fAi.length || fAi.includes(l.ai))
+    && (bo.includes("tt") || !fTt.length || fTt.includes(l.tt)) && (bo.includes("ncc") || !fNcc.length || fNcc.includes(nccCua(l))));
+  const loi = useMemo(() => locTru([]), [d, sp]); // eslint-disable-line react-hooks/exhaustive-deps
   const loiTheoDong = useMemo(() => { const m = new Map<number, Loi[]>(); for (const l of loi) m.set(l.i, [...(m.get(l.i) ?? []), l]); return m; }, [loi]);
   const chiLoc = coLoc; // co loc theo loi -> chi hien PO / dong co loi khop
   const dongHien = useMemo(() => (d?.dong ?? []).filter((x) => (!fNcc.length || fNcc.includes(x.ncc))
@@ -97,8 +97,10 @@ export default function LoiTheoPo() {
   const opt = (ds: [string, number][], nhan?: (k: string) => string) => ds.map(([v, n]) => ({ v, l: nhan ? nhan(v) : v, n }));
   const tat = d.loi;
   const tong = tongHop(loi);
+  // o so: tong = bo qua ben + trang thai; doi tac / noi bo = bo qua ben; can GT / vi pham = bo qua trang thai; dai giai doan = bo qua giai doan
+  const loiNen = locTru(["ben", "tt"]), tBen = tongHop(locTru(["ben"])), tTt = tongHop(locTru(["tt"])), loiGd = locTru(["gd"]);
   const datAll = dongHien.reduce((t, x) => t + x.dat, 0), veAll = dongHien.reduce((t, x) => t + Math.min(x.ve, x.dat), 0);
-  const theoGd = GD.map(([k, l]) => ({ k, l, ncc: loi.filter((x) => x.gd === k && x.ben === "NCC").length, nb: loi.filter((x) => x.gd === k && x.ben === "NOI_BO").length }));
+  const theoGd = GD.map(([k, l]) => ({ k, l, ncc: loiGd.filter((x) => x.gd === k && x.ben === "NCC").length, nb: loiGd.filter((x) => x.gd === k && x.ben === "NOI_BO").length }));
   const maxGd = Math.max(1, ...theoGd.map((g) => g.ncc + g.nb));
 
   const cotLoi = <T extends { ncc_n: number; nb_n: number; cho: number; vp: number; ma: [string, number][]; ai: [string, number][] }>(coAi = true): Col<T>[] => [
@@ -183,6 +185,15 @@ export default function LoiTheoPo() {
     </button>
   );
   const bat = (k: string, cur: string[], v: string) => dat(k, cur.length === 1 && cur[0] === v ? null : [v]);
+  // mo ta bo loc dang chon (hien o popup PO: "dang loc: G4 · Gui / thuc NCC · Noi bo")
+  const moTaLoc = [fGd.map((k) => `${k} · ${GD_TEN[k] ?? k}`).join(", "), fBen.map((k) => BEN[k as "NCC"]?.l ?? k).join(", "),
+    fMa.map((k) => `${soMa(k)} ${tenMa.get(k)?.ten ?? ""}`).join(", "), fTt.map((k) => TT[k as Loi["tt"]]?.l ?? k).join(", "), fAi.join(", "), fNcc.join(", ")].filter(Boolean).join(" · ");
+  // v0.143 (chu he thong "da co UI chi tiet theo PO roi, sao lai sinh ra 1 giao dien chi tiet PO nua => gop"): bam PO / LK -> popup PO CU (EoQuickView),
+  // loc san cac LK dinh loi DANG LOC (vd dang xem G4 -> chi LK co loi G4) + dong "Dang loc: ..."; LK -> chi dong do.
+  const moPo = (e: number, i?: number) => {
+    const ids = i != null ? [i] : dongHien.filter((x) => x.e === e && loiTheoDong.has(x.i)).map((x) => x.i);
+    qv.openEo(e, ids.length ? { loi: ids, moTa: moTaLoc || "LK có lỗi (từ 20/11/2026)" } : undefined);
+  };
   const XEM: [Xem, string][] = [["po", "Theo PO"], ["lk", "Theo linh kiện"], ["ma", "Theo mã lỗi"], ["ai", "Theo ai lỗi"]];
 
   return (
@@ -190,13 +201,13 @@ export default function LoiTheoPo() {
       <PageHeader title="Lỗi theo PO" />
       {/* 1. Tong quan 1 giay: tong lan loi · doi tac · noi bo · can GT · vi pham · dap ung */}
       <Card><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Tile l="Tổng số lần lỗi" v={soLuong(tong.tong)} sub={`${soLuong(new Set(loi.map((l) => l.e)).size)} PO · ${soLuong(new Set(loi.map((l) => l.ai)).size)} người / NCC`} mau="#1d1d1f" />
-        <Tile l="Lỗi đối tác (NCC)" v={soLuong(tong.ncc_n)} sub={tong.tong ? `${Math.round((tong.ncc_n / tong.tong) * 100)}% — bấm để lọc` : undefined} mau={BEN.NCC.mau}
+        <Tile l="Tổng số lần lỗi" v={soLuong(loiNen.length)} sub={`${soLuong(new Set(loiNen.map((l) => l.e)).size)} PO · ${soLuong(new Set(loiNen.map((l) => l.ai)).size)} người / NCC`} mau="#1d1d1f" />
+        <Tile l="Lỗi đối tác (NCC)" v={soLuong(tBen.ncc_n)} sub={tBen.tong ? `${Math.round((tBen.ncc_n / tBen.tong) * 100)}% — bấm để lọc` : undefined} mau={BEN.NCC.mau}
           on={fBen.length === 1 && fBen[0] === "NCC"} onClick={() => bat("ben", fBen, "NCC")} />
-        <Tile l="Lỗi nội bộ" v={soLuong(tong.nb_n)} sub={tong.tong ? `${Math.round((tong.nb_n / tong.tong) * 100)}% — bấm để lọc` : undefined} mau={BEN.NOI_BO.mau}
+        <Tile l="Lỗi nội bộ" v={soLuong(tBen.nb_n)} sub={tBen.tong ? `${Math.round((tBen.nb_n / tBen.tong) * 100)}% — bấm để lọc` : undefined} mau={BEN.NOI_BO.mau}
           on={fBen.length === 1 && fBen[0] === "NOI_BO"} onClick={() => bat("ben", fBen, "NOI_BO")} />
-        <Tile l="Cần giải trình" v={soLuong(tong.cho)} sub="còn hạn 16 giờ LV" mau={TT.CHO.mau} on={fTt.length === 1 && fTt[0] === "CHO"} onClick={() => bat("tt", fTt, "CHO")} />
-        <Tile l="Vi phạm" v={soLuong(tong.vp)} sub="hết hạn không giải trình" mau={TT.VI_PHAM.mau} on={fTt.length === 1 && fTt[0] === "VI_PHAM"} onClick={() => bat("tt", fTt, "VI_PHAM")} />
+        <Tile l="Cần giải trình" v={soLuong(tTt.cho)} sub="còn hạn 16 giờ LV" mau={TT.CHO.mau} on={fTt.length === 1 && fTt[0] === "CHO"} onClick={() => bat("tt", fTt, "CHO")} />
+        <Tile l="Vi phạm" v={soLuong(tTt.vp)} sub="hết hạn không giải trình" mau={TT.VI_PHAM.mau} on={fTt.length === 1 && fTt[0] === "VI_PHAM"} onClick={() => bat("tt", fTt, "VI_PHAM")} />
         <Tile l="Tỷ lệ đáp ứng" v={pt(veAll, datAll) == null ? "—" : `${pt(veAll, datAll)}%`} sub={`về ${soLuong(veAll)} / đặt ${soLuong(datAll)} · thiếu ${soLuong(datAll - veAll)}`} mau="#1d8a3c" />
       </div></Card>
       {/* 2. Loi theo giai doan: moi cot = 1 giai doan, cao = so lan loi, tach doi tac / noi bo; bam = loc giai doan */}
@@ -205,13 +216,13 @@ export default function LoiTheoPo() {
           <b style={{ fontSize: 17, letterSpacing: "-.02em" }}>Lỗi theo giai đoạn</b>
           <span style={{ fontSize: 12, color: "#6e6e73" }}><span style={{ color: BEN.NCC.dac }}>●</span> đối tác <span style={{ color: BEN.NOI_BO.dac, marginLeft: 8 }}>●</span> nội bộ · bấm 1 giai đoạn để lọc</span>
         </div>
-        <div style={{ display: "flex", alignItems: "flex-end", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "flex", alignItems: "stretch", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           {theoGd.map((g, i) => {
             const on = fGd.includes(g.k);
             const n = g.ncc + g.nb;
             return (
               <button key={g.k} onClick={() => bat("gd", fGd, g.k)} title={`${g.k} ${g.l}: ${n} lần (đối tác ${g.ncc} · nội bộ ${g.nb})`}
-                style={{ flex: "1 0 88px", border: 0, borderRadius: 14, background: on ? "#e8f1fc" : "transparent", cursor: "pointer", padding: "6px 0 8px", transition: "background .15s" }}>
+                style={{ flex: "1 0 88px", border: 0, borderRadius: 0, background: "transparent", cursor: "pointer", padding: "6px 0 8px", display: "flex", flexDirection: "column" }}>
                 <div style={{ height: 54, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }}>
                   <div style={{ ...SO, fontSize: 13, fontWeight: 700, color: "#1d1d1f" }}>{n || ""}</div>
                   <div style={{ width: 30, borderRadius: "6px 6px 0 0", overflow: "hidden" }}>
@@ -225,8 +236,10 @@ export default function LoiTheoPo() {
                     background: on ? "#0071e3" : n ? "#ffe7e5" : "#fff", color: on ? "#fff" : n ? "#d70015" : "#86868b", boxShadow: on || n ? "none" : "inset 0 0 0 2px #d1d1d6" }}>{g.k}</span>
                   <div style={{ flex: 1, height: 3, background: i < GD.length - 1 ? "#e3e3e8" : "transparent" }} />
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4, fontWeight: on ? 650 : 500, color: on ? "#0071e3" : "#515154" }}>{g.l}</div>
-                {n > 0 && <div style={{ ...SO, fontSize: 11, color: "#6e6e73" }}>{g.ncc ? <span style={{ color: BEN.NCC.mau }}>{g.ncc}</span> : null}{g.ncc && g.nb ? " · " : ""}{g.nb ? <span style={{ color: BEN.NOI_BO.mau }}>{g.nb}</span> : null}</div>}
+                <div style={{ alignSelf: "center", fontSize: 12, marginTop: 4, fontWeight: on ? 650 : 500, color: on ? "#fff" : "#515154", background: on ? "#0071e3" : "transparent",
+                  borderRadius: 999, padding: "1px 10px", whiteSpace: "nowrap" }}>{g.l}</div>
+                {/* luon giu 1 dong (ke ca = 0) -> moi cot cao bang nhau, vong tron thang hang tren duong noi */}
+                <div style={{ ...SO, fontSize: 11, color: "#6e6e73", minHeight: 16, marginTop: 2 }}>{g.ncc ? <span style={{ color: BEN.NCC.mau }}>{g.ncc}</span> : null}{g.ncc && g.nb ? " · " : ""}{g.nb ? <span style={{ color: BEN.NOI_BO.mau }}>{g.nb}</span> : null}</div>
               </button>
             );
           })}
@@ -264,20 +277,16 @@ export default function LoiTheoPo() {
         {(() => {
           const veMa = (r: { key: string }) => setSp((s) => { const n = new URLSearchParams(s); n.delete("xem"); n.set("ma", r.key); return n; });
           const veAi = (r: { key: string }) => setSp((s) => { const n = new URLSearchParams(s); n.delete("xem"); n.set("ai", r.key); return n; });
-          if (hep) return xem === "po" ? <DsThe cols={cotPo} rows={poRows} keyOf={(r) => r.e} onClick={(r) => setMoPo(r.e)} empty="Không có PO khớp bộ lọc." />
-            : xem === "lk" ? <DsThe cols={cotLk} rows={lkRows} keyOf={(r) => r.i} onClick={(r) => setMoPo(r.e)} empty="Không có linh kiện khớp bộ lọc." />
+          if (hep) return xem === "po" ? <DsThe cols={cotPo} rows={poRows} keyOf={(r) => r.e} onClick={(r) => moPo(r.e)} empty="Không có PO khớp bộ lọc." />
+            : xem === "lk" ? <DsThe cols={cotLk} rows={lkRows} keyOf={(r) => r.i} onClick={(r) => moPo(r.e, r.i)} empty="Không có linh kiện khớp bộ lọc." />
             : xem === "ma" ? <DsThe cols={cotMa} rows={maRows} keyOf={(r) => r.key} onClick={veMa} empty="Không có lỗi khớp bộ lọc." />
             : <DsThe cols={cotAi} rows={aiRows} keyOf={(r) => r.key} onClick={veAi} empty="Không có lỗi khớp bộ lọc." />;
-          return xem === "po" ? <DataTable cols={cotPo} rows={poRows} keyOf={(r) => r.e} pageSize={30} luuSoDong="loi-po" onRowClick={(r) => setMoPo(r.e)} empty="Không có PO khớp bộ lọc." />
-            : xem === "lk" ? <DataTable cols={cotLk} rows={lkRows} keyOf={(r) => r.i} pageSize={30} luuSoDong="loi-po-lk" onRowClick={(r) => setMoPo(r.e)} empty="Không có linh kiện khớp bộ lọc." />
+          return xem === "po" ? <DataTable cols={cotPo} rows={poRows} keyOf={(r) => r.e} pageSize={30} luuSoDong="loi-po" onRowClick={(r) => moPo(r.e)} empty="Không có PO khớp bộ lọc." />
+            : xem === "lk" ? <DataTable cols={cotLk} rows={lkRows} keyOf={(r) => r.i} pageSize={30} luuSoDong="loi-po-lk" onRowClick={(r) => moPo(r.e, r.i)} empty="Không có linh kiện khớp bộ lọc." />
             : xem === "ma" ? <DataTable cols={cotMa} rows={maRows} keyOf={(r) => r.key} pageSize={30} onRowClick={veMa} empty="Không có lỗi khớp bộ lọc." />
             : <DataTable cols={cotAi} rows={aiRows} keyOf={(r) => r.key} pageSize={30} onRowClick={veAi} empty="Không có lỗi khớp bộ lọc." />;
         })()}
       </Card>
-      {moPo != null && <PopupPo e={moPo} dong={d.dong} loi={d.loi} tenMa={tenMa} hep={hep} onClose={() => setMoPo(null)}
-        onDayDu={() => { const e = moPo; setMoPo(null); qv.openEo(e, { loi: true }); }} onGiaiTrinh={(ds) => setGt(ds)} />}
-      {gt && <GiaiTrinhDongModal dongs={gt.map((x) => ({ item_id: x.i, eo_id: x.e, ma_po: x.po, part_code: x.lk, part_name: x.ten_lk }))}
-        onClose={() => setGt(null)} onSaved={() => { setGt(null); (qc.invalidateQueries({ queryKey: ["loi-po"] }), qc.invalidateQueries({ queryKey: ["loi-po-dem"] })); }} />}
     </div>
   );
 }

@@ -55,7 +55,7 @@ type Tab = "lk" | "kh" | "file" | "loi";
 /** Dong cua EO nhan 1 thu: backend (xemNhanh) da gom 1 thu = 1 ban ghi kem item_ids "1,2,3"; ban ghi tung dong (cu) dung eo_item_id. */
 const idsThu = (ds: any[]): number[] => ds.flatMap((y) => String(y.item_ids ?? y.eo_item_id ?? "").split(",").filter(Boolean).map(Number));
 
-export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }: { id: number; locLoi?: boolean; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
+export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, coTruoc }: { id: number; locLoi?: boolean | number[]; moTaLoc?: string; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const goc = useQuery({ queryKey: ["eo", String(id)], queryFn: () => api.get<any>(`/eo/${id}`) });
@@ -66,7 +66,9 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
   const [tab, setTab] = useState<Tab>("lk");
   // v0.141 (chu he thong 2026-11-27 "danh sach loi, an vao se filter san cac lk co loi trong PO do"): chi hien dong LK co loi
   // (bat san khi mo tu cot loi / danh sach loi; bam o "Lỗi chờ GT", canh bao loi, tab Loi -> nut "Xem các LK có lỗi")
-  const [chiLoi, setChiLoi] = useState(!!locLoi);
+  const [chiLoi, setChiLoi] = useState(Array.isArray(locLoi) ? locLoi.length > 0 : !!locLoi);
+  // v0.143: mo tu man Loi theo PO dang loc (vd G4) -> chi cac LK dinh loi dang loc (danh sach id truyen vao), khong phai moi LK co loi
+  const dsLocVao = Array.isArray(locLoi) && locLoi.length ? new Set(locLoi) : null;
   const xemLkLoi = () => { setChiLoi(true); setTab("lk"); };
   const [nhom, setNhom] = useState<Nhom>("all");
   const [cmt, setCmt] = useState("");
@@ -153,6 +155,11 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
     catch (e: any) { setErr(e?.body?.error === "ONLY_FINAL_APPROVER" ? "Chỉ người duyệt mua của EO được duyệt dòng này." : "Lỗi duyệt dòng."); }
   };
   // v0.093: dem VI PHAM GOP (cung loi + cung PO + cung ky) dang cho, khong dem tung dong
+  // v0.143 (gop popup PO man "Loi theo PO" vao day): loi TINH thong ke (moc tu 20/11/2026, bo vi pham cu - backend tinh) -> o so doi tac / noi bo, cot Loi gi / Ai loi
+  const loiTinh = (b?.loi ?? []).filter((l: any) => l.tinh);
+  const loiTinhDong = (itemId: number) => loiTinh.filter((l: any) => l.eo_item_id === itemId);
+  const aiLoi = (l: any) => (l.ben === "NCC" ? `NCC · ${l.doi_tac || "?"}` : ten(l.nguoi_vp) || "—");
+  const demTxt = (ds: any[], f: (l: any) => string) => { const m = new Map<string, number>(); ds.forEach((l) => m.set(f(l), (m.get(f(l)) ?? 0) + 1)); return [...m].sort((a, b) => b[1] - a[1]); };
   const loiCho = new Set((b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").map((l: any) => l.vp_khoa ?? l.id)).size;
   // nguoi phu trach tung giai doan -> "Van de theo buoc" (ai tre han)
   const nguoiTD = [...new Set(d.approvals.filter((a: any) => a.step_type === "REVIEW" && a.submission_id === eo.current_submission_id).map((a: any) => ten(a.approver_email)))].join(", ");
@@ -173,7 +180,8 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
   const dongKetThuc = (r: any) => r.line_status !== "ACTIVE" || !!r.ket_thuc_som_at || (r.da_dat ?? 0) >= r.current_qty;
   const soHuy = d.items.filter(huy).length;
   // dong co loi: moi loi da ghi tren dong (tl_loi qua /xem/eo/:id/bo-sung) + dong theo doi co so_loi > 0
-  const dongCoLoi = new Set<number>([...(b?.loi ?? []).map((l: any) => l.eo_item_id), ...d.items.filter((r: any) => ((tdBy.get(r.id) as any)?.so_loi ?? 0) > 0).map((r: any) => r.id)]);
+  // v0.143: dong co loi = co loi TINH thong ke (moc tu 20/11/2026 - luat 15 CLAUDE.md), khop man Loi theo PO
+  const dongCoLoi = new Set<number>(loiTinh.map((l: any) => l.eo_item_id));
   const lkRows = d.items.map((r: any, i: number) => {
     const t = tdBy.get(r.id) as any;
     const kh = d.plans.filter((p: any) => p.eo_item_id === r.id);
@@ -182,7 +190,7 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
     const ve = (b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop();
     const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id);
     return { r, t, i, ndk, nm, ve, g };
-  }).filter((x: any) => (xemHuy || !huy(x.r)) && (!chiLoi || dongCoLoi.has(x.r.id)) && k({ ...x.r, ...(x.t ?? {}) }))
+  }).filter((x: any) => (xemHuy || !huy(x.r)) && (!chiLoi || (dsLocVao ?? dongCoLoi).has(x.r.id)) && k({ ...x.r, ...(x.t ?? {}) }))
     .sort((a: any, b: any) => {
       const mo = (x: any) => !huy(x.r) && (x.r.chua_dat ?? 0) > 0;
       return Number(mo(b)) - Number(mo(a)) || (mo(a) ? (b.r.chua_dat ?? 0) - (a.r.chua_dat ?? 0) : 0) || a.i - b.i;
@@ -223,6 +231,16 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
     { key: "thieu", header: <Hoi k="SL_THIEU" nhan="Thiếu" />, align: "right", loc: "so", gt: ({ r }: any) => r.chua_dat, render: ({ r }: any) => <b>{soLuong(r.chua_dat)}</b> },
     { key: "ngay", header: <><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></>, loc: "ngay", gt: (x: any) => x.ndk, wrap: true,
       render: (x: any) => <><BaNgay nm={x.nm} dk={x.ndk} ve={x.ve} veDu={x.r.da_dat >= x.r.current_qty} />{x.t?.so_lan_lui > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: x.t.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến">lùi {x.t.so_lan_lui} lần</div>}</> },
+    { key: "loigi", header: "Lỗi gì (mã × lần)", loc: "chu", sapXep: false, wrap: true, maxW: 260,
+      gt: ({ r }: any) => loiTinhDong(r.id).map((l: any) => `${l.ma_loi} ${l.ten_ma}`).join(" "),
+      render: ({ r }: any) => { const xs = demTxt(loiTinhDong(r.id), (l) => l.ma_loi); if (!xs.length) return <span className="muted">—</span>;
+        return <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{xs.slice(0, 3).map(([m, n]) => { const l = loiTinhDong(r.id).find((x: any) => x.ma_loi === m);
+          return <span key={m} title={`${m} · ${l?.ten_ma ?? ""}`} style={{ fontSize: 11.5, fontWeight: 600, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap",
+            background: l?.ben === "NCC" ? "#fff1dc" : "#f5ebfc", color: l?.ben === "NCC" ? "#c26400" : "#8240a8" }}>{String(m).replace("ER.MH-", "")} {String(l?.ten_ma ?? "").slice(0, 22)} ×{n}</span>; })}
+          {xs.length > 3 && <span className="muted" style={{ fontSize: 11 }}>+{xs.length - 3}</span>}</span>; } },
+    { key: "ailoi", header: "Ai lỗi (× lần)", loc: "chu", sapXep: false, wrap: true, maxW: 200,
+      gt: ({ r }: any) => loiTinhDong(r.id).map(aiLoi).join(" "),
+      render: ({ r }: any) => { const xs = demTxt(loiTinhDong(r.id), aiLoi); return xs.length ? <span style={{ fontSize: 12 }}>{xs.slice(0, 2).map(([a, n]) => `${a} ×${n}`).join(" · ")}{xs.length > 2 ? ` · +${xs.length - 2}` : ""}</span> : <span className="muted">—</span>; } },
     { key: "td", header: "Theo dõi", loc: "chon", gt: ({ t }: any) => (t ? TT[t.tinh_trang]?.l ?? t.tinh_trang : ""), wrap: true,
       render: ({ t }: any) => t ? <span style={{ whiteSpace: "nowrap" }}><span className={`badge ${TT[t.tinh_trang]?.c ?? "nhap"}`}>{TT[t.tinh_trang]?.l}</span>{t.so_loi > 0 && <span className="badge reject" style={{ marginLeft: 4 }}>{t.so_loi} lỗi</span>}{t.ceo_ly_do.length > 0 && <span className="badge reject" style={{ marginLeft: 4 }} title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>CEO</span>}</span> : <span className="muted">—</span> },
     { key: "gd", header: <span title="8 giai đoạn: bấm để xem chi tiết đơn hàng (thời gian, hạn, lỗi từng bước)">Tiến trình</span>, loc: "chon", gt: ({ g }: any) => g?.gd_hien_tai_ten ?? "", wrap: true,
@@ -307,9 +325,11 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
                 {P.issued && P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
+                {chiLoi && dsLocVao && moTaLoc && <span style={{ fontSize: 12.5, background: "#fff6e8", color: "#9c4f00", borderRadius: 999, padding: "3px 12px" }}>
+                  Đang lọc: <b>{moTaLoc}</b> — {lkRows.length}/{d.items.length} LK</span>}
                 {dongCoLoi.size > 0 && <button className="btn sm" onClick={() => setChiLoi(!chiLoi)} title="Chỉ hiện các dòng linh kiện có lỗi trong PO này"
                   style={chiLoi ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>
-                  ⚠ Chỉ LK có lỗi ({dongCoLoi.size}){chiLoi && <span style={{ marginLeft: 4, width: 16, height: 16, borderRadius: "50%", background: "var(--brand-yellow-btn)", color: "#fff", fontSize: 11, lineHeight: "16px", display: "inline-block", textAlign: "center" }}>×</span>}</button>}
+                  ⚠ {dsLocVao ? `LK dính lỗi đang xem (${dsLocVao.size})` : `Chỉ LK có lỗi (${dongCoLoi.size})`}{chiLoi && <span style={{ marginLeft: 4, width: 16, height: 16, borderRadius: "50%", background: "var(--brand-yellow-btn)", color: "#fff", fontSize: 11, lineHeight: "16px", display: "inline-block", textAlign: "center" }}>×</span>}</button>}
                 {/* v0.132 (chu he thong "thu gon"): 1 hang - o "xem ca don huy" vao thanh, huong dan vao ⓘ */}
                 <label className="sp muted" style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, whiteSpace: "nowrap" }}>
                   <input type="checkbox" checked={xemHuy} onChange={(e) => setXemHuy(e.target.checked)} />
@@ -365,6 +385,12 @@ export default function EoQuickView({ id, locLoi, onClose, onCloseAll, coTruoc }
               <Kpi l="Tiền DK" v={tien(d.tong.tong_tien_du_kien)} />
               <span role="button" onClick={dongCoLoi.size ? xemLkLoi : undefined} title={dongCoLoi.size ? "Bấm: xem các LK có lỗi" : undefined} style={{ cursor: dongCoLoi.size ? "pointer" : undefined, display: "inline-flex" }}>
                 <Kpi l="Lỗi chờ GT" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} /></span>
+              {/* v0.143: thong tin bo sung tu popup man Loi theo PO (da gop) */}
+              <Kpi l="Đáp ứng" v={d.tong.tong_sl_dat > 0 ? `${Math.round((Math.min(d.tong.sl_da_dat, d.tong.tong_sl_dat) / d.tong.tong_sl_dat) * 100)}%` : "—"} />
+              <span role="button" onClick={dongCoLoi.size ? xemLkLoi : undefined} style={{ cursor: dongCoLoi.size ? "pointer" : undefined, display: "inline-flex" }} title="Số lần lỗi bên đối tác (NCC), tính từ 20/11/2026">
+                <Kpi l="Lỗi đối tác" v={soLuong(loiTinh.filter((l: any) => l.ben === "NCC").length)} /></span>
+              <span role="button" onClick={dongCoLoi.size ? xemLkLoi : undefined} style={{ cursor: dongCoLoi.size ? "pointer" : undefined, display: "inline-flex" }} title="Số lần lỗi nội bộ, tính từ 20/11/2026">
+                <Kpi l="Lỗi nội bộ" v={soLuong(loiTinh.filter((l: any) => l.ben === "NOI_BO").length)} /></span>
             </div>
             <div className="qv-alerts">
               {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>

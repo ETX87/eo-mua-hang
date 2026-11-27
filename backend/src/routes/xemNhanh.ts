@@ -1,6 +1,7 @@
 import { layGiaiDoan } from "../lib/giaiDoan";
 import { Hono } from "hono";
-import { layBangMaLoi, ganMaLoi } from "../lib/maLoi";
+import { layBangMaLoi, ganMaLoi, benLoi } from "../lib/maLoi";
+import { LOI_TINH_TU } from "./loiPo";
 import type { Env, AppVariables } from "../types";
 import { cachedReport } from "../lib/reportCache";
 import { computeTienDo01, TRANG_THAI_DONG } from "./reports";
@@ -30,7 +31,7 @@ app.get("/eo/:id/bo-sung", async (c) => {
   if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
 
   const [loi, gt, push, mail, nhap, khongKhop, choDuyet, postIssue, traVe] = await Promise.all([
-    db.prepare("SELECT l.*, i.supplier doi_tac, i.part_code FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id WHERE l.eo_id = ? ORDER BY COALESCE(l.han, l.created_at) DESC").bind(id).all<any>(),
+    db.prepare("SELECT l.*, i.supplier doi_tac, i.part_code, e.created_by nguoi_dat FROM tl_loi l JOIN eo_item i ON i.id = l.eo_item_id JOIN eo e ON e.id = l.eo_id WHERE l.eo_id = ? ORDER BY COALESCE(l.han, l.created_at) DESC").bind(id).all<any>(),
     db.prepare("SELECT * FROM tl_giai_trinh WHERE eo_id = ? ORDER BY id DESC").bind(id).all<any>(),
     db.prepare(
       `SELECT p.*, GROUP_CONCAT(pi.eo_item_id) item_ids FROM tl_push p JOIN tl_push_item pi ON pi.push_id = p.id
@@ -111,8 +112,15 @@ app.get("/eo/:id/bo-sung", async (c) => {
   if (chuaKh) cb.push({ muc: "info", text: `${chuaKh} dòng đang mở chưa có kế hoạch hàng về` });
 
   const bang = await layBangMaLoi(db);
+  const gtBy = new Map((gt.results as any[]).map((g) => [g.id, g]));
   return c.json({
-    theo_doi: td, loi: ganMaLoi(bang, loi.results, (l: any) => l.doi_tac), giai_trinh: gt.results, push: push.results, mail: mail.results,
+    // v0.143 (gop popup PO cua man Loi theo PO vao popup PO cu): moi loi kem ben chiu (benLoi - cung luat moi man), nguoi loi (ai_email, mac dinh nguoi dat)
+    // va "tinh" = co tinh o thong ke loi (moc >= LOI_TINH_TU 20/11/2026, khong phai vi pham cu AUTO:CU) - o so / cot "Loi gi" / "Ai loi" popup dung co nay
+    theo_doi: td, loi: ganMaLoi(bang, loi.results, (l: any) => l.doi_tac).map((l: any) => {
+      const g = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
+      return { ...l, ben: benLoi({ quy_tac: l.quy_tac, ai_ma: l.ai_ma, giai_trinh_id: l.giai_trinh_id, gt_pham_vi: g?.pham_vi ?? null }), nguoi_vp: l.ai_email || l.nguoi_dat || null,
+        tinh: g?.nhom !== "AUTO:CU" && String(l.han ?? l.created_at) >= LOI_TINH_TU };
+    }), giai_trinh: gt.results, push: push.results, mail: mail.results,
     phieu_nhap: nhap.results, phieu_khong_khop: khongKhop.results, cho_duyet: choDuyet.results, canh_bao: cb,
   });
 });

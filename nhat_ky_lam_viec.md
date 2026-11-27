@@ -4,6 +4,24 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.143: Lỗi theo PO — mốc 20/11, số không nhảy, dải giai đoạn thẳng hàng, gộp popup PO
+
+- Yêu cầu (nguyên văn): "1. bug hiện thị 2. khi ấn vào các nút bên trên thì số bị thay đổi lung tung. 3. Đã chốt bỏ lỗi từ trước 20/11 rồi mà? sao lại thấy lỗi hết lại rồi?
+  không lưu nguyên tắc à? 4. Khi đang xem lỗi G4, click vào PO bên dưới thì UI chi tiết đang hiện toàn bộ lk trong PO => Thực hiện nguyên tắc tất cả các table danh sách phải có
+  công cụ filter. => khi đang xem lỗi giai đoạn nào => ấn vào PO có lỗi => thì chỉ hiện ds lk bị lỗi đó thôi (filter sẵn)" và "4. chúng ta đã có giao diện UI chi tiết theo PO rồi,
+  sao lại sinh ra 1 giao diện chi tiết PO nữa => xem xét có thể gộp 2 UI này lại với nhau. thông tin nào chưa có ở UI cũ thì bổ sung."
+- Nguyên nhân: (1) cột giai đoạn có lỗi có thêm 1 dòng số → cao hơn, căn đáy làm vòng tròn lệch khỏi đường nối; (2) ô số tính theo mọi bộ lọc kể cả của chính nó → bấm "Nội bộ" thì "Đối tác" = 0;
+  (3) luật v0.128 chỉ bỏ VI PHẠM chốt trước 20/11 (AUTO:CU) — màn mới vẫn đếm ~840 lần lỗi trước 20/11 đã tự khắc phục / đã giải trình (dữ liệu thật: 679 + ~160 + 1).
+- Đã làm: `LOI_TINH_TU = 2026-11-20` (routes/loiPo.ts) cho màn + `/dem` + popup PO (bo-sung trả `ben`, `nguoi_vp`, `tinh`); luật 15 CLAUDE.md + bộ nhớ;
+  ô số / dải giai đoạn bỏ qua bộ lọc của chính mình; mỗi cột giai đoạn luôn đủ dòng → thẳng hàng, giai đoạn chọn = vòng + nhãn xanh;
+  XOÁ popup PO riêng (PopupPo) — bấm PO / LK mở popup PO chung lọc sẵn LK dính lỗi đang lọc (`openEo(id, { loi: [ids], moTa })`), popup chung thêm ô Đáp ứng / Lỗi đối tác / Lỗi nội bộ
+  + cột Lỗi gì / Ai lỗi (bảng dùng chung có lọc cột).
+- 5W1H: Who — Giám đốc, quản lý, KH cung ứng. When — xem lỗi theo giai đoạn / bên / mã rồi mở PO. Where — menu Lỗi theo PO; popup PO (mọi nơi mở PO).
+  What — số ổn định khi bấm lọc, chỉ lỗi từ 20/11, 1 popup PO duy nhất lọc sẵn LK dính lỗi đang xem. Why — số nhảy gây hiểu sai; lỗi cũ trước đào tạo đã chốt bỏ; 2 popup trùng gây rối.
+  How — chọn G4 (dải giai đoạn / menu cấp 2) → bấm PO → popup chỉ hiện LK có lỗi G4, dòng "Đang lọc"; bấm "LK dính lỗi đang xem" để xem cả PO.
+- Kiểm thử: typecheck BE + FE; local: chỉ còn lỗi mốc ≥ 20/11 (10 lần, menu khớp); bấm Nội bộ: Tổng / Đối tác / Nội bộ giữ số; ?gd=G6 → PO 3TDO-000001 mở popup chung 2/5 LK,
+  có dòng "Đang lọc", 3 ô số + 2 cột mới; 8 vòng giai đoạn cùng toạ độ.
+
 ## 27/11/2026 — v0.142: Menu "Lỗi theo PO" chia menu phụ + cấp 2
 
 - Yêu cầu (nguyên văn): "lỗi theo PO cũng chia theo các menu phụ".
