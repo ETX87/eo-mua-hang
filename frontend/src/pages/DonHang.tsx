@@ -221,10 +221,10 @@ function DonHangTrang() {
   const nav = useNavigate();
   const tab = sp.get("tab") === "bao-cao" ? "bao-cao" : "ds";
   const bc = BAO_CAO.some((b) => b.k === sp.get("bc")) ? sp.get("bc")! : "giai-doan";
-  // Danh sach / Bao cao = 2 muc con duoi "LK đặt" o sidebar (lib/nav.ts) - trang khong con nut chuyen tab rieng
+  // v0.129: Danh sach = "Đơn PO › Theo LK", Bao cao = "Tổng quan › Báo cáo đặt LK" o sidebar (lib/nav.ts)
   return (
     <div>
-      <PageHeader title={tab === "ds" ? "LK đặt" : "LK đặt · Báo cáo"} />
+      <PageHeader title={tab === "ds" ? "Đơn PO · Theo LK" : "Báo cáo đặt LK"} />
       {tab === "ds" ? <DanhSach /> : (
         <div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>

@@ -1,5 +1,9 @@
 import { I } from "./icons";
 
+/** Menu cap 2 (v0.129): giai doan / nhom con cua 1 menu phu. dem = khoa so dem (xem AppShell demCua); anRong = an khi dem = 0. */
+export interface NavCap2 { to: string; label: string; dem?: string; anRong?: boolean }
+/** Menu phu cap 1. to co ?query: active khi moi tham so trong to khop URL. con = menu cap 2 (chi hien duoi menu cap 1 dang chon). */
+export interface NavCon { to: string; label: string; icon: keyof typeof I; dem?: string; demDo?: boolean; con?: NavCap2[] }
 export interface NavItem {
   to: string;
   label: string;
@@ -8,29 +12,72 @@ export interface NavItem {
   badgeKey?: "approvals";
   /** backend chan bang requireAdmin -> an voi vai tro khac */
   adminOnly?: boolean;
-  /** muc con (tab nho duoi muc cha, chi hien khi sidebar mo). to co ?query: active khi moi tham so trong to khop URL. */
-  children?: { to: string; label: string; icon: keyof typeof I }[];
+  /** menu phu cap 1 (menu goc = nhom; bam ten menu goc = mo trang dau + xo / thu nhom) */
+  children?: NavCon[];
 }
+
+/**
+ * Cap 2 cua cac nhom PO = MOC TIEN TRINH PO (backend routes/eo.ts MOC_PO / mocPo): bam = /eo?chip=..&moc=G.. -> danh sach Don PO
+ * tu loc cot "Tiến trình". So dem: GET /api/eo/dem theo_moc[chip][moc]. Nhom "Theo PO" dung chip tat_ca (gom ca PO da xong / huy).
+ */
+export const MOC_PO_MENU: { k: string; l: string }[] = [
+  { k: "G1", l: "G1 · Lập (nháp / trả về)" }, { k: "G2", l: "G2 · Thẩm định" }, { k: "G3", l: "G3 · Duyệt mua" },
+  { k: "G5", l: "G5 · Chờ ngày DK" }, { k: "G6", l: "G6 · Chờ hàng" }, { k: "G8", l: "G8 · Giao bù đến đủ" },
+  { k: "XONG", l: "✓ Đủ hàng" }, { k: "TU_CHOI", l: "Từ chối" }, { k: "DA_HUY", l: "Đã hủy" },
+];
+const mocCua = (chip: string, anRong: boolean, chi?: string[]): NavCap2[] =>
+  MOC_PO_MENU.filter((m) => !chi || chi.includes(m.k)).map((m) => ({ to: `/eo?chip=${chip}&moc=${m.k}`, label: m.l, dem: `${chip}:${m.k}`, anRong }));
+/** Cap 2 "Theo LK" = 8 giai doan cua dong linh kien (backend lib/giaiDoan) - /don-hang?gd=G.. */
+const GD_LK: NavCap2[] = [
+  ["G1", "Lập & trình EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua & ban hành"], ["G4", "Gửi đơn NCC"], ["G5", "Chờ ngày DK"],
+  ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù đến đủ"],
+].map(([k, l]) => ({ to: `/don-hang?gd=${k}`, label: `${k} · ${l}` }));
+/** Cap 2 cua menu Vi pham = BUOC / loai loi (quy tac) - /vi-pham?..&qt=R.. */
+const QT_VP: [string, string][] = [["R5", "G2–G3 · Chậm duyệt"], ["R3", "G4 · Không thúc NCC"], ["R1", "G5 · Chưa có ngày DK"], ["R4", "G6 · Quá ngày DK"], ["TAY", "Lỗi ghi tay"]];
+const qtCua = (base: string, chi?: string[]): NavCap2[] =>
+  QT_VP.filter(([k]) => !chi || chi.includes(k)).map(([k, l]) => ({ to: `${base}${base.includes("?") ? "&" : "?"}qt=${k}`, label: l }));
 
 export const NAV: NavItem[] = [
   // Viec cua toi (v0.104): nhan vien nhin 1 lan biet phai lam gi truoc han nao - backend routes/viecCuaToi.ts (so do = viecCanLam theo_doi)
   { to: "/viec-cua-toi", label: "Việc của tôi", icon: "check" },
-  { to: "/", label: "Tổng quan", icon: "home" },
-  // Dieu hanh (v0.084, ../QUAN_TRI_DIEU_HANH.md): ton <-> nguoi <-> hanh dong <-> nguyen nhan cho lanh dao - backend routes/dieuHanh.ts
-  { to: "/dieu-hanh", label: "Điều hành", icon: "trend" },
-  // Ca ton CEO (v0.091, yeu cau lanh dao tach rieng menu) - backend routes/caCeo.ts
-  { to: "/ca-ceo", label: "Ca tồn CEO", icon: "shield" },
-  // "Đơn PO" (truoc ten "Quan ly EO", doi 2026-11-07): Danh sach EO, Viec can duyet, trang Chi tiet EO (popup)
-  { to: "/eo", label: "Đơn PO", icon: "clipboard" },
-  // Quan ly don hang gop: Theo doi LK dat, So don hang, Canh bao CEO, Ke hoach hang ve / tuan, 3 bao cao (../UI_GOP_2_MAN_HINH.md)
-  { to: "/don-hang", label: "LK đặt", icon: "list", children: [
-    { to: "/don-hang", label: "Danh sách", icon: "list" },
-    { to: "/don-hang?tab=bao-cao", label: "Báo cáo", icon: "trend" },
+  // v0.129 (yeu cau 2026-11-27): Tong quan = nhom 3 bao cao: Tong quan (nhin nhanh) · Bao cao dat LK (so lieu ky) · Dieu hanh (truy trach nhiem)
+  { to: "/", label: "Tổng quan", icon: "home", children: [
+    { to: "/", label: "Tổng quan", icon: "home" },
+    { to: "/don-hang?tab=bao-cao", label: "Báo cáo đặt LK", icon: "trend", con: [
+      { to: "/don-hang?tab=bao-cao&bc=giai-doan", label: "Giai đoạn đơn hàng" },
+      { to: "/don-hang?tab=bao-cao&bc=tien-do-tuan", label: "Tiến độ tuần (KH KRF)" },
+      { to: "/don-hang?tab=bao-cao&bc=luy-ke-nam", label: "Lũy kế năm" },
+    ] },
+    // Dieu hanh (v0.084, ../QUAN_TRI_DIEU_HANH.md) - backend routes/dieuHanh.ts; cap 2 = tab (?tab=)
+    { to: "/dieu-hanh", label: "Điều hành", icon: "trend", con: [
+      { to: "/dieu-hanh?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/dieu-hanh?tab=nong", label: "Điểm nóng" },
+      { to: "/dieu-hanh?tab=po", label: "Theo PO" }, { to: "/dieu-hanh?tab=nguoi", label: "Theo người" }, { to: "/dieu-hanh?tab=ncc", label: "Theo NCC" },
+      { to: "/dieu-hanh?tab=nn", label: "Nguyên nhân & xu hướng" }, { to: "/dieu-hanh?tab=duyet", label: "Duyệt đang treo" },
+    ] },
   ] },
-  // Vi pham & giai trinh (2026-11-04): loi R1/R3/R4/tay, muc do, lap, nhac nho, giai trinh ca PO - backend routes/viPham.ts
-  { to: "/vi-pham", label: "Vi phạm & giải trình", icon: "bell", children: [
-    { to: "/vi-pham", label: "Danh sách", icon: "list" },
-    // Bang ma loi ER.MH (v0.092): ten, loi gi, yeu cau giai trinh, tu dong khi nao + so dang dem
+  // v0.129: "Đơn PO" = menu goc; menu phu = cach xem / nhom PO, cap 2 = giai doan. Gop menu "LK đặt" (Theo LK) + "Ca tồn CEO" (PO tồn CEO) vao day.
+  { to: "/eo", label: "Đơn PO", icon: "clipboard", children: [
+    { to: "/eo", label: "Theo PO", icon: "clipboard", dem: "con_ton", con: mocCua("tat_ca", false) },
+    { to: "/don-hang", label: "Theo LK", icon: "list", con: GD_LK },
+    { to: "/eo?chip=cho_toi_duyet", label: "PO chờ tôi", icon: "check", dem: "cho_toi_duyet", demDo: true, con: mocCua("cho_toi_duyet", true) },
+    // Ca ton CEO (v0.091) -> doi ten "PO tồn CEO" (v0.129); cap 2 = 3 ma CEO
+    { to: "/ca-ceo", label: "PO tồn CEO", icon: "shield", dem: "po_ceo", demDo: true, con: [
+      { to: "/ca-ceo?ma=ER.MH-201", label: "201 · Lùi ngày DK ≥ 3 lần" }, { to: "/ca-ceo?ma=ER.MH-202", label: "202 · Ngày DK ≥ 30 ngày" },
+      { to: "/ca-ceo?ma=ER.MH-203", label: "203 · ≥ 3 lỗi" },
+    ] },
+    { to: "/eo?chip=po_do", label: "PO cảnh báo", icon: "bell", dem: "po_do", demDo: true, con: mocCua("po_do", true) },
+    { to: "/eo?chip=loi_doi_tac", label: "Lỗi đối tác", icon: "user", dem: "loi_doi_tac", con: mocCua("loi_doi_tac", true) },
+    { to: "/eo?chip=loi_noi_bo", label: "Lỗi nội bộ", icon: "home", dem: "loi_noi_bo", con: mocCua("loi_noi_bo", true) },
+  ] },
+  // Vi pham & giai trinh (2026-11-04) - backend routes/viPham.ts. v0.129: menu phu = trang thai / ben chiu, cap 2 = buoc (loai loi)
+  { to: "/vi-pham", label: "Vi phạm & GT", icon: "bell", children: [
+    { to: "/vi-pham", label: "Cần giải trình", icon: "edit", con: qtCua("/vi-pham?tt=cho") },
+    { to: "/vi-pham?tt=vi_pham", label: "Vi phạm (hết hạn)", icon: "x", con: qtCua("/vi-pham?tt=vi_pham") },
+    { to: "/vi-pham?tt=xl", label: "Đã xử lý", icon: "check", con: qtCua("/vi-pham?tt=xl") },
+    { to: "/vi-pham?ben=NCC", label: "Lỗi đối tác", icon: "user", con: qtCua("/vi-pham?ben=NCC", ["R1", "R4", "TAY"]) },
+    { to: "/vi-pham?ben=NOI_BO", label: "Lỗi nội bộ", icon: "home", con: qtCua("/vi-pham?ben=NOI_BO", ["R5", "R3", "TAY"]) },
+    { to: "/vi-pham?kieu=ma", label: "Tổng hợp theo mã lỗi", icon: "trend" },
+    // Bang ma loi ER.MH (v0.092)
     { to: "/ma-loi", label: "Bảng mã lỗi", icon: "tag" },
   ] },
   { to: "/amis", label: "Nhập AMIS", icon: "upload" },

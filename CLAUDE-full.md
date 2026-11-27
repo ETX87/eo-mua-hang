@@ -571,3 +571,18 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   đã đẩy sang hệ thống ngoài (Lada…) — chỉ liệt kê để người điều phối xử lý.
 - KHÔNG biến lỗi thành đề xuất đổi luật, KHÔNG hỏi lại Giám đốc điều luật đã chốt, KHÔNG viết dài theo khuôn làn đầy đủ.
 - Người báo hỏi thêm việc khác trong cùng báo cáo → ghi 1 dòng "Tách việc riêng: …", không gộp vào bản sửa lỗi.
+
+## Menu 3 cấp + Vi phạm bảng là chính + Lỗi đối tác / nội bộ (v0.129, 27/11/2026)
+
+- `frontend/src/lib/nav.ts`: `NavItem.children: NavCon[]`, `NavCon.con: NavCap2[]` (cấp 2), `dem` = khoá số đếm (`"chip"` hoặc `"chip:moc"` → `GET /api/eo/dem`),
+  `demDo` = số đỏ, `anRong` = ẩn cấp 2 khi 0. Cấp 2 nhóm PO sinh từ `MOC_PO_MENU` (khớp `MOC_PO` backend `routes/eo.ts`).
+- `AppShell`: `conActive(to, cuaMinh)` — mục KHÔNG có `?query` chỉ sáng khi không mục có query nào khác (toàn NAV, trừ cấp 2 của chính nó) khớp URL
+  (vì `/don-hang` nằm ở 2 nhóm: Theo LK và Báo cáo đặt LK `?tab=bao-cao`). Nhóm đang xổ lưu `localStorage["nav-xo"]`. Badge menu gốc = tổng `viec-can-lam` theo đường dẫn các menu phụ.
+- `/api/eo/dem` thêm `theo_moc: Record<chip, Record<moc, number>>` (gồm `tat_ca`); `CHIP_EO.loi_doi_tac / loi_noi_bo` (`vp.ncc_mo / nb_mo > 0`);
+  `COT_EO.ben_loi` (chọn: "Lỗi đối tác" / "Lỗi nội bộ" / "Không có lỗi"; giá trị mảng — `tuyChon` đã làm phẳng mảng).
+- `lib/maLoi.ts benLoi()` = `BEN_SQL` bản JS — đổi 1 chỗ phải đổi cả 2. `dsLoiDayDu` gắn `ben` mỗi lỗi; `VpPo` thêm `ncc, nb, ncc_mo, nb_mo` (đếm vi phạm gộp, bên = dòng đại diện).
+- `EoListInner`: `?moc=G1|G2` → lọc cột `trang_thai`. `DieuHanh` tab = `?tab=` (mặc định `bang` không ghi). `CaCeo` mã = `?ma=`. Đổi nhãn "Ca tồn CEO" → "PO tồn CEO" (cả `viecCanLam`).
+- `ViPham`: bỏ KPI grid / banner / Card lọc; `TT_DEF` (cho, vi_pham, mo, xl, da, tu_dong) + `KPI_DEF` gộp 1 `<select>` giá trị `tt:x` / `kpi:x`; `?ben=` (mặc định tt `mo`),
+  `?qt=` (nhiều, nối `|`); lọc còn lại = `locCot` của DataTable (bảng Theo lỗi điều khiển ngoài để `?ma=` / `?nguoi=` / "Xem lỗi" / "Xem chi tiết" đặt được). Excel bảng Theo lỗi
+  xuất theo cả lọc cột (`locVaSap`).
+- Local: cổng 8790 bị app khác chiếm → chạy worker `--port 8791` + vite với `API_PORT=8791` (`frontend/vite.config.ts`).

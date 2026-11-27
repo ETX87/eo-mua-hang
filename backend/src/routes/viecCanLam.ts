@@ -107,7 +107,7 @@ app.get("/", async (c) => {
     const ceo = rows.filter((r) => r.ceo_ly_do.length > 0);
     const caCua = (f: (x: string) => boolean) => new Set(ceo.filter((r) => r.ceo_ly_do.some(f)).map((r) => r.eo_id)).size;
     const lui = caCua((x) => x.startsWith("Lùi")), xa = caCua((x) => x.includes("ngày đặt")), loi = caCua((x) => x.endsWith("lỗi"));
-    if (ceo.length) out.push({ key: "ceo", to: "/ca-ceo", label: "Ca tồn CEO", count: lui + xa + loi,
+    if (ceo.length) out.push({ key: "ceo", to: "/ca-ceo", label: "PO tồn CEO", count: lui + xa + loi,
       chi_tiet: [
         { label: "Lùi ngày dự kiến ≥ 3 lần", count: lui },
         { label: "Ngày DK ≥ 30 ngày sau ngày đặt", count: xa },

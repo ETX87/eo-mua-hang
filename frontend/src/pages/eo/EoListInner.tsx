@@ -30,7 +30,9 @@ interface EoRow {
   /** so dong dang o tung giai doan (backend lib/dieuHanh, v0.086) - cot Tien trinh */
   gd?: GdPo | null;
   /** trang thai vi pham theo PO (backend lib/dieuHanh VpPo, v0.104) - dem vi pham GOP nhu man Vi pham; null = PO ngoai pham vi theo doi */
-  vp?: { tt: "CEO" | "CHO" | "VI_PHAM" | "DA_XL" | "KHONG"; tong: number; cho: number; vi_pham: number; da_gt: number; tu_dong: number; ceo: number; cao: number } | null;
+  vp?: { tt: "CEO" | "CHO" | "VI_PHAM" | "DA_XL" | "KHONG"; tong: number; cho: number; vi_pham: number; da_gt: number; tu_dong: number; ceo: number; cao: number;
+    /** v0.129 ben chiu: ncc / nb = moi trang thai, *_mo = chua xu ly (can GT + vi pham het han) */
+    ncc?: number; nb?: number; ncc_mo?: number; nb_mo?: number } | null;
 }
 
 const VP_TT: Record<string, { l: string; nen: string; mau: string }> = {
@@ -66,6 +68,9 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "po_im_lang", l: "PO im lặng ≥ 7 ngày", title: "Có dòng đang mở 7 ngày không ai tác động (cập nhật kế hoạch, push, mail NCC, gọi/Zalo, giải trình)" },
   { k: "po_loi_cho", l: "PO có lỗi chờ giải trình" },
   { k: "po_ceo", l: "PO cấp CEO", mau: "#B91C1C", title: "PO có dòng đang ở cấp CEO (lùi ngày DK ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi)" },
+  // v0.129 (menu Don PO): PO co loi CHUA xu ly (can giai trinh / vi pham het han) theo ben chiu
+  { k: "loi_doi_tac", l: "Lỗi đối tác (chưa xử lý)", title: "PO có lỗi do nhà cung cấp chịu (chưa có / quá ngày DK…) đang cần giải trình hoặc đã thành vi phạm" },
+  { k: "loi_noi_bo", l: "Lỗi nội bộ (chưa xử lý)", title: "PO có lỗi do nội bộ chịu (không thúc NCC, chậm duyệt…) đang cần giải trình hoặc đã thành vi phạm" },
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
 const CHIP_MAC_DINH = "con_ton";
@@ -98,6 +103,8 @@ const EXPORT_COLS: ExportCol<EoRow>[] = [
   { header: "Số vi phạm (hết hạn không GT)", get: (r) => r.vp?.vi_pham ?? "" }, { header: "Lỗi cần giải trình", get: (r) => r.vp?.cho ?? "" },
   { header: "Lỗi đã giải trình", get: (r) => r.vp?.da_gt ?? "" }, { header: "Lỗi đã khắc phục", get: (r) => r.vp?.tu_dong ?? "" },
   { header: "Dòng cấp CEO", get: (r) => r.vp?.ceo ?? "" },
+  { header: "Lỗi đối tác (tổng / chưa xử lý)", get: (r) => (r.vp ? `${r.vp.ncc ?? 0} / ${r.vp.ncc_mo ?? 0}` : "") },
+  { header: "Lỗi nội bộ (tổng / chưa xử lý)", get: (r) => (r.vp ? `${r.vp.nb ?? 0} / ${r.vp.nb_mo ?? 0}` : "") },
   { header: "Thúc NCC 7 ngày", get: (r) => r.dh?.thuc7 ?? "" },
   { header: "Im lặng (ngày)", get: (r) => r.dh?.im_lang ?? "" },
   { header: "Hoạt động cuối", get: (r) => (r.dh?.td_luc ? `${r.dh.td_loai} · ${ten(r.dh.td_ai)} · ${ngayGio(r.dh.td_luc)}` : "") },
@@ -114,10 +121,11 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   const [md] = useState<LocLuu | undefined>(() => (compact || sp.get("chip") ? undefined : docLuu().find((x) => x.l === localStorage.getItem(KEY_MAC_DINH))));
   const [chip, setChip] = useState(sp.get("chip") ?? md?.chip ?? (compact ? TAT_CA : CHIP_MAC_DINH));
   const [duyet, setDuyet] = useState<{ row: any; action: string } | null>(null);
-  const dem = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, number>>("/eo/dem"), enabled: !compact });
+  const dem = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, any>>("/eo/dem"), enabled: !compact });
   // thuong dung: o tim + nhom nhanh + loc / sap tren tieu de cot. It dung (an, bam "Bộ lọc khác"): kho, doi tac, ly do PS cua dong LK.
   const [q, setQ] = useState(md?.q ?? "");
-  const [loc, setLoc] = useState<LocCot>(md?.loc ?? {});
+  // v0.129: ?moc=G1|G2 (menu cap 2 o sidebar) -> loc cot "Tiến trình"; link khong kem moc thi dung bo loc mac dinh ca nhan
+  const [loc, setLoc] = useState<LocCot>(() => (sp.get("moc") ? { ...(md?.loc ?? {}), trang_thai: { chon: sp.get("moc")!.split("|").filter(Boolean) } } : md?.loc ?? {}));
   const [sap, setSap] = useState<SapCot>(md?.sap ?? null);
   const [kho, setKho] = useState(md?.kho ?? "");
   const [doiTac, setDoiTac] = useState(md?.doiTac ?? "");
@@ -194,6 +202,21 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       },
     },
     {
+      // v0.129 (yeu cau 2026-11-27): 1 cot loi theo BEN chiu - doi tac (NCC) / noi bo; so dam = chua xu ly (can GT + vi pham)
+      key: "ben_loi", header: "Lỗi đối tác / nội bộ", loc: "chon", maxW: 150, render: (r) => {
+        if (!r.vp) return <span className="muted" title="PO ngoài phạm vi theo dõi vi phạm">—</span>;
+        const { ncc = 0, nb = 0, ncc_mo = 0, nb_mo = 0 } = r.vp;
+        if (!ncc && !nb) return <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ không lỗi</span>;
+        const O = ({ l, n, mo, mau, nen }: { l: string; n: number; mo: number; mau: string; nen: string }) => n ? (
+          <div style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
+            <span style={{ background: mo ? nen : "transparent", color: mo ? mau : "var(--text-muted)", fontWeight: mo ? 800 : 500, borderRadius: 6, padding: mo ? "0 5px" : 0 }}>{l} {n}</span>
+            {mo > 0 && <span style={{ color: mau, fontSize: 10.5 }}> · {mo} chưa xử lý</span>}
+          </div>) : null;
+        return <span title={`Đối tác (NCC): ${ncc} lỗi, ${ncc_mo} chưa xử lý\nNội bộ: ${nb} lỗi, ${nb_mo} chưa xử lý\n(chưa xử lý = cần giải trình + vi phạm hết hạn)`}>
+          <O l="Đối tác" n={ncc} mo={ncc_mo} mau="#1D4ED8" nen="#DBEAFE" /><O l="Nội bộ" n={nb} mo={nb_mo} mau="#B45309" nen="#FEF3C7" /></span>;
+      },
+    },
+    {
       key: "thuc", header: "Thúc NCC", loc: "so", align: "right", render: (r) => !r.dh ? <span className="muted">—</span> : (
         <span title={`Push + mail gửi NCC + gọi/Zalo: 7 ngày ${r.dh.thuc7} · tổng ${r.dh.thuc}${r.dh.thuc_luc ? ` · lần cuối ${ngayGio(r.dh.thuc_luc)}` : ""}`}>
           <b style={{ color: r.dh.thuc7 ? "var(--ok-ink)" : "var(--danger-ink)" }}>{r.dh.thuc7}</b><span className="muted"> /7ng</span>
@@ -235,7 +258,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
   ];
 
   // v0.084 (yeu cau lanh dao): cot trang thai / canh bao / hanh dong dat sat ma PO - nhin ngay khong can cuon ngang; thong tin phu ra sau
-  const THU_TU_COT = ["eo_code", "doi_tac_po", "trang_thai", "vi_pham", "canh_bao", "ton", "pct", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
+  const THU_TU_COT = ["eo_code", "doi_tac_po", "trang_thai", "vi_pham", "ben_loi", "canh_bao", "ton", "pct", "thuc", "im_lang", "tieu_de", "ma_lk", "so_dong", "created_by", "issued", "final", "loai_hinh", "phong_ban", "created_at", "act"];
   cols.sort((a, b) => (THU_TU_COT.indexOf(a.key) + 1 || 99) - (THU_TU_COT.indexOf(b.key) + 1 || 99));
 
   const datChip = (k: string) => { setChip(k); setOffset(0); };

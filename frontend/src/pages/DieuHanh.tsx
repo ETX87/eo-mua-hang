@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { api } from "../api/client";
 import { Card, PageHeader, Spinner } from "../components/ui";
@@ -79,7 +80,11 @@ export default function DieuHanh() {
   const [tieuChi, setTieuChi] = useState("");
   const [gdChon, setGdChon] = useState("");
   // v0.122: tab mac dinh = Bang trach nhiem (NCC / noi bo) cho lanh dao
-  const [tab, setTab] = useState<"bang" | "nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet">("bang");
+  // v0.129: tab nam tren URL (?tab=) - menu cap 2 "Tổng quan › Điều hành › …" o sidebar bam la doi tab
+  type Tab = "bang" | "nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet";
+  const [sp, setSp] = useSearchParams();
+  const tab: Tab = (["bang", "nong", "po", "nguoi", "ncc", "nn", "duyet"] as const).find((k) => k === sp.get("tab")) ?? "bang";
+  const setTab = (k: Tab) => setSp((s) => { const n = new URLSearchParams(s); if (k === "bang") n.delete("tab"); else n.set("tab", k); return n; }, { replace: true });
   // v0.118 tab Theo PO: bam so o 1 PO -> Diem nong chi dong cua PO do
   const [poChon, setPoChon] = useState<{ eo: number; po: string } | null>(null);
   const d = q.data;

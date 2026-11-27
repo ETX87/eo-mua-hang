@@ -4,6 +4,37 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.129: Menu 3 cấp (Tổng quan · Đơn PO · Vi phạm & GT), trang Vi phạm lấy bảng làm chính, cột Lỗi đối tác / nội bộ
+
+- Yêu cầu (nguyên văn, rút gọn dòng): "thêm menu ở mục "Đơn PO" làm menu gốc, tách các menu phụ - Theo PO (trang hiện tại), Theo LK (gộp menu lk đặt vào đây),
+  PO chờ tôi, PO tồn CEO, PO cảnh báo, Lỗi đối tác, Lỗi nội bộ, Báo cáo đẩy lên menu phụ của tổng quan "báo cáo đặt LK", Điều hành cùng thành menu phụ của
+  tổng quan … trong các menu phụ cấp 1 - thêm menu phụ cấp 2 (là các giai đoạn của PO hoặc LK đó). Khi ấn và menu phụ hoặc menu phụ 2, danh sách sẽ tự filter
+  theo lựa chọn đó." · "vi phạm sửa lại giao diện theo nguyên tắc table giao diện chính luôn là ưu tiên. các công cụ filter, lọc đẩy xuống table (tham khảo
+  menu Đơn PO)" · "tách thành menu ở mục vi phạm & GT => logic giống đơn PO, chia nhỏ menu phụ theo các logic chính - menu phụ 2" · "Đổi tên Ca tồn CEO => PO tồn CEO"
+  · "thêm menu Đơn PO => G1, G2" · "1 cột lỗi đối tác/nội bộ trong table danh sách".
+- Đã làm:
+  - Sidebar 3 cấp (`lib/nav.ts` + `AppShell`): menu gốc có mũi tên xổ / thu (nhớ trên máy); cấp 2 chỉ hiện dưới menu phụ đang chọn; số đếm cạnh menu phụ
+    Đơn PO lấy từ `GET /api/eo/dem` (đỏ = cần làm); bấm lại mục cấp 2 đang chọn = bỏ lọc giai đoạn.
+  - Tổng quan › Tổng quan · Báo cáo đặt LK (cấp 2: 3 báo cáo) · Điều hành (cấp 2: 7 tab, tab nằm trên URL `?tab=`).
+  - Đơn PO › Theo PO (cấp 2: G1…G8, Đủ hàng, Từ chối, Đã hủy) · Theo LK (cấp 2: G1…G8 `?gd=`) · PO chờ tôi · PO tồn CEO (đổi tên từ "Ca tồn CEO", cấp 2: mã 201/202/203 `?ma=`)
+    · PO cảnh báo (= PO có dòng ĐỎ) · Lỗi đối tác · Lỗi nội bộ. Cấp 2 các nhóm PO = giai đoạn tiến trình, chỉ hiện giai đoạn có PO; bấm → `/eo?chip=…&moc=G…` tự lọc cột Tiến trình.
+  - 2 nhóm mới ở Đơn PO: "Lỗi đối tác (chưa xử lý)" / "Lỗi nội bộ (chưa xử lý)" = PO có vi phạm gộp CHƯA xử lý (cần giải trình + vi phạm hết hạn) theo bên chịu.
+    Cột mới "Lỗi đối tác / nội bộ" (sau cột Vi phạm): số lỗi mỗi bên + số chưa xử lý, lọc / sắp xếp được; Excel thêm 2 cột.
+  - Bên chịu tính trong JS bằng `benLoi` (`lib/maLoi.ts`, cùng luật `BEN_SQL`), gắn vào mỗi lỗi (`dsLoiDayDu` → `ben`) và đếm theo PO (`VpPo.ncc/nb/ncc_mo/nb_mo`).
+  - Vi phạm & GT › Cần giải trình · Vi phạm (hết hạn) · Đã xử lý · Lỗi đối tác · Lỗi nội bộ (cấp 2 = bước / loại lỗi: G2–G3 chậm duyệt R5, G4 không thúc NCC R3,
+    G5 chưa có ngày DK R1, G6 quá ngày DK R4, lỗi ghi tay) · Tổng hợp theo mã lỗi · Bảng mã lỗi.
+  - Trang Vi phạm làm lại: bỏ dải thông báo, 7 thẻ số và khung lọc riêng; còn 1 thanh gọn như Đơn PO (Của tôi / Toàn bộ · ô nhóm trạng thái + cảnh báo có số đếm ·
+    cách xem · ô tìm · chip lọc từ menu · số dòng · thao tác · Excel · chú giải ?) rồi BẢNG. Lọc mã lỗi / mức độ / bên chịu / người / kho / đối tác / ngày chuyển xuống
+    tiêu đề cột (kiểu Excel) ở cả 4 cách xem; thêm cột Bên chịu, Kho, Đối tác.
+  - `vite.config.ts`: cổng API proxy đọc biến `API_PORT` (mặc định 8790) để chạy local song song app khác.
+- 5W1H: Who — mọi vai trò (nhân viên mua hàng, người duyệt, KH cung ứng, lãnh đạo). When — mỗi lần mở app tìm việc theo nhóm / giai đoạn.
+  Where — thanh menu trái (web + điện thoại), màn Đơn PO, Theo LK, PO tồn CEO, Điều hành, Vi phạm. What — 1 cú bấm menu ra đúng danh sách đã lọc; cột Lỗi đối tác / nội bộ
+  cho biết lỗi của PO do bên nào. Why — trước phải chọn nhóm + lọc cột tay, menu rời rạc (LK đặt, Ca tồn CEO, Điều hành nằm riêng), trang Vi phạm chiếm nửa màn bằng thẻ số
+  trước khi thấy bảng. How — bấm menu gốc → menu phụ → giai đoạn; bấm lại giai đoạn để bỏ lọc; trong bảng bấm phễu tiêu đề cột để lọc thêm, "Xóa lọc" để về mặc định.
+- Kiểm thử: typecheck BE + FE; chạy local (worker cổng 8791): `/api/eo/dem` trả `loi_doi_tac`, `loi_noi_bo`, `theo_moc`; Đơn PO › Lỗi nội bộ › G3 ra 4 PO = số trên menu;
+  cột Lỗi đối tác / nội bộ hiện đúng; Vi phạm › Lỗi đối tác › G6 lọc đúng; Điều hành `?tab=ncc` mở đúng tab; Theo LK `?gd=G6`; không lỗi console.
+- Còn dở: menu Vi phạm chưa có số đếm từng mục (dữ liệu vi phạm nặng, chỉ tải khi mở màn). Câu hỏi gộp 3 báo cáo Tổng quan / Báo cáo LK / Điều hành: đã giải thích, chờ chủ hệ thống chốt.
+
 ## 26/11/2026 — v0.128: Rà soát vi phạm bị chốt của NV KH cung ứng + bỏ toàn bộ vi phạm chốt trước đào tạo 20/11
 
 - Yêu cầu: "1. kiểm tra xem vai trò của nhân viên tuyết có nhìn thấy các công việc bản thân cần giải trình không? các lỗi bị chốt là do tuyết không giải trình

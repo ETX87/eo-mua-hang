@@ -228,7 +228,9 @@ export interface GdPo { dem: Record<string, number>; tre: Record<string, number>
  * > DA_XL (moi loi da giai trinh / khac phuc dung han - KHONG vi pham) > KHONG. v0.110: vi_pham = so vi pham THAT (het han khong GT); tong = so loi.
  * Chi PO trong pham vi theo doi (PO ngoai pham vi khong co ban ghi -> FE hien "—").
  */
-export interface VpPo { tt: "CEO" | "CHO" | "VI_PHAM" | "DA_XL" | "KHONG"; tong: number; cho: number; vi_pham: number; da_gt: number; tu_dong: number; ceo: number; cao: number }
+export interface VpPo { tt: "CEO" | "CHO" | "VI_PHAM" | "DA_XL" | "KHONG"; tong: number; cho: number; vi_pham: number; da_gt: number; tu_dong: number; ceo: number; cao: number;
+  /** v0.129: so vi pham gop theo BEN chiu (lib/maLoi benLoi): ncc / nb = moi trang thai; ncc_mo / nb_mo = chua xu ly (can giai trinh + vi pham het han) */
+  ncc: number; nb: number; ncc_mo: number; nb_mo: number }
 export const VP_TT_TEN: Record<VpPo["tt"], string> = { CEO: "Cấp CEO", CHO: "Cần giải trình", VI_PHAM: "Có vi phạm", DA_XL: "Đã xử lý trong hạn", KHONG: "Không có lỗi" };
 export interface TomTatPo { dh: Map<number, DhPo>; gd: Map<number, GdPo>; vp: Map<number, VpPo> }
 let memoPo: { tag: string; luc: number; v: TomTatPo } | null = null;
@@ -274,7 +276,7 @@ async function tinhTheoPo(env: Env): Promise<TomTatPo> {
 async function viPhamTheoPo(env: Env): Promise<Map<number, VpPo>> {
   const [{ rows }, dongTd] = await Promise.all([dsLoiDayDu(env), layDongTheoDoi(env, "tat_ca")]);
   const out = new Map<number, VpPo>();
-  const lay = (eo: number) => { let x = out.get(eo); if (!x) { x = { tt: "KHONG", tong: 0, cho: 0, vi_pham: 0, da_gt: 0, tu_dong: 0, ceo: 0, cao: 0 }; out.set(eo, x); } return x; };
+  const lay = (eo: number) => { let x = out.get(eo); if (!x) { x = { tt: "KHONG", tong: 0, cho: 0, vi_pham: 0, da_gt: 0, tu_dong: 0, ceo: 0, cao: 0, ncc: 0, nb: 0, ncc_mo: 0, nb_mo: 0 }; out.set(eo, x); } return x; };
   for (const d of dongTd) { const x = lay(d.eo_id); if (d.ceo_ly_do.length) x.ceo += 1; }
   const gom = new Map<string, any[]>();
   for (const l of rows) gom.set(l.vp_khoa, [...(gom.get(l.vp_khoa) ?? []), l]);
@@ -284,6 +286,10 @@ async function viPhamTheoPo(env: Env): Promise<Map<number, VpPo>> {
     const t = trangThaiViPham(ds);
     if (t === "CHO") { x.cho += 1; if (ds.some((l) => l.trang_thai === "CHO_GIAI_TRINH" && (l.muc === "CAO" || l.muc === "CEO"))) x.cao += 1; }
     else if (t === "TU_QUA_HAN") x.vi_pham += 1; else if (t === "DA_GT") x.da_gt += 1; else x.tu_dong += 1;
+    // ben cua vi pham gop = ben cua dong dai dien (dong con cho, khong co thi dong moi nhat)
+    const dd = ds.find((l) => l.trang_thai === "CHO_GIAI_TRINH") ?? ds[ds.length - 1];
+    const mo = t === "CHO" || t === "TU_QUA_HAN";
+    if (dd.ben === "NCC") { x.ncc += 1; if (mo) x.ncc_mo += 1; } else { x.nb += 1; if (mo) x.nb_mo += 1; }
   }
   for (const x of out.values()) x.tt = x.ceo ? "CEO" : x.cho ? "CHO" : x.vi_pham ? "VI_PHAM" : x.tong ? "DA_XL" : "KHONG";
   return out;

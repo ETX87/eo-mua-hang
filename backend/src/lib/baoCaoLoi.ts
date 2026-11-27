@@ -3,7 +3,7 @@ import { todayVN, nowVN } from "./vnTime";
 import { demGioLV } from "./gioLamViec";
 import { hanGiaiTrinh, VP_CU_TRUOC } from "./theoDoi";
 import { layDongTheoDoi } from "./theoDoi";
-import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, type BangMaLoi } from "./maLoi";
+import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, benLoi, type BangMaLoi } from "./maLoi";
 
 /**
  * Danh sach LOI day du + tong hop theo MA LOI ER.MH (v0.091) - dung chung: man Vi pham (routes/viPham, loc theo pham vi nguoi xem),
@@ -80,6 +80,8 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
       so_lan: soLan, so_lan_xau: soLanXau, vi_pham: vpBy.get(l.id) ?? false, han_gt: hanGt, con_gio_gt: cho && hanGt && hanGt > now ? demGioLV(now, hanGt) : 0, lan_thu: ds.indexOf(l) + 1, tuoi_ngay: tuoi, tuoi_gio: tuoiGio, qua_lau: cho && tuoiGio >= QUA_LAU_GIO, muc,
       gt_noi_dung: gt?.noi_dung ?? null, gt_luc: gt?.created_at ?? null, gt_boi: gt?.created_by ?? null, gt_pham_vi: gt?.pham_vi ?? null, gt_co_anh: !!gt?.co_anh,
       gt_ai_ma: gt?.ai_ma ?? null, gt_ai_email: gt?.ai_email ?? null, gt_loi_ma: gt?.loi_ma ?? null,
+      /** v0.129: ben chiu NCC / NOI_BO (lib/maLoi benLoi = BEN_SQL) - menu "Lỗi đối tác / Lỗi nội bộ" */
+      ben: benLoi({ quy_tac: l.quy_tac, ai_ma: l.ai_ma, giai_trinh_id: l.giai_trinh_id, gt_pham_vi: gt?.pham_vi ?? null }),
       /** v0.092: dong tu dong (AUTO:KHAC_PHUC = da khac phuc sau do · AUTO:QUA_HAN = qua han giai trinh 56h LV, truoc v0.103 la 7 ngay) */
       // v0.113: AUTO:CU = vi pham cu truoc 01/11/2026, bo qua (khong tinh vi pham)
       tu_dong: gt?.pham_vi === "AUTO" ? (gt.nhom === "AUTO:QUA_HAN" ? "QUA_HAN" : gt.nhom === "AUTO:CU" ? "CU" : "KHAC_PHUC") : null,

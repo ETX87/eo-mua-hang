@@ -7,7 +7,8 @@ export default defineConfig({
   server: {
     port: 5176,
     proxy: {
-      "/api": { target: "http://localhost:8790", changeOrigin: true },
+      // API_PORT: chay worker cong khac khi 8790 dang ban (vd 2 app cung chay local)
+      "/api": { target: `http://localhost:${process.env.API_PORT ?? 8790}`, changeOrigin: true },
     },
   },
 });

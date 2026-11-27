@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { xoaCacheTrinhDuyet } from "../lib/cacheTrinhDuyet";
 import { api } from "../api/client";
-import { NAV } from "../lib/nav";
+import { NAV, type NavItem } from "../lib/nav";
 import { I } from "../lib/icons";
 import { Avatar, PageTitleCtx } from "./ui";
 import { NutGiaiThich } from "../lib/thuatNgu";
@@ -179,16 +179,36 @@ export function AppShell({ children }: { children: ReactNode }) {
   // uu tien ten ETX (lib/format ten), khong co moi dung ho ten tai khoan / Gmail
   const uName = (me.data?.email && ten(me.data.email) !== me.data.email.split("@")[0] ? ten(me.data.email) : null)
     ?? (me.data?.ho_ten && !me.data.ho_ten.includes("@") ? me.data.ho_ten : ten(me.data?.email)) ?? "—";
-  // muc con sidebar: khop duong dan DUNG (khong prefix - /don-hang/ke-hoach-tuan khong to muc nao) + moi ?tham so cua muc;
-  // muc khong co ?query chi active khi khong muc anh em nao co query khop (Danh sach vs ?tab=bao-cao)
+  // muc con sidebar: khop duong dan DUNG (khong prefix - /don-hang/ke-hoach-tuan khong to muc nao) + moi ?tham so cua muc
   const khopCon = (to: string) => {
     const [p, qs] = to.split("?");
     if (loc.pathname !== p) return false;
     const cur = new URLSearchParams(loc.search);
     return [...new URLSearchParams(qs ?? "")].every(([k, v]) => cur.get(k) === v);
   };
-  const conActive = (to: string, anhEm: { to: string }[]) =>
-    to.includes("?") ? khopCon(to) : khopCon(to) && !anhEm.some((x) => x.to !== to && x.to.includes("?") && khopCon(x.to));
+  // v0.129 menu 3 cap: muc KHONG co ?query chi active khi khong muc co query nao KHAC (o moi nhom, tru cap 2 cua chinh no) khop URL
+  // (vd "Theo LK" /don-hang tat khi dang o /don-hang?tab=bao-cao cua nhom Tong quan; "Theo PO" /eo tat khi o /eo?chip=po_do)
+  const moiMucQuery = NAV.flatMap((n) => (n.children ?? []).flatMap((c) => [c.to, ...(c.con ?? []).map((x) => x.to)])).filter((t) => t.includes("?"));
+  const conActive = (to: string, cuaMinh: string[] = []) =>
+    to.includes("?") ? khopCon(to) : khopCon(to) && !moiMucQuery.some((x) => x !== to && !cuaMinh.includes(x) && khopCon(x));
+  const gocActive = (n: NavItem) => (n.children?.length
+    ? n.children.some((c) => conActive(c.to, (c.con ?? []).map((x) => x.to))) || (n.to !== "/" && loc.pathname.startsWith(n.to))
+    : n.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(n.to));
+  // so dem menu phu Don PO: GET /eo/dem (dung chung cache voi man Don PO) - "chip" = so PO nhom; "chip:moc" = so PO cua nhom o giai doan
+  const demQ = useQuery({ queryKey: ["eo-dem"], queryFn: () => api.get<Record<string, any>>("/eo/dem"), enabled: me.data?.trang_thai_duyet === "Da duyet",
+    staleTime: 60_000, refetchInterval: 180_000, refetchIntervalInBackground: false });
+  const demCua = (k?: string): number | null => {
+    if (!k || !demQ.data) return null;
+    const [chip, moc] = k.split(":");
+    return moc ? demQ.data.theo_moc?.[chip]?.[moc] ?? 0 : typeof demQ.data[chip] === "number" ? demQ.data[chip] : null;
+  };
+  // nhom dang xo: mac dinh xo nhom dang dung; bam mui ten de xo / thu (nho tren may)
+  const [xo, setXo] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem("nav-xo") ?? "{}"); } catch { return {}; } });
+  const doiXo = (k: string, v: boolean) => setXo((s) => { const n = { ...s, [k]: v }; localStorage.setItem("nav-xo", JSON.stringify(n)); return n; });
+  const badgeGoc = (n: NavItem) => [...new Set([n.to, ...(n.children ?? []).map((c) => c.to.split("?")[0])])].reduce((s, t) => s + badgeOf(t), 0);
+  const SoDem = ({ v, doDam }: { v: number | null; doDam?: boolean }) => v == null ? null : (
+    <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, borderRadius: 6, padding: "0 6px", lineHeight: "17px", flexShrink: 0,
+      background: doDam && v > 0 ? "#EF4444" : "rgba(255,255,255,.55)", color: doDam && v > 0 ? "#fff" : "var(--brand-olive)" }}>{v > 999 ? "999+" : v}</span>);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -217,44 +237,76 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav style={{ flex: 1, overflowY: "auto", padding: open ? "6px 12px" : "6px 8px" }}>
           {NAV.filter((n) => !n.adminOnly || me.data?.vai_tro === "Admin").map((n) => {
             const Icon = I[n.icon];
+            const on = gocActive(n);
+            const coCon = !!n.children?.length;
+            const dangXo = coCon && (xo[n.to] ?? on);
+            const bd = badgeGoc(n);
             return (
               <div key={n.to}>
                 {n.section && open && (
                   <div style={{ fontSize: 11, fontWeight: 800, color: "var(--brand-olive)", letterSpacing: 1, margin: "18px 8px 8px" }}>{n.section}</div>
                 )}
-                <NavLink
-                  to={n.to}
-                  end={n.to === "/"}
-                  style={({ isActive }) => ({
-                    display: "flex", alignItems: "center", gap: 13, padding: open ? "11px 14px" : "11px", position: "relative",
-                    borderRadius: 14, margin: "3px 0", fontWeight: 600, fontSize: 14,
-                    color: "var(--brand-ink)",
-                    background: isActive ? "#fff" : "transparent",
-                    boxShadow: isActive ? "0 2px 6px rgba(60,50,0,.12)" : "none",
-                    justifyContent: open ? "flex-start" : "center",
-                  })}
-                >
-                  <Icon width={21} height={21} style={{ flexShrink: 0 }} />
-                  {open && <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label}</span>}
-                  {open && badgeOf(n.to) > 0 && (
-                    <span title="Việc cần xử lý" style={{ background: "#EF4444", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 800, padding: "2px 8px", lineHeight: 1.3 }}>{badgeOf(n.to) > 999 ? "999+" : badgeOf(n.to)}</span>
+                <div style={{ position: "relative" }}>
+                  <Link to={n.to} onClick={() => { if (coCon && !on) doiXo(n.to, true); }} title={!open ? n.label : undefined}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 13, padding: open ? (coCon ? "11px 34px 11px 14px" : "11px 14px") : "11px", position: "relative",
+                      borderRadius: 14, margin: "3px 0", fontWeight: coCon ? 700 : 600, fontSize: 14,
+                      color: "var(--brand-ink)",
+                      background: on && (!coCon || !open) ? "#fff" : on ? "rgba(255,255,255,.45)" : "transparent",
+                      boxShadow: on && (!coCon || !open) ? "0 2px 6px rgba(60,50,0,.12)" : "none",
+                      justifyContent: open ? "flex-start" : "center",
+                    }}>
+                    <Icon width={21} height={21} style={{ flexShrink: 0 }} />
+                    {open && <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label}</span>}
+                    {open && bd > 0 && (
+                      <span title="Việc cần xử lý" style={{ background: "#EF4444", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 800, padding: "2px 8px", lineHeight: 1.3 }}>{bd > 999 ? "999+" : bd}</span>
+                    )}
+                    {!open && bd > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
+                  </Link>
+                  {open && coCon && (
+                    <button aria-label={dangXo ? "Thu gọn" : "Mở rộng"} title={dangXo ? "Thu gọn" : "Mở rộng"} onClick={() => doiXo(n.to, !dangXo)}
+                      style={{ position: "absolute", right: 6, top: 9, border: 0, background: "transparent", cursor: "pointer", padding: 4, color: "var(--brand-ink)", display: "flex" }}>
+                      <I.chevronDown width={16} height={16} style={{ transform: dangXo ? "none" : "rotate(-90deg)", transition: "transform .15s" }} />
+                    </button>
                   )}
-                  {!open && badgeOf(n.to) > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
-                </NavLink>
-                {open && n.children && (
-                  <div style={{ margin: "0 0 4px 30px", borderLeft: "2px solid rgba(120,100,20,.25)", paddingLeft: 6 }}>
-                    {n.children.map((c) => {
+                </div>
+                {open && dangXo && (
+                  <div style={{ margin: "0 0 4px 22px", borderLeft: "2px solid rgba(120,100,20,.25)", paddingLeft: 6 }}>
+                    {n.children!.map((c) => {
                       const CIcon = I[c.icon];
-                      const on = conActive(c.to, n.children!);
+                      const conTo = (c.con ?? []).map((x) => x.to);
+                      const cOn = conActive(c.to, conTo);
+                      const cap2 = cOn ? (c.con ?? []).filter((x) => !x.anRong || (demCua(x.dem) ?? 0) > 0) : [];
                       return (
-                        <Link key={c.to} to={c.to} style={{
-                          display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 10, margin: "2px 0",
-                          fontSize: 12.5, fontWeight: on ? 700 : 500, color: "var(--brand-ink)",
-                          background: on ? "rgba(255,255,255,.75)" : "transparent",
-                        }}>
-                          <CIcon width={15} height={15} style={{ flexShrink: 0 }} />
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
-                        </Link>
+                        <div key={c.to}>
+                          <Link to={c.to} style={{
+                            display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 10px", borderRadius: 10, margin: "2px 0",
+                            fontSize: 12.5, fontWeight: cOn ? 800 : 500, color: "var(--brand-ink)",
+                            background: cOn ? "#fff" : "transparent", boxShadow: cOn ? "0 1px 4px rgba(60,50,0,.12)" : "none",
+                          }}>
+                            <CIcon width={15} height={15} style={{ flexShrink: 0 }} />
+                            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
+                            <SoDem v={demCua(c.dem)} doDam={c.demDo} />
+                          </Link>
+                          {cap2.length > 0 && (
+                            <div style={{ margin: "0 0 4px 18px", borderLeft: "1px dashed rgba(120,100,20,.35)", paddingLeft: 4 }}>
+                              {cap2.map((x) => {
+                                const xOn = khopCon(x.to);
+                                return (
+                                  <Link key={x.to} to={xOn ? c.to : x.to} title={xOn ? "Bấm lần nữa để bỏ lọc giai đoạn" : `Lọc: ${x.label}`} style={{
+                                    display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 8, margin: "1px 0",
+                                    fontSize: 12, fontWeight: xOn ? 800 : 500, color: "var(--brand-ink)",
+                                    background: xOn ? "rgba(255,255,255,.85)" : "transparent",
+                                  }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: 3, flexShrink: 0, background: xOn ? "var(--brand-ink)" : "rgba(120,100,20,.45)" }} />
+                                    <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.label}</span>
+                                    <SoDem v={demCua(x.dem)} />
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -309,6 +361,10 @@ function titleFor(path: string): string {
   if (/^\/eo\/\d+\/edit/.test(path)) return "Sửa EO";
   if (/^\/eo\/\d+/.test(path)) return "Chi tiết EO";
   if (path.startsWith("/don-hang/ke-hoach-tuan")) return "Kế hoạch tuần KRF";
+  if (path.startsWith("/ca-ceo")) return "PO tồn CEO";
+  if (path.startsWith("/don-hang")) return "Đơn PO · Theo LK";
+  if (path.startsWith("/dieu-hanh")) return "Điều hành";
+  if (path.startsWith("/ma-loi")) return "Bảng mã lỗi";
   // khop dai nhat
   const hit = NAV.filter((n) => n.to !== "/" && path.startsWith(n.to)).sort((a, b) => b.to.length - a.to.length)[0];
   return hit?.label ?? "EO Mua hàng";

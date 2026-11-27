@@ -74,6 +74,12 @@ export const benCuaAi = (ma: string | null | undefined): "NCC" | "NOI_BO" => (ma
  *  theo quy tac (R1/R4 NCC, R3 noi bo, TAY theo ai_ma). Loi KHONG GIAI TRINH (AUTO:QUA_HAN) dem rieng, khong nam trong ben nay. */
 export const BEN_SQL = `CASE WHEN g.id IS NOT NULL AND COALESCE(g.pham_vi, '') <> 'AUTO' THEN (CASE WHEN l.ai_ma = 'DOI_TAC' THEN 'NCC' ELSE 'NOI_BO' END)
   WHEN l.quy_tac IN ('R1', 'R4') THEN 'NCC' WHEN l.quy_tac = 'TAY' AND l.ai_ma = 'DOI_TAC' THEN 'NCC' ELSE 'NOI_BO' END`;
+/** v0.129: ben chiu cua 1 loi trong JS - CUNG LUAT voi BEN_SQL (l = dong tl_loi, gt_pham_vi = pham vi giai trinh, null = chua giai trinh). */
+export function benLoi(l: { quy_tac: string; ai_ma: string | null; giai_trinh_id?: number | null; gt_pham_vi?: string | null }): "NCC" | "NOI_BO" {
+  if (l.giai_trinh_id && l.gt_pham_vi && l.gt_pham_vi !== "AUTO") return l.ai_ma === "DOI_TAC" ? "NCC" : "NOI_BO";
+  if (l.quy_tac === "R1" || l.quy_tac === "R4") return "NCC";
+  return l.quy_tac === "TAY" && l.ai_ma === "DOI_TAC" ? "NCC" : "NOI_BO";
+}
 const LOI_HE_THONG = new Set(["KHONG_NDK_24H", "KHONG_NDK_QUA_HAN", "KHONG_PUSH"]);
 
 export interface BangMaLoi { ds: MaLoiDef[]; tay: Map<string, MaLoiDef>; theoMa: Map<string, MaLoiDef> }

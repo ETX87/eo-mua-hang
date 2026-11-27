@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Card, PageHeader, Spinner } from "../components/ui";
 import { DataTable, type Col } from "../components/DataTable";
 import { useQuickView } from "../components/quickview/QuickView";
@@ -23,7 +24,10 @@ export default function CaCeo() {
   const [muc, setMuc] = useState<Muc | "">("");
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
-  const [ma, setMa] = useState("");
+  // v0.129: ma CEO tren URL (?ma=ER.MH-201) - menu cap 2 "Đơn PO › PO tồn CEO › …"
+  const [sp, setSp] = useSearchParams();
+  const ma = sp.get("ma") ?? "";
+  const setMa = (v: string) => setSp((s) => { const n = new URLSearchParams(s); if (v) n.set("ma", v); else n.delete("ma"); return n; }, { replace: true });
   const [tab, setTab] = useState<"dang" | "xong">("dang");
   const rows = q.data?.rows ?? [];
   const caAll = useMemo(() => gomCa(rows), [rows]);
@@ -32,7 +36,7 @@ export default function CaCeo() {
   const soXong = caAll.filter((c) => c.muc === "DA_XONG").length;
   const caDang = caAll.length - soXong;
   const doiTab = (t: "dang" | "xong") => { setTab(t); setMuc(""); };
-  if (q.isLoading) return <><PageHeader title="Ca tồn CEO" /><Spinner /></>;
+  if (q.isLoading) return <><PageHeader title="PO tồn CEO" /><Spinner /></>;
 
   const cols: Col<C>[] = [
     { key: "muc", header: "Mức xử lý", loc: "chon", gt: (r) => r.muc_xu_ly, nhanChon: (v) => MUC[v as Muc]?.ngan ?? v, gtSap: (r) => ({ RAT_HOT: 3, GIAM_HOT: 2, DA_XONG: 1 })[r.muc_xu_ly], maxW: 230,
@@ -100,7 +104,7 @@ export default function CaCeo() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <PageHeader title="Ca tồn CEO" />
+      <PageHeader title="PO tồn CEO" />
       {/* v0.100: 2 tab - Dang theo doi (rat hot + giam hot) / tab nho Da xong (tranh loang) */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {nutTab("dang", "🔥 Đang theo dõi", caDang, true)}

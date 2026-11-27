@@ -111,7 +111,22 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   đã bắt đầu). PO đã qua nháp thì G1 luôn đóng: mốc = lần gửi trình đầu sau khi tạo dòng, không có thì lần trình đầu của PO, không có trình nào
   (PO chuyển từ hệ cũ) thì ngày ban hành.
 
+## 7b. Menu (v0.129) — 3 cấp, bấm là lọc
+
+- Menu gốc → menu phụ → cấp 2 (giai đoạn / nhóm con), định nghĩa ở `frontend/src/lib/nav.ts`. Bấm menu = mở danh sách đã lọc theo URL:
+  Đơn PO `/eo?chip=<nhóm>&moc=<giai đoạn>` (lọc cột Tiến trình), Theo LK `/don-hang?gd=G…`, PO tồn CEO `/ca-ceo?ma=ER.MH-20x`, Điều hành `/dieu-hanh?tab=…`,
+  Vi phạm `/vi-pham?tt=cho|vi_pham|xl|mo&ben=NCC|NOI_BO&qt=R1|R3|R4|R5|TAY`.
+- Nhóm PO: Theo PO (mặc định "còn tồn"; cấp 2 dùng mọi PO) · PO chờ tôi · PO tồn CEO (PO có dòng cấp CEO) · PO cảnh báo (có dòng ĐỎ) ·
+  Lỗi đối tác / Lỗi nội bộ = PO có vi phạm gộp CHƯA xử lý (cần giải trình còn hạn + vi phạm hết hạn không giải trình) mà bên chịu là NCC / nội bộ.
+- Bên chịu 1 lỗi (`benLoi` = `BEN_SQL`): đã giải trình thật → theo "Do ai" (Đối tác = NCC, còn lại nội bộ); chưa / tự đóng → R1, R4 = NCC; R3, R5 = nội bộ;
+  lỗi ghi tay theo "Do ai". 1 vi phạm gộp lấy bên của dòng đại diện (dòng còn chờ, không có thì dòng mới nhất).
+- Số đếm menu Đơn PO = `GET /api/eo/dem` (`theo_moc[nhóm][giai đoạn]` = số PO của nhóm đang có dòng ở giai đoạn đó; 1 PO có thể nằm ở nhiều giai đoạn).
+
 ## 8. Báo cáo & tổng quan
+
+- 3 màn báo cáo dưới menu Tổng quan (v0.129): **Tổng quan** = nhìn nhanh hôm nay (bảng trách nhiệm, tỷ lệ đáp ứng, tồn theo mốc, việc cần xử lý, biểu đồ xu hướng EO);
+  **Báo cáo đặt LK** = số liệu theo kỳ của dòng linh kiện (giai đoạn đơn hàng, tiến độ tuần KRF, lũy kế năm — để chốt số / xuất Excel);
+  **Điều hành** = truy trách nhiệm (ai / NCC nào giữ, điểm nóng, nguyên nhân, duyệt treo — để ra lệnh).
 
 - 4 báo cáo (tiến độ 0.1 là nguồn chung), báo cáo giai đoạn. Tổng quan: tỷ lệ đáp ứng tuần / tháng = Σmin(về, đặt) / Σđặt,
   tồn đọng theo 8 mốc tồn — cùng mốc bỏ qua với theo dõi nên số khớp màn Quản lý đơn hàng.

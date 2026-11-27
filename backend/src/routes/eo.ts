@@ -97,6 +97,9 @@ const CHIP_EO: Record<string, (r: DongEo, n: NguCanh) => boolean> = {
   po_im_lang: (r) => (r.dh?.im_lang ?? 0) >= IM_LANG_DO,
   po_loi_cho: (r) => (r.dh?.loi_cho ?? 0) > 0,
   po_ceo: (r) => r.vp?.tt === "CEO",
+  // v0.129 menu Don PO: PO co loi CHUA xu ly (can giai trinh / vi pham het han) theo ben chiu - lib/maLoi benLoi
+  loi_doi_tac: (r) => (r.vp?.ncc_mo ?? 0) > 0,
+  loi_noi_bo: (r) => (r.vp?.nb_mo ?? 0) > 0,
 };
 /**
  * Cac MOC TIEN TRINH cua 1 PO (v0.088, loc cot "Tien trinh" - khop FE components/TienTrinhPo): PO chua ban hanh theo trang thai duyet;
@@ -143,6 +146,9 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
     sap: (r) => (r.vp ? ({ CEO: 4, CHO: 3, VI_PHAM: 2, DA_XL: 1, KHONG: 0 }[r.vp.tt] * 1e8 + r.vp.ceo * 1e6 + r.vp.cho * 1e3 + r.vp.vi_pham) : null) },
   thuc: { kieu: "so", gt: (r) => r.dh?.thuc7 ?? null, sap: (r) => (r.dh ? r.dh.thuc7 * 100000 + r.dh.thuc : null) },
   im_lang: { kieu: "so", gt: (r) => r.dh?.im_lang ?? null },
+  // v0.129: cot "Lỗi đối tác / nội bộ" - loc theo ben co loi (moi trang thai); sap: so loi chua xu ly roi tong
+  ben_loi: { kieu: "chon", gt: (r) => (!r.vp ? [] : [r.vp.ncc ? "Lỗi đối tác" : "", r.vp.nb ? "Lỗi nội bộ" : ""].filter(Boolean).concat(r.vp.ncc || r.vp.nb ? [] : ["Không có lỗi"])),
+    sap: (r) => (r.vp ? (r.vp.ncc_mo + r.vp.nb_mo) * 1e4 + r.vp.ncc + r.vp.nb : null) },
 };
 interface GtLoc { q?: string; chon?: string[]; tu?: string; den?: string; rong?: "trong" | "co" }
 function khop(kieu: string, v: unknown, g: GtLoc): boolean {
@@ -178,8 +184,18 @@ async function dsEoDh(env: Env): Promise<DongEo[]> {
 
 app.get("/dem", async (c) => {
   const [ds, n] = await Promise.all([dsEoDh(c.env), nguCanh(c)]);
-  const out: Record<string, number> = { tat_ca: ds.length };
-  for (const [k, f] of Object.entries(CHIP_EO)) out[k] = ds.filter((r) => f(r, n)).length;
+  const out: Record<string, number | Record<string, Record<string, number>>> = { tat_ca: ds.length };
+  // v0.129: so PO theo moc tien trinh trong tung nhom (menu cap 2 o sidebar: Don PO > nhom > giai doan)
+  const theoMoc: Record<string, Record<string, number>> = { tat_ca: {} };
+  const cong = (k: string, r: DongEo) => { const m = (theoMoc[k] ??= {}); for (const g of mocPo(r)) m[g] = (m[g] ?? 0) + 1; };
+  for (const r of ds) cong("tat_ca", r);
+  for (const [k, f] of Object.entries(CHIP_EO)) {
+    const ok = ds.filter((r) => f(r, n));
+    out[k] = ok.length;
+    theoMoc[k] = {};
+    for (const r of ok) cong(k, r);
+  }
+  out.theo_moc = theoMoc;
   return c.json(out);
 });
 
@@ -223,7 +239,7 @@ app.get("/", async (c) => {
   for (const [k, cot] of Object.entries(COT_EO)) {
     if (cot.kieu !== "chon") continue;
     if (k === "trang_thai") { tuyChon[k] = MOC_PO; continue; } // luon du moi moc, dung thu tu quy trinh
-    tuyChon[k] = [...new Set(goc.map((r) => String(cot.gt(r) ?? "")))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, "vi")));
+    tuyChon[k] = [...new Set(goc.flatMap((r) => { const v = cot.gt(r); return Array.isArray(v) ? v.map(String) : [String(v ?? "")]; }))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, "vi")));
   }
   const trang = rows.slice(offset, offset + limit).map(({ lk, kho: _k, ncc: _n, ly_do: _l, ...r }) => {
     const p = n.phieu.get(r.id);

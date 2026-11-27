@@ -54,7 +54,7 @@ export default function BangMaLoi() {
     { key: "qh", header: `Tự đóng · quá ${d.so_ngay_tu_dong} ngày (vi phạm)`, loc: "so", gt: (r) => r.th?.tu_qua_han ?? null, align: "right", render: (r) => (r.th ? so(r.th.tu_qua_han, "#B45309") : <span className="muted">—</span>) },
     { key: "act", header: "", render: (r) => (r.nhom === "HE_THONG" || r.nhom === "TAY") && r.dem
       ? <button className="btn sm" onClick={(e) => { e.stopPropagation(); xemLoi(r.ma); }}>Xem lỗi</button>
-      : r.nhom === "CEO" && r.dem ? <button className="btn sm" onClick={() => nav("/ca-ceo")}>Ca tồn CEO</button> : null },
+      : r.nhom === "CEO" && r.dem ? <button className="btn sm" onClick={() => nav("/ca-ceo")}>PO tồn CEO</button> : null },
   ];
   const THU_TU = ["act", "ma", "nhom", "buoc", "ten", "dem", "cho", "da", "kp", "qh", "gt", "td"];
   cols.sort((x, y) => THU_TU.indexOf(x.key) - THU_TU.indexOf(y.key));

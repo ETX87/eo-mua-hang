@@ -1,9 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import { PageHeader, Card, Spinner, Modal } from "../components/ui";
-import { DataTable, type Col } from "../components/DataTable";
+import { PageHeader, Card, Spinner, Modal, Popover } from "../components/ui";
+import { DataTable, FilterBar, RefreshFiltersBtn, locVaSap, soCotLoc, type Col, type LocCot } from "../components/DataTable";
 import { EoLink, DongLink, useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../lib/format";
@@ -13,7 +13,6 @@ import { boDau } from "../lib/tonDong";
 import { GiaiTrinhModal, LichSuDong, NgayHangVeModal, QUY_TAC, TINH_TRANG, useDanhMuc, type Dong } from "./theodoi/shared";
 import { GiaiTrinhNhieuModal, GiaiTrinhPoModal } from "./theodoi/GiaiTrinhPo";
 import { khoGon } from "../lib/kho";
-import { ChonNhieu } from "../components/ChonNhieu";
 import { gomCa, useCaCeo } from "../lib/caCeo";
 
 /**
@@ -82,11 +81,30 @@ const KPI_DEF: { k: string; l: string; sub: string; mau: string; loc: (l: L, d: 
   { k: "vi_pham", l: "Vi phạm", sub: "hết hạn mà không giải trình", mau: "#B91C1C", loc: vp },
   { k: "qua_lau", l: "Quá lâu", sub: "chờ ≥ 8h làm việc (hạn 16h)", mau: "#B45309", loc: (l) => l.qua_lau },
   { k: "lap", l: "Lặp liên tiếp", sub: "cùng lỗi ≥ 2 lần, chưa xử lý", mau: "#EA580C", loc: (l) => cho(l) && (l.so_lan_xau ?? l.so_lan) >= 2 },
-  { k: "ceo", l: "Ca CEO đang theo dõi", sub: "ca (PO + mã CEO) — khớp màn Ca tồn CEO", mau: "#7F1D1D", loc: (l) => l.ceo && l.tinh_trang !== "DONG" },
+  { k: "ceo", l: "Ca CEO đang theo dõi", sub: "ca (PO + mã CEO) — khớp màn PO tồn CEO", mau: "#7F1D1D", loc: (l) => l.ceo && l.tinh_trang !== "DONG" },
   { k: "cao", l: "Mức cao trở lên", sub: "Cao + CEO, chưa giải trình", mau: "#991B1B", loc: (l) => cho(l) && (l.muc === "CAO" || l.muc === "CEO") },
   { k: "da_7", l: "Đã giải trình 7 ngày", sub: "kết quả xử lý gần đây", mau: "#15803D", loc: (l) => !cho(l) && !tuDong(l) && !!l.gt_luc && Date.now() - Date.parse(String(l.gt_luc).replace(" ", "T") + "+07:00") < 7 * 86400_000 },
 ];
 
+/** v0.129: nhom trang thai (menu phu "Vi phạm & GT" + o chon tren thanh loc) - tt tren URL. mo = can GT + vi pham; xl = da GT + da khac phuc. */
+const TT_DEF: { k: string; l: string; f: (l: L) => boolean }[] = [
+  { k: "cho", l: "Cần giải trình (còn hạn)", f: cho },
+  { k: "vi_pham", l: "Vi phạm (hết hạn không GT)", f: vp },
+  { k: "mo", l: "Chưa xử lý (cần GT + vi phạm)", f: (l) => cho(l) || vp(l) },
+  { k: "xl", l: "Đã xử lý (giải trình / khắc phục)", f: (l) => !cho(l) && !vp(l) },
+  { k: "da", l: "Đã giải trình", f: (l) => !cho(l) && !vp(l) && !tuDong(l) },
+  { k: "tu_dong", l: "Đã khắc phục (tự đóng)", f: (l) => tuDong(l) && !vp(l) },
+];
+const BEN: Record<string, { l: string; mau: string; nen: string }> = { NCC: { l: "Đối tác", mau: "#1D4ED8", nen: "#DBEAFE" }, NOI_BO: { l: "Nội bộ", mau: "#B45309", nen: "#FEF3C7" } };
+const BenBadge = ({ b }: { b?: string }) => b && BEN[b] ? <span style={{ background: BEN[b].nen, color: BEN[b].mau, fontWeight: 700, fontSize: 11.5, borderRadius: 6, padding: "1px 6px", whiteSpace: "nowrap" }}>{BEN[b].l}</span> : <span className="muted">—</span>;
+const ttTen = (l: L) => (vp(l) ? "Vi phạm" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua · lỗi cũ" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình");
+const THU_MA = (m: string) => (m?.startsWith("ER.MH-") ? Number(m.slice(6)) : 999);
+
+/**
+ * v0.129 (yeu cau 2026-11-27 "table giao dien chinh luon la uu tien, cong cu loc day xuong table - tham khao Don PO"):
+ * 1 thanh thao tac gon (pham vi · nhom trang thai co so dem · cach xem · o tim · chu giai) roi BANG; loc ma loi / muc do / nguoi / kho /
+ * doi tac / ngay = loc tren TIEU DE COT (DataTable). Menu phu o sidebar dat ?tt= / ?ben= / ?qt= (cap 2 = buoc / loai loi) / ?kieu=.
+ */
 export default function ViPham() {
   const [sp, setSp] = useSearchParams();
   const qc = useQueryClient();
@@ -94,135 +112,128 @@ export default function ViPham() {
   const dm = useDanhMuc();
   const q = useQuery({ queryKey: ["vi-pham"], queryFn: () => api.get<Data>("/vi-pham") });
   const d = q.data;
-  // v0.101: o "Ca CEO" dem CA (PO + ma CEO) dang theo doi - cung cach man Ca ton CEO (lib/caCeo gomCa), khong dem vi pham
   const ceoQ = useCaCeo();
   const caCeoDang = useMemo(() => gomCa(ceoQ.data?.rows ?? []).filter((c) => c.muc !== "DA_XONG"), [ceoQ.data]);
   const set = (k: string, v: string) => setSp((s) => { const n = new URLSearchParams(s); if (v) n.set(k, v); else n.delete(k); return n; }, { replace: true });
   const xem = sp.get("xem") || (d && !d.quan_ly && !d.tat_ca ? "cua_toi" : d?.quan_ly ? "tat_ca" : "cua_toi");
   const kieu = sp.get("kieu") || "loi";
-  const tt = sp.get("tt") ?? "cho";
+  const ben = sp.get("ben") ?? "";
+  // menu "Lỗi đối tác / nội bộ" khong kem tt -> mac dinh "Chưa xử lý"; con lai mac dinh "Cần giải trình"
+  const tt = sp.get("tt") ?? (ben ? "mo" : "cho");
   const kpi = sp.get("kpi") || "";
+  const qt = useMemo(() => (sp.get("qt") ?? "").split("|").filter(Boolean), [sp]);
   const [tim, setTim] = useState("");
-  // bo loc chon NHIEU (nguyen tac 2026-11-18): [] = khong loc
-  const [muc, setMuc] = useState<string[]>([]); const [qt, setQt] = useState<string[]>([]); const [nguoi, setNguoi] = useState<string[]>(sp.get("nguoi") ? [sp.get("nguoi")!] : []);
-  const [maLoi, setMaLoi] = useState<string[]>(sp.get("ma") ? sp.get("ma")!.split("|") : []);
-  const [kho, setKho] = useState<string[]>([]); const [doiTac, setDoiTac] = useState<string[]>([]); const [tu, setTu] = useState(""); const [den, setDen] = useState("");
+  // loc tieu de cot (bang Theo loi); ?ma= / ?nguoi= tu link ngoai (Bang ma loi, Viec cua toi) -> loc cot tuong ung
+  const [locCot, setLocCot] = useState<LocCot>({});
+  const maUrl = sp.get("ma") ?? "", nguoiUrl = sp.get("nguoi") ?? "";
+  useEffect(() => {
+    if (!maUrl && !nguoiUrl) return;
+    setLocCot((l) => ({ ...l, ...(maUrl ? { ma: { chon: maUrl.split("|") } } : {}), ...(nguoiUrl ? { nguoi: { chon: [nguoiUrl] } } : {}) }));
+  }, [maUrl, nguoiUrl]);
   const [chiTiet, setChiTiet] = useState<Nhom | null>(null);
   const [md, setMd] = useState<{ k: "gt"; x: L } | { k: "po"; eo: number } | { k: "nhac"; ids: number[]; ten: string } | { k: "ndk"; x: L } | { k: "nhieu"; nhom: Nhom[] } | null>(null);
   const [chon, setChon] = useState<Set<string>>(new Set());
   const [thongBao, setThongBao] = useState("");
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
 
-  // tap goc theo "Cua toi / Toan bo" - the so dem tren tap nay, bo loc + trang thai ap sau
+  // tap goc theo "Cua toi / Toan bo" - so dem nhom tren tap nay
   const goc = useMemo(() => (d?.rows ?? []).filter((l) => xem !== "cua_toi" || l.cua_toi), [d, xem]);
-  // locChung = moi bo loc TRU trang thai / the so (dung cho "Theo ma loi": % giai trinh tinh tren moi trang thai)
+  // locChung = o tim + ben + loai loi (menu cap 2) - TRU trang thai (Theo ma loi tinh % giai trinh tren moi trang thai)
   const locChung = useMemo(() => {
     const w = boDau(tim).split(/\s+/).filter(Boolean);
     return goc.filter((l) => {
-      if (maLoi.length && !maLoi.includes(l.ma_loi)) return false;
-      if (muc.length && !muc.includes(l.muc)) return false;
+      if (ben && l.ben !== ben) return false;
       if (qt.length && !qt.includes(l.quy_tac)) return false;
-      if (nguoi.length && !nguoi.includes(l.nguoi_vp ?? "")) return false;
-      if (kho.length && !kho.includes(l.kho)) return false;
-      if (doiTac.length && !doiTac.includes(l.doi_tac ?? "")) return false;
-      const moc = String(l.han ?? l.created_at).slice(0, 10);
-      if (tu && moc < tu) return false;
-      if (den && moc > den) return false;
       if (w.length) {
         const h = boDau(`${l.eo_code} ${l.approval_code ?? ""} ${l.part_code} ${l.part_name ?? ""} ${l.kho} ${l.doi_tac ?? ""} ${l.nguoi_vp ?? ""} ${l.nguoi_dat} ${QUY_TAC[l.quy_tac] ?? ""} ${l.ma_loi ?? ""} ${l.ten_ma ?? ""} ${l.gt_noi_dung ?? ""}`);
         if (!w.every((x) => h.includes(x))) return false;
       }
       return true;
     });
-  }, [goc, maLoi, muc, qt, nguoi, kho, doiTac, tu, den, tim]);
+  }, [goc, ben, qt, tim]);
   const loc = useMemo(() => {
     const kd = KPI_DEF.find((x) => x.k === kpi);
-    return locChung.filter((l) => (kd ? kd.loc(l, d!) : tt === "cho" ? cho(l) : tt === "vi_pham" ? vp(l) : tt === "da" ? !cho(l) && !vp(l) && !tuDong(l) : tt === "tu_dong" ? tuDong(l) && !vp(l) : true));
+    const td = TT_DEF.find((x) => x.k === tt);
+    return locChung.filter((l) => (kd ? kd.loc(l, d!) : td ? td.f(l) : true));
   }, [locChung, kpi, tt, d]);
   const nhom = useMemo(() => gomLoi(loc).sort((a, b) => (Number(cho(b.x)) - Number(cho(a.x))) || (MUC[b.x.muc].thu - MUC[a.x.muc].thu) || b.x.tuoi_ngay - a.x.tuoi_ngay), [loc]);
 
   if (q.isLoading || !d) return <><PageHeader title="Vi phạm & giải trình" /><Spinner /></>;
-  const dem = (k: string) => { const f = KPI_DEF.find((x) => x.k === k)!; return soVp(goc.filter((l) => f.loc(l, d))); };
-  // so ca CEO theo pham vi dang xem: "Cua toi" = ca co dong toi dat
+  const dem = (k: string) => { const f = KPI_DEF.find((x) => x.k === k)!; return soVp(locChung.filter((l) => f.loc(l, d))); };
+  const demTt = (k: string) => { const f = TT_DEF.find((x) => x.k === k); return soVp(f ? locChung.filter(f.f) : locChung); };
   const soCaCeo = (xem === "cua_toi" ? caCeoDang.filter((c) => c.dong.some((r) => r.nguoi_dat === d.me)) : caCeoDang).length;
   const choCua = goc.filter(cho);
   const soVpCho = soVp(choCua);
   const poCho = new Set(choCua.map((l) => l.eo_id)).size;
-  const ds = (k: "nguoi_vp" | "kho" | "doi_tac") => [...new Set(goc.map((l) => l[k]).filter(Boolean))].sort() as string[];
-  const coLoc = !!(maLoi.length || muc.length || qt.length || nguoi.length || kho.length || doiTac.length || tu || den || tim || kpi);
-  const xoaLoc = () => { setMaLoi([]); setMuc([]); setQt([]); setNguoi([]); setKho([]); setDoiTac([]); setTu(""); setDen(""); setTim(""); set("kpi", ""); };
-  const xong = (msg?: string) => { setMd(null); if (msg) setThongBao(msg); qc.invalidateQueries({ queryKey: ["vi-pham"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["tl-dong"] }); qc.invalidateQueries({ queryKey: ["theo-doi"] }); };
+  const coLoc = !!(tim || kpi || ben || qt.length || soCotLoc(locCot));
+  const xoaLoc = () => { setTim(""); setLocCot({}); setSp((s) => { const n = new URLSearchParams(s); ["kpi", "ben", "qt", "ma", "nguoi"].forEach((k) => n.delete(k)); return n; }, { replace: true }); };
+  const xong = (msg?: string) => { setMd(null); if (msg) setThongBao(msg); qc.invalidateQueries({ queryKey: ["vi-pham"] }); qc.invalidateQueries({ queryKey: ["inbox-count"] }); qc.invalidateQueries({ queryKey: ["tl-dong"] }); qc.invalidateQueries({ queryKey: ["theo-doi"] }); qc.invalidateQueries({ queryKey: ["eo-dem"] }); };
   const khoaNhom = (n: Nhom) => n.x.vp_khoa ?? `${n.x.eo_item_id}|${n.x.quy_tac}|${n.x.id}`;
   const nhomChon = nhom.filter((n) => chon.has(khoaNhom(n)) && cho(n.x));
   const idsChon = nhomChon.flatMap((n) => n.ds.map((l) => l.id));
   const loaiChon = [...new Set(nhomChon.map((n) => n.x.quy_tac))];
   const coChon = d.quan_ly || d.co_the_gt;
-  // "chon tat ca": cac loi CHO cung loai - loai dang loc, khong loc thi loai cua dong dau tien (giai trinh chung chi cho loi cung loai)
   const loaiTatCa = (qt.length === 1 ? qt[0] : "") || nhom.find((n) => cho(n.x))?.x.quy_tac;
   const tatCaCungLoai = nhom.filter((n) => cho(n.x) && n.x.quy_tac === loaiTatCa);
   const choDong = (x: L): Dong => ({ ...x, item_id: x.eo_item_id, ma_phe_duyet: x.approval_code, nguoi_dat: x.nguoi_dat } as any);
 
-  // ------ dai bao "viec cua ban" (3-5 giay)
-  const banner: ReactNode = xem === "cua_toi"
-    ? choCua.length
-      ? <>Bạn có <b>{soVpCho} lỗi cần giải trình</b> trên <b>{poCho} PO</b>{dem("qua_lau") ? <> — <b style={{ color: "var(--danger-ink)" }}>{dem("qua_lau")} lỗi đã chờ quá {d.qua_lau_gio} giờ làm việc</b></> : null}.
-          {" "}Giải trình <b>trước hạn 16 giờ làm việc</b> thì không bị ghi vi phạm — bấm <b>Giải trình</b> ở từng lỗi, hoặc <b>Giải trình cả PO</b> khi các linh kiện cùng nguyên nhân.{dem("vi_pham") ? <> Bạn đã có <b style={{ color: "var(--danger-ink)" }}>{dem("vi_pham")} vi phạm</b> (hết hạn không giải trình).</> : null}</>
-      : <>✓ Bạn không có lỗi nào cần giải trình.{dem("vi_pham") ? <> Đã có <b>{dem("vi_pham")} vi phạm</b> (hết hạn không giải trình).</> : null} Giữ ngày dự kiến cập nhật để không phát sinh lỗi mới.</>
-    : <>Toàn bộ{d.tat_ca ? "" : " (phạm vi của bạn)"}: <b>{soVpCho} lỗi cần giải trình</b> ({soDong(choCua)} dòng) · <b style={{ color: "var(--danger-ink)" }}>{dem("vi_pham")} vi phạm</b> (hết hạn không GT) · <b>{dem("qua_lau")} chờ lâu</b> · <b>{dem("lap")} lặp liên tiếp</b> · <b>{soCaCeo} ca CEO</b> ({dem("ceo")} lỗi trên các ca này). Lỗi = chạm quy tắc, phải giải trình trong 16 giờ LV; vi phạm = hết hạn không giải trình. Đếm gộp: cùng lỗi, cùng PO, cùng kỳ.
-        {d.quan_ly ? <> Việc cần làm: xem mức <b>Cao / CEO</b> trước, tick lỗi → <b>Nhắc nhở</b> người chịu lỗi trước khi hết hạn; xem tab <b>Theo người</b> để biết ai vi phạm nhiều.</> : null}</>;
-
   const colsLoi: Col<Nhom>[] = [
-    { key: "act", header: coChon ? <input type="checkbox" title={`Chọn tất cả lỗi chờ loại “${QUY_TAC[loaiTatCa ?? ""] ?? ""}” đang hiển thị (lọc “Loại lỗi” để chọn loại khác)`} checked={chon.size > 0} onChange={(e) => setChon(e.target.checked ? new Set(tatCaCungLoai.map(khoaNhom)) : new Set())} /> : "",
+    { key: "act", header: coChon ? <input type="checkbox" title={`Chọn tất cả lỗi chờ loại “${QUY_TAC[loaiTatCa ?? ""] ?? ""}” đang hiển thị (lọc cột “Lỗi” để chọn loại khác)`} checked={chon.size > 0} onChange={(e) => setChon(e.target.checked ? new Set(tatCaCungLoai.map(khoaNhom)) : new Set())} /> : "",
       render: (n) => <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
         {coChon && <input type="checkbox" disabled={!cho(n.x)} title={cho(n.x) ? "Chọn để giải trình chung / nhắc nhở" : undefined} checked={chon.has(khoaNhom(n))} onChange={() => setChon((s) => { const m = new Set(s); const k = khoaNhom(n); if (m.has(k)) m.delete(k); else m.add(k); return m; })} />}
         {cho(n.x) && d.co_the_gt && <button className="btn sm primary" title={soDong(n.ds) > 1 ? `1 nội dung giải trình cho cả vi phạm (${soDong(n.ds)} dòng)` : undefined}
           onClick={() => setMd(soDong(n.ds) > 1 ? { k: "nhieu", nhom: [n] } : { k: "gt", x: n.x })}>Giải trình</button>}
         <button className="btn sm ghost" title="Chi tiết" onClick={() => setChiTiet(n)}><I.eye width={14} height={14} /></button>
       </div> },
-    { key: "muc", header: "Mức độ", render: (n) => <MucBadge m={n.x.muc} /> },
-    { key: "tt", header: "Trạng thái", render: (n) => <TrangThai l={n.x} /> },
-    { key: "ma", header: "Mã lỗi · bước", render: (n) => <span style={{ whiteSpace: "nowrap" }} title={n.x.ten_ma}><b style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{n.x.ma_loi}</b>{n.x.buoc ? <div className="muted" style={{ fontSize: 11 }}>{n.x.buoc}</div> : null}</span> },
-    { key: "loi", header: "Lỗi", maxW: 230, render: (n) => <span title={QT_DAI[n.x.quy_tac]}><b>{QUY_TAC[n.x.quy_tac] ?? n.x.quy_tac}</b>{n.x.loi_ma && n.x.quy_tac === "TAY" ? ` · ${tenDm("LOI", n.x.loi_ma)}` : ""}</span> },
-    { key: "sodong", header: "Số dòng", align: "center", render: (n) => soDong(n.ds) > 1
+    { key: "muc", header: "Mức độ", loc: "chon", gt: (n) => n.x.muc, nhanChon: (v) => MUC[v]?.l ?? v, gtSap: (n) => MUC[n.x.muc]?.thu, render: (n) => <MucBadge m={n.x.muc} /> },
+    { key: "tt", header: "Trạng thái", loc: "chon", gt: (n) => ttTen(n.x), render: (n) => <TrangThai l={n.x} /> },
+    { key: "ben", header: "Bên chịu", loc: "chon", gt: (n) => n.x.ben ?? "", nhanChon: (v) => BEN[v]?.l ?? v, render: (n) => <BenBadge b={n.x.ben} /> },
+    { key: "ma", header: "Mã lỗi · bước", loc: "chon", gt: (n) => n.x.ma_loi ?? "", gtSap: (n) => THU_MA(n.x.ma_loi), render: (n) => <span style={{ whiteSpace: "nowrap" }} title={n.x.ten_ma}><b style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{n.x.ma_loi}</b>{n.x.buoc ? <div className="muted" style={{ fontSize: 11 }}>{n.x.buoc}</div> : null}</span> },
+    { key: "loi", header: "Lỗi", loc: "chon", gt: (n) => QUY_TAC[n.x.quy_tac] ?? n.x.quy_tac, maxW: 230, render: (n) => <span title={QT_DAI[n.x.quy_tac]}><b>{QUY_TAC[n.x.quy_tac] ?? n.x.quy_tac}</b>{n.x.loi_ma && n.x.quy_tac === "TAY" ? ` · ${tenDm("LOI", n.x.loi_ma)}` : ""}</span> },
+    { key: "sodong", header: "Số dòng", loc: "so", gt: (n) => soDong(n.ds), align: "center", render: (n) => soDong(n.ds) > 1
       ? <span className="badge final" title={`Vi phạm gộp trên ${soDong(n.ds)} dòng của PO: ${lietKe(n.ds.map((y) => y.part_code), 20)}`}>{soDong(n.ds)} dòng</span> : <span className="muted">1</span> },
-    { key: "lan", header: "Lần thứ", align: "center", render: (n) => n.x.so_lan > 1
+    { key: "lan", header: "Lần thứ", loc: "so", gt: (n) => n.x.so_lan, align: "center", render: (n) => n.x.so_lan > 1
       ? <span className="badge final" title={`Lỗi này lặp ${n.x.so_lan} lần trên dòng (mỗi lần vi phạm ghi 1 lỗi): ${lietKe(n.ds.map((y) => ngay(y.ngay_tham_chieu ?? y.han)), 8)}`}>× {n.ds.length}{n.x.so_lan > n.ds.length ? ` / ${n.x.so_lan}` : ""}</span> : <span className="muted">1</span> },
-    { key: "po", header: "PO (mã phê duyệt)", render: (n) => <EoLink id={n.x.eo_id}>{maPo(n.x)}</EoLink> },
-    { key: "lk", header: "Linh kiện", maxW: 220, render: (n) => soDong(n.ds) > 1
+    { key: "po", header: "PO (mã phê duyệt)", loc: "chu", gt: (n) => `${maPo(n.x)} ${n.x.eo_code}`, render: (n) => <EoLink id={n.x.eo_id}>{maPo(n.x)}</EoLink> },
+    { key: "lk", header: "Linh kiện", loc: "chu", gt: (n) => n.ds.map((y) => `${y.part_code} ${y.part_name ?? ""}`).join(" "), maxW: 220, render: (n) => soDong(n.ds) > 1
       ? <span title={lietKe(n.ds.map((y) => y.part_code), 30)}>{lietKe([...new Set(n.ds.map((y) => y.part_code))], 3)}</span>
       : <><DongLink id={n.x.eo_item_id} ma={n.x.part_code} /> <span className="muted" style={{ fontSize: 11.5 }}>{n.x.part_name}</span></> },
-    { key: "nguoi", header: "Người chịu", render: (n) => <span title={n.x.nguoi_vp ?? ""}><b>{ten(n.x.nguoi_vp)}</b>{n.x.ai_ma && n.x.ai_ma !== "NGUOI_DAT" ? <div className="muted" style={{ fontSize: 11 }}>{tenDm("AI", n.x.ai_ma)}</div> : null}</span> },
-    { key: "han", header: "Mốc lỗi", render: (n) => <span title={`Mốc lỗi (hạn của quy tắc): ${ngayGio(n.x.han)}`}>{ngay(n.x.ngay_tham_chieu ?? n.x.han)}</span> },
-    { key: "han_gt", header: "Hạn giải trình", render: (n) => n.x.han_gt
+    { key: "kho", header: "Kho", loc: "chon", gt: (n) => n.x.kho ?? "", nhanChon: (v) => khoGon(v), maxW: 110, render: (n) => <span title={n.x.kho}>{khoGon(n.x.kho)}</span> },
+    { key: "doi_tac", header: "Đối tác", loc: "chon", gt: (n) => n.x.doi_tac ?? "", maxW: 120, render: (n) => n.x.doi_tac || <span className="muted">—</span> },
+    { key: "nguoi", header: "Người chịu", loc: "chon", gt: (n) => n.x.nguoi_vp ?? "", nhanChon: (v) => ten(v), render: (n) => <span title={n.x.nguoi_vp ?? ""}><b>{ten(n.x.nguoi_vp)}</b>{n.x.ai_ma && n.x.ai_ma !== "NGUOI_DAT" ? <div className="muted" style={{ fontSize: 11 }}>{tenDm("AI", n.x.ai_ma)}</div> : null}</span> },
+    { key: "han", header: "Mốc lỗi", loc: "ngay", gt: (n) => n.x.ngay_tham_chieu ?? n.x.han, render: (n) => <span title={`Mốc lỗi (hạn của quy tắc): ${ngayGio(n.x.han)}`}>{ngay(n.x.ngay_tham_chieu ?? n.x.han)}</span> },
+    { key: "han_gt", header: "Hạn giải trình", loc: "ngay", gt: (n) => n.x.han_gt, render: (n) => n.x.han_gt
       ? <span style={{ whiteSpace: "nowrap", color: cho(n.x) ? "#C2410C" : vp(n.x) ? "var(--danger-ink)" : undefined, fontWeight: cho(n.x) ? 700 : undefined }}>{ngayGio(n.x.han_gt)}
         {cho(n.x) && <div style={{ fontSize: 11 }}>còn {n.x.con_gio_gt}h LV</div>}</span> : <span className="muted">—</span> },
-    { key: "cho", header: "Chờ / phản hồi", align: "right", render: (n) => cho(n.x)
+    { key: "cho", header: "Chờ / phản hồi", loc: "so", gt: (n) => (cho(n.x) ? n.x.tuoi_gio : null), align: "right", render: (n) => cho(n.x)
       ? <b title={`Đã chờ ${n.x.tuoi_ngay} ngày lịch`} style={{ color: n.x.tuoi_gio >= d.rat_lau_gio ? "var(--danger-ink)" : n.x.tuoi_gio >= d.qua_lau_gio ? "#B45309" : undefined }}>{n.x.tuoi_gio}h LV</b>
       : <span className="muted" title="Số ngày từ hạn đến lúc giải trình">sau {n.x.tuoi_ngay} ngày</span> },
-    { key: "nhac", header: "Nhắc", align: "center", render: (n) => n.x.so_nhac ? <span title={`${n.x.so_nhac} lần nhắc trên dòng (${n.x.so_nhac_tay} nhắc tay) · gần nhất ${ngayGio(n.x.nhac_gan_nhat)}`}>{n.x.so_nhac}</span> : <span className="muted">0</span> },
-    { key: "gt", header: "Giải trình / lý do", maxW: 260, render: (n) => n.x.gt_noi_dung ? <span title={`${ten(n.x.gt_boi)} · ${ngayGio(n.x.gt_luc)}\n${n.x.gt_noi_dung}`}>{n.x.gt_noi_dung}</span> : <span className="muted">—</span> },
-    { key: "ceo", header: "Cấp CEO vì", maxW: 220, render: (n) => n.x.ceo ? <span style={{ color: "#7F1D1D", fontSize: 12 }} title={n.x.ceo_ly_do.join("\n")}>{n.x.ceo_ly_do.join(" · ")}</span> : <span className="muted">—</span> },
+    { key: "nhac", header: "Nhắc", loc: "so", gt: (n) => n.x.so_nhac, align: "center", render: (n) => n.x.so_nhac ? <span title={`${n.x.so_nhac} lần nhắc trên dòng (${n.x.so_nhac_tay} nhắc tay) · gần nhất ${ngayGio(n.x.nhac_gan_nhat)}`}>{n.x.so_nhac}</span> : <span className="muted">0</span> },
+    { key: "gt", header: "Giải trình / lý do", loc: "chu", gt: (n) => n.x.gt_noi_dung ?? "", maxW: 260, render: (n) => n.x.gt_noi_dung ? <span title={`${ten(n.x.gt_boi)} · ${ngayGio(n.x.gt_luc)}\n${n.x.gt_noi_dung}`}>{n.x.gt_noi_dung}</span> : <span className="muted">—</span> },
+    { key: "ceo", header: "Cấp CEO vì", loc: "chu", gt: (n) => (n.x.ceo_ly_do ?? []).join(" "), maxW: 220, render: (n) => n.x.ceo ? <span style={{ color: "#7F1D1D", fontSize: 12 }} title={n.x.ceo_ly_do.join("\n")}>{n.x.ceo_ly_do.join(" · ")}</span> : <span className="muted">—</span> },
   ];
 
   // ------ theo PO
   const theoPo = gopTrung(loc, (l) => String(l.eo_id)).map(({ x, ds }) => ({
     x, ds, cho: soVp(ds.filter(cho)), vi_pham: soVp(ds.filter(vp)), dong: new Set(ds.map((l) => l.eo_item_id)).size, muc: mucCao(ds.filter(cho).length ? ds.filter(cho) : ds),
     qua_lau: ds.filter((l) => l.qua_lau).length, cho_lau: Math.max(0, ...ds.filter(cho).map((l) => l.tuoi_ngay)),
+    ncc: soVp(ds.filter((l) => l.ben === "NCC")), nb: soVp(ds.filter((l) => l.ben !== "NCC")),
   })).sort((a, b) => b.cho - a.cho || MUC[b.muc].thu - MUC[a.muc].thu);
   const colsPo: Col<(typeof theoPo)[number]>[] = [
     { key: "act", header: "", render: (p) => <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
       {p.cho > 0 && d.co_the_gt && p.x.quy_tac !== "R5" && <button className="btn sm primary" onClick={() => setMd({ k: "po", eo: p.x.eo_id })}>Giải trình cả PO</button>}
       {p.cho > 0 && d.quan_ly && <button className="btn sm" onClick={() => setMd({ k: "nhac", ids: p.ds.filter(cho).map((l) => l.id), ten: maPo(p.x) })}>Nhắc</button>}
     </div> },
-    { key: "po", header: "PO (mã phê duyệt)", render: (p) => <EoLink id={p.x.eo_id}>{maPo(p.x)}</EoLink> },
-    { key: "muc", header: "Mức cao nhất", render: (p) => <MucBadge m={p.muc} /> },
-    { key: "cho", header: "Cần giải trình", align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{p.cho}</b> : <span className="muted">0</span> },
-    { key: "vp", header: "Vi phạm", align: "right", render: (p) => p.vi_pham ? <b style={{ color: "var(--danger-ink)" }}>{p.vi_pham}</b> : <span className="muted">0</span> },
-    { key: "tong", header: "Tổng lỗi", align: "right", render: (p) => p.ds.length },
-    { key: "dong", header: "Số linh kiện có lỗi", align: "right", render: (p) => p.dong },
-    { key: "lk", header: "Linh kiện", maxW: 240, render: (p) => lietKe(p.ds.map((l) => l.part_code), 4) },
-    { key: "lau", header: "Chờ lâu nhất", align: "right", render: (p) => p.cho ? `${p.cho_lau} ngày` : "—" },
-    { key: "nguoi", header: "Người đặt", render: (p) => ten(p.x.nguoi_dat) },
+    { key: "po", header: "PO (mã phê duyệt)", loc: "chu", gt: (p) => `${maPo(p.x)} ${p.x.eo_code}`, render: (p) => <EoLink id={p.x.eo_id}>{maPo(p.x)}</EoLink> },
+    { key: "muc", header: "Mức cao nhất", loc: "chon", gt: (p) => p.muc, nhanChon: (v) => MUC[v]?.l ?? v, gtSap: (p) => MUC[p.muc]?.thu, render: (p) => <MucBadge m={p.muc} /> },
+    { key: "cho", header: "Cần giải trình", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{p.cho}</b> : <span className="muted">0</span> },
+    { key: "vp", header: "Vi phạm", loc: "so", gt: (p) => p.vi_pham, align: "right", render: (p) => p.vi_pham ? <b style={{ color: "var(--danger-ink)" }}>{p.vi_pham}</b> : <span className="muted">0</span> },
+    { key: "ben", header: "Lỗi đối tác / nội bộ", loc: "so", gt: (p) => p.ncc + p.nb, render: (p) => <span style={{ whiteSpace: "nowrap", fontSize: 12 }}>{p.ncc > 0 && <><BenBadge b="NCC" /> {p.ncc} </>}{p.nb > 0 && <><BenBadge b="NOI_BO" /> {p.nb}</>}</span> },
+    { key: "tong", header: "Tổng lỗi", loc: "so", gt: (p) => p.ds.length, align: "right", render: (p) => p.ds.length },
+    { key: "dong", header: "Số linh kiện có lỗi", loc: "so", gt: (p) => p.dong, align: "right", render: (p) => p.dong },
+    { key: "lk", header: "Linh kiện", loc: "chu", gt: (p) => p.ds.map((l) => l.part_code).join(" "), maxW: 240, render: (p) => lietKe(p.ds.map((l) => l.part_code), 4) },
+    { key: "lau", header: "Chờ lâu nhất", loc: "so", gt: (p) => (p.cho ? p.cho_lau : null), align: "right", render: (p) => p.cho ? `${p.cho_lau} ngày` : "—" },
+    { key: "nguoi", header: "Người đặt", loc: "chon", gt: (p) => p.x.nguoi_dat ?? "", nhanChon: (v) => ten(v), render: (p) => ten(p.x.nguoi_dat) },
   ];
 
   // ------ theo nguoi
@@ -234,39 +245,37 @@ export default function ViPham() {
   }).sort((a, b) => b.cho - a.cho || b.vi_pham - a.vi_pham || b.ds.length - a.ds.length);
   const colsNguoi: Col<(typeof theoNguoi)[number]>[] = [
     { key: "act", header: "", render: (p) => <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-      <button className="btn sm" onClick={() => { setNguoi(p.x.nguoi_vp ? [p.x.nguoi_vp] : []); set("kieu", "loi"); }}>Xem lỗi</button>
+      <button className="btn sm" onClick={() => { setLocCot({ nguoi: { chon: [p.x.nguoi_vp ?? ""] } }); set("kieu", ""); }}>Xem lỗi</button>
       {p.cho > 0 && d.quan_ly && <button className="btn sm" onClick={() => setMd({ k: "nhac", ids: p.ds.filter(cho).map((l) => l.id), ten: ten(p.x.nguoi_vp) })}>Nhắc</button>}
     </div> },
-    { key: "nguoi", header: "Người chịu lỗi", render: (p) => <b title={p.x.nguoi_vp}>{ten(p.x.nguoi_vp) || "—"}</b> },
-    { key: "cho", header: "Cần giải trình", align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{p.cho}</b> : <span className="muted">0</span> },
-    { key: "vp", header: "Vi phạm", align: "right", render: (p) => p.vi_pham ? <b style={{ color: "var(--danger-ink)" }} title="Hết hạn giải trình mà không giải trình">{p.vi_pham}</b> : <span className="muted">0</span> },
-    { key: "lau", header: `Quá lâu (≥ ${d.qua_lau_gio}h LV)`, align: "right", render: (p) => p.qua_lau || <span className="muted">0</span> },
-    { key: "lap", header: "Lặp liên tiếp", align: "right", render: (p) => p.lap || <span className="muted">0</span> },
-    { key: "ceo", header: "Dòng cấp CEO", align: "right", render: (p) => p.ceo || <span className="muted">0</span> },
-    { key: "tong", header: "Tổng lỗi", align: "right", render: (p) => p.ds.length },
-    { key: "po", header: "Số PO", align: "right", render: (p) => p.po },
-    { key: "da", header: "Đã giải trình", align: "right", render: (p) => p.da },
-    { key: "tb", header: "TB ngày đến khi giải trình", align: "right", render: (p) => p.tb ?? "—" },
+    { key: "nguoi", header: "Người chịu lỗi", loc: "chon", gt: (p) => p.x.nguoi_vp ?? "", nhanChon: (v) => ten(v), render: (p) => <b title={p.x.nguoi_vp}>{ten(p.x.nguoi_vp) || "—"}</b> },
+    { key: "cho", header: "Cần giải trình", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{p.cho}</b> : <span className="muted">0</span> },
+    { key: "vp", header: "Vi phạm", loc: "so", gt: (p) => p.vi_pham, align: "right", render: (p) => p.vi_pham ? <b style={{ color: "var(--danger-ink)" }} title="Hết hạn giải trình mà không giải trình">{p.vi_pham}</b> : <span className="muted">0</span> },
+    { key: "lau", header: `Quá lâu (≥ ${d.qua_lau_gio}h LV)`, loc: "so", gt: (p) => p.qua_lau, align: "right", render: (p) => p.qua_lau || <span className="muted">0</span> },
+    { key: "lap", header: "Lặp liên tiếp", loc: "so", gt: (p) => p.lap, align: "right", render: (p) => p.lap || <span className="muted">0</span> },
+    { key: "ceo", header: "Dòng cấp CEO", loc: "so", gt: (p) => p.ceo, align: "right", render: (p) => p.ceo || <span className="muted">0</span> },
+    { key: "tong", header: "Tổng lỗi", loc: "so", gt: (p) => p.ds.length, align: "right", render: (p) => p.ds.length },
+    { key: "po", header: "Số PO", loc: "so", gt: (p) => p.po, align: "right", render: (p) => p.po },
+    { key: "da", header: "Đã giải trình", loc: "so", gt: (p) => p.da, align: "right", render: (p) => p.da },
+    { key: "tb", header: "TB ngày đến khi giải trình", loc: "so", gt: (p) => p.tb, align: "right", render: (p) => p.tb ?? "—" },
   ];
 
-  // ------ theo MA LOI (v0.091): tong hop tren MOI trang thai (bo qua o "Chờ / Đã giải trình") -> bam "Xem chi tiết" = loc ma + Theo loi
-  const THU_MA = (m: string) => (m.startsWith("ER.MH-") ? Number(m.slice(6)) : 999);
+  // ------ theo MA LOI (v0.091): tong hop tren MOI trang thai -> bam "Xem chi tiết" = loc ma + Theo loi
   const theoMa = gopTrung(locChung, (l) => l.ma_loi ?? l.quy_tac).map(({ x, ds: dsDong }) => {
-    // v0.093: dem theo VI PHAM GOP; trang thai 1 vi pham: con dong cho -> cho; co giai trinh that -> da; con lai tu dong
     const vps = gomLoi(dsDong);
-    // v0.110: vp = co dong het han khong giai trinh (vi pham that) - xet sau "cho", truoc "da"
     const ds: L[] = vps.map((v) => ({ ...v.x, _tt: v.ds.some(cho) ? "cho" : v.ds.some(vp) ? "vp" : v.ds.some((l) => !tuDong(l)) ? "da" : "tu" }));
     const choN = ds.filter((v) => v._tt === "cho").length, tu = ds.filter((v) => v._tt === "tu").length, vpN = ds.filter((v) => v._tt === "vp").length, da = ds.length - choN - tu - vpN;
     const dem = (f: (l: L) => string | null) => { const m = new Map<string, number>(); for (const l of ds) { const k = f(l); if (k) m.set(k, (m.get(k) ?? 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
     return { x, ds, cho: choN, vp: vpN, da, tu, pct: ds.length ? Math.round((da / ds.length) * 100) : 0, qua_lau: ds.filter((l) => l.qua_lau).length,
       po: new Set(ds.map((l) => l.eo_id)).size, dong: soDong(dsDong), nguoi: dem((l) => l.nguoi_vp), ai: dem((l) => l.gt_ai_ma) };
   }).sort((a, b) => THU_MA(a.x.ma_loi ?? "") - THU_MA(b.x.ma_loi ?? ""));
-  const xemMa = (ma: string) => { setMaLoi([ma]); set("tt", ""); set("kpi", ""); set("kieu", ""); };
+  const xemMa = (ma: string) => { setLocCot({ ma: { chon: [ma] } }); setSp((s) => { const n = new URLSearchParams(s); n.set("tt", "tat_ca"); ["kpi", "kieu"].forEach((k) => n.delete(k)); return n; }, { replace: true }); };
   const colsMa: Col<(typeof theoMa)[number]>[] = [
     { key: "act", header: "", render: (p) => <button className="btn sm" onClick={(e) => { e.stopPropagation(); xemMa(p.x.ma_loi); }}>Xem chi tiết</button> },
     { key: "ma", header: "Mã lỗi", loc: "chu", gt: (p) => p.x.ma_loi, render: (p) => <b style={{ fontFamily: "ui-monospace, monospace" }}>{p.x.ma_loi}</b> },
     { key: "ten", header: "Tên lỗi", loc: "chu", gt: (p) => p.x.ten_ma, maxW: 280, render: (p) => p.x.ten_ma },
     { key: "buoc", header: "Bước", loc: "chon", gt: (p) => p.x.buoc ?? "", render: (p) => p.x.buoc ?? <span className="muted">—</span> },
+    { key: "ben", header: "Bên chịu", loc: "chon", gt: (p) => p.x.ben ?? "", nhanChon: (v) => BEN[v]?.l ?? v, render: (p) => <BenBadge b={p.x.ben} /> },
     { key: "tong", header: "Lỗi", loc: "so", gt: (p) => p.ds.length, align: "right", render: (p) => <b title="Số lỗi (gộp: cùng lỗi, cùng PO, cùng kỳ) — mọi trạng thái">{soLuong(p.ds.length)}</b> },
     { key: "vp", header: "Vi phạm", loc: "so", gt: (p) => p.vp, align: "right", render: (p) => p.vp ? <b style={{ color: "var(--danger-ink)" }} title="Hết hạn giải trình mà không giải trình">{soLuong(p.vp)}</b> : <span className="muted">0</span> },
     { key: "cho", header: "Cần GT", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{soLuong(p.cho)}</b> : <span className="muted">0</span> },
@@ -279,8 +288,10 @@ export default function ViPham() {
     { key: "ai", header: "Nguyên nhân theo giải trình", maxW: 220, render: (p) => p.ai.length ? p.ai.slice(0, 3).map(([k, n]) => `${tenDm("AI", k)} (${n})`).join(", ") : <span className="muted">chưa có giải trình</span> },
   ];
 
-  const xuat = () => exportRowsToXlsx(loc, [
+  // Excel: dung cac loi DANG HIEN (ap ca loc cot bang Theo loi)
+  const xuat = () => exportRowsToXlsx(kieu === "loi" ? locVaSap(nhom, colsLoi, locCot, null).flatMap((n) => n.ds) : loc, [
     { header: "Mã lỗi", get: (l) => l.ma_loi }, { header: "Tên mã lỗi", get: (l) => l.ten_ma }, { header: "Bước", get: (l) => l.buoc },
+    { header: "Bên chịu", get: (l) => BEN[l.ben]?.l ?? "" },
     { header: "Mức độ", get: (l) => MUC[l.muc]?.l }, { header: "Trạng thái", get: (l) => vp(l) ? "Vi phạm (hết hạn không giải trình)" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua (lỗi cũ trước 01/11 / chốt trước đào tạo 20/11/2026)" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình" },
     { header: "Hạn giải trình", get: (l) => ngayGio(l.han_gt) },
     { header: "Lỗi", get: (l) => QUY_TAC[l.quy_tac] ?? l.quy_tac }, { header: "Lần thứ", get: (l) => `${l.lan_thu}/${l.so_lan}` },
@@ -293,98 +304,73 @@ export default function ViPham() {
     { header: "Cấp CEO vì", get: (l) => (l.ceo_ly_do ?? []).join("; ") },
   ], `vi-pham_${new Date().toISOString().slice(0, 10)}.xlsx`, "Vi pham");
 
-  const Sel = ({ v, on, l, opts }: { v: string[]; on: (x: string[]) => void; l: string; opts: [string, string][] }) => (
-    <ChonNhieu width={170} placeholder={`${l}: tất cả`} title={l} value={v} onChange={on} options={opts.map(([k, t]) => ({ v: k, l: t }))} />
-  );
+  // nhom trang thai + nhom canh bao (KPI cu) gop 1 o chon co so dem - gia tri "tt:x" / "kpi:x"
+  const nhomVal = kpi ? `kpi:${kpi}` : `tt:${TT_DEF.some((x) => x.k === tt) ? tt : "tat_ca"}`;
+  const datNhom = (v: string) => {
+    const [loai, k] = v.split(":");
+    setSp((s) => { const n = new URLSearchParams(s); if (loai === "kpi") { n.set("kpi", k); n.delete("tt"); } else { n.delete("kpi"); if (k === (ben ? "mo" : "cho")) n.delete("tt"); else n.set("tt", k); } return n; }, { replace: true });
+    setChon(new Set());
+  };
+  const soHien = kieu === "ma" ? theoMa.length : kieu === "po" ? theoPo.length : kieu === "nguoi" ? theoNguoi.length : nhom.length;
+  const donVi = kieu === "ma" ? "mã lỗi" : kieu === "po" ? "PO" : kieu === "nguoi" ? "người" : "lỗi";
 
   return (
     <>
       <PageHeader title="Vi phạm & giải trình" />
-      {/* 1. Ban dang xem gi + viec can lam */}
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-        <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-          {[["cua_toi", `Của tôi (${(d.rows ?? []).filter((l) => l.cua_toi && cho(l)).length})`], ["tat_ca", d.tat_ca ? "Toàn bộ" : "Phạm vi của tôi"]].map(([k, t]) => (
-            <button key={k} className="btn sm" style={{ borderRadius: 0, border: 0, background: xem === k ? "var(--brand-yellow-btn)" : "#fff", fontWeight: xem === k ? 800 : 500 }}
-              onClick={() => { set("xem", k); setChon(new Set()); }}>{t}</button>
-          ))}
-        </div>
-        <div className={`qv-alert ${choCua.length && xem === "cua_toi" ? "danger" : choCua.length ? "warn" : "ok"}`} style={{ flex: 1, minWidth: 320, fontSize: 13, display: "block" }}>
-          {banner}
-          {xem === "cua_toi" && choCua.length > 0 && d.co_the_gt && <button className="btn sm primary" style={{ marginLeft: 10 }} onClick={() => { const n = gomLoi(choCua).sort((a, b) => MUC[b.x.muc].thu - MUC[a.x.muc].thu)[0]; if (n) setMd({ k: "gt", x: n.x }); }}>Giải trình lỗi nặng nhất</button>}
-        </div>
-      </div>
-
-      {/* 2. The so - bam de loc */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 12 }}>
-        {KPI_DEF.map((k) => {
-          const n = k.k === "ceo" ? soCaCeo : dem(k.k); const on = kpi === k.k;
-          return (
-            <button key={k.k} onClick={() => set("kpi", on ? "" : k.k)} title={on ? "Bấm lần nữa để bỏ lọc" : "Bấm để lọc"}
-              style={{ textAlign: "left", cursor: "pointer", border: `2px solid ${on ? k.mau : "var(--border)"}`, borderLeft: `6px solid ${k.mau}`, borderRadius: 12, background: on ? "#FFFBEB" : "#fff", padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: k.mau }}>{k.l}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.15, color: n ? "var(--text)" : "#94A3B8" }} className="mono-num">{soLuong(n)}</div>
-              <div className="muted" style={{ fontSize: 11 }}>{k.sub}</div>
-              {k.k === "ceo" && <div style={{ fontSize: 11, marginTop: 2 }}>
-                <b>{soLuong(dem("ceo"))}</b> vi phạm trên các ca này (bấm ô = lọc) · <Link to="/ca-ceo" onClick={(e) => e.stopPropagation()}>Mở Ca tồn CEO →</Link></div>}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 3. Bo loc */}
-      <Card style={{ marginBottom: 12, padding: 12 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 320 }}>
-            <input className="input" placeholder="Tìm mã PO, mã / tên LK, người, nội dung giải trình…" value={tim} onChange={(e) => setTim(e.target.value)} />
+      <Card>
+        {/* thanh thao tac gon (giong Don PO): pham vi · nhom · cach xem · tim · loc dang ap · so dong · thao tac */}
+        <FilterBar>
+          <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+            {[["cua_toi", `Của tôi (${soVp((d.rows ?? []).filter((l) => l.cua_toi && cho(l)))})`], ["tat_ca", d.tat_ca ? "Toàn bộ" : "Phạm vi của tôi"]].map(([k, t]) => (
+              <button key={k} className="btn sm" style={{ borderRadius: 0, border: 0, background: xem === k ? "var(--brand-yellow-btn)" : "#fff", fontWeight: xem === k ? 800 : 500 }}
+                onClick={() => { set("xem", k); setChon(new Set()); }}>{t}</button>
+            ))}
           </div>
-          <select className="select" style={{ width: "auto" }} value={kpi ? "" : tt} disabled={!!kpi} onChange={(e) => set("tt", e.target.value)} title="Trạng thái">
-            <option value="cho">Cần giải trình (còn hạn)</option><option value="vi_pham">Vi phạm (hết hạn không GT)</option><option value="da">Đã giải trình</option><option value="tu_dong">Đã khắc phục (tự đóng)</option><option value="">Mọi trạng thái</option>
+          <select className="select tb" style={{ width: 250, borderColor: nhomVal !== "tt:cho" ? "var(--brand-yellow-btn)" : undefined }} value={nhomVal} onChange={(e) => datNhom(e.target.value)} title="Nhóm trạng thái / cảnh báo (số = vi phạm gộp theo bộ lọc hiện tại)">
+            <optgroup label="Trạng thái">
+              {TT_DEF.map((x) => <option key={x.k} value={`tt:${x.k}`}>{x.l} ({soLuong(demTt(x.k))})</option>)}
+              <option value="tt:tat_ca">Mọi trạng thái ({soLuong(demTt(""))})</option>
+            </optgroup>
+            <optgroup label="Cảnh báo">
+              {KPI_DEF.map((k) => <option key={k.k} value={`kpi:${k.k}`} title={k.sub}>{k.l} ({soLuong(k.k === "ceo" ? soCaCeo : dem(k.k))}{k.k === "ceo" ? " ca" : ""})</option>)}
+            </optgroup>
           </select>
-          <Sel v={maLoi} on={setMaLoi} l="Mã lỗi" opts={[...new Map(goc.map((l) => [l.ma_loi, `${l.ma_loi} · ${l.ten_ma}`])).entries()].sort((a, b) => THU_MA(a[0]) - THU_MA(b[0]))} />
-          <Sel v={muc} on={setMuc} l="Mức độ" opts={Object.entries(MUC).sort((a, b) => b[1].thu - a[1].thu).map(([k, m]) => [k, m.l])} />
-          <Sel v={qt} on={setQt} l="Loại lỗi" opts={Object.entries(QUY_TAC).map(([k, t]) => [k, t])} />
-          <Sel v={nguoi} on={setNguoi} l="Người chịu lỗi" opts={ds("nguoi_vp").map((x) => [x, ten(x)])} />
-          <Sel v={kho} on={setKho} l="Kho" opts={ds("kho").map((x) => [x, x])} />
-          <Sel v={doiTac} on={setDoiTac} l="Đối tác" opts={ds("doi_tac").map((x) => [x, x])} />
-          <span className="muted" style={{ fontSize: 12 }}>Ngày lỗi từ</span>
-          <input className="input" type="date" style={{ width: 140 }} value={tu} onChange={(e) => setTu(e.target.value)} />
-          <span className="muted" style={{ fontSize: 12 }}>đến</span>
-          <input className="input" type="date" style={{ width: 140 }} value={den} onChange={(e) => setDen(e.target.value)} />
-          {coLoc && <button className="btn sm ghost" onClick={xoaLoc}><I.x width={13} height={13} /> Bỏ lọc</button>}
+          <select className="select tb" style={{ width: 175 }} value={kieu} onChange={(e) => set("kieu", e.target.value === "loi" ? "" : e.target.value)} title="Cách xem">
+            <option value="loi">Xem: theo lỗi</option><option value="po">Xem: theo PO</option><option value="nguoi">Xem: theo người</option><option value="ma">Xem: theo mã lỗi</option>
+          </select>
+          <div style={{ position: "relative", flex: "1 1 200px", maxWidth: 300 }}>
+            <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 9, color: "var(--text-faint)" }} />
+            <input className="input tb" style={{ paddingLeft: 32 }} placeholder="Tìm mã PO, mã / tên LK, người, nội dung giải trình…" value={tim} onChange={(e) => setTim(e.target.value)} />
+          </div>
+          {ben && <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }} title="Bên chịu lỗi (menu Lỗi đối tác / Lỗi nội bộ)">Bên chịu: {BEN[ben]?.l ?? ben}<span role="button" style={{ cursor: "pointer" }} onClick={() => set("ben", "")}>×</span></span>}
+          {qt.length > 0 && <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }} title="Loại lỗi (menu cấp 2)">{qt.map((k) => QUY_TAC[k] ?? k).join(", ")}<span role="button" style={{ cursor: "pointer" }} onClick={() => set("qt", "")}>×</span></span>}
+          {coLoc && <RefreshFiltersBtn onClick={xoaLoc} />}
           <div style={{ flex: 1 }} />
-          <button className="btn sm" onClick={xuat} title="Xuất các lỗi đang lọc ra Excel"><I.download width={14} height={14} /> Excel</button>
-        </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8, fontSize: 11.5 }} className="muted">
-          <span><b>Mức độ:</b></span>
-          {Object.entries(MUC).sort((a, b) => b[1].thu - a[1].thu).map(([k, m]) => <span key={k}><MucBadge m={k} /> {m.gt}</span>)}
-        </div>
-      </Card>
+          <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }} title={xem === "cua_toi" ? `Bạn có ${soVpCho} lỗi cần giải trình trên ${poCho} PO — giải trình trước hạn 16 giờ làm việc thì không bị ghi vi phạm` : undefined}>
+            <b style={{ color: "var(--text)" }}>{soLuong(soHien)}</b> {donVi}{xem === "cua_toi" && soVpCho > 0 ? <> · <b style={{ color: "#C2410C" }}>{soVpCho} cần GT</b> / {poCho} PO</> : null}</span>
+          {kieu === "loi" && idsChon.length > 0 && <>
+            <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}>Đã chọn {nhomChon.length} · {idsChon.length} lỗi{loaiChon.length > 1 ? ` · ${loaiChon.length} loại` : ""}<span role="button" style={{ cursor: "pointer" }} onClick={() => setChon(new Set())}>×</span></span>
+            {d.co_the_gt && <button className="btn sm primary" disabled={loaiChon.length > 1} title={loaiChon.length > 1 ? "Chỉ giải trình chung được các lỗi cùng loại — bỏ chọn bớt hoặc lọc cột Lỗi" : "1 nội dung giải trình cho mọi lỗi đã chọn"}
+              onClick={() => setMd({ k: "nhieu", nhom: nhomChon })}>Giải trình chung</button>}
+            {d.quan_ly && <button className="btn sm" onClick={() => setMd({ k: "nhac", ids: idsChon, ten: `${chon.size} nhóm lỗi đã chọn` })}><I.bell width={14} height={14} /> Nhắc nhở</button>}
+          </>}
+          {xem === "cua_toi" && choCua.length > 0 && d.co_the_gt && kieu === "loi" && !idsChon.length && <button className="btn sm" onClick={() => { const n = gomLoi(choCua).sort((a, b) => MUC[b.x.muc].thu - MUC[a.x.muc].thu)[0]; if (n) setMd({ k: "gt", x: n.x }); }}>Giải trình lỗi nặng nhất</button>}
+          <button className="btn sm" style={{ padding: "0 9px" }} onClick={xuat} title="Xuất các lỗi đang lọc ra Excel"><I.download width={14} height={14} /></button>
+          <Popover align="right" width={460} btnClass="btn sm ghost" title="Chú giải mức độ, lỗi / vi phạm" label={<I.help width={15} height={15} />}>
+            <div style={{ fontSize: 12, lineHeight: 1.55 }}>
+              <div><b>Lỗi</b> = chạm quy tắc, phải giải trình trong 16 giờ làm việc. <b>Vi phạm</b> = hết hạn mà không giải trình. Đếm gộp: cùng lỗi, cùng PO, cùng kỳ.</div>
+              <div style={{ marginTop: 4 }}><b>Bên chịu:</b> <BenBadge b="NCC" /> chưa có / quá ngày DK (R1, R4) · <BenBadge b="NOI_BO" /> không thúc NCC (R3), chậm duyệt (R5). Đã giải trình thì theo “Do ai” đã chọn.</div>
+              <div style={{ marginTop: 6, display: "grid", gap: 4 }}>{Object.entries(MUC).sort((a, b) => b[1].thu - a[1].thu).map(([k, m]) => <div key={k}><MucBadge m={k} /> {m.gt}</div>)}</div>
+              <div className="muted" style={{ marginTop: 6 }}>Lọc / sắp xếp từng cột: bấm biểu tượng phễu / tiêu đề cột.{d.danh_gia_luc ? ` Kiểm tra lỗi lúc ${ngayGio(d.danh_gia_luc)}.` : ""}{" "}Ca CEO: <Link to="/ca-ceo">PO tồn CEO →</Link></div>
+            </div>
+          </Popover>
+        </FilterBar>
+        {thongBao && <div className="qv-alert ok" style={{ display: "block", marginBottom: 8 }}>{thongBao} <span role="button" style={{ cursor: "pointer", marginLeft: 8 }} onClick={() => setThongBao("")}>×</span></div>}
 
-      {/* 4. Cach xem */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
-        {[["loi", `Theo lỗi (${nhom.length})`], ["ma", `Theo mã lỗi (${theoMa.length})`], ["po", `Theo PO (${theoPo.length})`], ["nguoi", `Theo người (${theoNguoi.length})`]].map(([k, t]) => (
-          <button key={k} className={`qv-chip ${kieu === k ? "on" : ""}`} style={{ fontSize: 13, padding: "5px 14px" }} onClick={() => set("kieu", k === "loi" ? "" : k)}>{t}</button>
-        ))}
-        <span className="muted" style={{ fontSize: 12 }}>
-          {kieu === "ma" ? "Tổng hợp mọi trạng thái theo mã ER.MH (không theo ô Chờ / Đã giải trình) — bấm “Xem chi tiết” để xem từng lỗi của mã." : kieu === "loi" ? "Lỗi lặp cùng loại trên 1 linh kiện gộp 1 dòng (× n lần) — tick nhiều lỗi cùng loại để giải trình chung 1 lần." : kieu === "po" ? "Giải trình cả PO: 1 nội dung cho mọi linh kiện trong PO." : "Xếp theo số lỗi chờ — bấm “Xem lỗi” để lọc theo người."}
-        </span>
-        <div style={{ flex: 1 }} />
-        {kieu === "loi" && idsChon.length > 0 && <>
-          <span className="muted" style={{ fontSize: 12 }}>Đã chọn {nhomChon.length} linh kiện · {idsChon.length} lỗi{loaiChon.length > 1 ? ` · ${loaiChon.length} loại khác nhau` : ""}</span>
-          {d.co_the_gt && <button className="btn sm primary" disabled={loaiChon.length > 1} title={loaiChon.length > 1 ? "Chỉ giải trình chung được các lỗi cùng loại — bỏ chọn bớt hoặc lọc theo Loại lỗi" : "1 nội dung giải trình cho mọi lỗi đã chọn"}
-            onClick={() => setMd({ k: "nhieu", nhom: nhomChon })}>Giải trình chung ({idsChon.length} lỗi)</button>}
-          <button className="btn sm ghost" onClick={() => setChon(new Set())}>Bỏ chọn</button>
-        </>}
-        {d.quan_ly && kieu === "loi" && idsChon.length > 0 && <button className="btn sm primary" onClick={() => setMd({ k: "nhac", ids: idsChon, ten: `${chon.size} nhóm lỗi đã chọn` })}><I.bell width={14} height={14} /> Nhắc nhở ({idsChon.length} lỗi)</button>}
-        {d.danh_gia_luc && <span className="muted" style={{ fontSize: 11 }} title="Hệ thống kiểm tra quy tắc và ghi lỗi tối đa 10 phút / lần">Kiểm tra lỗi lúc {ngayGio(d.danh_gia_luc)}</span>}
-      </div>
-      {thongBao && <div className="qv-alert ok" style={{ display: "block", marginBottom: 8 }}>{thongBao} <span role="button" style={{ cursor: "pointer", marginLeft: 8 }} onClick={() => setThongBao("")}>×</span></div>}
-
-      <Card pad={false}>
         {kieu === "ma" ? <DataTable cols={colsMa} rows={theoMa} keyOf={(p) => p.x.ma_loi ?? p.x.quy_tac} pageSize={20} timKiem={false} onRowClick={(p) => xemMa(p.x.ma_loi)} empty="Không có lỗi theo bộ lọc." />
           : kieu === "po" ? <DataTable cols={colsPo} rows={theoPo} keyOf={(p) => p.x.eo_id} pageSize={15} timKiem={false} onRowClick={(p) => qv.openEo(p.x.eo_id)} empty="Không có lỗi theo bộ lọc." />
           : kieu === "nguoi" ? <DataTable cols={colsNguoi} rows={theoNguoi} keyOf={(p) => p.x.nguoi_vp ?? "-"} pageSize={15} timKiem={false} empty="Không có lỗi theo bộ lọc." />
-          : <DataTable cols={colsLoi} rows={nhom} keyOf={khoaNhom} pageSize={15} timKiem={false} onRowClick={(n) => setChiTiet(n)}
+          : <DataTable cols={colsLoi} rows={nhom} keyOf={khoaNhom} pageSize={15} timKiem={false} onRowClick={(n) => setChiTiet(n)} loc={locCot} onLoc={setLocCot}
               empty={xem === "cua_toi" && tt === "cho" && !coLoc ? "✓ Bạn không có lỗi chờ giải trình." : "Không có lỗi theo bộ lọc."} />}
       </Card>
 
