@@ -142,6 +142,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - Phạm vi xem như màn Vi phạm: người xem toàn bộ / chỉ xem → tất cả; còn lại PO mình đặt, lỗi của mình, kho mình phụ trách.
 - **Bấm 1 PO / linh kiện** (v0.143, gộp 2 UI): mở **popup PO chung** (Đơn PO), lọc sẵn đúng các LK dính lỗi ĐANG LỌC (vd đang xem G4 → chỉ LK có lỗi G4; bấm 1 LK → chỉ dòng đó)
   + dòng "Đang lọc: … — n/N LK"; nút "LK dính lỗi đang xem" bật / tắt. Popup PO có thêm ô Đáp ứng %, Lỗi đối tác, Lỗi nội bộ và cột "Lỗi gì (mã × lần)", "Ai lỗi (× lần)".
+- **Trạng thái PO + tô màu dòng** (v0.146): cột "Trạng thái PO" (Theo PO) / "Trạng thái" (Theo linh kiện): **Đã hủy** (EO hủy hoặc mọi dòng hủy — nền hồng + viền đỏ) ·
+  **Đang duyệt** (EO chưa ban hành) · **Đã xong** (mọi dòng về đủ / hủy — nền xanh lá) · **Tồn quá hạn** (có dòng trễ hạn giai đoạn / quá ngày DK / trễ nhập ngày DK — nền cam) ·
+  **Đang tồn**. Tính trên MỌI dòng của PO. Cột **"Giải trình"** thay "Cần GT / VP": Đang chờ · n (còn lỗi chờ) → Vi phạm · n (hết hạn không giải trình) → Đã giải trình → Không cần (lỗi tự khắc phục).
 - **Mốc tính lỗi 20/11/2026** (v0.143, luật 15 CLAUDE.md): màn Lỗi theo PO, số đếm menu, ô số / cột lỗi / nút "LK có lỗi" của popup PO chỉ tính lỗi có mốc từ 20/11/2026 (ngày đào tạo).
 - **Ô số / dải giai đoạn không bị chính bộ lọc của mình làm về 0** (v0.143): Tổng = bỏ qua lọc bên + trạng thái; Đối tác / Nội bộ = bỏ qua lọc bên; Cần GT / Vi phạm = bỏ qua lọc
   trạng thái; dải giai đoạn = bỏ qua lọc giai đoạn. Bảng bên dưới vẫn áp đủ mọi bộ lọc.

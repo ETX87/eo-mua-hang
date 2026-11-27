@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.146: Lỗi theo PO — tô màu dòng theo trạng thái PO, cột Trạng thái PO + Giải trình
+
+- Yêu cầu (nguyên văn): "1. PO đã hủy tô màu tô cả nền và viền để dễ phân biệt, PO đã xong màu xanh lá, đang tồn quá hạn màu cam... 2. ở table danh sách lỗi theo PO, bổ sung thêm cột
+  trạng thái PO + Chờ giải trình = đang chờ/không cần/đã giải trình"
+- Đã làm: API `/api/loi-po` trả `tt_eo` (trạng thái EO) + `dong.tre`; `lib/loiPo` `ttPoCua` / `ttDong` / `TT_PO`; DataTable thêm prop dùng chung `rowClass`; CSS `r-huy` (nền + viền đỏ),
+  `r-xong` (xanh lá), `r-tre` (cam); cột Trạng thái PO / Trạng thái (LK); cột "Giải trình" (Đang chờ · n / Vi phạm · n / Đã giải trình / Không cần) thay "Cần GT / VP".
+- 5W1H: Who — Giám đốc, quản lý, KH cung ứng. When — rà lỗi theo PO / LK. Where — Lỗi theo PO (Theo PO, Theo linh kiện). What — nhìn màu dòng biết PO hủy / xong / tồn quá hạn;
+  cột giải trình nói rõ còn phải làm gì. Why — trước chỉ có số, khó phân biệt PO nào xong / hủy. How — lọc cột "Trạng thái PO" hoặc "Giải trình" (chọn nhiều) trên tiêu đề cột.
+- Kiểm thử: typecheck BE + FE; local: Theo PO 2 PO "Tồn quá hạn" (cam) + 4 "Đang duyệt", cột Giải trình "Đang chờ · n"; Theo LK có cam / không tô / xanh lá; kiểu "đã hủy" xem thử bằng gắn lớp tạm.
+
 ## 27/11/2026 — v0.145: Popup PO — bấm mốc ra đúng LK, bộ lọc cột trái, sắp xếp tồn, phân trang ghim đáy, tab Tổng quát
 
 - Yêu cầu (nguyên văn): "1. sao trong luồng quy trình hiện số, ấn vào lại không có gì. 2. chuyển các filter sang góc trái vùng tôi tô đỏ. 3. sort ưu tiên đơn còn tồn lên - đơn tồn lâu lên trước,

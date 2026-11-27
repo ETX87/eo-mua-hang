@@ -100,7 +100,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren, congCu,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren, congCu, rowClass,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -141,6 +141,8 @@ export function DataTable<T>({
   thanhTren?: boolean;
   /** v0.135: nut / chu thich dat CUNG HANG o tim cua bang (ben trai) - khoi them 1 hang rieng tren bang */
   congCu?: ReactNode;
+  /** v0.146: class CSS cho tung dong (vd to mau theo trang thai: "r-huy" / "r-xong" / "r-tre" - theme.css) */
+  rowClass?: (row: T) => string | undefined;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const tren = useRef<HTMLDivElement>(null);
@@ -220,7 +222,7 @@ export function DataTable<T>({
   };
   const cotMo = moLoc ? colsIn.find((c) => c.key === moLoc.k) : null;
   const dongBang = (row: T, i: number, tienTo = "") => (
-    <tr key={tienTo + keyOf(row, i)} onClick={onRowClick ? () => onRowClick(row) : undefined} style={{ cursor: onRowClick ? "pointer" : undefined }}>
+    <tr key={tienTo + keyOf(row, i)} className={rowClass?.(row)} onClick={onRowClick ? () => onRowClick(row) : undefined} style={{ cursor: onRowClick ? "pointer" : undefined }}>
       {cols.map((c) => (
         <td key={c.key} style={{ textAlign: c.align ?? "left",
           position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined, zIndex: c.sticky ? 1 : undefined,

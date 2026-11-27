@@ -675,4 +675,5 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   EoQuickView state `locGd`; bảng LK bọc `.qv-lk` (dòng 34px, nowrap); `.qv-panel` animation `ap-hien` (chỉ opacity) để kích thước luôn 95vw × 95vh.
 - v0.145 popup PO: `QuyTrinh.onChonNut(k, ids, kieu)` (kieu dang | loi | qua, `KIEU_TXT`), `.qv-loc` (bộ lọc cột trái), `.qv-scroll.lk-mode` + `.dt-trang` (DataTable thanh phân trang có class) để ghim đáy,
   `.qv-head.po/.don/.lk`, `.qv-panel` 98vw × 98vh; EoQuickView state `xemTq` (tab Tổng quát ở cột phải, CotPhu tieuDe = "Nhật ký xử lý (n)").
+- v0.146: DataTable prop `rowClass(row)` (tô màu dòng; lớp `r-huy` / `r-xong` / `r-tre` ở theme.css — dùng lại cho bảng khác). `lib/loiPo` `ttPoCua(ttEo, dongCuaPO)` / `ttDong` / `TT_PO`.
 

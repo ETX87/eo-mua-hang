@@ -74,6 +74,8 @@ app.get("/", async (c) => {
       i: d.item_id, e: d.eo_id, po: d.ma_phe_duyet || d.eo_code, lk: d.part_code, ten_lk: d.part_name, kho: d.kho, ncc: d.doi_tac ?? "",
       nguoi_dat: ten(d.nguoi_dat), ngay_bh: (d.ngay_ban_hanh ?? "").slice(0, 10), gd: g?.gd_hien_tai ?? "", gd_ten: g?.gd_hien_tai_ten ?? "",
       dat: d.so_luong_dat ?? 0, ve: d.sl_nhap_amis ?? 0, thieu: d.so_luong_con_thieu ?? 0,
+      // v0.146: dong dang ton QUA HAN (tre han giai doan hien tai / qua ngay DK / tre nhap ngay DK) -> to mau cam
+      tre: !!g && !["XONG", "HUY"].includes(g.gd_hien_tai) && (!!g.gd_tre || ["QUA_HAN_NDK", "TRE_NDK"].includes(d.tinh_trang)),
     };
   });
   // dong co loi nhung ngoai pham vi theo doi (R5 cham duyet o PO chua ban hanh) -> dong toi thieu tu ban ghi loi
@@ -84,7 +86,11 @@ app.get("/", async (c) => {
     dong.push({ i: l.eo_item_id, e: l.eo_id, po: l.approval_code || l.eo_code, lk: l.part_code, ten_lk: l.part_name, kho: l.kho, ncc: l.doi_tac ?? "",
       nguoi_dat: ten(l.nguoi_dat), ngay_bh: "", gd: "G3", gd_ten: "Duyệt mua & ban hành", dat: l.so_luong_dat ?? 0, ve: l.sl_ve ?? 0, thieu: l.so_luong_dat ?? 0 });
   }
-  return c.json({ luc: nowVN(), tat_ca: tatCa, dong, loi, tinh_tu: LOI_TINH_TU });
+  // v0.146 (chu he thong "PO da huy to mau ... PO da xong mau xanh la, dang ton qua han mau cam" + cot trang thai PO): trang thai EO cua moi PO
+  const eoIds = [...new Set(dong.map((x) => x.e as number))];
+  const ttEo: Record<number, string> = eoIds.length ? Object.fromEntries((await c.env.DB.prepare("SELECT id, trang_thai FROM eo WHERE id IN (SELECT value FROM json_each(?))")
+    .bind(JSON.stringify(eoIds)).all<{ id: number; trang_thai: string }>()).results.map((x) => [x.id, x.trang_thai])) : {};
+  return c.json({ luc: nowVN(), tat_ca: tatCa, dong, loi, tinh_tu: LOI_TINH_TU, tt_eo: ttEo });
 });
 
 export default app;

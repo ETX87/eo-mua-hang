@@ -5,9 +5,24 @@ import { soLuong } from "./format";
  * Dung chung man "Lỗi theo PO" (pages/LoiTheoPo.tsx) + popup chi tiet PO (pages/loiPo/PopupPo.tsx) - v0.139 tach tu LoiTheoPo.
  * Du lieu GET /api/loi-po (backend routes/loiPo.ts). Mau kieu Apple (skill giao-dien-apple): doi tac = cam, noi bo = tim.
  */
-export interface Dong { i: number; e: number; po: string; lk: string; ten_lk: string; kho: string; ncc: string; nguoi_dat: string; ngay_bh: string; gd: string; gd_ten: string; dat: number; ve: number; thieu: number }
+export interface Dong { i: number; e: number; po: string; lk: string; ten_lk: string; kho: string; ncc: string; nguoi_dat: string; ngay_bh: string; gd: string; gd_ten: string; dat: number; ve: number; thieu: number; tre?: boolean }
 export interface Loi { id: number; i: number; e: number; ma: string; ten: string; gd: string; ben: "NCC" | "NOI_BO"; ai: string; tt: "CHO" | "VI_PHAM" | "DA_GT" | "KHAC_PHUC"; ngay: string }
-export interface Data { luc: string; tat_ca: boolean; dong: Dong[]; loi: Loi[] }
+export interface Data { luc: string; tat_ca: boolean; dong: Dong[]; loi: Loi[]; tt_eo?: Record<string, string> }
+/** v0.146 trang thai PO (to mau dong + cot "Trạng thái PO"): huy > dang duyet > xong (moi dong ve du / huy) > ton qua han (co dong tre) > dang ton */
+export type TtPo = "HUY" | "DUYET" | "XONG" | "QUA_HAN" | "TON";
+export const TT_PO: Record<TtPo, { l: string; mau: string; nen: string; cls?: string }> = {
+  HUY: { l: "Đã hủy", mau: "#d70015", nen: "#ffe7e5", cls: "r-huy" }, DUYET: { l: "Đang duyệt", mau: "#0062c4", nen: "#e8f1fc" },
+  XONG: { l: "Đã xong", mau: "#1d8a3c", nen: "#e2f6e7", cls: "r-xong" }, QUA_HAN: { l: "Tồn quá hạn", mau: "#c26400", nen: "#fff1dc", cls: "r-tre" },
+  TON: { l: "Đang tồn", mau: "#515154", nen: "rgba(0,0,0,.05)" },
+};
+export function ttPoCua(ttEo: string | undefined, ds: Dong[]): TtPo {
+  if (ttEo === "CANCELLED") return "HUY";
+  if (ttEo && ttEo !== "ISSUED") return "DUYET";
+  if (ds.length && ds.every((x) => x.gd === "XONG" || x.gd === "HUY")) return ds.every((x) => x.gd === "HUY") ? "HUY" : "XONG";
+  return ds.some((x) => x.tre) ? "QUA_HAN" : "TON";
+}
+/** Trang thai 1 dong LK (view Theo linh kien) */
+export const ttDong = (x: Dong): TtPo => (x.gd === "HUY" ? "HUY" : x.gd === "XONG" ? "XONG" : x.tre ? "QUA_HAN" : "TON");
 
 export const GD: [string, string][] = [["G1", "Lập EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua"], ["G4", "Gửi / thúc NCC"], ["G5", "Chờ ngày DK"], ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù"]];
 export const GD_TEN: Record<string, string> = { ...Object.fromEntries(GD), XONG: "Đủ hàng", HUY: "Đã hủy" };

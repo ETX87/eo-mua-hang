@@ -412,3 +412,13 @@ table.tbl thead th.qv-act { background: #fafafc; z-index: 2; }
 .qv-lk > .dt-trang { flex: none; margin-top: 8px !important; }
 @media (max-width: 767px) { .qv-lk-than { flex-direction: column; } .qv-loc { width: auto; flex-direction: row; flex-wrap: wrap; } .qv-loc .btn { width: auto; } .qv-loc-goi { display: none; } }
 
+/* v0.146 to mau DONG theo trang thai PO / dong (DataTable rowClass): huy = nen + vien do, xong = xanh la, ton qua han = cam */
+table.tbl tbody tr.r-huy > td { background: #fff2f1; border-top: 1px solid #ffb3ad; border-bottom: 1px solid #ffb3ad; color: #8a0010; }
+table.tbl tbody tr.r-huy > td:first-child { box-shadow: inset 3px 0 0 #ff3b30; }
+table.tbl tbody tr.r-huy > td:last-child { box-shadow: inset -1px 0 0 #ffb3ad; }
+table.tbl tbody tr.r-xong > td { background: #effaf1; }
+table.tbl tbody tr.r-xong > td:first-child { box-shadow: inset 3px 0 0 #2fb350; }
+table.tbl tbody tr.r-tre > td { background: #fff6e8; }
+table.tbl tbody tr.r-tre > td:first-child { box-shadow: inset 3px 0 0 #ff9500; }
+table.tbl tbody tr.r-huy:hover > td, table.tbl tbody tr.r-xong:hover > td, table.tbl tbody tr.r-tre:hover > td { filter: brightness(.97); }
+

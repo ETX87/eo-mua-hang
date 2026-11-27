@@ -9,7 +9,7 @@ import { useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong } from "../lib/format";
 import { exportRowsToXlsx, type ExportCol } from "../lib/exportXlsx";
-import { BEN, ChipMa, DapUng, GD, GD_TEN, SO, SoBen, THU_TU_GD, TT, dem, pt, soMa, topTxt, type Data, type Dong, type Loi } from "../lib/loiPo";
+import { BEN, ChipMa, DapUng, GD, GD_TEN, SO, SoBen, THU_TU_GD, TT, TT_PO, dem, pt, soMa, topTxt, ttDong, ttPoCua, type Data, type Dong, type Loi, type TtPo } from "../lib/loiPo";
 import { DsThe, useHep } from "./loiPo/DsThe";
 
 /**
@@ -20,8 +20,8 @@ import { DsThe, useHep } from "./loiPo/DsThe";
  */
 
 type Xem = "po" | "lk" | "ma" | "ai";
-interface DongPo { e: number; po: string; ncc: string; nguoi_dat: string; ngay_bh: string; gd: string; gd_txt: string; so_lk: number; dat: number; ve: number; thieu: number; du: number | null;
-  ncc_n: number; nb_n: number; tong: number; cho: number; vp: number; ma: [string, number][]; ai: [string, number][] }
+interface DongPo { tt: TtPo; e: number; po: string; ncc: string; nguoi_dat: string; ngay_bh: string; gd: string; gd_txt: string; so_lk: number; dat: number; ve: number; thieu: number; du: number | null;
+  ncc_n: number; nb_n: number; tong: number; cho: number; vp: number; dagt: number; ma: [string, number][]; ai: [string, number][] }
 
 export default function LoiTheoPo() {
   const qv = useQuickView();
@@ -60,7 +60,7 @@ export default function LoiTheoPo() {
 
   const tongHop = (ds: Loi[]) => ({
     ncc_n: ds.filter((l) => l.ben === "NCC").length, nb_n: ds.filter((l) => l.ben === "NOI_BO").length, tong: ds.length,
-    cho: ds.filter((l) => l.tt === "CHO").length, vp: ds.filter((l) => l.tt === "VI_PHAM").length,
+    cho: ds.filter((l) => l.tt === "CHO").length, vp: ds.filter((l) => l.tt === "VI_PHAM").length, dagt: ds.filter((l) => l.tt === "DA_GT").length,
     ma: dem(ds, (l) => l.ma), ai: dem(ds, (l) => l.ai),
   });
   // ---- theo PO
@@ -74,7 +74,8 @@ export default function LoiTheoPo() {
       const gd = [...gdDem].sort((a, b) => THU_TU_GD.indexOf(a[0]) - THU_TU_GD.indexOf(b[0]))[0]?.[0] ?? "";
       const nGd = gdDem.find(([k]) => k === gd)?.[1] ?? 0;
       const datT = ds.reduce((t, x) => t + x.dat, 0), veT = ds.reduce((t, x) => t + Math.min(x.ve, x.dat), 0);
-      return { e, po: ds[0].po, ncc: [...new Set(ds.map((x) => x.ncc).filter(Boolean))].join(", "), nguoi_dat: ds[0].nguoi_dat, ngay_bh: ds[0].ngay_bh,
+      // v0.146: trang thai PO tinh tren MOI dong cua PO (khong chi dong dang loc)
+      return { tt: ttPoCua(d?.tt_eo?.[String(e)], (d?.dong ?? []).filter((x) => x.e === e)), e, po: ds[0].po, ncc: [...new Set(ds.map((x) => x.ncc).filter(Boolean))].join(", "), nguoi_dat: ds[0].nguoi_dat, ngay_bh: ds[0].ngay_bh,
         gd, gd_txt: `${gd} · ${GD_TEN[gd] ?? gd}${ds.length > 1 ? ` (${nGd}/${ds.length} LK)` : ""}`, so_lk: ds.length,
         dat: datT, ve: veT, thieu: ds.reduce((t, x) => t + x.thieu, 0), du: pt(veT, datT), ...tongHop(ls) };
     }).sort((a, b) => b.tong - a.tong || b.thieu - a.thieu);
@@ -103,15 +104,22 @@ export default function LoiTheoPo() {
   const theoGd = GD.map(([k, l]) => ({ k, l, ncc: loiGd.filter((x) => x.gd === k && x.ben === "NCC").length, nb: loiGd.filter((x) => x.gd === k && x.ben === "NOI_BO").length }));
   const maxGd = Math.max(1, ...theoGd.map((g) => g.ncc + g.nb));
 
-  const cotLoi = <T extends { ncc_n: number; nb_n: number; cho: number; vp: number; ma: [string, number][]; ai: [string, number][] }>(coAi = true): Col<T>[] => [
+  const gtCua = (r: { cho: number; vp: number; dagt: number }) => r.cho ? { l: "Đang chờ", n: r.cho, mau: "#c26400", nen: "#fff1dc" }
+    : r.vp ? { l: "Vi phạm", n: r.vp, mau: "#d70015", nen: "#ffe7e5" } : r.dagt ? { l: "Đã giải trình", n: 0, mau: "#1d8a3c", nen: "#e2f6e7" }
+    : { l: "Không cần", n: 0, mau: "#6e6e73", nen: "rgba(0,0,0,.05)" };
+  const OTt = ({ t }: { t: TtPo }) => <span style={{ whiteSpace: "nowrap", fontSize: 12, fontWeight: 600, borderRadius: 999, padding: "2px 10px", background: TT_PO[t].nen, color: TT_PO[t].mau }}>{TT_PO[t].l}</span>;
+  const cotLoi = <T extends { ncc_n: number; nb_n: number; cho: number; vp: number; dagt: number; ma: [string, number][]; ai: [string, number][] }>(coAi = true): Col<T>[] => [
     { key: "ncc_n", header: "Đối tác", align: "right", loc: "so", gt: (r) => r.ncc_n, render: (r) => <SoBen n={r.ncc_n} ben="NCC" /> },
     { key: "nb_n", header: "Nội bộ", align: "right", loc: "so", gt: (r) => r.nb_n, render: (r) => <SoBen n={r.nb_n} ben="NOI_BO" /> },
     { key: "ma", header: "Lỗi gì (mã × lần)", loc: "chu", gt: (r) => r.ma.map(([m]) => `${m} ${tenMa.get(m)?.ten ?? ""}`).join(" "), sapXep: false, wrap: true, maxW: 255,
       render: (r) => <ChipMa xs={r.ma} tenMa={tenMa} /> },
     ...(coAi ? [{ key: "ai", header: "Ai lỗi (× lần)", loc: "chu", gt: (r: T) => r.ai.map(([a]) => a).join(" "), sapXep: false, wrap: true, maxW: 180,
       render: (r: T) => r.ai.length ? <span style={{ fontSize: 12 }}>{topTxt(r.ai, 2)}</span> : <span className="muted">—</span> } as Col<T>] : []),
-    { key: "cho", header: "Cần GT / VP", align: "right", loc: "so", gt: (r) => r.cho + r.vp, render: (r) => !r.cho && !r.vp ? <span className="muted">—</span>
-      : <span style={{ whiteSpace: "nowrap", ...SO }} title={`Cần giải trình ${r.cho} · Vi phạm (hết hạn) ${r.vp}`}><b style={{ color: r.cho ? TT.CHO.mau : "#86868b" }}>{r.cho}</b> / <b style={{ color: r.vp ? TT.VI_PHAM.mau : "#86868b" }}>{r.vp}</b></span> },
+    // v0.146 (chu he thong "Cho giai trinh = dang cho / khong can / da giai trinh"): con loi cho -> Đang chờ; het han khong GT -> Vi phạm; co giai trinh that -> Đã giải trình;
+    // moi loi tu khac phuc -> Không cần
+    { key: "cho", header: "Giải trình", loc: "chon", gt: (r) => gtCua(r).l, sapXep: true, gtSap: (r) => r.cho * 1000 + r.vp,
+      render: (r) => { const g = gtCua(r); return <span title={`Cần giải trình ${r.cho} · Vi phạm (hết hạn) ${r.vp} · Đã giải trình ${r.dagt}`}
+        style={{ ...SO, whiteSpace: "nowrap", fontSize: 12, fontWeight: 600, borderRadius: 999, padding: "2px 10px", background: g.nen, color: g.mau }}>{g.l}{g.n ? ` · ${g.n}` : ""}</span>; } },
   ];
   const cotSl = <T extends { dat: number; ve: number; thieu: number; du: number | null }>(): Col<T>[] => [
     { key: "thieu", header: "Thiếu", align: "right", loc: "so", gt: (r) => r.thieu, render: (r) => r.thieu ? <b>{soLuong(r.thieu)}</b> : <span className="muted">0</span> },
@@ -119,6 +127,7 @@ export default function LoiTheoPo() {
   ];
   const cotPo: Col<DongPo>[] = [
     { key: "po", header: "PO · người đặt", loc: "chu", gt: (r) => `${r.po} ${r.nguoi_dat}`, render: (r) => <><b style={{ color: "#0071e3" }}>{r.po}</b><div style={{ fontSize: 11.5, color: "#6e6e73" }}>{r.nguoi_dat}</div></> },
+    { key: "tt", header: "Trạng thái PO", loc: "chon", gt: (r) => TT_PO[r.tt].l, render: (r) => <OTt t={r.tt} /> },
     { key: "ncc", header: "Nhà cung cấp", loc: "chon", gt: (r) => r.ncc, render: (r) => r.ncc || <span className="muted">—</span>, maxW: 150, wrap: true },
     { key: "gd", header: "Giai đoạn", loc: "chon", gt: (r) => `${r.gd} · ${GD_TEN[r.gd] ?? r.gd}`, render: (r) => <><span style={{ whiteSpace: "nowrap" }}>{r.gd} · {GD_TEN[r.gd] ?? r.gd}</span>{r.so_lk > 1 && <div style={{ fontSize: 11.5, color: "#6e6e73" }}>{r.gd_txt.split("(")[1]?.replace(")", "")}</div>}</> },
     ...cotSl<DongPo>(), ...cotLoi<DongPo>(),
@@ -126,6 +135,7 @@ export default function LoiTheoPo() {
   type DongLk = (typeof lkRows)[number];
   const cotLk: Col<DongLk>[] = [
     { key: "po", header: "PO", loc: "chu", gt: (r) => r.po, render: (r) => <b>{r.po}</b> },
+    { key: "tt", header: "Trạng thái", loc: "chon", gt: (r) => TT_PO[ttDong(r)].l, render: (r) => <OTt t={ttDong(r)} /> },
     { key: "lk", header: "Linh kiện", loc: "chu", gt: (r) => `${r.lk} ${r.ten_lk}`, wrap: true, maxW: 240,
       render: (r) => <><b>{r.lk}</b><div className="muted" style={{ fontSize: 11 }}>{r.ten_lk}</div></> },
     { key: "ncc", header: "NCC", loc: "chon", gt: (r) => r.ncc, render: (r) => r.ncc || <span className="muted">—</span> },
@@ -281,8 +291,8 @@ export default function LoiTheoPo() {
             : xem === "lk" ? <DsThe cols={cotLk} rows={lkRows} keyOf={(r) => r.i} onClick={(r) => moPo(r.e, r.i)} empty="Không có linh kiện khớp bộ lọc." />
             : xem === "ma" ? <DsThe cols={cotMa} rows={maRows} keyOf={(r) => r.key} onClick={veMa} empty="Không có lỗi khớp bộ lọc." />
             : <DsThe cols={cotAi} rows={aiRows} keyOf={(r) => r.key} onClick={veAi} empty="Không có lỗi khớp bộ lọc." />;
-          return xem === "po" ? <DataTable cols={cotPo} rows={poRows} keyOf={(r) => r.e} pageSize={30} luuSoDong="loi-po" onRowClick={(r) => moPo(r.e)} empty="Không có PO khớp bộ lọc." />
-            : xem === "lk" ? <DataTable cols={cotLk} rows={lkRows} keyOf={(r) => r.i} pageSize={30} luuSoDong="loi-po-lk" onRowClick={(r) => moPo(r.e, r.i)} empty="Không có linh kiện khớp bộ lọc." />
+          return xem === "po" ? <DataTable cols={cotPo} rows={poRows} keyOf={(r) => r.e} rowClass={(r) => TT_PO[r.tt].cls} pageSize={30} luuSoDong="loi-po" onRowClick={(r) => moPo(r.e)} empty="Không có PO khớp bộ lọc." />
+            : xem === "lk" ? <DataTable cols={cotLk} rows={lkRows} keyOf={(r) => r.i} rowClass={(r) => TT_PO[ttDong(r)].cls} pageSize={30} luuSoDong="loi-po-lk" onRowClick={(r) => moPo(r.e, r.i)} empty="Không có linh kiện khớp bộ lọc." />
             : xem === "ma" ? <DataTable cols={cotMa} rows={maRows} keyOf={(r) => r.key} pageSize={30} onRowClick={veMa} empty="Không có lỗi khớp bộ lọc." />
             : <DataTable cols={cotAi} rows={aiRows} keyOf={(r) => r.key} pageSize={30} onRowClick={veAi} empty="Không có lỗi khớp bộ lọc." />;
         })()}
