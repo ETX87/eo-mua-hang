@@ -11,7 +11,7 @@ import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
 import { QvHeader, Kpi, DongLink, PartLink, useQuickView, O_TIM, useAnPhu, KhuTieuDe, CotPhu } from "./QuickView";
-import { QuyTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
+import { QuyTrinh, TienTrinhGon, ceoTxt, KIEU_TXT, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
 import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
 import { TienTrinhPo } from "../TienTrinhPo";
@@ -66,7 +66,9 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
   const [tab, setTab] = useState<Tab>("lk");
   // v0.141 (chu he thong 2026-11-27 "danh sach loi, an vao se filter san cac lk co loi trong PO do"): chi hien dong LK co loi
   // (bat san khi mo tu cot loi / danh sach loi; bam o "Lỗi chờ GT", canh bao loi, tab Loi -> nut "Xem các LK có lỗi")
-  const [locGd, setLocGd] = useState<{ k: string; ids: Set<number> } | null>(null);
+  const [locGd, setLocGd] = useState<{ k: string; ids: Set<number>; kieu: "dang" | "loi" | "qua" } | null>(null);
+  // v0.145: cot phai - tab "Tổng quát" (o so, canh bao, cho duyet) thay khoi tren cung; mac dinh nhat ky
+  const [xemTq, setXemTq] = useState(false);
   const [chiLoi, setChiLoi] = useState(Array.isArray(locLoi) ? locLoi.length > 0 : !!locLoi);
   // v0.143: mo tu man Loi theo PO dang loc (vd G4) -> chi cac LK dinh loi dang loc (danh sach id truyen vao), khong phai moi LK co loi
   const dsLocVao = Array.isArray(locLoi) && locLoi.length ? new Set(locLoi) : null;
@@ -193,8 +195,12 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
     return { r, t, i, ndk, nm, ve, g };
   }).filter((x: any) => (xemHuy || !huy(x.r)) && (!chiLoi || (dsLocVao ?? dongCoLoi).has(x.r.id)) && (!locGd || locGd.ids.has(x.r.id)) && k({ ...x.r, ...(x.t ?? {}) }))
     .sort((a: any, b: any) => {
-      const mo = (x: any) => !huy(x.r) && (x.r.chua_dat ?? 0) > 0;
-      return Number(mo(b)) - Number(mo(a)) || (mo(a) ? (b.r.chua_dat ?? 0) - (a.r.chua_dat ?? 0) : 0) || a.i - b.i;
+      // v0.145 (chu he thong): con ton truoc - ton LAU truoc (gio lam viec o giai doan hien tai, roi ngay tao som), roi ton SL nhieu - da xong - da huy
+      const nhom = (x: any) => (huy(x.r) ? 2 : dongKetThuc(x.r) || (x.r.chua_dat ?? 0) <= 0 ? 1 : 0);
+      return nhom(a) - nhom(b)
+        || (nhom(a) === 0 ? (b.g?.gd_gio ?? 0) - (a.g?.gd_gio ?? 0) : 0)
+        || (nhom(a) === 0 ? String(a.r.created_at ?? "").localeCompare(String(b.r.created_at ?? "")) : 0)
+        || (nhom(a) === 0 ? (b.r.chua_dat ?? 0) - (a.r.chua_dat ?? 0) : 0) || a.i - b.i;
     });
   const lkCols: Col<any>[] = [
     { key: "act", header: <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>{coChon && <input type="checkbox" title="Chọn mọi dòng còn thiếu" checked={tatCa} onChange={() => setChon(tatCa ? new Set() : new Set(chonDuoc.map((r: any) => r.id)))} />}Thao tác</span>,
@@ -235,6 +241,9 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
         const cho = ls.some((l: any) => l.trang_thai === "CHO_GIAI_TRINH");
         return <span title={`${demTxt(ls, (l) => `${String(l.ma_loi).replace("ER.MH-", "")} ${l.ten_ma}`).map(([m, n]) => `${m} ×${n}`).join("\n")}\nAi lỗi: ${demTxt(ls, aiLoi).map(([a, n]) => `${a} ×${n}`).join(", ")}`}
           style={{ fontWeight: 700, borderRadius: 999, padding: "1px 9px", background: cho ? "#ffe7e5" : "#f5f5f7", color: cho ? "#d70015" : "var(--text)" }}>{ls.length}</span>; } },
+    { key: "tl", header: <span title="Tỷ lệ hàng về = SL về / SL đặt">Tỷ lệ về</span>, align: "right", loc: "so", gt: ({ r }: any) => (r.current_qty > 0 ? Math.round((Math.min(r.da_dat ?? 0, r.current_qty) / r.current_qty) * 100) : null),
+      render: ({ r }: any) => { if (!(r.current_qty > 0)) return <span className="muted">—</span>; const v = Math.round((Math.min(r.da_dat ?? 0, r.current_qty) / r.current_qty) * 100);
+        return <b className="mono-num" style={{ color: v >= 100 ? "var(--ok-ink)" : v > 0 ? "#c26400" : "var(--danger-ink)" }}>{v}%</b>; } },
     { key: "sl", header: <span title="Về / thiếu / đặt">Về / thiếu / đặt</span>, align: "right", loc: "so", gt: ({ r }: any) => r.chua_dat,
       render: ({ r }: any) => <span className="mono-num" style={{ whiteSpace: "nowrap" }}><span style={{ color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</span>
         {" / "}<b style={{ color: r.chua_dat > 0 ? "var(--warn-ink)" : undefined }}>{soLuong(r.chua_dat)}</b>{" / "}{soLuong(r.current_qty)}</span> },
@@ -269,7 +278,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
 
   return (
     <>
-      <div className="qv-head">
+      <div className="qv-head po">
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll} actions={<>
           {myApr && actionsFor(myApr.step_type).map((a) => (
             <button key={a.key} className={`btn sm ${a.cls || ""}`} onClick={() => setMd({ k: "duyet", x: { row: { id: myApr.id, eo_code: eo.eo_code }, action: a.key } })}>
@@ -307,30 +316,16 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
         {/* ------- KHU CHINH (v0.131): luong tien trinh 1 dong + bang linh kien / ke hoach / loi / tai lieu ------- */}
         <div className="qv-col">
           {/* v0.144: bo dong "Theo doi chinh"; bam 1 moc quy trinh -> bang LK loc cac dong DANG DUNG o buoc do (bam lai = bo loc) */}
-          {sdh.data && <div className="qv-quytrinh"><QuyTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []}
-            chon={locGd?.k} onChonNut={(k, ids) => { setTab("lk"); setLocGd(locGd?.k === k ? null : { k, ids: new Set(ids) }); }}
+          {sdh.data && <div className="qv-quytrinh"><QuyTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={loiTinh}
+            chon={locGd?.k} onChonNut={(k, ids, kieu) => { setTab("lk"); setLocGd(locGd?.k === k ? null : { k, ids: new Set(ids), kieu }); }}
             phieuNhap={bs.data ? b?.phieu_nhap ?? [] : undefined} slDat={d.tong.tong_sl_dat} phuTrach={phuTrach} /></div>}
           <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => setTab(t.k)}>{t.l}</button>)}
             {/* 2026-11-23: 1 o tim CHUNG cho moi tab (giu chu khi doi tab) */}
             <O_TIM tim={tim} setTim={setTim} /></div>
-          <div className="qv-scroll">
+          <div className={`qv-scroll${tab === "lk" ? " lk-mode" : ""}`}>
             {tab === "lk" && (
               <div className="qv-toolbar">
-                {/* v0.144 (chu he thong "chuyen cac nut filter sang goc trai, an vao thi table filter theo"): BO LOC ben trai */}
-                {chiLoi && dsLocVao && moTaLoc && <span style={{ fontSize: 12.5, background: "#fff6e8", color: "#9c4f00", borderRadius: 999, padding: "3px 12px" }}>
-                  Đang lọc: <b>{moTaLoc}</b></span>}
-                {locGd && <button className="btn sm" onClick={() => setLocGd(null)} title="Bấm để bỏ lọc bước"
-                  style={{ background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 }}>
-                  Bước {locGd.k} · {(sdh.data?.giai_doan ?? []).find((g: any) => g.k === locGd.k)?.l ?? ""} ({locGd.ids.size})
-                  <span style={{ marginLeft: 4, width: 16, height: 16, borderRadius: "50%", background: "var(--brand-yellow-btn)", color: "#fff", fontSize: 11, lineHeight: "16px", display: "inline-block", textAlign: "center" }}>×</span></button>}
-                {dongCoLoi.size > 0 && <button className="btn sm" onClick={() => setChiLoi(!chiLoi)} title="Chỉ hiện các dòng linh kiện có lỗi trong PO này"
-                  style={chiLoi ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>
-                  ⚠ {dsLocVao ? `LK dính lỗi đang xem (${dsLocVao.size})` : `Chỉ LK có lỗi (${dongCoLoi.size})`}{chiLoi && <span style={{ marginLeft: 4, width: 16, height: 16, borderRadius: "50%", background: "var(--brand-yellow-btn)", color: "#fff", fontSize: 11, lineHeight: "16px", display: "inline-block", textAlign: "center" }}>×</span>}</button>}
-                <button className="btn sm" onClick={() => setXemHuy(!xemHuy)} title="Hiện cả dòng đã hủy / bị từ chối"
-                  style={xemHuy ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>
-                  {xemHuy ? "✓ " : ""}Cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}</button>
-                <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{lkRows.length}/{d.items.length} LK</span>
-                {/* nut thao tac ben PHAI */}
+                <span className="muted" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><b style={{ color: "var(--text)" }}>{lkRows.length}</b>/{d.items.length} LK · còn tồn xếp trước (tồn lâu, rồi thiếu nhiều)</span>
                 <span className="sp" />
                 <button className="btn sm" title="Tải Excel mọi dòng linh kiện của EO (kèm kế hoạch, hàng về, theo dõi)" onClick={() => xuatDongEo(eo, d.items, d.plans, b)}><I.download width={13} height={13} /> Tải Excel</button>
                 {P.issued && coChon && <>
@@ -339,7 +334,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
                 {P.issued && P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
-                <span className="muted" style={{ cursor: "help", fontSize: 13 }} title="Bấm mốc quy trình: lọc LK đang dừng ở bước đó · bấm dòng: chi tiết đơn đặt · nút ⋯: ngày DK, giải trình, lịch sử, sửa, thay mã, kết thúc / hủy · rê chuột Mã LK: ID case / ID đặt hàng · rê SL vi phạm: lỗi gì / ai lỗi">ⓘ</span>
+                <span className="muted" style={{ cursor: "help", fontSize: 13 }} title="Bấm mốc quy trình: lọc LK đang dừng / có lỗi / đã qua bước đó · bấm dòng: chi tiết đơn đặt · nút ⋯: ngày DK, giải trình, lịch sử, sửa, thay mã, kết thúc / hủy · rê chuột Mã LK: ID case / ID đặt hàng · rê SL vi phạm: lỗi gì / ai lỗi">ⓘ</span>
               </div>
             )}
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
@@ -347,7 +342,22 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
               // #29 (2026-11-08): bang dung chung DataTable - loc / sap xep kieu Excel tren tieu de; mac dinh AN don huy / tu choi
               // (tick "Xem cả đơn hủy"); thu tu mac dinh: dong con thieu len dau, thieu nhieu xep truoc. Loc tren may nguoi dung.
               <>
-                <div className="qv-lk"><DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
+                <div className="qv-lk-than">
+                  {/* v0.145 (chu he thong "chuyen cac filter sang goc trai"): BO LOC = cot doc ben trai bang, bam la bang loc ngay */}
+                  <aside className="qv-loc">
+                    <div className="qv-loc-tieu">Lọc</div>
+                    {chiLoi && dsLocVao && moTaLoc && <div className="qv-loc-mo">Đang lọc: <b>{moTaLoc}</b></div>}
+                    {locGd && <button className="btn sm" onClick={() => setLocGd(null)} title="Bấm để bỏ lọc bước" style={{ background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 }}>
+                      <span className="qv-loc-t">Bước {locGd.k} · {(sdh.data?.giai_doan ?? []).find((g: any) => g.k === locGd.k)?.l ?? ""} — {KIEU_TXT[locGd.kieu]} ({locGd.ids.size})</span><span className="qv-loc-x">×</span></button>}
+                    {dongCoLoi.size > 0 && <button className="btn sm" onClick={() => setChiLoi(!chiLoi)} title="Chỉ hiện các dòng linh kiện có lỗi (tính từ 20/11/2026)" style={chiLoi ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>
+                      <span className="qv-loc-t">⚠ {dsLocVao ? `LK dính lỗi đang xem (${dsLocVao.size})` : `Chỉ LK có lỗi (${dongCoLoi.size})`}</span>{chiLoi && <span className="qv-loc-x">×</span>}</button>}
+                    <button className="btn sm" onClick={() => setXemHuy(!xemHuy)} title="Hiện cả dòng đã hủy / bị từ chối" style={xemHuy ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>
+                      <span className="qv-loc-t">Cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}</span>{xemHuy && <span className="qv-loc-x">×</span>}</button>
+                    {(locGd || chiLoi || xemHuy) && <button className="btn ghost sm" onClick={() => { setLocGd(null); setChiLoi(false); setXemHuy(false); }}>Xoá lọc</button>}
+                    <div className="qv-loc-goi">Bấm mốc trên luồng quy trình để lọc LK theo bước.</div>
+                  </aside>
+                  <div className="qv-lk"><DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
+                </div>
               </>
             )}
             {tab === "kh" && (
@@ -379,8 +389,17 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
         </div>
 
         {/* ------- KHU PHU (v0.131): so lieu, canh bao, cho duyet, nhat ky hop nhat (duyet, ke hoach, loi, mail, push, binh luan) ------- */}
-        <CotPhu an={anPhu} setAn={setAnPhu} tieuDe="Tiến độ · lịch sử">
-          <div className="qv-phu-sec">
+        <CotPhu an={anPhu} setAn={setAnPhu} tieuDe={`Nhật ký xử lý (${tlLoc.length}${tlGop.length < tlLoc.length ? ` — gọn ${tlGop.length} mục` : ""})`}>
+          {/* v0.145 (chu he thong "gom tat ca cac van de dang hien ben tren vao 1 tab Tong quat + bo tieu de Tien do lich su => day Nhat ky xu ly len lam tieu de") */}
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              <button className={`qv-chip ${xemTq ? "on" : ""}`} onClick={() => setXemTq(true)} title="Ô số, cảnh báo, phiếu đang chờ duyệt">
+                Tổng quát{(b?.canh_bao ?? []).length ? <span style={{ marginLeft: 5, background: "#ff3b30", color: "#fff", borderRadius: 999, padding: "0 6px", fontSize: 10.5 }}>{b.canh_bao.length}</span> : null}</button>
+              {NHOM_TL.map((n) => <button key={n.k} className={`qv-chip ${!xemTq && nhom === n.k ? "on" : ""}`} onClick={() => { setXemTq(false); setNhom(n.k); }}>{n.l}</button>)}
+              {!xemTq && <input className="input" style={{ height: 28, fontSize: 12, marginTop: 6, width: "100%" }} placeholder="🔍 Tìm trong nhật ký (người, mã LK, nội dung…)" value={timTl} onChange={(e) => setTimTl(e.target.value)} />}
+            </div>
+          </div>
+          {xemTq && <div className="qv-scroll"><div className="qv-phu-sec" style={{ borderBottom: 0 }}>
             <div className="qv-kpis" style={{ marginTop: 0 }}>
               <Kpi l="Dòng" v={soLuong(d.tong.so_dong)} />
               <Kpi l="Đặt" v={soLuong(d.tong.tong_sl_dat)} />
@@ -410,18 +429,12 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                 <span className="muted">giao {ngayGio(a.assigned_at)}</span></div>)}
             </div>}
           </div>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
-            <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>Nhật ký xử lý ({tlLoc.length}{tlGop.length < tlLoc.length ? ` — gọn ${tlGop.length} mục` : ""})</div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {NHOM_TL.map((n) => <button key={n.k} className={`qv-chip ${nhom === n.k ? "on" : ""}`} onClick={() => setNhom(n.k)}>{n.l}</button>)}
-              <input className="input" style={{ height: 28, fontSize: 12, marginTop: 6, width: "100%" }} placeholder="🔍 Tìm trong nhật ký (người, mã LK, nội dung…)" value={timTl} onChange={(e) => setTimTl(e.target.value)} />
-            </div>
-          </div>
-          <div className="qv-scroll">
+          </div>}
+          {!xemTq && <div className="qv-scroll">
             <NhatKyGop nhom={tlGop} khoa={(x, i) => `${i}|${x.at}|${x.h}`} dot={(x) => MAU[x.nhom]} luc={(x) => x.at} ai={(x) => (x.ai ? ten(x.ai) : null)}
               tieu={(x) => x.h} tieuNhom={(x) => x.loai ?? x.h} moTa={(x) => x.text ?? null}
               tomTat={(ds) => { const ma = lietKe(ds.map((y) => y.ma), 6); return ma ? `Mã LK: ${ma}` : ds[0].text ?? null; }} />
-          </div>
+          </div>}
           <div style={{ borderTop: "1px solid var(--border)", padding: 10, display: "flex", gap: 6 }}>
             <input className="input" placeholder="Viết bình luận / trao đổi…" value={cmt} onChange={(e) => setCmt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && guiBinhLuan()} />
             <button className="btn primary" disabled={busy || !cmt.trim()} onClick={guiBinhLuan}>Gửi</button>

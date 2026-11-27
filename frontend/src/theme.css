@@ -165,7 +165,7 @@ table.tbl tbody tr { height: 40px; }
 
 .qv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.28); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); z-index: 80; display: grid; place-items: center; }
 .qv-panel {
-  width: 95vw; height: 95vh; background: var(--panel-2); border-radius: 22px; box-shadow: var(--shadow-lg); animation: ap-hien .2s ease-out; /* v0.144: chi hien dan, khong co gian -> luon dung 95% x 95% */
+  width: 98vw; height: 98vh; background: var(--panel-2); border-radius: 22px; box-shadow: var(--shadow-lg); animation: ap-hien .2s ease-out; /* v0.144: chi hien dan, khong co gian -> luon dung 95% x 95% */
   display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto;
 }
 .qv-head { position: sticky; top: 0; z-index: 5; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(0,0,0,.06); padding: 10px 20px; }
@@ -390,5 +390,25 @@ table.tbl thead th.qv-act { background: #fafafc; z-index: 2; }
 .qv-lk table.tbl tbody tr { height: 34px; }
 .qv-lk table.tbl tbody td { padding: 5px 10px; white-space: nowrap; font-size: 12.5px; }
 .qv-lk table.tbl thead th { white-space: nowrap; padding: 8px 10px; }
-.qv-lk .tbl-wrap { border-radius: 0; box-shadow: none; }
+
 @keyframes ap-hien { from { opacity: 0; } to { opacity: 1; } }
+
+/* v0.145 popup PO: 98%; tieu de PO (xanh nhat) khac tieu de don dat (cam nhat) / ma LK (tim nhat) */
+.qv-head.po { background: linear-gradient(180deg, rgba(232,241,252,.96), rgba(242,247,254,.9)); border-bottom-color: rgba(0,113,227,.14); }
+.qv-head.don { background: linear-gradient(180deg, rgba(255,241,220,.96), rgba(255,248,238,.9)); border-bottom-color: rgba(255,149,0,.18); }
+.qv-head.lk { background: linear-gradient(180deg, rgba(245,235,252,.96), rgba(250,245,254,.9)); border-bottom-color: rgba(175,82,222,.16); }
+/* bang LK: bo loc cot doc ben trai; danh sach cuon ben trong, phan trang ghim day */
+.qv-scroll.lk-mode { display: flex; flex-direction: column; overflow: hidden; }
+.qv-lk-than { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; padding: 8px 10px 8px 12px; }
+.qv-loc { width: 196px; flex: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding: 10px; background: var(--panel-2); border-radius: 14px; }
+.qv-loc .btn { justify-content: space-between; width: 100%; text-align: left; white-space: normal; height: auto; min-height: 30px; padding: 5px 10px; }
+.qv-loc-t { flex: 1; min-width: 0; line-height: 1.3; }
+.qv-loc-x { width: 16px; height: 16px; border-radius: 50%; background: var(--brand-yellow-btn); color: #fff; font-size: 11px; line-height: 16px; text-align: center; flex: none; margin-left: 6px; }
+.qv-loc-tieu { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+.qv-loc-mo { font-size: 12px; background: #fff6e8; color: #9c4f00; border-radius: 10px; padding: 6px 9px; line-height: 1.35; }
+.qv-loc-goi { font-size: 11.5px; color: var(--text-faint); margin-top: auto; line-height: 1.35; }
+.qv-lk { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.qv-lk > .tbl-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; box-shadow: 0 0 0 1px var(--border); border-radius: 14px; }
+.qv-lk > .dt-trang { flex: none; margin-top: 8px !important; }
+@media (max-width: 767px) { .qv-lk-than { flex-direction: column; } .qv-loc { width: auto; flex-direction: row; flex-wrap: wrap; } .qv-loc .btn { width: auto; } .qv-loc-goi { display: none; } }
+

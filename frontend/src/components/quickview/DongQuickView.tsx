@@ -78,7 +78,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
 
   return (
     <>
-      <div className="qv-head">
+      <div className="qv-head don">
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll} actions={<>
           {P.canApprovePostIssue && it.post_issue_status === "PENDING" && conSong && !ketThuc && <>
             <button className="btn sm primary" title="Dòng thêm sau ban hành đang chờ bạn duyệt" onClick={duyetDong}>Duyệt dòng</button>

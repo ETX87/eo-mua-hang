@@ -4,6 +4,21 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.145: Popup PO — bấm mốc ra đúng LK, bộ lọc cột trái, sắp xếp tồn, phân trang ghim đáy, tab Tổng quát
+
+- Yêu cầu (nguyên văn): "1. sao trong luồng quy trình hiện số, ấn vào lại không có gì. 2. chuyển các filter sang góc trái vùng tôi tô đỏ. 3. sort ưu tiên đơn còn tồn lên - đơn tồn lâu lên trước,
+  rồi đến đơn tồn sl nhiều - đơn đã xong - đơn hủy 4. thanh hiện số trang trong table cố định ở góc dưới. chỉ kéo bên trong danh sách chi tiết thôi. 5. Tô màu UI chi tiết PO tiêu đề nền màu <>
+  với tiêu đề UI chi tiết đơn bên trong PO (tăng kích thước lên 98%) 6. Mục tiên độ lịch sử, gom tất cả các vấn đề đang hiện bên trên vào 1 tab "Tổng quát" + bỏ tiêu đề Tiến độ lịch sử =>
+  đẩy Nhật ký xử lý lên làm tiêu đề 7. Sau cột SL vi phạm thêm cột tỷ lệ hàng về % = SL về/SL đặt"
+- Nguyên nhân (1): số dưới mốc là số dòng ĐÃ QUA bước (vd 285/293) nhưng bấm lại lọc dòng ĐANG DỪNG ở bước (0) → bảng trống.
+- Đã làm: QuyTrinh — số dưới mốc "n đang ở" / "x/y đã qua", bấm mốc trả (ids, kieu) đang dừng → có lỗi → đã qua (KIEU_TXT); popup PO dùng lỗi tính từ 20/11 cho chấm lỗi;
+  bộ lọc cột dọc trái (.qv-loc) + nút Xoá lọc; sắp xếp tồn lâu (giờ ở giai đoạn hiện tại) → tạo sớm → thiếu nhiều → xong → hủy; cột Tỷ lệ về; `.qv-scroll.lk-mode` + `.qv-lk > .tbl-wrap` cuộn,
+  `.dt-trang` ghim đáy; `.qv-head.po / .don / .lk` 3 màu; `.qv-panel` 98vw × 98vh; cột phải tiêu đề Nhật ký + tab Tổng quát.
+- 5W1H: Who — mọi người mở chi tiết PO. When — xem / xử lý PO. Where — popup chi tiết PO (và popup đơn đặt / mã LK cho màu tiêu đề, kích thước).
+  What — bấm mốc luôn ra LK, lọc gọn bên trái, đơn tồn lên đầu, phân trang cố định, tổng quát gom 1 tab. Why — bấm số không ra gì gây hiểu lầm, popup còn rối.
+  How — bấm mốc (vd G3) → cột lọc trái hiện "Bước G3 … — đang dừng / có lỗi / đã qua (n)", bảng lọc theo; bấm × hoặc "Xoá lọc" để bỏ; cột phải bấm "Tổng quát" xem ô số + cảnh báo.
+- Kiểm thử: typecheck; local 1600×900: popup 98%; G3 → "đang dừng (1)" 1 LK, G2 → "đã qua (4)" 4 LK; thứ tự G8 → G6 → G3 → XONG; 13 cột có Tỷ lệ về; tiêu đề PO xanh / đơn cam; tab Tổng quát 9 ô + 3 cảnh báo.
+
 ## 27/11/2026 — v0.144: Làm gọn popup chi tiết PO
 
 - Yêu cầu (nguyên văn): "nó rối quá. 1. fix lỗi mất chữ ở luồng quy trình 2. tiêu đề bỏ hiện thị thanh luồng quy trình. 3. UI chỉnh kích thước chiếm 95% diện tích 4. Bỏ dòng "theo dõi chính"

@@ -151,6 +151,10 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   chi tiết + ô số bên phải). **Bấm 1 mốc = lọc bảng LK các dòng đang dừng ở bước đó** (mốc sáng vòng xanh, chip "Bước … ×"; bấm lại = bỏ). Bảng LK: Giai đoạn · Mã LK + tên ·
   SL vi phạm (rê chuột: lỗi gì / ai lỗi) · Về / thiếu / đặt · Ngày tạo · Ngày NM · Ngày DK · Hàng về · Kho · Đối tác · Ghi chú; dòng thấp, chữ dài "…", 10 dòng / trang;
   ID case / ID đặt hàng rê chuột Mã LK. Thanh bảng: nút lọc bên trái (đang lọc, bước, LK có lỗi, cả đơn hủy), nút thao tác bên phải.
+- **Popup PO v0.145**: 98% × 98%; tiêu đề PO nền xanh nhạt ≠ đơn đặt (cam nhạt) ≠ mã LK (tím nhạt). Số dưới mốc: "n đang ở" / "x/y đã qua"; bấm mốc lọc theo ưu tiên
+  LK **đang dừng** ở bước → nếu không có thì LK **có lỗi** ở bước (lỗi từ 20/11) → nếu không có thì LK **đã qua** bước (chip ghi rõ loại). Bộ lọc = cột dọc bên trái bảng; danh sách
+  cuộn bên trong, thanh phân trang ghim đáy. Thứ tự mặc định: còn tồn trước (tồn lâu ở giai đoạn hiện tại → tạo sớm → thiếu nhiều) → đã xong → đã hủy. Cột "Tỷ lệ về" = SL về / SL đặt
+  sau "SL vi phạm". Cột phải: tiêu đề "Nhật ký xử lý (n)", tab đầu "Tổng quát" (ô số, cảnh báo, phiếu chờ duyệt) rồi các nhóm nhật ký.
 - **Lọc sẵn LK có lỗi trong popup PO** (v0.141): popup PO đầy đủ có nút "⚠ Chỉ LK có lỗi (n)" trên tab Linh kiện (dòng có lỗi = có bản ghi lỗi trên dòng hoặc theo dõi có số lỗi > 0).
   Tự bật khi mở PO từ cột "Vi phạm" / "Lỗi đối tác / nội bộ" ở Đơn PO, từ "Mở PO đầy đủ" ở Lỗi theo PO; bấm ô "Lỗi chờ GT", cảnh báo về lỗi, hoặc nút "Xem các LK có lỗi" ở tab Lỗi & giải trình
   → chuyển tab Linh kiện đã lọc. Màu cột Lỗi đối tác / nội bộ ở Đơn PO đồng bộ: đối tác cam, nội bộ tím.

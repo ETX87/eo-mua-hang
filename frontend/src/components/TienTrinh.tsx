@@ -303,6 +303,7 @@ function VanDeTheoBuoc({ nut, rows, loiKhac, phuTrach }: { nut: NutGd[]; rows: R
   );
 }
 
+export const KIEU_TXT = { dang: "đang dừng ở bước", loi: "có lỗi ở bước", qua: "đã qua bước" } as const;
 export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach, onChonNut, chiTiet, chon }: {
   defs: GdDef[]; sla: Record<string, number>; rows: Row[]; loi?: Row[];
   /** phieu nhap AMIS khop (doc_date, qty_in) -> dot hang ve; undefined = khong hien */
@@ -310,7 +311,8 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
   /** ten nguoi phu trach tung giai doan (G1 nguoi tao, G3 nguoi duyet mua, G4/G5 nguoi dat...) */
   phuTrach?: Record<string, string>;
   /** bam 1 moc: k = giai doan, ids = item_id cac dong DANG DUNG o buoc do (v0.144: popup PO loc bang LK theo moc) */
-  onChonNut?: (k: string, ids: number[]) => void;
+  /** v0.145: kieu = "dang" (dong dang dung o buoc) | "loi" (dong co loi o buoc) | "qua" (dong da qua buoc) - uu tien theo thu tu do */
+  onChonNut?: (k: string, ids: number[], kieu: "dang" | "loi" | "qua") => void;
   /** v0.144: moc dang duoc chon (loc) -> vong xanh */
   chon?: string | null;
   /** noi dung chi hien khi bam "Xem chi tiết" (vd o so lieu, canh bao cua popup) - ban thu gon CHI 1 dong quy trinh */
@@ -326,6 +328,13 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
   const loiKhac = loi.filter((l) => !LOI_GD[l.quy_tac] && ids.has(l.eo_item_id));
   const dot = phieuNhap ? gomDotVe(phieuNhap) : [];
   let truoc: string | null = null;
+  // v0.145 (chu he thong "trong luong quy trinh hien so, an vao lai khong co gi"): bam moc -> dong DANG DUNG o buoc; khong co -> dong CO LOI o buoc; khong co -> dong DA QUA buoc
+  const chonCua = (n: NutGd): { ids: number[]; kieu: "dang" | "loi" | "qua" } => {
+    if (n.dang.length) return { ids: n.dang.map((r) => r.item_id), kieu: "dang" };
+    const loiIds = [...new Set(n.loi.map((l) => l.eo_item_id as number))];
+    if (loiIds.length) return { ids: loiIds, kieu: "loi" };
+    return { ids: n.xong.map((r) => r.item_id), kieu: "qua" };
+  };
   const moc: ReactNode[] = nut.map((n, i) => {
     const c = MAU[n.tt];
     const m = mot?.gd_moc?.[n.g.k];
@@ -335,15 +344,17 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
     const phu = kt ? `${ngan(kt)}${gio != null ? ` · ${gioTxt(gio)}` : ""}` : dang ? (gio != null ? `${gioTxt(gio)}${n.tre.length ? " · trễ" : ""}` : "đang") : n.tt === "mot_phan" ? `${n.xong.length}/${rows.length}` : "";
     truoc = kt ?? truoc;
     return (
-      <div key={n.g.k} className={`ttq-nut${chon === n.g.k ? " chon" : ""}`} title={`${tieuDeMoc(n, mot, rows.length)}${onChonNut && n.dang.length ? "\nBấm: lọc các LK đang dừng ở bước này" : ""}`}
-        onClick={onChonNut ? () => onChonNut(n.g.k, n.dang.map((r) => r.item_id)) : undefined} style={{ cursor: onChonNut ? "pointer" : undefined }}>
+      <div key={n.g.k} className={`ttq-nut${chon === n.g.k ? " chon" : ""}`} title={`${tieuDeMoc(n, mot, rows.length)}${onChonNut ? `\nBấm: lọc ${chonCua(n).ids.length} LK ${KIEU_TXT[chonCua(n).kieu]}` : ""}`}
+        onClick={onChonNut ? () => { const c = chonCua(n); onChonNut(n.g.k, c.ids, c.kieu); } : undefined} style={{ cursor: onChonNut ? "pointer" : undefined }}>
         {i > 0 && <div className="ttq-noi" style={{ background: nut[i - 1].tt === "xong" ? "#2fb350" : nut[i - 1].tt === "mot_phan" ? "#a6e3b4" : "#e3e3e8" }} />}
         <div className={`ttq-cham ap ${n.tt}${dang ? " on" : ""}`} style={{ borderStyle: PHU[n.g.k] ? "dashed" : undefined }}>
           {n.tt === "xong" ? "✓" : n.g.k.slice(1)}
           {n.loi.length > 0 && <span className="ttq-loi" style={{ background: n.loiCho ? "#ff3b30" : "#86868b" }}>{n.loi.length > 99 ? "99+" : n.loi.length}</span>}
         </div>
         <div className="ttq-ten" style={{ fontWeight: dang ? 650 : 500, color: n.tt === "chua" ? "var(--text-muted)" : dang ? "#c26400" : undefined }}>{n.g.l}</div>
-        <div className="ttq-phu" style={{ color: n.tre.length && dang ? "var(--danger-ink)" : undefined }}>{n.dang.length && !mot ? `${n.dang.length} LK · ` : ""}{phu || " "}</div>
+        {/* v0.145: so duoi moc noi ro nghia - "n đang ở" (bam = loc dong dang dung) / "x/y đã qua" (khong con dong nao dung o buoc) */}
+        <div className="ttq-phu" style={{ color: n.tre.length && dang ? "var(--danger-ink)" : undefined }}>
+          {mot ? (phu || " ") : n.dang.length ? `${n.dang.length} đang ở${gio != null ? ` · ${gioTxt(gio)}` : ""}${n.tre.length ? " · trễ" : ""}` : n.xong.length ? `${n.xong.length}/${rows.length} đã qua` : " "}</div>
       </div>
     );
   });
@@ -372,7 +383,7 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
         <button className="btn ghost sm" style={{ marginLeft: "auto" }} onClick={() => setMo(false)}>▴ Thu gọn</button>
       </div>
       {chiTiet}
-      <TienTrinh defs={defs} sla={sla} rows={rows} loi={loi} onChonNut={onChonNut ? (k) => onChonNut(k, (nut.find((x) => x.g.k === k)?.dang ?? []).map((r) => r.item_id)) : undefined} nhung />
+      <TienTrinh defs={defs} sla={sla} rows={rows} loi={loi} onChonNut={onChonNut ? (k) => { const n = nut.find((x) => x.g.k === k); if (n) { const c = chonCua(n); onChonNut(k, c.ids, c.kieu); } } : undefined} nhung />
       {phieuNhap && slDat != null && slDat > 0 && <ThanhHangVe dot={dot} slDat={slDat} />}
       <VanDeTheoBuoc nut={nut} rows={rows} loiKhac={loiKhac} phuTrach={phuTrach} />
     </div>

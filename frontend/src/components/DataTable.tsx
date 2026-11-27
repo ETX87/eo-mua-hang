@@ -431,7 +431,7 @@ function SimplePager({ total, size, page, onPage, soTrang, nhan, macDinh, onSize
     else if (nums[nums.length - 1] !== "...") nums.push("...");
   }
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
+    <div className="dt-trang" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
       <div className="muted" style={{ fontSize: 12.5 }}>
         {nhan ?? <>Hiển thị {page * size + 1}–{Math.min((page + 1) * size, total)} / {total.toLocaleString("vi-VN")}</>}
       </div>

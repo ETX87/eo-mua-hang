@@ -115,7 +115,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
 
   return (
     <>
-      <div className="qv-head">
+      <div className="qv-head lk">
         <QvHeader coTruoc={coTruoc} onClose={onClose} onCloseAll={onCloseAll}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span className="badge nhap">Mã linh kiện</span>
