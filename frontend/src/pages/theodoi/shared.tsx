@@ -137,7 +137,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
   const xong = () => (daDoi ? onSaved() : onClose());
 
   const The = ({ k, v, sub }: { k: "VE" | "DK" | "NM"; v: string; sub: ReactNode }) => (
-    <div style={{ background: NGAY[k].nen, borderLeft: `4px solid ${NGAY[k].mau}`, borderRadius: 8, padding: "8px 12px" }} title={NGAY[k].mo_ta}>
+    <div style={{ background: NGAY[k].nen, borderLeft: `3px solid ${NGAY[k].mau}`, borderRadius: 8, padding: "8px 12px" }} title={NGAY[k].mo_ta}>
       <div style={{ fontSize: 11.5, fontWeight: 700, color: NGAY[k].mau }}>{NGAY[k].l}</div>
       <div style={{ fontSize: 20, fontWeight: 900, margin: "2px 0" }}>{v}</div>
       <div className="muted" style={{ fontSize: 11.5 }}>{sub}</div>
@@ -176,7 +176,7 @@ export function NgayHangVeModal({ dong, onClose, onSaved }: { dong: Pick<Dong, "
               <tbody>
                 {kh.length === 0 && <tr><td colSpan={7} className="muted">Chưa có đợt nào — nhập ở khung bên dưới.</td></tr>}
                 {kh.map((p, i) => (
-                  <tr key={p.id} style={{ background: sua?.id === p.id ? "#FFFBEB" : undefined }}><td className="qv-act">
+                  <tr key={p.id} style={{ background: sua?.id === p.id ? "#fff6e8" : undefined }}><td className="qv-act">
                       {p.loai !== "TUAN" && <button className="btn ghost sm" title="Sửa đợt này" onClick={() => moForm(p)}><I.edit width={14} height={14} /></button>}
                       <button className="btn ghost sm danger" title="Xóa đợt" onClick={() => xoa(p)}><I.trash width={14} height={14} /></button>
                     </td>
@@ -314,7 +314,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
           </select>
           {!mo.length && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Dòng này không có lỗi chờ giải trình — giải trình sẽ ghi thành 1 lỗi mới.</div>}
           {nccKhongNgay && (
-            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 10 }}>
+            <div style={{ background: "#e8f1fc", border: "1px solid #c9e0fb", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 10 }}>
               💡 NCC đã trả lời ngày <b>{ngay(nccKhongNgay.thoi_gian)}</b> nhưng <b>không có ngày dự kiến</b>{traLoi ? <> ("{traLoi}")</> : null}. Nguyên nhân có thể do NCC, không phải do bạn.
               <button className="btn sm" style={{ marginLeft: 8 }} onClick={goiYNcc}>Điền: Ai = Đối tác / NCC</button>
             </div>
@@ -422,7 +422,7 @@ export function LienHeDoiTacModal({ ids, nhan, onClose, onSaved, choNcc: choNccM
           <input className="input" type="date" value={ngayLh} min={tuNgay} max={homNay} onChange={(e) => setNgayLh(e.target.value)} /></div>
         <div><label className="field-label">Giờ</label><input className="input" type="time" value={gio} onChange={(e) => setGio(e.target.value)} /></div>
       </div>
-      <div style={{ marginTop: 12, border: `1px solid ${choNcc ? "#93C5FD" : "var(--border)"}`, background: choNcc ? "#EFF6FF" : undefined, borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ marginTop: 12, border: `1px solid ${choNcc ? "#a8cdff" : "var(--border)"}`, background: choNcc ? "#e8f1fc" : undefined, borderRadius: 8, padding: "8px 10px" }}>
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 700, fontSize: 13 }}>
           <input type="checkbox" checked={choNcc} onChange={(e) => setChoNcc(e.target.checked)} /> ⏳ NCC chưa có ngày dự kiến — chờ NCC báo ngày
         </label>
@@ -511,7 +511,7 @@ function DongGon({ luc, icon, chinh, phu, chiTiet, mo, onMo }: { luc?: string; i
         {chiTiet && <span className="muted" style={{ flexShrink: 0, fontSize: 11 }}>{mo ? "▴" : "›"}</span>}
       </div>
       {phu && <div style={{ fontSize: 11.5, color: NGAY.NM.mau, marginLeft: luc !== undefined ? 76 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: mo ? "normal" : "nowrap" }}>{phu}</div>}
-      {mo && chiTiet && <div style={{ margin: "4px 0 2px", padding: "6px 8px", background: "#F8FAFC", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}>{chiTiet}</div>}
+      {mo && chiTiet && <div style={{ margin: "4px 0 2px", padding: "6px 8px", background: "#f5f5f7", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}>{chiTiet}</div>}
     </div>
   );
 }
@@ -575,7 +575,7 @@ export function LichSuDong({ dong, boLoi }: { dong: Pick<Dong, "item_id" | "part
     }),
     ...(d.lien_he ?? []).map((x: any): MucHd => ({
       k: `l${x.id}`, gop: `lh|${x.kenh}|${x.ket_qua ?? ""}`, loai: "lien_he", luc: x.ngay_lien_he, icon: "📞",
-      chinh: <><b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b>{x.nguoi_lien_he ? ` với ${x.nguoi_lien_he}` : ""}{x.hen_lai ? <b style={{ color: "#1D4ED8" }}> · ⏳ chờ NCC, hẹn hỏi lại {ngay(x.hen_lai)}</b> : null} · <span className="muted">{x.ket_qua}</span></>,
+      chinh: <><b>{KENH_LIEN_HE[x.kenh] ?? x.kenh}</b>{x.nguoi_lien_he ? ` với ${x.nguoi_lien_he}` : ""}{x.hen_lai ? <b style={{ color: "#0062c4" }}> · ⏳ chờ NCC, hẹn hỏi lại {ngay(x.hen_lai)}</b> : null} · <span className="muted">{x.ket_qua}</span></>,
       chiTiet: <><div>{x.ket_qua}</div><div className="muted">Ghi bởi {ten(x.created_by)} lúc {ngayGio(x.created_at)}</div>{anhGt(x.hinh_anh)}</>,
     })),
     ...(d.push ?? []).map((p: any): MucHd => ({

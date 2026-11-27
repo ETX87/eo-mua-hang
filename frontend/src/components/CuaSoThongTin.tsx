@@ -154,7 +154,7 @@ export function CuaSoThongTin() {
     dem: { nen: "#000000", tieuDe: "#f5f5f7", phuDe: "#ffd60a", doan: "#a1a1a6", nhan: "#a1a1a6", nut: "#f5f5f7", nutChu: "#000000", net: "#ffffff", netNhan: "#ffd60a", trai: false },
     mauPhang: { nen: nhan, tieuDe: "#ffffff", phuDe: "rgba(255,255,255,.72)", doan: "rgba(255,255,255,.88)", nhan: "rgba(255,255,255,.85)", nut: "#ffffff", nutChu: nhan, net: "#ffffff", netNhan: "#ffffff", trai: true },
     theSP: { nen: "#f5f5f7", tieuDe: "#1d1d1f", phuDe: nhan, doan: "#6e6e73", nhan: nhan, nut: nhan, nutChu: "#ffffff", net: "#1d1d1f", netNhan: "#0071e3", trai: true },
-    cu: { nen: "rgba(15,23,42,.55)", tieuDe: chuoi(mau.chu) || "#1d1d1f", phuDe: chuoi(mau.phu) || "#6e6e73", doan: chuoi(mau.phu) || "#6e6e73", nhan: nhan, nut: chuoi(mau.nut) || nhan, nutChu: chuoi(mau.nutChu) || "#ffffff", net: chuoi(mau.chu) || "#1d1d1f", netNhan: nhan, trai: false },
+    cu: { nen: "rgba(0,0,0,.55)", tieuDe: chuoi(mau.chu) || "#1d1d1f", phuDe: chuoi(mau.phu) || "#6e6e73", doan: chuoi(mau.phu) || "#6e6e73", nhan: nhan, nut: chuoi(mau.nut) || nhan, nutChu: chuoi(mau.nutChu) || "#ffffff", net: chuoi(mau.chu) || "#1d1d1f", netNhan: nhan, trai: false },
   }[boCuc as "apTrang"]!;
 
   const anh = tranhUrl(kq.tranhSvg, p.net, p.netNhan);

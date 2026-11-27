@@ -10,6 +10,7 @@
   (cấp mã phê duyệt `3TDO-…`) → kế hoạch hàng về → đối chiếu phiếu nhập AMIS → báo cáo, theo dõi vi phạm.
 - Worker `muahang` (Hono) + D1 `eo-mua-hang-db` + giao diện React; Google OAuth. Không cron, không R2 — việc nền chạy sau request
   (`waitUntil`). Đính kèm lưu Google Drive.
+- Giao diện (v0.140): phong cách Apple cho toàn app — token ở `frontend/src/theme.css` (giữ tên biến cũ, đổi giá trị), lớp dùng chung `.btn .input .select .card .badge .tbl .seg .ptabs .qv-*`.
 
 ## 2. Vai trò & quyền (tóm tắt — đủ ở `../PERMISSION_SPEC.md`)
 

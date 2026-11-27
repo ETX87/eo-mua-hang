@@ -3,14 +3,14 @@
  * Khop backend routes/dashboard.ts MOC_TON. Dung cho Tong quan, Theo doi, Danh sach EO, Bao cao tien do, Canh bao CEO.
  */
 export const MOC_TON = [
-  { k: "lt1", l: "Dưới 1 ngày", tu: 0, den: 1, mau: "#16A34A", nen: "#DCFCE7" },
+  { k: "lt1", l: "Dưới 1 ngày", tu: 0, den: 1, mau: "#1d8a3c", nen: "#e2f6e7" },
   { k: "1_3", l: "1–3 ngày", tu: 1, den: 3, mau: "#65A30D", nen: "#ECFCCB" },
-  { k: "3_7", l: "3–7 ngày", tu: 3, den: 7, mau: "#CA8A04", nen: "#FEF9C3" },
-  { k: "7_10", l: "7–10 ngày", tu: 7, den: 10, mau: "#D97706", nen: "#FEF3C7" },
-  { k: "10_14", l: "10–14 ngày", tu: 10, den: 14, mau: "#EA580C", nen: "#FFEDD5" },
-  { k: "14_21", l: "14–21 ngày", tu: 14, den: 21, mau: "#DC2626", nen: "#FEE2E2" },
-  { k: "21_30", l: "21–30 ngày", tu: 21, den: 30, mau: "#B91C1C", nen: "#FECACA" },
-  { k: "gt30", l: "Trên 30 ngày", tu: 30, den: Infinity, mau: "#7F1D1D", nen: "#FCA5A5" },
+  { k: "3_7", l: "3–7 ngày", tu: 3, den: 7, mau: "#CA8A04", nen: "#fff6e8" },
+  { k: "7_10", l: "7–10 ngày", tu: 7, den: 10, mau: "#c26400", nen: "#fff1dc" },
+  { k: "10_14", l: "10–14 ngày", tu: 10, den: 14, mau: "#ff6b00", nen: "#ffeddc" },
+  { k: "14_21", l: "14–21 ngày", tu: 14, den: 21, mau: "#d70015", nen: "#ffe7e5" },
+  { k: "21_30", l: "21–30 ngày", tu: 21, den: 30, mau: "#d70015", nen: "#ffd0cc" },
+  { k: "gt30", l: "Trên 30 ngày", tu: 30, den: Infinity, mau: "#8a0010", nen: "#ffb3ad" },
 ] as const;
 export type KhoaMoc = (typeof MOC_TON)[number]["k"];
 

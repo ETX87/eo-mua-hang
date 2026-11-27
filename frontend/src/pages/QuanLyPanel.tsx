@@ -62,7 +62,7 @@ export default function QuanLyPanel() {
               <div style={{ fontSize: 12, fontWeight: 700, alignSelf: "center", width: 90 }}>Đơn đang ở<br />giai đoạn</div>
               {d.giai_doan.map((g: any, i: number) => (
                 <div key={g.k} style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 120px", minWidth: 0 }}>
-                  <div className="ql-o" onClick={() => nav(`/don-hang?gd=${g.k}`)} style={{ cursor: "pointer", flex: 1, borderTop: `3px solid ${g.tre ? "#DC2626" : g.n ? "#F59E0B" : "var(--border)"}` }} title={`${g.l} — ${g.vai_tro}. ${g.n} dòng đang ở, ${g.tre} trễ hạn`}>
+                  <div className="ql-o" onClick={() => nav(`/don-hang?gd=${g.k}`)} style={{ cursor: "pointer", flex: 1, boxShadow: g.tre ? "inset 0 0 0 2px #ff3b30" : g.n ? "inset 0 0 0 2px #ff9500" : undefined }} title={`${g.l} — ${g.vai_tro}. ${g.n} dòng đang ở, ${g.tre} trễ hạn`}>
                     <div className="ql-l">{g.k} · {g.l}</div>
                     <div className="ql-v" style={{ fontSize: 18 }}>{soLuong(g.n)}{g.tre > 0 && <span onClick={(e) => { e.stopPropagation(); nav(`/don-hang?gd=${g.k}&tre=tre`); }} style={{ fontSize: 12, color: "var(--danger-ink)", marginLeft: 6 }}>{g.tre} trễ</span>}</div>
                     <div className="ql-s">{g.vai_tro}</div>
@@ -91,10 +91,10 @@ export default function QuanLyPanel() {
                     <YAxis yAxisId="pt" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10.5 }} axisLine={false} tickLine={false} />
                     <Tooltip formatter={(v: any, n: any) => (String(n).includes("%") ? `${v}%` : soLuong(v))} />
                     <Legend iconType="plainline" wrapperStyle={{ fontSize: 11.5 }} />
-                    <Bar yAxisId="sl" dataKey="sl_dat" name="SL đặt" fill="#FDE68A" radius={[3, 3, 0, 0]} />
-                    <Bar yAxisId="sl" dataKey="sl_ve" name="SL về" fill="#86EFAC" radius={[3, 3, 0, 0]} />
-                    <Line yAxisId="pt" type="monotone" dataKey="ty_le_sl" name="% đáp ứng" stroke="#16A34A" strokeWidth={2.5} dot={{ r: 3 }} />
-                    <Line yAxisId="pt" type="monotone" dataKey="ty_le_dong" name="% dòng về đủ" stroke="#2563EB" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
+                    <Bar yAxisId="sl" dataKey="sl_dat" name="SL đặt" fill="#ffd8a8" radius={[3, 3, 0, 0]} />
+                    <Bar yAxisId="sl" dataKey="sl_ve" name="SL về" fill="#a6e3b4" radius={[3, 3, 0, 0]} />
+                    <Line yAxisId="pt" type="monotone" dataKey="ty_le_sl" name="% đáp ứng" stroke="#1d8a3c" strokeWidth={2.5} dot={{ r: 3 }} />
+                    <Line yAxisId="pt" type="monotone" dataKey="ty_le_dong" name="% dòng về đủ" stroke="#0071e3" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -107,7 +107,7 @@ export default function QuanLyPanel() {
                   const c = MOC_TON.find((x) => x.k === m.k)!;
                   return (
                     <div key={m.k} onClick={() => nav(`/don-hang?ton=${m.k}`)} title={`${m.so_dong} dòng · ${m.so_eo} EO · thiếu ${soLuong(m.sl_thieu)} SL`}
-                      style={{ cursor: "pointer", background: m.so_dong ? c.nen : "var(--panel-2)", borderRadius: 8, padding: "6px 8px", borderLeft: `4px solid ${m.so_dong ? c.mau : "var(--border)"}` }}>
+                      style={{ cursor: "pointer", background: m.so_dong ? c.nen : "var(--panel-2)", borderRadius: 12, padding: "8px 10px" }}>
                       <div style={{ fontSize: 11, color: m.so_dong ? c.mau : "var(--text-muted)", fontWeight: 700 }}>{m.l}</div>
                       <div style={{ fontSize: 19, fontWeight: 900, color: m.so_dong ? c.mau : "var(--text-muted)" }}>{soLuong(m.so_dong)}</div>
                       <div className="muted" style={{ fontSize: 10.5 }}>{m.so_eo} EO · thiếu {soLuong(m.sl_thieu)}</div>
@@ -164,7 +164,7 @@ function TraLinhKien() {
           {!r.isLoading && ds.length === 0 && <div className="muted" style={{ padding: 8, fontSize: 12.5 }}>Không thấy mã nào. Enter để tra đúng mã "{q.trim()}".</div>}
           {ds.map((x, k) => (
             <div key={x.ma} onMouseDown={(e) => { e.preventDefault(); chon(x.ma); }} onMouseEnter={() => setI(k)}
-              style={{ padding: "6px 8px", borderRadius: 6, cursor: "pointer", background: k === i ? "#FFFBEB" : undefined, display: "flex", gap: 8, alignItems: "baseline" }}>
+              style={{ padding: "6px 8px", borderRadius: 6, cursor: "pointer", background: k === i ? "#fff6e8" : undefined, display: "flex", gap: 8, alignItems: "baseline" }}>
               <b style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{x.ma}</b>
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5 }}>{x.ten}</span>
               <span className="muted" style={{ fontSize: 11, whiteSpace: "nowrap" }}>{x.so_dong ? `${x.so_dong} dòng · ${soLuong(x.sl)}` : "chỉ có phiếu AMIS"}</span>

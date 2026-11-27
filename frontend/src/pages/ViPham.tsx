@@ -27,9 +27,9 @@ interface Data { rows: L[]; tat_ca: boolean; quan_ly: boolean; co_the_gt: boolea
 type Nhom = { x: L; ds: L[] };
 
 export const MUC: Record<string, { l: string; c: string; mau: string; thu: number; gt: string }> = {
-  CEO: { l: "Cấp CEO", c: "reject", mau: "#7F1D1D", thu: 4, gt: "Dòng đang ở cấp CEO: lùi ngày dự kiến ≥ 3 lần, hoặc ngày dự kiến cách ngày đặt ≥ 30 ngày, hoặc ≥ 3 lỗi." },
-  CAO: { l: "Cao", c: "reject", mau: "#DC2626", thu: 3, gt: "Cùng loại lỗi lặp ≥ 3 lần trên dòng mà chưa xử lý / thành vi phạm (lần giải trình, khắc phục đúng hạn không tính), hoặc chờ giải trình ≥ 12 giờ làm việc (sắp hết hạn 16h)." },
-  TB: { l: "Trung bình", c: "final", mau: "#EA580C", thu: 2, gt: "Cùng loại lỗi lặp 2 lần chưa xử lý / thành vi phạm, hoặc chờ giải trình ≥ 8 giờ làm việc (quá lâu)." },
+  CEO: { l: "Cấp CEO", c: "reject", mau: "#8a0010", thu: 4, gt: "Dòng đang ở cấp CEO: lùi ngày dự kiến ≥ 3 lần, hoặc ngày dự kiến cách ngày đặt ≥ 30 ngày, hoặc ≥ 3 lỗi." },
+  CAO: { l: "Cao", c: "reject", mau: "#d70015", thu: 3, gt: "Cùng loại lỗi lặp ≥ 3 lần trên dòng mà chưa xử lý / thành vi phạm (lần giải trình, khắc phục đúng hạn không tính), hoặc chờ giải trình ≥ 12 giờ làm việc (sắp hết hạn 16h)." },
+  TB: { l: "Trung bình", c: "final", mau: "#ff6b00", thu: 2, gt: "Cùng loại lỗi lặp 2 lần chưa xử lý / thành vi phạm, hoặc chờ giải trình ≥ 8 giờ làm việc (quá lâu)." },
   THAP: { l: "Thấp", c: "review", mau: "#CA8A04", thu: 1, gt: "Lỗi lần đầu, mới phát sinh." },
 };
 /** Lam gi de het loi / khong bi lap lai - theo quy tac. */
@@ -47,13 +47,13 @@ const QT_DAI: Record<string, string> = {
   R5: "Bước thẩm định / duyệt mua của PO, hoặc dòng thêm sau ban hành, chờ người duyệt quá 8 giờ làm việc từ lúc được giao (áp dụng từ 27/11/2026 08:00). Mỗi lượt chờ = 1 lỗi cho đúng người duyệt.",
   TAY: "Lỗi do người giải trình tự xác định.",
 };
-const MucBadge = ({ m }: { m: string }) => <span className={`badge ${MUC[m]?.c ?? "nhap"}`} title={MUC[m]?.gt} style={m === "CEO" ? { background: "#7F1D1D", color: "#fff" } : undefined}>{MUC[m]?.l ?? m}</span>;
+const MucBadge = ({ m }: { m: string }) => <span className={`badge ${MUC[m]?.c ?? "nhap"}`} title={MUC[m]?.gt} style={m === "CEO" ? { background: "#8a0010", color: "#fff" } : undefined}>{MUC[m]?.l ?? m}</span>;
 /** v0.092: loi he thong tu dong (da khac phuc sau do / qua han giai trinh) - khong phai giai trinh that */
 const tuDong = (l: L) => !!l.tu_dong;
 /** v0.110 (chu he thong 2026-11-23): CHI loi het han giai trinh ma khong giai trinh moi la VI PHAM (backend baoCaoLoi vi_pham). */
 const vp = (l: L) => !!l.vi_pham;
 const TrangThai = ({ l }: { l: L }) => vp(l)
-  ? <span className="badge reject" style={{ background: "#B91C1C", color: "#fff" }} title={`Hết hạn giải trình ${ngayGio(l.han_gt)} mà không giải trình → ghi nhận vi phạm`}>VI PHẠM · hết hạn GT</span>
+  ? <span className="badge reject" style={{ background: "#d70015", color: "#fff" }} title={`Hết hạn giải trình ${ngayGio(l.han_gt)} mà không giải trình → ghi nhận vi phạm`}>VI PHẠM · hết hạn GT</span>
   : l.trang_thai === "CHO_GIAI_TRINH"
   ? <span className="badge final" title={`Chưa phải vi phạm. Hạn giải trình ${ngayGio(l.han_gt)} — giải trình trước hạn thì không bị ghi vi phạm`}>Cần giải trình</span>
   : l.tu_dong === "CU" ? <span className="badge nhap" title={l.gt_noi_dung ?? ""}>Bỏ qua · lỗi cũ</span>
@@ -78,13 +78,13 @@ const soVp = (ds: L[]) => new Set(ds.map((l) => l.vp_khoa ?? l.id)).size;
 const soDong = (ds: L[]) => new Set(ds.map((l) => l.eo_item_id)).size;
 
 const KPI_DEF: { k: string; l: string; sub: string; mau: string; loc: (l: L, d: Data) => boolean }[] = [
-  { k: "cho", l: "Cần giải trình", sub: "còn trong hạn 16h LV — chưa là vi phạm", mau: "#C2410C", loc: cho },
-  { k: "vi_pham", l: "Vi phạm", sub: "hết hạn mà không giải trình", mau: "#B91C1C", loc: vp },
-  { k: "qua_lau", l: "Quá lâu", sub: "chờ ≥ 8h làm việc (hạn 16h)", mau: "#B45309", loc: (l) => l.qua_lau },
-  { k: "lap", l: "Lặp liên tiếp", sub: "cùng lỗi ≥ 2 lần, chưa xử lý", mau: "#EA580C", loc: (l) => cho(l) && (l.so_lan_xau ?? l.so_lan) >= 2 },
-  { k: "ceo", l: "Ca CEO đang theo dõi", sub: "ca (PO + mã CEO) — khớp màn PO tồn CEO", mau: "#7F1D1D", loc: (l) => l.ceo && l.tinh_trang !== "DONG" },
-  { k: "cao", l: "Mức cao trở lên", sub: "Cao + CEO, chưa giải trình", mau: "#991B1B", loc: (l) => cho(l) && (l.muc === "CAO" || l.muc === "CEO") },
-  { k: "da_7", l: "Đã giải trình 7 ngày", sub: "kết quả xử lý gần đây", mau: "#15803D", loc: (l) => !cho(l) && !tuDong(l) && !!l.gt_luc && Date.now() - Date.parse(String(l.gt_luc).replace(" ", "T") + "+07:00") < 7 * 86400_000 },
+  { k: "cho", l: "Cần giải trình", sub: "còn trong hạn 16h LV — chưa là vi phạm", mau: "#c26400", loc: cho },
+  { k: "vi_pham", l: "Vi phạm", sub: "hết hạn mà không giải trình", mau: "#d70015", loc: vp },
+  { k: "qua_lau", l: "Quá lâu", sub: "chờ ≥ 8h làm việc (hạn 16h)", mau: "#c26400", loc: (l) => l.qua_lau },
+  { k: "lap", l: "Lặp liên tiếp", sub: "cùng lỗi ≥ 2 lần, chưa xử lý", mau: "#ff6b00", loc: (l) => cho(l) && (l.so_lan_xau ?? l.so_lan) >= 2 },
+  { k: "ceo", l: "Ca CEO đang theo dõi", sub: "ca (PO + mã CEO) — khớp màn PO tồn CEO", mau: "#8a0010", loc: (l) => l.ceo && l.tinh_trang !== "DONG" },
+  { k: "cao", l: "Mức cao trở lên", sub: "Cao + CEO, chưa giải trình", mau: "#a3000f", loc: (l) => cho(l) && (l.muc === "CAO" || l.muc === "CEO") },
+  { k: "da_7", l: "Đã giải trình 7 ngày", sub: "kết quả xử lý gần đây", mau: "#1d8a3c", loc: (l) => !cho(l) && !tuDong(l) && !!l.gt_luc && Date.now() - Date.parse(String(l.gt_luc).replace(" ", "T") + "+07:00") < 7 * 86400_000 },
 ];
 
 /** v0.129: nhom trang thai (menu phu "Vi phạm & GT" + o chon tren thanh loc) - tt tren URL. mo = can GT + vi pham; xl = da GT + da khac phuc. */
@@ -96,7 +96,7 @@ const TT_DEF: { k: string; l: string; f: (l: L) => boolean }[] = [
   { k: "da", l: "Đã giải trình", f: (l) => !cho(l) && !vp(l) && !tuDong(l) },
   { k: "tu_dong", l: "Đã khắc phục (tự đóng)", f: (l) => tuDong(l) && !vp(l) },
 ];
-const BEN: Record<string, { l: string; mau: string; nen: string }> = { NCC: { l: "Đối tác", mau: "#1D4ED8", nen: "#DBEAFE" }, NOI_BO: { l: "Nội bộ", mau: "#B45309", nen: "#FEF3C7" } };
+const BEN: Record<string, { l: string; mau: string; nen: string }> = { NCC: { l: "Đối tác", mau: "#0062c4", nen: "#e8f1fc" }, NOI_BO: { l: "Nội bộ", mau: "#c26400", nen: "#fff1dc" } };
 const BenBadge = ({ b }: { b?: string }) => b && BEN[b] ? <span style={{ background: BEN[b].nen, color: BEN[b].mau, fontWeight: 700, fontSize: 11.5, borderRadius: 6, padding: "1px 6px", whiteSpace: "nowrap" }}>{BEN[b].l}</span> : <span className="muted">—</span>;
 const ttTen = (l: L) => (vp(l) ? "Vi phạm" : cho(l) ? "Cần giải trình" : l.tu_dong === "CU" ? "Bỏ qua · lỗi cũ" : tuDong(l) ? "Đã khắc phục" : "Đã giải trình");
 const THU_MA = (m: string) => (m?.startsWith("ER.MH-") ? Number(m.slice(6)) : 999);
@@ -204,14 +204,14 @@ export default function ViPham() {
     { key: "nguoi", header: "Người chịu", loc: "chon", gt: (n) => n.x.nguoi_vp ?? "", nhanChon: (v) => ten(v), render: (n) => <span title={n.x.nguoi_vp ?? ""}><b>{ten(n.x.nguoi_vp)}</b>{n.x.ai_ma && n.x.ai_ma !== "NGUOI_DAT" ? <div className="muted" style={{ fontSize: 11 }}>{tenDm("AI", n.x.ai_ma)}</div> : null}</span> },
     { key: "han", header: "Mốc lỗi", loc: "ngay", gt: (n) => n.x.ngay_tham_chieu ?? n.x.han, render: (n) => <span title={`Mốc lỗi (hạn của quy tắc): ${ngayGio(n.x.han)}`}>{ngay(n.x.ngay_tham_chieu ?? n.x.han)}</span> },
     { key: "han_gt", header: "Hạn giải trình", loc: "ngay", gt: (n) => n.x.han_gt, render: (n) => n.x.han_gt
-      ? <span style={{ whiteSpace: "nowrap", color: cho(n.x) ? "#C2410C" : vp(n.x) ? "var(--danger-ink)" : undefined, fontWeight: cho(n.x) ? 700 : undefined }}>{ngayGio(n.x.han_gt)}
+      ? <span style={{ whiteSpace: "nowrap", color: cho(n.x) ? "#c26400" : vp(n.x) ? "var(--danger-ink)" : undefined, fontWeight: cho(n.x) ? 700 : undefined }}>{ngayGio(n.x.han_gt)}
         {cho(n.x) && <div style={{ fontSize: 11 }}>còn {n.x.con_gio_gt}h LV</div>}</span> : <span className="muted">—</span> },
     { key: "cho", header: "Chờ / phản hồi", loc: "so", gt: (n) => (cho(n.x) ? n.x.tuoi_gio : null), align: "right", render: (n) => cho(n.x)
-      ? <b title={`Đã chờ ${n.x.tuoi_ngay} ngày lịch`} style={{ color: n.x.tuoi_gio >= d.rat_lau_gio ? "var(--danger-ink)" : n.x.tuoi_gio >= d.qua_lau_gio ? "#B45309" : undefined }}>{n.x.tuoi_gio}h LV</b>
+      ? <b title={`Đã chờ ${n.x.tuoi_ngay} ngày lịch`} style={{ color: n.x.tuoi_gio >= d.rat_lau_gio ? "var(--danger-ink)" : n.x.tuoi_gio >= d.qua_lau_gio ? "#c26400" : undefined }}>{n.x.tuoi_gio}h LV</b>
       : <span className="muted" title="Số ngày từ hạn đến lúc giải trình">sau {n.x.tuoi_ngay} ngày</span> },
     { key: "nhac", header: "Nhắc", loc: "so", gt: (n) => n.x.so_nhac, align: "center", render: (n) => n.x.so_nhac ? <span title={`${n.x.so_nhac} lần nhắc trên dòng (${n.x.so_nhac_tay} nhắc tay) · gần nhất ${ngayGio(n.x.nhac_gan_nhat)}`}>{n.x.so_nhac}</span> : <span className="muted">0</span> },
     { key: "gt", header: "Giải trình / lý do", loc: "chu", gt: (n) => n.x.gt_noi_dung ?? "", maxW: 260, render: (n) => n.x.gt_noi_dung ? <span title={`${ten(n.x.gt_boi)} · ${ngayGio(n.x.gt_luc)}\n${n.x.gt_noi_dung}`}>{n.x.gt_noi_dung}</span> : <span className="muted">—</span> },
-    { key: "ceo", header: "Cấp CEO vì", loc: "chu", gt: (n) => (n.x.ceo_ly_do ?? []).join(" "), maxW: 220, render: (n) => n.x.ceo ? <span style={{ color: "#7F1D1D", fontSize: 12 }} title={n.x.ceo_ly_do.join("\n")}>{n.x.ceo_ly_do.join(" · ")}</span> : <span className="muted">—</span> },
+    { key: "ceo", header: "Cấp CEO vì", loc: "chu", gt: (n) => (n.x.ceo_ly_do ?? []).join(" "), maxW: 220, render: (n) => n.x.ceo ? <span style={{ color: "#8a0010", fontSize: 12 }} title={n.x.ceo_ly_do.join("\n")}>{n.x.ceo_ly_do.join(" · ")}</span> : <span className="muted">—</span> },
   ];
 
   // ------ theo PO
@@ -227,7 +227,7 @@ export default function ViPham() {
     </div> },
     { key: "po", header: "PO (mã phê duyệt)", loc: "chu", gt: (p) => `${maPo(p.x)} ${p.x.eo_code}`, render: (p) => <EoLink id={p.x.eo_id}>{maPo(p.x)}</EoLink> },
     { key: "muc", header: "Mức cao nhất", loc: "chon", gt: (p) => p.muc, nhanChon: (v) => MUC[v]?.l ?? v, gtSap: (p) => MUC[p.muc]?.thu, render: (p) => <MucBadge m={p.muc} /> },
-    { key: "cho", header: "Cần giải trình", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{p.cho}</b> : <span className="muted">0</span> },
+    { key: "cho", header: "Cần giải trình", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#c26400" }}>{p.cho}</b> : <span className="muted">0</span> },
     { key: "vp", header: "Vi phạm", loc: "so", gt: (p) => p.vi_pham, align: "right", render: (p) => p.vi_pham ? <b style={{ color: "var(--danger-ink)" }}>{p.vi_pham}</b> : <span className="muted">0</span> },
     { key: "ben", header: "Lỗi đối tác / nội bộ", loc: "so", gt: (p) => p.ncc + p.nb, render: (p) => <span style={{ whiteSpace: "nowrap", fontSize: 12 }}>{p.ncc > 0 && <><BenBadge b="NCC" /> {p.ncc} </>}{p.nb > 0 && <><BenBadge b="NOI_BO" /> {p.nb}</>}</span> },
     { key: "tong", header: "Tổng lỗi", loc: "so", gt: (p) => p.ds.length, align: "right", render: (p) => p.ds.length },
@@ -250,7 +250,7 @@ export default function ViPham() {
       {p.cho > 0 && d.quan_ly && <button className="btn sm" onClick={() => setMd({ k: "nhac", ids: p.ds.filter(cho).map((l) => l.id), ten: ten(p.x.nguoi_vp) })}>Nhắc</button>}
     </div> },
     { key: "nguoi", header: "Người chịu lỗi", loc: "chon", gt: (p) => p.x.nguoi_vp ?? "", nhanChon: (v) => ten(v), render: (p) => <b title={p.x.nguoi_vp}>{ten(p.x.nguoi_vp) || "—"}</b> },
-    { key: "cho", header: "Cần giải trình", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{p.cho}</b> : <span className="muted">0</span> },
+    { key: "cho", header: "Cần giải trình", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#c26400" }}>{p.cho}</b> : <span className="muted">0</span> },
     { key: "vp", header: "Vi phạm", loc: "so", gt: (p) => p.vi_pham, align: "right", render: (p) => p.vi_pham ? <b style={{ color: "var(--danger-ink)" }} title="Hết hạn giải trình mà không giải trình">{p.vi_pham}</b> : <span className="muted">0</span> },
     { key: "lau", header: `Quá lâu (≥ ${d.qua_lau_gio}h LV)`, loc: "so", gt: (p) => p.qua_lau, align: "right", render: (p) => p.qua_lau || <span className="muted">0</span> },
     { key: "lap", header: "Lặp liên tiếp", loc: "so", gt: (p) => p.lap, align: "right", render: (p) => p.lap || <span className="muted">0</span> },
@@ -279,10 +279,10 @@ export default function ViPham() {
     { key: "ben", header: "Bên chịu", loc: "chon", gt: (p) => p.x.ben ?? "", nhanChon: (v) => BEN[v]?.l ?? v, render: (p) => <BenBadge b={p.x.ben} /> },
     { key: "tong", header: "Lỗi", loc: "so", gt: (p) => p.ds.length, align: "right", render: (p) => <b title="Số lỗi (gộp: cùng lỗi, cùng PO, cùng kỳ) — mọi trạng thái">{soLuong(p.ds.length)}</b> },
     { key: "vp", header: "Vi phạm", loc: "so", gt: (p) => p.vp, align: "right", render: (p) => p.vp ? <b style={{ color: "var(--danger-ink)" }} title="Hết hạn giải trình mà không giải trình">{soLuong(p.vp)}</b> : <span className="muted">0</span> },
-    { key: "cho", header: "Cần GT", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#C2410C" }}>{soLuong(p.cho)}</b> : <span className="muted">0</span> },
+    { key: "cho", header: "Cần GT", loc: "so", gt: (p) => p.cho, align: "right", render: (p) => p.cho ? <b style={{ color: "#c26400" }}>{soLuong(p.cho)}</b> : <span className="muted">0</span> },
     { key: "da", header: "Đã GT", loc: "so", gt: (p) => p.da, align: "right", render: (p) => soLuong(p.da) },
     { key: "tu", header: "Đã khắc phục", loc: "so", gt: (p) => p.tu, align: "right", render: (p) => p.tu ? <span title="Hệ thống tự đóng vì đã khắc phục trong hạn — không tính vi phạm">{soLuong(p.tu)}</span> : <span className="muted">0</span> },
-    { key: "pct", header: "% giải trình", loc: "so", gt: (p) => p.pct, align: "right", render: (p) => <b style={{ color: p.pct < 30 ? "var(--danger-ink)" : p.pct < 70 ? "#B45309" : "var(--ok-ink)" }}>{p.pct}%</b> },
+    { key: "pct", header: "% giải trình", loc: "so", gt: (p) => p.pct, align: "right", render: (p) => <b style={{ color: p.pct < 30 ? "var(--danger-ink)" : p.pct < 70 ? "#c26400" : "var(--ok-ink)" }}>{p.pct}%</b> },
     { key: "lau", header: `Chờ ≥ ${d.qua_lau_gio}h LV`, loc: "so", gt: (p) => p.qua_lau, align: "right", render: (p) => p.qua_lau || <span className="muted">0</span> },
     { key: "po", header: "Số PO · dòng", loc: "so", gt: (p) => p.po, align: "right", render: (p) => <>{p.po}<span className="muted"> · {p.dong}</span></> },
     { key: "nguoi", header: "Bị gán nhiều nhất", maxW: 200, render: (p) => p.nguoi.slice(0, 3).map(([k, n]) => `${ten(k)} (${n})`).join(", ") || "—" },
@@ -321,9 +321,9 @@ export default function ViPham() {
       <Card>
         {/* thanh thao tac gon (giong Don PO): pham vi · nhom · cach xem · tim · loc dang ap · so dong · thao tac */}
         <FilterBar>
-          <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+          <div className="seg" role="tablist">
             {[["cua_toi", `Của tôi (${soVp((d.rows ?? []).filter((l) => l.cua_toi && cho(l)))})`], ["tat_ca", d.tat_ca ? "Toàn bộ" : "Phạm vi của tôi"]].map(([k, t]) => (
-              <button key={k} className="btn sm" style={{ borderRadius: 0, border: 0, background: xem === k ? "var(--brand-yellow-btn)" : "#fff", fontWeight: xem === k ? 800 : 500 }}
+              <button key={k} role="tab" aria-selected={xem === k} className={xem === k ? "on" : ""}
                 onClick={() => { set("xem", k); setChon(new Set()); }}>{t}</button>
             ))}
           </div>
@@ -348,7 +348,7 @@ export default function ViPham() {
           {coLoc && <RefreshFiltersBtn onClick={xoaLoc} />}
           <div style={{ flex: 1 }} />
           <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }} title={xem === "cua_toi" ? `Bạn có ${soVpCho} lỗi cần giải trình trên ${poCho} PO — giải trình trước hạn 16 giờ làm việc thì không bị ghi vi phạm` : undefined}>
-            <b style={{ color: "var(--text)" }}>{soLuong(soHien)}</b> {donVi}{xem === "cua_toi" && soVpCho > 0 ? <> · <b style={{ color: "#C2410C" }}>{soVpCho} cần GT</b> / {poCho} PO</> : null}</span>
+            <b style={{ color: "var(--text)" }}>{soLuong(soHien)}</b> {donVi}{xem === "cua_toi" && soVpCho > 0 ? <> · <b style={{ color: "#c26400" }}>{soVpCho} cần GT</b> / {poCho} PO</> : null}</span>
           {kieu === "loi" && idsChon.length > 0 && <>
             <span className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}>Đã chọn {nhomChon.length} · {idsChon.length} lỗi{loaiChon.length > 1 ? ` · ${loaiChon.length} loại` : ""}<span role="button" style={{ cursor: "pointer" }} onClick={() => setChon(new Set())}>×</span></span>
             {d.co_the_gt && <button className="btn sm primary" disabled={loaiChon.length > 1} title={loaiChon.length > 1 ? "Chỉ giải trình chung được các lỗi cùng loại — bỏ chọn bớt hoặc lọc cột Lỗi" : "1 nội dung giải trình cho mọi lỗi đã chọn"}
@@ -453,7 +453,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
     ...(x.han_gt ? [{ l: "Hạn giải trình", t: cho(x) ? `${ngayGio(x.han_gt)} · còn ${x.con_gio_gt}h LV` : ngayGio(x.han_gt), tt: cho(x) ? "dang" : "qua", tip: `Hạn = mốc lỗi + ${16} giờ làm việc` } as Moc] : []),
     ketQua,
   ];
-  const MAU_MOC = { qua: "#16A34A", dang: "#EA580C", chua: "#CBD5E1", bo: "#94A3B8", xau: "#B91C1C" } as const;
+  const MAU_MOC = { qua: "#1d8a3c", dang: "#ff6b00", chua: "#d2d2d7", bo: "#86868b", xau: "#d70015" } as const;
 
   const L = ({ children }: { children: ReactNode }) => <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "14px 0 6px" }}>{children}</div>;
   const Tt = ({ k, v }: { k: string; v: ReactNode }) => <div style={{ minWidth: 0 }}><div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{k}</div><div style={{ fontSize: 13, marginTop: 1 }}>{v || "—"}</div></div>;
@@ -492,18 +492,18 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
             <div className="qv-quytrinh" style={{ display: "flex", alignItems: "flex-start", padding: "14px 18px 10px" }}>
               {mocs.map((m, i) => (
                 <div key={i} title={m.tip} style={{ flex: 1, minWidth: 0, position: "relative", textAlign: "center" }}>
-                  {i > 0 && <div style={{ position: "absolute", top: 9, right: "50%", width: "100%", height: 3, background: m.tt === "chua" || m.tt === "bo" ? "#E2E8F0" : MAU_MOC[m.tt], zIndex: 0 }} />}
+                  {i > 0 && <div style={{ position: "absolute", top: 9, right: "50%", width: "100%", height: 3, background: m.tt === "chua" || m.tt === "bo" ? "#e8e8ed" : MAU_MOC[m.tt], zIndex: 0 }} />}
                   <div style={{ position: "relative", zIndex: 1, margin: "0 auto", width: m.tt === "dang" || m.tt === "xau" ? 22 : 18, height: m.tt === "dang" || m.tt === "xau" ? 22 : 18, marginTop: m.tt === "dang" || m.tt === "xau" ? -2 : 0,
-                    borderRadius: "50%", background: m.tt === "bo" ? "#fff" : MAU_MOC[m.tt], border: m.tt === "bo" ? "2px dashed #94A3B8" : "3px solid #fff",
-                    boxShadow: m.tt === "dang" ? "0 0 0 4px #FED7AA" : m.tt === "xau" ? "0 0 0 4px #FECACA" : "0 0 0 1px #E2E8F0" }} />
-                  <div style={{ fontSize: 12.5, marginTop: 6, color: m.tt === "dang" ? "#C2410C" : m.tt === "xau" ? "#B91C1C" : m.tt === "chua" || m.tt === "bo" ? "var(--text-muted)" : "var(--text)", fontWeight: m.tt === "dang" || m.tt === "xau" ? 700 : 500 }}>{m.l}</div>
+                    borderRadius: "50%", background: m.tt === "bo" ? "#fff" : MAU_MOC[m.tt], border: m.tt === "bo" ? "2px dashed #86868b" : "3px solid #fff",
+                    boxShadow: m.tt === "dang" ? "0 0 0 4px #ffd8a8" : m.tt === "xau" ? "0 0 0 4px #ffd0cc" : "0 0 0 1px #e8e8ed" }} />
+                  <div style={{ fontSize: 12.5, marginTop: 6, color: m.tt === "dang" ? "#c26400" : m.tt === "xau" ? "#d70015" : m.tt === "chua" || m.tt === "bo" ? "var(--text-muted)" : "var(--text)", fontWeight: m.tt === "dang" || m.tt === "xau" ? 700 : 500 }}>{m.l}</div>
                   <div className="muted" style={{ fontSize: 11.5 }}>{m.t}</div>
                 </div>
               ))}
             </div>
             <div className="qv-scroll" style={{ padding: "4px 18px 16px", fontSize: 13, lineHeight: 1.55 }}>
               {/* ket luan 1 cau - nen nhat, khong khung dam */}
-              <div style={{ padding: "8px 12px", borderRadius: 10, marginTop: 8, background: vp(x) ? "#FEF2F2" : cho(x) ? "#FFF7ED" : "#F0FDF4", color: vp(x) ? "#991B1B" : cho(x) ? "#9A3412" : "#166534" }}>
+              <div style={{ padding: "8px 12px", borderRadius: 10, marginTop: 8, background: vp(x) ? "#fff2f1" : cho(x) ? "#fff6e8" : "#effaf1", color: vp(x) ? "#a3000f" : cho(x) ? "#9A3412" : "#176e30" }}>
                 {vp(x) ? <>Hết hạn giải trình {ngayGio(x.han_gt)} mà không có giải trình → ghi nhận vi phạm, không giải trình được nữa.</>
                   : cho(x) ? <>Cần giải trình — chưa phải vi phạm. Còn {x.con_gio_gt} giờ làm việc (hạn {ngayGio(x.han_gt)}). Giải trình hoặc khắc phục trước hạn thì không bị ghi vi phạm.</>
                   : x.tu_dong === "CU" ? <>Lỗi cũ / vi phạm chốt trước đào tạo 20/11/2026 — hệ thống tự bỏ, không tính vi phạm.</>
@@ -511,7 +511,7 @@ function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong
                   : x.quy_tac === "TAY" ? <>Lỗi do người giải trình tự ghi nhận — không tính vi phạm.</>
                   : <>Đã giải trình lúc {ngayGio(x.gt_luc)}, trước hạn — không tính vi phạm.</>}
               </div>
-              {x.ceo && <div style={{ marginTop: 6, color: "#7F1D1D" }}>Cấp CEO vì: {x.ceo_ly_do.join(" · ")} <span className="muted">(hệ thống tự tính, không có hạn giải trình)</span></div>}
+              {x.ceo && <div style={{ marginTop: 6, color: "#8a0010" }}>Cấp CEO vì: {x.ceo_ly_do.join(" · ")} <span className="muted">(hệ thống tự tính, không có hạn giải trình)</span></div>}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div><L>Vì sao có lỗi</L><div>{QT_DAI[x.quy_tac]}</div><div className="muted" style={{ marginTop: 4 }}>Mức {MUC[x.muc].l}: {lyDoMuc}</div></div>

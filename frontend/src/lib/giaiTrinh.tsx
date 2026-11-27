@@ -61,12 +61,12 @@ export type TrangThaiGt = "CAN_GT" | "DA_GT" | "KHAC_PHUC" | "VI_PHAM" | "BO_QUA
 /** v0.113: loi co moc truoc ngay nay = vi pham cu, bo qua (khop backend lib/theoDoi VP_CU_TRUOC) */
 export const VP_CU_TRUOC = "2026-11-01";
 export const NHAN_GT: Record<TrangThaiGt, { l: string; cls: string; mau: string; mo: string }> = {
-  CAN_GT: { l: "Cần giải trình", cls: "final", mau: "#B45309", mo: "Đang trong hạn giải trình — chưa phải vi phạm" },
-  DA_GT: { l: "Đã giải trình", cls: "issued", mau: "#15803D", mo: "Đã giải trình trong hạn" },
-  KHAC_PHUC: { l: "Đã khắc phục", cls: "nhap", mau: "#475569", mo: "Hệ thống tự đóng vì đã khắc phục / đã giải trình cùng lỗi" },
-  VI_PHAM: { l: "VI PHẠM", cls: "reject", mau: "#B91C1C", mo: "Hết hạn giải trình mà không giải trình" },
-  BO_QUA: { l: "Bỏ qua · lỗi cũ", cls: "nhap", mau: "#64748B", mo: "Lỗi cũ trước 01/11/2026 hoặc vi phạm chốt trước đào tạo 20/11/2026 — hệ thống tự bỏ, không tính vi phạm" },
-  TAY: { l: "Ghi khi giải trình", cls: "nhap", mau: "#475569", mo: "Lỗi do người giải trình tự ghi nhận" },
+  CAN_GT: { l: "Cần giải trình", cls: "final", mau: "#c26400", mo: "Đang trong hạn giải trình — chưa phải vi phạm" },
+  DA_GT: { l: "Đã giải trình", cls: "issued", mau: "#1d8a3c", mo: "Đã giải trình trong hạn" },
+  KHAC_PHUC: { l: "Đã khắc phục", cls: "nhap", mau: "#515154", mo: "Hệ thống tự đóng vì đã khắc phục / đã giải trình cùng lỗi" },
+  VI_PHAM: { l: "VI PHẠM", cls: "reject", mau: "#d70015", mo: "Hết hạn giải trình mà không giải trình" },
+  BO_QUA: { l: "Bỏ qua · lỗi cũ", cls: "nhap", mau: "#6e6e73", mo: "Lỗi cũ trước 01/11/2026 hoặc vi phạm chốt trước đào tạo 20/11/2026 — hệ thống tự bỏ, không tính vi phạm" },
+  TAY: { l: "Ghi khi giải trình", cls: "nhap", mau: "#515154", mo: "Lỗi do người giải trình tự ghi nhận" },
 };
 
 /** Moc tinh han giai trinh cua 1 loi (= backend COALESCE(han, created_at)). */

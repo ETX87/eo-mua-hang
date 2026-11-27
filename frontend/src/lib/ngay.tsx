@@ -5,9 +5,9 @@
  *   NM = Ngay nha may cam ket: nha may / NCC xac nhan (item_plan.factory_committed_date). Thuong DK = NM -> form tu dien DK theo NM.
  */
 export const NGAY = {
-  VE: { l: "Ngày hàng về", ngan: "Hàng về", mau: "#15803D", nen: "#F0FDF4", mo_ta: "Ngày thực tế hàng nhập kho — tự động lấy từ phiếu nhập AMIS, không nhập tay." },
-  DK: { l: "Ngày dự kiến", ngan: "Dự kiến", mau: "#1D4ED8", nen: "#EFF6FF", mo_ta: "Ngày ước tính hàng sẽ về kho. Thường = ngày nhà máy cam kết. Dùng để nhắc hạn, tính quá hạn & số lần lùi." },
-  NM: { l: "Ngày nhà máy cam kết", ngan: "NM cam kết", mau: "#B45309", nen: "#FFFBEB", mo_ta: "Ngày nhà máy / NCC xác nhận sẽ giao — xin từ nhà máy (mail, file push), ghi nguồn ở Ghi chú." },
+  VE: { l: "Ngày hàng về", ngan: "Hàng về", mau: "#1d8a3c", nen: "#effaf1", mo_ta: "Ngày thực tế hàng nhập kho — tự động lấy từ phiếu nhập AMIS, không nhập tay." },
+  DK: { l: "Ngày dự kiến", ngan: "Dự kiến", mau: "#0062c4", nen: "#e8f1fc", mo_ta: "Ngày ước tính hàng sẽ về kho. Thường = ngày nhà máy cam kết. Dùng để nhắc hạn, tính quá hạn & số lần lùi." },
+  NM: { l: "Ngày nhà máy cam kết", ngan: "NM cam kết", mau: "#c26400", nen: "#fff6e8", mo_ta: "Ngày nhà máy / NCC xác nhận sẽ giao — xin từ nhà máy (mail, file push), ghi nguồn ở Ghi chú." },
 } as const;
 export type LoaiNgay = keyof typeof NGAY;
 

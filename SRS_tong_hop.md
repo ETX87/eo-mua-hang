@@ -59,6 +59,11 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
 
 ## 5. Yêu cầu chung / phi chức năng
 
+- **Giao diện kiểu Apple** (v0.140, chủ hệ thống 27/11/2026 "chuyển đổi toàn bộ giao diện app sang skill apple đang lưu"): toàn app theo skill `giao-dien-apple` —
+  nền `#f5f5f7`, thẻ trắng không viền + bóng mềm bo 20, nút viên thuốc (nút chính xanh `#0071e3`), ô nhập nền xám không viền, segmented iOS / tab viên thuốc,
+  menu bên + thanh trên + tiêu đề popup kính mờ, màu có nghĩa (xanh lá xong · cam đang xử lý / đang lọc · đỏ lỗi · tím giải trình), font hệ thống (không tải font web),
+  điện thoại: Modal thành bottom-sheet. Chỉ đổi vẻ ngoài — luật bảng Excel, lọc chọn nhiều, luồng ngang + Xem chi tiết giữ nguyên.
+
 - Mọi bộ lọc theo danh sách giá trị cho tick chọn nhiều (checkbox, tìm không dấu, chọn tất cả / bỏ chọn); nhiều giá trị cùng bộ lọc = HOẶC,
   nhóm nhanh chọn nhiều = hợp các nhóm. Ô chế độ / bộ lọc 2 giá trị đối lập giữ chọn 1.
 - Bảng kiểu Excel (lọc + sắp xếp trên tiêu đề, nhãn "đang lọc n cột · x / y dòng"; cột ngày / số có thêm "Chưa có ngày (ô trống) / Đã có ngày"), thanh thao tác 1 dòng, bộ lọc ít dùng giấu sau "Bộ lọc khác".

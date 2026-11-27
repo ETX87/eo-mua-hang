@@ -47,9 +47,9 @@ interface Data {
 }
 
 const MUC: Record<Muc, { l: string; mau: string; nen: string }> = {
-  DO: { l: "ĐỎ", mau: "#DC2626", nen: "#FEE2E2" },
-  VANG: { l: "VÀNG", mau: "#B45309", nen: "#FEF3C7" },
-  XANH: { l: "XANH", mau: "#15803D", nen: "#DCFCE7" },
+  DO: { l: "ĐỎ", mau: "#d70015", nen: "#ffe7e5" },
+  VANG: { l: "VÀNG", mau: "#c26400", nen: "#fff1dc" },
+  XANH: { l: "XANH", mau: "#1d8a3c", nen: "#e2f6e7" },
 };
 const TT: Record<string, string> = { CHO_NDK: "Chờ ngày DK", TRE_NDK: "Trễ hạn chưa có ngày DK", QUA_HAN_NDK: "Quá ngày DK", CHO_HANG: "Có ngày DK, chờ hàng" };
 const QT_GD: Record<string, string> = { R3: "G4", R1: "G5", R4: "G6", R5: "G3" };
@@ -120,7 +120,7 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
   // ---- ket luan nhanh (cau tu sinh, bam duoc)
   const ketLuan: { icon: string; txt: ReactNode; onClick?: () => void; mau?: string }[] = [];
   ketLuan.push({
-    icon: doDs.length ? "🔴" : "🟢", mau: doDs.length ? "#DC2626" : "#15803D", onClick: () => chonTc("DO"),
+    icon: doDs.length ? "🔴" : "🟢", mau: doDs.length ? "#d70015" : "#1d8a3c", onClick: () => chonTc("DO"),
     txt: <><b>{soLuong(doDs.length)} / {soLuong(dongPv.length)}</b> dòng đang mở ở mức ĐỎ (<b>{pctTxt(doDs.length, dongPv.length)}</b>) — thuộc <b>{soPo(doDs)}</b> PO; {soLuong(dem((x) => x.muc === "VANG"))} dòng vàng.</>,
   });
   const lyDoDem = new Map<string, number>();
@@ -129,7 +129,7 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
   if (lyDoTop.length) ketLuan.push({ icon: "🧭", txt: <>Đỏ vì: {lyDoTop.map(([l, n], i) => <span key={l}>{i > 0 && " · "}<b>{l}</b> ({soLuong(n)} dòng)</span>)}.</> });
   const nguoiNhac = theoNguoi.filter((x) => x.dong > 0).sort((a, b) => b.do - a.do || b.loi_cho - a.loi_cho)[0];
   if (nguoiNhac && nguoiNhac.do > 0) ketLuan.push({
-    icon: "👤", mau: "#B91C1C", onClick: () => { setPv({ ...pv, nguoi: [nguoiNhac.ai] }); setTieuChi("DO"); setTab("nong"); },
+    icon: "👤", mau: "#d70015", onClick: () => { setPv({ ...pv, nguoi: [nguoiNhac.ai] }); setTieuChi("DO"); setTab("nong"); },
     txt: <>Cần nhắc ngay: <b>{ten(nguoiNhac.ai)}</b> — giữ {soLuong(nguoiNhac.dong)} dòng, <b>{soLuong(nguoiNhac.do)} đỏ</b>, {soLuong(nguoiNhac.loi_cho)} lỗi cần giải trình,
       chỉ <b>{pctTxt(nguoiNhac.td7_dong, nguoiNhac.dong)}</b> dòng có tác động 7 ngày qua{nguoiNhac.im_lang7 ? `, ${soLuong(nguoiNhac.im_lang7)} dòng im lặng ≥ 7 ngày` : ""}.</>,
   });
@@ -140,7 +140,7 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
       phản hồi {soLuong(nccXau.phan_hoi)} / {soLuong(nccXau.thuc)} lần thúc{nccXau.tre_g6 ? `, ${nccXau.tre_g6} dòng giao trễ hẹn 30 ngày qua` : ""}.</>,
   });
   ketLuan.push({
-    icon: gtPct < 0.3 ? "⚠️" : "✅", mau: gtPct < 0.3 ? "#B45309" : undefined, onClick: () => setTab("nn"),
+    icon: gtPct < 0.3 ? "⚠️" : "✅", mau: gtPct < 0.3 ? "#c26400" : undefined, onClick: () => setTab("nn"),
     txt: <>Kỷ luật giải trình: mới giải trình <b>{soLuong(d.do_phu.da_gt)} / {soLuong(d.do_phu.tong_loi)}</b> lỗi (<b>{pctTxt(d.do_phu.da_gt, d.do_phu.tong_loi)}</b>){d.do_phu.tu_dong ? <> · hệ thống tự đóng <b>{soLuong(d.do_phu.tu_dong)}</b> (đã khắc phục trong hạn — không tính vi phạm · hết hạn giải trình 16h làm việc — vi phạm)</> : null}
       {gtPct < 0.3 ? " — chưa đủ cơ sở kết luận nguyên nhân, phải ép giải trình trước." : "."}</>,
   });
@@ -190,7 +190,7 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
 
       {tab === "tong" && <>
       {/* 1. KET LUAN NHANH */}
-      <Card style={{ borderLeft: `5px solid ${doDs.length ? "#DC2626" : "#16A34A"}` }}>
+      <Card style={{ boxShadow: `0 0 0 2px ${doDs.length ? "#ff3b30" : "#2fb350"}, var(--shadow)` }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
           <b style={{ fontSize: 15 }}>Kết luận nhanh</b>
           <span className="muted" style={{ fontSize: 11.5 }}>{coLoc ? "theo phạm vi đang lọc" : "toàn hệ thống"} · bấm từng câu để xem danh sách</span>
@@ -240,7 +240,7 @@ export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
 
 function O({ l, v, sub, mau, on, onClick }: { l: string; v: ReactNode; sub?: string; mau?: string; on?: boolean; onClick?: () => void }) {
   return (
-    <div className="ql-o" onClick={onClick} style={{ cursor: "pointer", outline: on ? "2px solid var(--brand-yellow-btn)" : undefined, borderTop: `3px solid ${mau ?? "var(--border)"}` }}>
+    <div className="ql-o" onClick={onClick} style={{ cursor: "pointer", background: on ? "#fff" : undefined, boxShadow: on ? "0 0 0 2px var(--ocean-600)" : undefined }}>
       <div className="ql-l">{l}</div>
       <div className="ql-v" style={{ color: mau }}>{v}</div>
       {sub && <div className="ql-s">{sub}</div>}
@@ -267,14 +267,14 @@ function LuongGiaiDoan({ gd, dong, loi30, chon, onChon, coLoc }: { gd: Gd[]; don
         <div className="ttq-nhan"><b>Đơn đang ở</b><span className="muted" style={{ fontSize: 11 }}>bấm mốc để lọc</span></div>
         <div className="ttq-line" style={{ marginTop: 0, flex: 1, minWidth: 0 }}>
           {nut.map((n, i) => {
-            const tt = n.tre ? { nen: "#EF4444", vien: "#DC2626", chu: "#fff" } : n.dang ? { nen: "#F59E0B", vien: "#D97706", chu: "#fff" } : { nen: "#22C55E", vien: "#16A34A", chu: "#fff" };
+            const tt = n.tre ? { nen: "#ff3b30", vien: "#d70015", chu: "#fff" } : n.dang ? { nen: "#ff9500", vien: "#c26400", chu: "#fff" } : { nen: "#2fb350", vien: "#1d8a3c", chu: "#fff" };
             return (
               <div key={n.g.k} className="ttq-nut" onClick={() => onChon(n.g.k)} style={{ cursor: "pointer", opacity: chon && chon !== n.g.k ? 0.5 : 1 }}
                 title={`${n.g.k} ${n.g.l} — ${n.g.vai_tro}\n${n.dang} dòng đang ở, ${n.tre} trễ hạn\nLỗi 30 ngày: ${n.loi} (${n.loiCho} chờ giải trình)\n30 ngày: ${n.g.xong30} dòng qua bước, ${n.g.tre30} trễ hạn`}>
-                {i > 0 && <div className="ttq-noi" style={{ background: "#E2E8F0" }} />}
+                {i > 0 && <div className="ttq-noi" style={{ background: "#e8e8ed" }} />}
                 <div className={`ttq-cham${chon === n.g.k ? " on" : ""}`} style={{ background: tt.nen, borderColor: tt.vien, color: tt.chu, borderStyle: n.g.k === "G4" || n.g.k === "G7" ? "dashed" : "solid" }}>
                   {n.g.k.slice(1)}
-                  {n.loiCho > 0 && <span className="ttq-loi" style={{ background: "#DC2626" }}>{n.loiCho > 999 ? "999+" : n.loiCho}</span>}
+                  {n.loiCho > 0 && <span className="ttq-loi" style={{ background: "#d70015" }}>{n.loiCho > 999 ? "999+" : n.loiCho}</span>}
                 </div>
                 <div className="ttq-ten" style={{ fontWeight: n.dang ? 800 : 600 }}>{n.g.l}</div>
                 <div className="ttq-phu" style={{ color: n.tre ? "var(--danger-ink)" : undefined }}>{n.dang ? `${soLuong(n.dang)} đang${n.tre ? ` · ${soLuong(n.tre)} trễ` : ""}` : "—"}</div>
@@ -543,10 +543,10 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
           {phu < 0.3 && <b style={{ color: "var(--danger-ink)" }}> Dưới 30% → các tỷ lệ nguyên nhân bên cạnh chỉ là mẫu nhỏ, chưa dùng để kết luận. Ưu tiên ép giải trình.</b>}</div>
         <div style={{ marginTop: 12 }}><b>Lỗi phát sinh 30 ngày theo quy tắc</b></div>
         {[...theoQt.entries()].sort((a, b) => b[1].n - a[1].n).map(([k, x]) => (
-          <Thanh key={k} l={`${QT_TEN[k] ?? k}${QT_GD[k] ? ` (${QT_GD[k]})` : ""}`} n={x.n} tong={tongQt} mau="#F87171" sub={`${soLuong(x.cho)} cần giải trình · ${soLuong(x.vp)} vi phạm (hết hạn không GT)`} />
+          <Thanh key={k} l={`${QT_TEN[k] ?? k}${QT_GD[k] ? ` (${QT_GD[k]})` : ""}`} n={x.n} tong={tongQt} mau="#ff7b73" sub={`${soLuong(x.cho)} cần giải trình · ${soLuong(x.vp)} vi phạm (hết hạn không GT)`} />
         ))}
         {theoQt.get("R3") && tongQt && theoQt.get("R3")!.n / tongQt > 0.5 && (
-          <div style={{ fontSize: 11.5, background: "#FEF3C7", borderRadius: 6, padding: "6px 8px", marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, background: "#fff1dc", borderRadius: 6, padding: "6px 8px", marginTop: 4 }}>
             R3 chiếm hơn nửa số lỗi: hệ thống chỉ coi là "đã push" khi hộp thư theo dõi đồng bộ mail <b>khớp mã nhắc hoặc gắn được dòng</b>, hoặc có ghi nhận gọi/Zalo. Mail thúc NCC không ghi mã PO + mã LK
             sẽ không được nhận — cần soát cách gửi mail trước khi kết luận nhân viên không thúc.
           </div>
@@ -554,10 +554,10 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
       </div>
       <div>
         <b>Hệ thống gán lỗi cho (30 ngày)</b>
-        {[...ganCho.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([ai, n]) => <Thanh key={ai} l={ten(ai) || "(không rõ)"} n={n} tong={tongQt} mau="#FB923C" />)}
+        {[...ganCho.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([ai, n]) => <Thanh key={ai} l={ten(ai) || "(không rõ)"} n={n} tong={tongQt} mau="#ffa040" />)}
         <div style={{ marginTop: 12 }}><b>Nguyên nhân thật theo giải trình — "do ai"</b> <span className="muted" style={{ fontSize: 11 }}>({soLuong(tongGt)} giải trình)</span></div>
         {tongGt === 0 ? <div className="muted" style={{ fontSize: 12 }}>Chưa có giải trình nào.</div>
-          : [...theoAi.entries()].sort((a, b) => b[1] - a[1]).map(([ma, n]) => <Thanh key={ma} l={dmTen("AI", ma)} n={n} tong={tongGt} mau="#60A5FA"
+          : [...theoAi.entries()].sort((a, b) => b[1] - a[1]).map(([ma, n]) => <Thanh key={ma} l={dmTen("AI", ma)} n={n} tong={tongGt} mau="#5ea9ff"
             sub={d.nguyen_nhan.filter((x) => x.ai_ma === ma).slice(0, 3).map((x) => `${dmTen("LOI", x.loi_ma)}: ${x.n}`).join(" · ")} />)}
       </div>
       <div>
@@ -570,9 +570,9 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
               <YAxis tick={{ fontSize: 10.5 }} axisLine={false} tickLine={false} />
               <Tooltip />
               <Legend iconType="plainline" wrapperStyle={{ fontSize: 11.5 }} />
-              <Bar dataKey="loi" name="Lỗi phát sinh" fill="#FCA5A5" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="gt" name="Giải trình" fill="#86EFAC" radius={[3, 3, 0, 0]} />
-              <Line type="monotone" dataKey="nhac" name="Nhắc nhở" stroke="#F59E0B" strokeWidth={2} dot={{ r: 2.5 }} />
+              <Bar dataKey="loi" name="Lỗi phát sinh" fill="#ffb3ad" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="gt" name="Giải trình" fill="#a6e3b4" radius={[3, 3, 0, 0]} />
+              <Line type="monotone" dataKey="nhac" name="Nhắc nhở" stroke="#ff9500" strokeWidth={2} dot={{ r: 2.5 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -589,7 +589,7 @@ function NguyenNhan({ d, loi30, dmTen }: { d: Data; loi30: Data["loi30"]; dmTen:
  * -> mac dinh theo giai doan (R1/R4 NCC, R3 noi bo). KHONG GIAI TRINH (het han) = loi rieng cua nguoi phai giai trinh, tach khoi 2 ben.
  */
 function TrachNhiem({ d, loi30 }: { d: Data; loi30: Data["loi30"] }) {
-  const BEN = { NOI_BO: { l: "Nội bộ công ty", mau: "#F59E0B", nen: "#FFFBEB" }, NCC: { l: "Nhà cung cấp", mau: "#3B82F6", nen: "#EFF6FF" } } as const;
+  const BEN = { NOI_BO: { l: "Nội bộ công ty", mau: "#ff9500", nen: "#fff6e8" }, NCC: { l: "Nhà cung cấp", mau: "#0a84ff", nen: "#e8f1fc" } } as const;
   const tk = (b: "NOI_BO" | "NCC") => {
     const gd = d.giai_doan.filter((g) => (g.ben ?? (["G5", "G6", "G8"].includes(g.k) ? "NCC" : "NOI_BO")) === b);
     const loi = loi30.filter((l) => (l.ben ?? "NOI_BO") === b);
@@ -609,7 +609,7 @@ function TrachNhiem({ d, loi30 }: { d: Data; loi30: Data["loi30"] }) {
         <div><div style={{ fontSize: 22, fontWeight: 900 }}>{soLuong(x.loi)}</div><div className="muted" style={{ fontSize: 11 }}>lỗi 30 ngày (vi phạm gộp)</div></div>
       </div>
       {x.gd.map((g) => (
-        <div key={g.k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, borderTop: "1px dashed #E5E7EB", padding: "3px 0" }}
+        <div key={g.k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, borderTop: "1px dashed #e8e8ed", padding: "3px 0" }}
           title={g.tre30_ai.length ? `Làm trễ 30 ngày:\n${g.tre30_ai.map((a) => `${tenAi(a.ai)}: ${a.n}`).join("\n")}` : "Không có lượt trễ trong 30 ngày"}>
           <span>{g.k} {g.l} <span className="muted">· {g.vai_tro}</span></span>
           <span><b style={{ color: g.dang_tre ? "var(--danger-ink)" : undefined }}>{soLuong(g.dang_tre)}</b> đang trễ · {soLuong(g.tre30)} trễ / 30 ng</span>
@@ -624,7 +624,7 @@ function TrachNhiem({ d, loi30 }: { d: Data; loi30: Data["loi30"] }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12, marginTop: 6 }}>
         <Khoi b="NOI_BO" x={nb} />
         <Khoi b="NCC" x={ncc} />
-        <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A555", borderRadius: 10, padding: "10px 12px" }}>
+        <div style={{ background: "#fff2f1", border: "1px solid #FCA5A555", borderRadius: 10, padding: "10px 12px" }}>
           <div style={{ fontWeight: 800, color: "var(--danger-ink)" }}>Không giải trình đúng hạn</div>
           <div style={{ fontSize: 22, fontWeight: 900, margin: "6px 0 0" }}>{soLuong(vp)}</div>
           <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>vi phạm 30 ngày — hết 16 giờ làm việc không giải trình, lỗi của người phải giải trình (tính riêng, không cộng vào 2 bên)</div>

@@ -50,7 +50,7 @@ export function PlanImportModal({ loai, fileName, parsed, onClose, onDone }: Pro
         </button>
       </>}>
       {parsed.errs.length > 0 && (
-        <div style={{ background: "#FEE2E2", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 10 }}>
+        <div style={{ background: "#ffe7e5", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 10 }}>
           <b>{parsed.errs.length} dòng điền sai trong file</b> — sửa trong Excel rồi tải lên lại:
           <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
             {parsed.errs.slice(0, 20).map((e) => <li key={e}>{e}</li>)}
@@ -62,7 +62,7 @@ export function PlanImportModal({ loai, fileName, parsed, onClose, onDone }: Pro
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10, fontSize: 12.5 }}>
           {([[true, "File là kế hoạch mới (khuyên dùng)", "Linh kiện nào có trong file: các đợt trong file thay cho đợt cũ. Linh kiện không có trong file giữ nguyên. Tải lại cùng file không bị nhân đôi."],
             [false, "Chỉ thêm đợt mới", "Giữ nguyên các đợt đang có, cộng thêm các dòng trong file. Dùng khi file chỉ chứa đợt mới."]] as const).map(([v, t, m]) => (
-            <label key={t} style={{ display: "flex", gap: 8, alignItems: "flex-start", border: `1px solid ${thayThe === v ? "var(--brand-yellow-btn)" : "var(--border)"}`, background: thayThe === v ? "#FFFBEB" : undefined, borderRadius: 8, padding: "8px 10px", cursor: "pointer" }}>
+            <label key={t} style={{ display: "flex", gap: 8, alignItems: "flex-start", border: `1px solid ${thayThe === v ? "var(--brand-yellow-btn)" : "var(--border)"}`, background: thayThe === v ? "#fff6e8" : undefined, borderRadius: 8, padding: "8px 10px", cursor: "pointer" }}>
               <input type="radio" checked={thayThe === v} onChange={() => setThayThe(v)} style={{ marginTop: 3 }} />
               <span><b>{t}</b><div className="muted">{m}</div></span>
             </label>
@@ -75,7 +75,7 @@ export function PlanImportModal({ loai, fileName, parsed, onClose, onDone }: Pro
       {busy && !res && <Spinner />}
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
       {s && (
-        <div style={{ borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 13, background: bad.length ? "#FEF2F2" : "#F0FDF4" }}>
+        <div style={{ borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 13, background: bad.length ? "#fff2f1" : "#effaf1" }}>
           {bad.length > 0
             ? <><b style={{ color: "var(--danger-ink)" }}>Có {bad.length} dòng sai</b> (tô đỏ, xem cột "Kết quả") — sửa trong file Excel rồi tải lên lại. Chưa lưu gì.</>
             : <>Sẵn sàng lưu <b>{s.so_ghi} đợt hàng về</b> cho <b>{s.so_dong_lk} linh kiện</b>{loai === "NGAY" && thayThe && s.so_ke_hoach_cu_thay > 0 ? <> (thay {s.so_ke_hoach_cu_thay} đợt cũ của các linh kiện này)</> : null}.</>}
@@ -91,7 +91,7 @@ export function PlanImportModal({ loai, fileName, parsed, onClose, onDone }: Pro
             </tr></thead>
             <tbody>
               {[...bad, ...rows.filter((r) => r.ok)].slice(0, 500).map((r, i) => (
-                <tr key={`${r._row}-${i}`} style={{ background: r.ok ? undefined : "#FEF2F2" }}>
+                <tr key={`${r._row}-${i}`} style={{ background: r.ok ? undefined : "#fff2f1" }}>
                   <td>{r._row}</td>
                   <td>{r.approval_code || r.eo_code || ""}</td>
                   <td>{r.part_code ?? ""}</td>

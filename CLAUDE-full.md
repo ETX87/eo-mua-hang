@@ -655,3 +655,12 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   `DsThe` (thẻ thay bảng), `useHep` (matchMedia < 980px). Hằng số + `ChipMa` / `SoBen` / `DapUng` / `gdSomNhat` chuyển sang `lib/loiPo.tsx`.
   Lưu ý: `theme.css` có luật mobile ép `grid-template-columns` inline về 1 cột (`!important`) → khối 2 cột trên điện thoại dùng flex-wrap, không dùng grid.
 
+## Giao diện kiểu Apple toàn app (v0.140, 27/11/2026)
+
+- Chủ hệ thống: "chuyển đổi toàn bộ giao diện app sang skill apple đang lưu" (skill `giao-dien-apple`, ~/.claude/skills).
+- Nguồn duy nhất vẻ ngoài: `frontend/src/theme.css` — GIỮ tên biến cũ, đổi giá trị: `--brand-yellow-btn` = cam #ff9500 (nghĩa "đang chọn / đang lọc", vd `borderColor` inline của ô lọc
+  → CSS đổi thành vòng cam), `--brand-yellow` = xanh #0071e3 (chấm / nhấn), `--link-amber` = xanh link, `--sidebar-bg` / `--glass` kính mờ, `--shadow` / `--shadow-lg`, `--font` hệ thống.
+  Lớp mới: `.seg` (segmented, nút `.on`), `.ptabs`, keyframes `ap-in` / `ap-sheet`.
+- Màn mới: dùng `.btn` / `.btn.primary` (1 nút chính / vùng) / `.input` / `.card` / `.seg`; KHÔNG viền 1px quanh thẻ / ô con, KHÔNG viền màu dày; màu hệ thống iOS (#ff3b30 / #2fb350 / #ff9500 / #0071e3 / #af52de).
+- Mobile: `[data-modal] > .card` thành bottom-sheet (CSS); luật cũ ép lưới inline về 1–2 cột (< 768px) vẫn giữ.
+

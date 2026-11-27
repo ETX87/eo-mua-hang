@@ -150,7 +150,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged, tim }
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </div>
       )}
-      {msg && <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 10 }}>{msg}</div>}
+      {msg && <div style={{ background: "#e2f6e7", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginBottom: 10 }}>{msg}</div>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 8, fontSize: 12.5 }}>
         <span className="badge nhap">{rowsDong.length} dòng</span>
         <span>SL đặt <b>{soLuong(tongDat)}</b> · đã lên KH <b style={{ color: tongKh < tongDat ? "var(--warn-ink)" : NGAY.DK.mau }}>{soLuong(tongKh)}</b> · đã về <b style={{ color: NGAY.VE.mau }}>{soLuong(tongVe)}</b> · còn thiếu <b>{soLuong(tongThieu)}</b></span>
@@ -307,7 +307,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
         <button className="btn primary" disabled={busy} onClick={save}>{busy ? "Đang lưu..." : `Lưu ${chosen.length} dòng`}</button>
       </>}>
       <ChuGiaiNgay gon />
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", padding: 12, background: "var(--surface-2, #F8FAFC)", borderRadius: 10, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", padding: 12, background: "var(--surface-2, #f5f5f7)", borderRadius: 10, marginBottom: 12 }}>
         <div><label className="field-label"><NhanNgay k="NM" /> chung</label><input className="input" type="date" value={allNm} onChange={(e) => setAllNm(e.target.value)} /></div>
         <div><label className="field-label"><NhanNgay k="DK" /> chung</label><input className="input" type="date" value={allDate} onChange={(e) => setAllDate(e.target.value)} placeholder="để trống = theo NM" /></div>
         <div><label className="field-label">SL về trong đợt</label>
@@ -336,7 +336,7 @@ export function BulkPlanModal({ po, items, plans, onClose, onSaved }: any) {
               const r = rows[i.id];
               const e = errs[i.id];
               return (
-                <tr key={i.id} style={{ background: e ? "#FEF2F2" : r.chon ? "#FFFBEB" : undefined }} title={e}>
+                <tr key={i.id} style={{ background: e ? "#fff2f1" : r.chon ? "#fff6e8" : undefined }} title={e}>
                   <td style={cell}><input type="checkbox" checked={r.chon} onChange={(ev) => set(i.id, { chon: ev.target.checked })} /></td>
                   <td style={cell}>{po}</td>
                   <td style={cell}><b>{i.part_code}</b></td>
@@ -450,10 +450,10 @@ export function TabTaiLieu({ eoId, files: filesIn, onUploaded, canDelete, myEmai
             <Card style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>
               {isImage(f.file_name) && f.drive_file_id && (
                 <img src={driveThumb(f.drive_file_id)} alt={f.file_name} loading="lazy" referrerPolicy="no-referrer"
-                  style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 8, background: "#F1F5F9" }} />
+                  style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 8, background: "#f5f5f7" }} />
               )}
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <I.file width={22} height={22} style={{ color: isExcel(f.file_name) ? "#16A34A" : "var(--text-muted)", flexShrink: 0 }} />
+                <I.file width={22} height={22} style={{ color: isExcel(f.file_name) ? "#1d8a3c" : "var(--text-muted)", flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{f.file_name}</div>
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{ten(f.uploaded_by)} · {ngayGio(f.uploaded_at)}{f.file_size ? ` · ${fileSize(f.file_size)}` : ""}</div>
@@ -548,12 +548,12 @@ export function QtyModal({ item, issued, onClose, onSaved }: any) {
       <input className="input" type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
       <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{TN.SL_DAT.la} Đặt = 0 là hủy dòng.</div>
       {qtyChanged && moi < daVe && (
-        <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, marginTop: 8 }}>
+        <div style={{ background: "#fff2f1", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, marginTop: 8 }}>
           SL đặt mới nhỏ hơn số đã về theo AMIS ({soLuong(daVe)}) — dòng sẽ ghi nhận <b>về thừa {soLuong(daVe - moi)}</b>. Kiểm tra lại trước khi lưu.
         </div>
       )}
       {vuotKh && (
-        <div style={{ background: "#FFFBEB", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 8 }}>
+        <div style={{ background: "#fff6e8", borderRadius: 8, padding: "8px 10px", fontSize: 12.5, marginTop: 8 }}>
           Kế hoạch hàng về đang là <b>{soLuong(tongKh)}</b> ({kh.length} đợt) — lớn hơn SL đặt mới <b>{soLuong(moi)}</b>. Kế hoạch không được nhiều hơn số đặt.
           <label style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, fontWeight: 600 }}>
             <input type="checkbox" checked={catKh} onChange={(e) => setCatKh(e.target.checked)} /> Tự giảm kế hoạch từ đợt xa nhất (ghi vào lịch sử)
@@ -652,7 +652,7 @@ export function AddItemModal({ eoId, phongBan, nguoiDuyet, meEmail, onClose, onS
   return (
     <Modal title="Thêm dòng linh kiện (duyệt sau ban hành)" onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Hủy</button><button className="btn primary" disabled={busy} onClick={save}>Lưu</button></>}>
-      <div style={{ fontSize: 13, marginBottom: 10, background: tuDuyet ? "#F0FDF4" : "#FFFBEB", borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ fontSize: 13, marginBottom: 10, background: tuDuyet ? "#effaf1" : "#fff6e8", borderRadius: 8, padding: "8px 10px" }}>
         {tuDuyet ? <>Bạn là <b>người duyệt mua</b> của EO này — dòng mới được <b>duyệt luôn</b> khi lưu.</>
           : <>Dòng mới sẽ <b>chờ {ten(nguoiDuyet)} duyệt</b> (người duyệt mua của EO) hoặc Admin. Chưa duyệt thì chưa đặt hàng; người duyệt có thể từ chối.</>}
       </div>
@@ -825,7 +825,7 @@ export function HuyDongModal({ item, onClose, onDone }: { item: any; onClose: ()
       <div style={{ fontSize: 13, marginBottom: 10 }}>
         {item.part_name} · <Kho t={item.warehouse} /> · SL đặt {soLuong(item.current_qty)}
         <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Hủy = không đặt hàng này nữa: SL đặt về 0, các đợt kế hoạch hàng về bị xóa, hết cảnh báo theo dõi, trạng thái "Đơn trên EO bị hủy". Ghi vào lịch sử EO.</div>
-        {(item.da_dat ?? 0) > 0 && <div style={{ background: "#FEF2F2", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>Đơn đã có <b>{soLuong(item.da_dat)}</b> về theo AMIS — hủy thì số đã về này <b>không được tính</b> cho đơn nữa. Muốn giữ số đã về và dừng phần còn lại → dùng <b>Kết thúc sớm</b>.</div>}
+        {(item.da_dat ?? 0) > 0 && <div style={{ background: "#fff2f1", color: "var(--danger-ink)", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>Đơn đã có <b>{soLuong(item.da_dat)}</b> về theo AMIS — hủy thì số đã về này <b>không được tính</b> cho đơn nữa. Muốn giữ số đã về và dừng phần còn lại → dùng <b>Kết thúc sớm</b>.</div>}
       </div>
       <label className="field-label">Lý do hủy <span className="req">*</span></label>
       <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="vd: khách hủy ca, nhà máy không sản xuất mã này…" />
@@ -1034,7 +1034,7 @@ export function KetThucSomPoModal({ eo, onClose, onDone }: { eo: { id: number; e
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy || !(xem.data?.so_doi)} onClick={run}>{busy ? "Đang xử lý..." : `Kết thúc sớm ${xem.data?.so_doi ?? 0} dòng`}</button></>}>
       {xem.isLoading ? <Spinner /> : (
         <div style={{ fontSize: 13 }}>
-          <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", color: "var(--danger-ink)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, lineHeight: 1.55 }}>
+          <div style={{ background: "#fff2f1", border: "1px solid #ffb3ad", color: "var(--danger-ink)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, lineHeight: 1.55 }}>
             <b>⚠ Cảnh báo — đọc kỹ trước khi kết thúc sớm:</b>
             <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
               <li>Mọi dòng đang chờ hàng: <b>SL đặt đổi bằng SL đã về thực tế (AMIS)</b> — giảm tổng <b>{soLuong(bot)}</b> cái chưa về; hệ thống <b>không chờ / không theo dõi phần còn lại</b>.</li>
@@ -1109,7 +1109,7 @@ export function KetThucSomMaModal({ ma, onClose, onDone }: { ma: string; onClose
       footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn danger" disabled={busy || !chon.length} onClick={run}>{busy ? "Đang xử lý..." : `Kết thúc sớm ${chon.length} dòng / ${soPo} PO`}</button></>}>
       {xem.isLoading ? <Spinner /> : xem.isError ? <div style={{ color: "var(--danger)" }}>Không tải được danh sách dòng.</div> : (
         <div style={{ fontSize: 13 }}>
-          <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", color: "var(--danger-ink)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, lineHeight: 1.55 }}>
+          <div style={{ background: "#fff2f1", border: "1px solid #ffb3ad", color: "var(--danger-ink)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, lineHeight: 1.55 }}>
             <b>⚠ Dùng khi đối tác báo mã này ngừng sản xuất / không giao nữa. Đọc kỹ:</b>
             <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
               <li>Mọi dòng được chọn: <b>SL đặt đổi bằng SL đã về thực tế (AMIS)</b> — giảm tổng <b>{soLuong(bot)}</b> cái chưa về trên <b>{soPo} PO</b>; hệ thống <b>không chờ / không theo dõi phần còn lại</b>.</li>

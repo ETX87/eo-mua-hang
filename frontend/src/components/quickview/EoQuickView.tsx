@@ -45,7 +45,7 @@ const NHOM_TL: { k: Nhom; l: string }[] = [
   { k: "all", l: "Tất cả" }, { k: "duyet", l: "Duyệt" }, { k: "capnhat", l: "Cập nhật" }, { k: "kehoach", l: "Kế hoạch" },
   { k: "loi", l: "Lỗi & giải trình" }, { k: "mail", l: "Mail & push" }, { k: "binhluan", l: "Bình luận" },
 ];
-const MAU: Record<Nhom, string> = { all: "#94A3B8", duyet: "#F59E0B", capnhat: "#3B82F6", kehoach: "#10B981", loi: "#EF4444", mail: "#8B5CF6", binhluan: "#64748B" };
+const MAU: Record<Nhom, string> = { all: "#86868b", duyet: "#ff9500", capnhat: "#0a84ff", kehoach: "#10B981", loi: "#ff3b30", mail: "#af52de", binhluan: "#6e6e73" };
 const nhomCua = (t: string): Nhom =>
   /SUBMIT|APPROVE|REJECT|REVIEW|ISSUE|RECALL|REQUEST_UPDATE|CANCEL_EO/.test(t) ? "duyet"
     : /PLAN/.test(t) ? "kehoach" : /GIAI_TRINH/.test(t) ? "loi" : "capnhat";

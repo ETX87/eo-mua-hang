@@ -66,7 +66,7 @@ function NotificationBell() {
     <div ref={ref} style={{ position: "relative" }}>
       <button className="btn ghost sm" style={{ position: "relative" }} aria-label="Thông báo" onClick={() => setOpen((o) => !o)}>
         <I.bell />
-        {unread > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 800, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{unread}</span>}
+        {unread > 0 && <span style={{ position: "absolute", top: 1, right: 1, background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 9.5, fontWeight: 800, minWidth: 15, textAlign: "center", padding: "0 3px" }}>{unread}</span>}
       </button>
       {open && (
         <div className="notif-pop" style={{ position: "absolute", right: 0, top: 42, width: 360, background:"#fff", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-pop)", zIndex: 50, overflow: "hidden" }}>
@@ -206,21 +206,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [xo, setXo] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem("nav-xo") ?? "{}"); } catch { return {}; } });
   const doiXo = (k: string, v: boolean) => setXo((s) => { const n = { ...s, [k]: v }; localStorage.setItem("nav-xo", JSON.stringify(n)); return n; });
   const badgeGoc = (n: NavItem) => [...new Set([n.to, ...(n.children ?? []).map((c) => c.to.split("?")[0])])].reduce((s, t) => s + badgeOf(t), 0);
-  const SoDem = ({ v, doDam }: { v: number | null; doDam?: boolean }) => v == null ? null : (
-    <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, borderRadius: 6, padding: "0 6px", lineHeight: "17px", flexShrink: 0,
-      background: doDam && v > 0 ? "#EF4444" : "rgba(255,255,255,.55)", color: doDam && v > 0 ? "#fff" : "var(--brand-olive)" }}>{v > 999 ? "999+" : v}</span>);
+  const SoDem = ({ v, doDam, tren }: { v: number | null; doDam?: boolean; tren?: boolean }) => v == null ? null : (
+    <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, borderRadius: 999, padding: "0 7px", lineHeight: "17px", flexShrink: 0, fontVariantNumeric: "tabular-nums",
+      background: doDam && v > 0 ? "#ff3b30" : tren ? "rgba(255,255,255,.25)" : "rgba(0,0,0,.06)", color: doDam && v > 0 || tren ? "#fff" : "var(--text-muted)" }}>{v > 999 ? "999+" : v}</span>);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {mobile && open && <div className="nav-backdrop" onClick={() => setOpen(false)} />}
       {/* ---------------- Sidebar ---------------- */}
       <aside style={mobile ? {
-        width: "min(86vw, 300px)", background: "var(--brand-yellow)", display: "flex", flexDirection: "column",
+        width: "min(86vw, 300px)", background: "var(--sidebar-bg)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", borderRight: "1px solid rgba(0,0,0,.08)", display: "flex", flexDirection: "column",
         position: "fixed", top: 0, left: 0, height: "100dvh", zIndex: 70, overflow: "hidden",
         transform: open ? "none" : "translateX(-105%)", transition: "transform .2s",
-        boxShadow: open ? "0 0 40px rgba(15,23,42,.3)" : "none",
+        boxShadow: open ? "0 18px 44px rgba(0,0,0,.18)" : "none",
       } : {
-        width: open ? "var(--sidebar-w)" : 66, flexShrink: 0, background: "var(--brand-yellow)",
+        width: open ? "var(--sidebar-w)" : 66, flexShrink: 0, background: "var(--sidebar-bg)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", borderRight: "1px solid rgba(0,0,0,.08)",
         display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh",
         transition: "width .16s", overflow: "hidden",
       }}>
@@ -228,8 +228,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <CartLogo size={38} />
           {open && (
             <div style={{ lineHeight: 1.1 }}>
-              <div style={{ fontWeight: 800, fontSize: 17, color: "var(--brand-ink)", letterSpacing: .3 }}>EO MUA HÀNG 3T</div>
-              <div style={{ fontSize: 10.5, color: "var(--brand-olive)", marginTop: 2 }}>Hệ thống đặt mua hàng nội bộ</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)", letterSpacing: "-.02em" }}>EO Mua hàng 3T</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Hệ thống đặt mua hàng nội bộ</div>
             </div>
           )}
         </div>
@@ -244,34 +244,34 @@ export function AppShell({ children }: { children: ReactNode }) {
             return (
               <div key={n.to}>
                 {n.section && open && (
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--brand-olive)", letterSpacing: 1, margin: "18px 8px 8px" }}>{n.section}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-faint)", letterSpacing: ".06em", textTransform: "uppercase", margin: "18px 8px 8px" }}>{n.section}</div>
                 )}
                 <div style={{ position: "relative" }}>
                   <Link to={n.to} onClick={() => { if (coCon && !on) doiXo(n.to, true); }} title={!open ? n.label : undefined}
                     style={{
-                      display: "flex", alignItems: "center", gap: 13, padding: open ? (coCon ? "11px 34px 11px 14px" : "11px 14px") : "11px", position: "relative",
-                      borderRadius: 14, margin: "3px 0", fontWeight: coCon ? 700 : 600, fontSize: 14,
-                      color: "var(--brand-ink)",
-                      background: on && (!coCon || !open) ? "#fff" : on ? "rgba(255,255,255,.45)" : "transparent",
-                      boxShadow: on && (!coCon || !open) ? "0 2px 6px rgba(60,50,0,.12)" : "none",
+                      display: "flex", alignItems: "center", gap: 12, padding: open ? (coCon ? "9px 34px 9px 12px" : "9px 12px") : "10px", position: "relative",
+                      borderRadius: 10, margin: "2px 0", fontWeight: 600, fontSize: 14, letterSpacing: "-.01em",
+                      color: on && (!coCon || !open) ? "#fff" : "var(--text)",
+                      background: on && (!coCon || !open) ? "var(--ocean-600)" : on ? "rgba(0,0,0,.06)" : "transparent",
+                      boxShadow: "none", transition: "background .15s",
                       justifyContent: open ? "flex-start" : "center",
                     }}>
-                    <Icon width={21} height={21} style={{ flexShrink: 0 }} />
+                    <Icon width={20} height={20} strokeWidth={1.8} style={{ flexShrink: 0, color: on && (!coCon || !open) ? "#fff" : "var(--ocean-600)" }} />
                     {open && <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label}</span>}
                     {open && bd > 0 && (
-                      <span title="Việc cần xử lý" style={{ background: "#EF4444", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 800, padding: "2px 8px", lineHeight: 1.3 }}>{bd > 999 ? "999+" : bd}</span>
+                      <span title="Việc cần xử lý" style={{ background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 11.5, fontWeight: 700, padding: "1px 8px", lineHeight: 1.4, fontVariantNumeric: "tabular-nums" }}>{bd > 999 ? "999+" : bd}</span>
                     )}
-                    {!open && bd > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
+                    {!open && bd > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: 4, background: "#ff3b30" }} />}
                   </Link>
                   {open && coCon && (
                     <button aria-label={dangXo ? "Thu gọn" : "Mở rộng"} title={dangXo ? "Thu gọn" : "Mở rộng"} onClick={() => doiXo(n.to, !dangXo)}
-                      style={{ position: "absolute", right: 6, top: 9, border: 0, background: "transparent", cursor: "pointer", padding: 4, color: "var(--brand-ink)", display: "flex" }}>
+                      style={{ position: "absolute", right: 6, top: 7, border: 0, background: "transparent", cursor: "pointer", padding: 4, color: "var(--text-faint)", display: "flex" }}>
                       <I.chevronDown width={16} height={16} style={{ transform: dangXo ? "none" : "rotate(-90deg)", transition: "transform .15s" }} />
                     </button>
                   )}
                 </div>
                 {open && dangXo && (
-                  <div style={{ margin: "0 0 4px 22px", borderLeft: "2px solid rgba(120,100,20,.25)", paddingLeft: 6 }}>
+                  <div style={{ margin: "0 0 4px 22px", borderLeft: "1px solid rgba(0,0,0,.08)", paddingLeft: 6 }}>
                     {n.children!.map((c) => {
                       const CIcon = I[c.icon];
                       const conTo = (c.con ?? []).map((x) => x.to);
@@ -280,25 +280,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                       return (
                         <div key={c.to}>
                           <Link to={c.to} style={{
-                            display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 10px", borderRadius: 10, margin: "2px 0",
-                            fontSize: 12.5, fontWeight: cOn ? 800 : 500, color: "var(--brand-ink)",
-                            background: cOn ? "#fff" : "transparent", boxShadow: cOn ? "0 1px 4px rgba(60,50,0,.12)" : "none",
+                            display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 10px", borderRadius: 8, margin: "1px 0",
+                            fontSize: 13, fontWeight: cOn ? 600 : 500, color: cOn ? "#fff" : "var(--text)",
+                            background: cOn ? "var(--ocean-600)" : "transparent", boxShadow: "none",
                           }}>
-                            <CIcon width={15} height={15} style={{ flexShrink: 0 }} />
+                            <CIcon width={15} height={15} strokeWidth={1.8} style={{ flexShrink: 0, color: cOn ? "#fff" : "var(--ocean-600)" }} />
                             <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
-                            <SoDem v={demCua(c.dem)} doDam={c.demDo} />
+                            <SoDem v={demCua(c.dem)} doDam={c.demDo} tren={cOn} />
                           </Link>
                           {cap2.length > 0 && (
-                            <div style={{ margin: "0 0 4px 18px", borderLeft: "1px dashed rgba(120,100,20,.35)", paddingLeft: 4 }}>
+                            <div style={{ margin: "0 0 4px 18px", borderLeft: "1px solid rgba(0,0,0,.08)", paddingLeft: 4 }}>
                               {cap2.map((x) => {
                                 const xOn = khopCon(x.to);
                                 return (
                                   <Link key={x.to} to={xOn ? c.to : x.to} title={xOn ? "Bấm lần nữa để bỏ lọc giai đoạn" : `Lọc: ${x.label}`} style={{
                                     display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 8, margin: "1px 0",
-                                    fontSize: 12, fontWeight: xOn ? 800 : 500, color: "var(--brand-ink)",
-                                    background: xOn ? "rgba(255,255,255,.85)" : "transparent",
+                                    fontSize: 12.5, fontWeight: xOn ? 600 : 500, color: xOn ? "var(--ocean-600)" : "var(--text-muted)",
+                                    background: xOn ? "var(--ocean-100)" : "transparent",
                                   }}>
-                                    <span style={{ width: 6, height: 6, borderRadius: 3, flexShrink: 0, background: xOn ? "var(--brand-ink)" : "rgba(120,100,20,.45)" }} />
+                                    <span style={{ width: 6, height: 6, borderRadius: 3, flexShrink: 0, background: xOn ? "var(--ocean-600)" : "#c7c7cc" }} />
                                     <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.label}</span>
                                     <SoDem v={demCua(x.dem)} />
                                   </Link>
@@ -318,10 +318,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {open && (
           <div style={{ padding: 12 }}>
-            <div style={{ padding: 10, borderRadius: 14, border: "1px solid rgba(120,100,20,.25)", background: "rgba(255,255,255,.28)" }}>
-              <AccountMenu uName={uName} email={me.data?.email} sub={me.data?.email ?? ""} nameColor="var(--brand-ink)" subColor="var(--brand-olive)" dropUp />
+            <div style={{ padding: 10, borderRadius: 14, background: "rgba(0,0,0,.04)" }}>
+              <AccountMenu uName={uName} email={me.data?.email} sub={me.data?.email ?? ""} nameColor="var(--text)" subColor="var(--text-muted)" dropUp />
             </div>
-            <div style={{ fontSize: 10.5, color: "var(--brand-olive)", textAlign: "center", marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", marginTop: 12 }}>
               Phiên bản v{APP_VERSION} — Hệ thống nội bộ
             </div>
           </div>
@@ -331,17 +331,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* ---------------- Main ---------------- */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <header className="app-top" style={{
-          height: "var(--topbar-h)", background: "#fdfdfc", borderBottom: "1px solid var(--border)",
+          height: "var(--topbar-h)", background: "var(--glass)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", borderBottom: "1px solid rgba(0,0,0,.08)",
           display: "flex", alignItems: "center", gap: mobile ? 6 : 18, padding: mobile ? "0 8px" : "0 24px", position: "sticky", top: 0, zIndex: 20,
         }}>
           <button className="btn ghost sm" onClick={() => setOpen((o) => !o)} aria-label="Menu" style={{ position: "relative" }}>
             <I.menu />
-            {mobile && (viec.data?.tong ?? 0) > 0 && <span style={{ position: "absolute", top: 2, right: 4, width: 8, height: 8, borderRadius: 4, background: "#EF4444" }} />}
+            {mobile && (viec.data?.tong ?? 0) > 0 && <span style={{ position: "absolute", top: 2, right: 4, width: 8, height: 8, borderRadius: 4, background: "#ff3b30" }} />}
           </button>
-          <div style={{ fontSize: mobile ? 16 : 19, fontWeight: 800, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pageTitle ?? titleFor(loc.pathname)}</div>
+          <div style={{ fontSize: mobile ? 17 : 22, fontWeight: 700, letterSpacing: "-.022em", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pageTitle ?? titleFor(loc.pathname)}</div>
           <NutTaiLai />
           {/* v0.086: huong dan su dung theo vai tro (frontend/public/huong-dan/*.html, tinh) */}
-          <a className="btn ghost sm" href="/huong-dan/index.html" target="_blank" rel="noopener" title="Hướng dẫn sử dụng theo vai trò (mở tab mới)" style={{ fontWeight: 700 }}>📘 Hướng dẫn</a>
+          <a className="btn ghost sm" href="/huong-dan/index.html" target="_blank" rel="noopener" title="Hướng dẫn sử dụng theo vai trò (mở tab mới)" style={{ fontWeight: 600 }}>📘 Hướng dẫn</a>
           <NutGiaiThich />
           <NotificationBell />
           <AccountMenu uName={uName} email={me.data?.email} sub={roleLabel(me.data?.vai_tro)} compact={mobile} />

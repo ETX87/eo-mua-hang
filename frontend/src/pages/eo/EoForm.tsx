@@ -381,7 +381,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
       />
 
       {copyId && (
-        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12, color: "#1E3A8A" }}>
+        <div style={{ background: "#e8f1fc", border: "1px solid #c9e0fb", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12, color: "#003e7e" }}>
           {copyQ.isLoading ? "Đang lấy thông tin EO nguồn…" : copyQ.isError ? "Không lấy được EO nguồn — nhập thông tin như tạo mới." : <>
             Copy từ <b>{copyQ.data?.eo?.approval_code || copyQ.data?.eo?.eo_code}</b>: đã điền sẵn tiêu đề, nội dung, loại hình, phòng ban, người thẩm định &amp; người duyệt mua — sửa lại nếu cần.
             Danh sách linh kiện <b>không được chép</b>: nhập hoặc import Excel ở mục 2.
@@ -389,7 +389,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
         </div>
       )}
       {noReviewer && (
-        <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, color: "#92400E" }}>
+        <div style={{ background: "#fff1dc", border: "1px solid #ffd8a8", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, color: "#9c4f00" }}>
           Không chọn thẩm định → gửi thẳng người duyệt mua.
         </div>
       )}
@@ -490,7 +490,7 @@ export default function EoForm({ mode }: { mode: "create" | "edit" }) {
               <span className="badge nhap" style={{ fontSize: 13, marginLeft: "auto" }}>{items.filter((r) => r.part_code.trim()).length} dòng · Tổng SL: {soLuong(tongSL)}</span>
             </div>
             {importMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 8, background: importMsg.errs.length || importMsg.canhBao?.length ? "#FEF3C7" : "#DCFCE7" }}>
+              <div style={{ marginTop: 10, fontSize: 12.5, padding: "8px 12px", borderRadius: 8, background: importMsg.errs.length || importMsg.canhBao?.length ? "#fff1dc" : "#e2f6e7" }}>
                 Đã thêm <b>{importMsg.ok}</b> dòng từ Excel{importMsg.errs.length ? `, bỏ qua ${importMsg.errs.length} dòng lỗi:` : "."}
                 {importMsg.errs.length > 0 && (
                   <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>

@@ -223,7 +223,7 @@ export function DataTable<T>({
       {cols.map((c) => (
         <td key={c.key} style={{ textAlign: c.align ?? "left",
           position: c.sticky ? "sticky" : undefined, left: c.sticky ? 0 : undefined, background: c.sticky ? "#fff" : undefined, zIndex: c.sticky ? 1 : undefined,
-          whiteSpace: c.key === "act" ? "nowrap" : undefined, boxShadow: c.key === "act" ? "6px 0 6px -6px rgba(15,23,42,.18)" : undefined,
+          whiteSpace: c.key === "act" ? "nowrap" : undefined, boxShadow: c.key === "act" ? "6px 0 6px -6px rgba(0,0,0,.14)" : undefined,
           paddingLeft: nhom && c.sticky ? 28 : undefined }}>
           {c.wrap || c.align === "right" || c.align === "center" ? c.render(row) : <Clip w={c.maxW ?? c.width ?? 240}>{c.render(row)}</Clip>}
         </td>
@@ -238,7 +238,7 @@ export function DataTable<T>({
           {congCu && <span style={{ display: "inline-flex", gap: 6, alignItems: "center", marginRight: soLoc > 0 || nhom ? undefined : "auto" }}>{congCu}</span>}
           {soLoc > 0 && (
             <span style={{ fontSize: 12, display: "inline-flex", gap: 6, alignItems: "center", marginRight: "auto" }}>
-              <I.filter width={13} height={13} style={{ color: "var(--link-amber)" }} />
+              <I.filter width={13} height={13} style={{ color: "var(--brand-yellow-btn)" }} />
               <span>Đang lọc {soLoc} cột{tongSau != null ? <> · <b>{tongSau.toLocaleString("vi-VN")}</b> / {tongTruoc.toLocaleString("vi-VN")} dòng</> : ""}</span>
               {cols.filter((c) => dangLoc(loc[c.key])).map((c) => (
                 <span key={c.key} className="qv-chip on" style={{ display: "inline-flex", gap: 4 }}>{typeof c.header === "string" ? c.header : c.key}
@@ -277,7 +277,7 @@ export function DataTable<T>({
                   <th key={c.key} style={{ textAlign: c.align ?? "left", width: c.width, whiteSpace: "nowrap",
                     position: c.sticky || khungCao ? "sticky" : undefined, left: c.sticky ? 0 : undefined, top: khungCao ? 0 : undefined,
                     zIndex: c.sticky ? (khungCao ? 3 : 2) : khungCao ? 2 : undefined,
-                    background: c.sticky ? "var(--panel-2)" : loc1 ? "#FEF9C3" : khungCao ? "var(--panel-2)" : undefined }}>
+                    background: loc1 ? "#fff6e8" : c.sticky || khungCao ? "#fafafc" : undefined }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                       <span onClick={coSap ? () => datSap(!dangSap ? { k: c.key, tang: true } : sap!.tang ? { k: c.key, tang: false } : null) : undefined}
                         style={{ cursor: coSap ? "pointer" : undefined, userSelect: "none" }} title={coSap ? "Bấm để sắp xếp tăng / giảm / bỏ" : undefined}>
@@ -378,7 +378,7 @@ function HopLoc({ neo, tieuDe, kieu, giaTri, chon, nhan, onApDung, onDong }: {
           <button className="btn ghost sm" onClick={() => setG({ chon: [...new Set([...(g.chon ?? []), ...ds])] })}>Chọn tất cả{tim ? " (đang tìm)" : ""}</button>
           <button className="btn ghost sm" onClick={() => setG({ chon: tim ? (g.chon ?? []).filter((v) => !ds.includes(v)) : [] })}>Bỏ chọn</button>
         </div>
-        <div style={{ maxHeight: 230, overflow: "auto", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 6px" }}>
+        <div style={{ maxHeight: 230, overflow: "auto", background: "var(--panel-2)", borderRadius: 10, padding: 4 }}>
           {ds.length === 0 && <div className="muted" style={{ fontSize: 12, padding: 6 }}>Không có giá trị.</div>}
           {ds.map((v) => (
             <label key={v} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, padding: "2px 0", cursor: "pointer" }}>

@@ -280,7 +280,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
             {/* #30: muc lien tiep cung loai + cung nguoi + cung PO, cach nhau <= 2 gio -> 1 dong (×n) */}
             <NhatKyGop nhom={gopLienTiep(log.filter(khopTim(timLog)), (e: any) => `${e.event_type}|${e.user_email ?? ""}|${e.eo_id ?? ""}`, (e: any) => e.created_at)}
               khoa={(e: any) => String(e.id)} luc={(e: any) => e.created_at}
-              dot={(e: any) => (/PLAN/.test(e.event_type) ? "#10B981" : /QUANTITY|REPLACE|CANCEL/.test(e.event_type) ? "#F59E0B" : "#3B82F6")}
+              dot={(e: any) => (/PLAN/.test(e.event_type) ? "#10B981" : /QUANTITY|REPLACE|CANCEL/.test(e.event_type) ? "#ff9500" : "#0a84ff")}
               ai={(e: any) => <>{e.user_email ? ten(e.user_email) : "Hệ thống"}{e.eo_id ? <> · <EoLink id={e.eo_id}>{e.eo_code}</EoLink></> : null}</>}
               tieu={(e: any) => <>{EVENT_LABEL[e.event_type] ?? e.event_type}{e.so_ban > 1 && <span className="muted" style={{ fontWeight: 400 }} title="Bản ghi giống hệt nhau (dữ liệu chuyển từ Google Sheet cũ)"> (×{e.so_ban})</span>}</>}
               moTa={(e: any) => moTaSuKien(e) || null} />

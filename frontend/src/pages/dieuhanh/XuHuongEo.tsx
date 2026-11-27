@@ -6,7 +6,7 @@ import { Card, Spinner } from "../../components/ui";
 import { soLuong } from "../../lib/format";
 
 const DONUT_COLOR: Record<string, string> = {
-  "Nháp": "#B6BAC2", "Đang thẩm định": "#F5CC18", "Chờ duyệt mua": "#FC7000",
+  "Nháp": "#B6BAC2", "Đang thẩm định": "#F5CC18", "Chờ duyệt mua": "#ff6b00",
   "Đã ban hành": "#6CD13D", "Từ chối / Đã hủy": "#FC4244",
 };
 
@@ -36,8 +36,8 @@ export function XuHuongEo() {
               <ComposedChart data={d.trend} margin={{ top: 6, right: 10, left: -16, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gTong" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#F7CE1B" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#F7CE1B" stopOpacity={0.03} />
+                    <stop offset="0%" stopColor="#ff9500" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#ff9500" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="#EEE" vertical={false} />
@@ -46,8 +46,8 @@ export function XuHuongEo() {
                 <Tooltip />
                 <Legend verticalAlign="top" align="left" iconType="plainline" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
                 <Area type="monotone" dataKey="tong" name="Tổng EO" stroke="#F0C000" strokeWidth={2.5} fill="url(#gTong)" dot={{ r: 3 }} activeDot={{ r: 4 }} />
-                <Line type="monotone" dataKey="ban_hanh" name="Đã ban hành" stroke="#22C55E" strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="tu_choi" name="Từ chối / Đã hủy" stroke="#EF4444" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="ban_hanh" name="Đã ban hành" stroke="#2fb350" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="tu_choi" name="Từ chối / Đã hủy" stroke="#ff3b30" strokeWidth={2.5} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

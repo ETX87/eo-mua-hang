@@ -255,7 +255,7 @@ function NhapAmis() {
           {filename && <div style={{ marginTop: 8, fontSize: 12.5 }}>Đã chọn: <b>{filename}</b>
             {docInfo && <span className="muted"> · {docInfo.nhanDang === "so_chi_tiet" ? `nhận dạng: báo cáo MISA "Sổ chi tiết" (tiêu đề cột ở dòng ${docInfo.dongTieuDe})` : "nhận dạng: file mẫu"} · {soLuong(rows?.length ?? 0)} dòng dữ liệu</span>}</div>}
           {docInfo && docInfo.thieuCot.length > 0 && (
-            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--danger-ink)", background: "#FEF2F2", borderRadius: 8, padding: "6px 10px" }}>
+            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--danger-ink)", background: "#fff2f1", borderRadius: 8, padding: "6px 10px" }}>
               Không tìm thấy cột: <b>{docInfo.thieuCot.join(", ")}</b> — kiểm tra tên cột trong file (mã phê duyệt có thể đặt tên "Mã phê duyệt" hoặc "Mã PD EO").
             </div>
           )}
@@ -323,13 +323,13 @@ function NhapAmis() {
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             <StatTile label="Tổng dòng" value={soLuong(rows.length)} />
             {pre ? <>
-              <StatTile label="Mới — sẽ nhập" value={soLuong(pre.summary.them_moi)} tint="#F0FDF4" />
-              <StatTile label="Đã có (trùng lần trước)" value={soLuong(pre.summary.giu_nguyen)} tint="#F9FAFB" />
-              {pre.summary.khoi_phuc > 0 && <StatTile label="Khôi phục (đã hủy trước đó)" value={soLuong(pre.summary.khoi_phuc)} tint="#EFF6FF" />}
-              <StatTile label="Bỏ qua" value={soLuong(pre.summary.skipped)} tint="#F9FAFB" />
+              <StatTile label="Mới — sẽ nhập" value={soLuong(pre.summary.them_moi)} tint="#effaf1" />
+              <StatTile label="Đã có (trùng lần trước)" value={soLuong(pre.summary.giu_nguyen)} tint="#f5f5f7" />
+              {pre.summary.khoi_phuc > 0 && <StatTile label="Khôi phục (đã hủy trước đó)" value={soLuong(pre.summary.khoi_phuc)} tint="#e8f1fc" />}
+              <StatTile label="Bỏ qua" value={soLuong(pre.summary.skipped)} tint="#f5f5f7" />
             </> : <>
-              <StatTile label="Sẽ nhập" value={soLuong(seNhap)} tint="#F0FDF4" />
-              <StatTile label="Bỏ qua" value={soLuong(boQua)} tint="#F9FAFB" />
+              <StatTile label="Sẽ nhập" value={soLuong(seNhap)} tint="#effaf1" />
+              <StatTile label="Bỏ qua" value={soLuong(boQua)} tint="#f5f5f7" />
             </>}
           </div>
           {pre && Object.keys(pre.summary.ly_do_bo ?? {}).length > 0 && (
@@ -350,11 +350,11 @@ function NhapAmis() {
         <Card style={{ marginBottom: 16 }}>
           <strong style={{ fontSize: 14 }}>3. Kết quả import</strong>
           <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-            <StatTile label="Đã nhập" value={soLuong(result.inserted)} tint="#F0FDF4" />
-            <StatTile label="Trùng" value={soLuong(result.duplicate)} tint="#FFFBEB" />
-            <StatTile label="Bỏ qua" value={soLuong(result.skipped)} tint="#F9FAFB" />
-            {result.restored > 0 && <StatTile label="Khôi phục" value={soLuong(result.restored)} tint="#EFF6FF" />}
-            {result.voided > 0 && <StatTile label="Đã hủy (đồng bộ)" value={soLuong(result.voided)} tint="#FEF2F2" />}
+            <StatTile label="Đã nhập" value={soLuong(result.inserted)} tint="#effaf1" />
+            <StatTile label="Trùng" value={soLuong(result.duplicate)} tint="#fff6e8" />
+            <StatTile label="Bỏ qua" value={soLuong(result.skipped)} tint="#f5f5f7" />
+            {result.restored > 0 && <StatTile label="Khôi phục" value={soLuong(result.restored)} tint="#e8f1fc" />}
+            {result.voided > 0 && <StatTile label="Đã hủy (đồng bộ)" value={soLuong(result.voided)} tint="#fff2f1" />}
           </div>
         </Card>
       )}

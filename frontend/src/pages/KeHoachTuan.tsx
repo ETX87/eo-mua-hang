@@ -67,7 +67,7 @@ export default function KeHoachTuan() {
           </button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
         </>} />
-      {msg && <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
+      {msg && <div style={{ background: "#e2f6e7", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{msg}</div>}
       <Card style={{ marginBottom: 14, padding: "10px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <b style={{ fontSize: 13.5 }}>Kế hoạch theo tuần dùng khi nào, vì sao, nhập thế nào?</b>
@@ -99,7 +99,7 @@ export default function KeHoachTuan() {
             {(eos.data?.rows ?? []).map((e) => (
               <button key={e.id} onClick={() => setEoId(e.id)} className="btn ghost" style={{
                 justifyContent: "flex-start", textAlign: "left", height: "auto", padding: "8px 10px", display: "block",
-                background: e.id === eoId ? "var(--brand-yellow-soft, #FEF3C7)" : undefined,
+                background: e.id === eoId ? "var(--brand-yellow-soft, #fff1dc)" : undefined,
               }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{e.approval_code || e.eo_code} <span className="muted" style={{ fontWeight: 400 }}>· {e.eo_code}</span></div>
                 <div className="muted" style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.tieu_de || "(không tiêu đề)"} · {e.so_dong} dòng</div>
@@ -221,7 +221,7 @@ function WeekGrid({ eoId, lines, plans, onSaved }: { eoId: number; lines: PlanLi
               const thieu = l.current_qty - khNgay(l) - tt;
               const e = errs[l.id];
               return (
-                <tr key={l.id} style={{ background: e ? "#FEF2F2" : undefined }} title={e}>
+                <tr key={l.id} style={{ background: e ? "#fff2f1" : undefined }} title={e}>
                   <td><b>{l.part_code}</b>{l.part_code_goc && <div className="muted" style={{ fontSize: 11 }}>thay từ {l.part_code_goc}</div>}</td>
                   <td style={{ maxWidth: 220 }}>{l.part_name}{l.ghi_chu && <div className="muted" style={{ fontSize: 11 }}>Ghi chú: {l.ghi_chu}</div>}</td>
                   <td><Kho t={l.warehouse} /></td>
@@ -233,7 +233,7 @@ function WeekGrid({ eoId, lines, plans, onSaved }: { eoId: number; lines: PlanLi
                     const changed = (cells[k] ?? "") !== (orig[k] ?? "");
                     return (
                       <td key={w} style={{ padding: 3 }}>
-                        <input className="input right" style={{ width: 72, background: changed ? "#FEF9C3" : undefined }} value={cells[k] ?? ""}
+                        <input className="input right" style={{ width: 72, background: changed ? "#fff6e8" : undefined }} value={cells[k] ?? ""}
                           onChange={(ev) => setCells((c) => ({ ...c, [k]: ev.target.value.trim() }))} />
                       </td>
                     );

@@ -46,25 +46,27 @@ export function ChonNhieu({ value, onChange, options, placeholder, width = 200, 
     <div ref={ref} style={{ position: "relative", width, maxWidth: "100%", ...style }}>
       <button type="button" className="select tb" title={dang ? `${title ? title + ": " : ""}${value.map((v) => ten(ds.find((o) => o.v === v) ?? { v })).join(", ")}` : title}
         onClick={() => setMo((x) => !x)}
-        style={{ width: "100%", display: "flex", alignItems: "center", gap: 4, textAlign: "left", cursor: "pointer", background: "#fff",
-          borderColor: dang ? "var(--brand-yellow-btn)" : undefined, fontWeight: dang ? 600 : undefined }}>
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 4, textAlign: "left", cursor: "pointer", backgroundImage: "none", paddingRight: 10,
+          background: dang ? "#fff" : undefined, boxShadow: dang ? "0 0 0 2px var(--brand-yellow-btn)" : undefined, fontWeight: dang ? 600 : undefined }}>
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: dang ? undefined : "var(--text-muted)" }}>{tomTat}</span>
-        {dang && <span role="button" title="Bỏ lọc" style={{ padding: "0 3px", color: "var(--text-muted)" }} onClick={(e) => { e.stopPropagation(); onChange([]); }}>×</span>}
+        {dang && <span role="button" title="Bỏ lọc" style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--brand-yellow-btn)", color: "#fff", fontSize: 11, lineHeight: "16px", textAlign: "center", flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); onChange([]); }}>×</span>}
         <span style={{ fontSize: 10, color: "var(--text-muted)" }}>▾</span>
       </button>
       {mo && (
-        <div data-modal style={{ position: "absolute", top: "calc(100% + 4px)", [align]: 0, minWidth: "100%", width: 280, maxWidth: "90vw", background: "#fff",
-          border: "1px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-pop)", zIndex: 220, padding: 8 }}>
+        <div data-modal style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, minWidth: "100%", width: 290, maxWidth: "90vw", background: "rgba(255,255,255,.96)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", border: 0, borderRadius: 14,
+          boxShadow: "0 0 0 .5px rgba(0,0,0,.12), 0 18px 44px rgba(0,0,0,.18)", zIndex: 220, padding: 12, animation: "ap-in .18s cubic-bezier(.2,.8,.2,1)" }}>
           {ds.length > 6 && <input autoFocus className="input tb" placeholder="🔍 Tìm…" value={tim} onChange={(e) => setTim(e.target.value)} style={{ width: "100%" }} />}
           <div style={{ display: "flex", gap: 6, margin: "6px 0", fontSize: 12 }}>
             <button type="button" className="btn ghost sm" onClick={() => onChange([...new Set([...value, ...loc.map((o) => o.v)])])}>Chọn tất cả{tim ? " (đang tìm)" : ""}</button>
             <button type="button" className="btn ghost sm" onClick={() => onChange(tim ? value.filter((v) => !loc.some((o) => o.v === v)) : [])}>Bỏ chọn</button>
           </div>
-          <div style={{ maxHeight: 260, overflow: "auto", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 6px" }}>
+          <div style={{ maxHeight: 260, overflow: "auto", background: "var(--panel-2)", borderRadius: 10, padding: 4 }}>
             {loc.length === 0 && <div className="muted" style={{ fontSize: 12, padding: 6 }}>Không có giá trị.</div>}
             {loc.map((o) => (
-              <label key={o.v} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, padding: "3px 0", cursor: "pointer" }}>
-                <input type="checkbox" checked={chon.has(o.v)} onChange={() => doi(o.v)} />
+              <label key={o.v} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, padding: "6px 8px", borderRadius: 8, cursor: "pointer" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#fff")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+                <input type="checkbox" checked={chon.has(o.v)} onChange={() => doi(o.v)} style={{ accentColor: "var(--ocean-600)", width: 15, height: 15 }} />
                 <span style={{ flex: 1 }}>{ten(o)}</span>
                 {o.n != null && <span className="muted" style={{ fontSize: 11 }}>{o.n}</span>}
               </label>

@@ -54,7 +54,7 @@ export default function CaCeo() {
         <div style={{ fontSize: 11.5, color: mucCua(r.muc_xu_ly).mau, marginTop: 2 }}>{r.ly_do_xu_ly.slice(0, 2).join(" · ")}{r.ly_do_xu_ly.length > 2 ? " …" : ""}</div></div> },
     { key: "ma", header: "Mã CEO · lý do", loc: "chon", gt: (r) => r._ma.ma, maxW: 280,
       render: (r) => <span title={`${r._ma.ten}: ${r._ma.gia_tri} (ngưỡng ${r._ma.nguong})\n${r._ma.chi_tiet.join("\n")}`} style={{ fontSize: 12 }}>
-        <b style={{ fontFamily: "ui-monospace, monospace", color: "#7F1D1D" }}>{r._ma.ma}</b> {r._ma.ten} · <b>{r._ma.gia_tri}</b>
+        <b style={{ fontFamily: "ui-monospace, monospace", color: "#8a0010" }}>{r._ma.ma}</b> {r._ma.ten} · <b>{r._ma.gia_tri}</b>
         {r.ma_ceo.length > 1 && <div className="muted" style={{ fontSize: 11 }}>dòng này còn ở ca {r.ma_ceo.filter((x) => x.ma !== r._ma.ma).map((x) => x.ma.replace("ER.MH-", "")).join(", ")}</div>}</span> },
     { key: "po", header: "PO", loc: "chu", gt: (r) => r.po, render: (r) => <span className="cell-link" onClick={(e) => { e.stopPropagation(); qv.openEo(r.eo_id); }}>{r.po}</span> },
     { key: "lk", header: "Mã LK", loc: "chu", gt: (r) => `${r.ma_lk} ${r.ten_lk}`, gtSap: (r) => r.ma_lk, maxW: 170, render: (r) => <><b style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{r.ma_lk}</b><div className="muted" style={{ fontSize: 11 }}>{r.ten_lk}</div></> },
@@ -95,7 +95,7 @@ export default function CaCeo() {
       const thuc = Math.max(0, ...mo.map((r) => r.thuc7));
       return <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12.5 }}>
         <span style={{ background: mc.nen, color: mc.mau, fontWeight: 800, fontSize: 11.5, borderRadius: 6, padding: "2px 8px" }}>{mc.icon} {mc.ngan}</span>
-        <b style={{ fontFamily: "ui-monospace, monospace", color: "#7F1D1D" }}>{r0._ma.ma}</b><span>{tenMa(r0._ma.ma)}</span>
+        <b style={{ fontFamily: "ui-monospace, monospace", color: "#8a0010" }}>{r0._ma.ma}</b><span>{tenMa(r0._ma.ma)}</span>
         <span className="cell-link" onClick={(e) => { e.stopPropagation(); qv.openEo(r0.eo_id); }}><b>{r0.po}</b></span>
         <span className="muted">{r0.doi_tac ?? "—"} · {ten(r0.nguoi_dat)}</span>
         <span><b>{d.length}</b> dòng LK{xong && tab === "dang" ? ` · ${xong} đã xong` : ""}</span>
@@ -116,9 +116,9 @@ export default function CaCeo() {
       <PageHeader title="PO tồn CEO" />
       <Card>
         <FilterBar>
-          <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+          <div className="seg" role="tablist">
             {([["dang", "🔥 Đang theo dõi", caDang], ["xong", "⚪ Đã xong", soXong]] as const).map(([k, l, n]) => (
-              <button key={k} className="btn sm" style={{ borderRadius: 0, border: 0, background: tab === k ? "var(--brand-yellow-btn)" : "#fff", fontWeight: tab === k ? 800 : 500 }}
+              <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""}
                 onClick={() => doiTab(k)}>{l} ({soLuong(n)})</button>
             ))}
           </div>
@@ -133,7 +133,7 @@ export default function CaCeo() {
               {MUC[k].icon} {MUC[k].l} ({soLuong(soCa((c) => c.muc === k))})</button>;
           })}
           {tab === "dang" && <button className="btn sm" title="Mọi dòng còn thiếu của ca đều chưa được thúc NCC trong 7 ngày" onClick={() => setKhongThuc(!khongThuc)}
-            style={{ fontWeight: khongThuc ? 800 : 600, color: "#B91C1C", borderColor: khongThuc ? "#B91C1C" : undefined, background: khongThuc ? "#FEE2E2" : undefined }}>
+            style={{ fontWeight: khongThuc ? 800 : 600, color: "#d70015", borderColor: khongThuc ? "#d70015" : undefined, background: khongThuc ? "#ffe7e5" : undefined }}>
             Không thúc NCC 7 ngày ({soLuong(soCa(khongThucCa))})</button>}
           <div style={{ position: "relative", flex: "1 1 180px", maxWidth: 280 }}>
             <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 9, color: "var(--text-faint)" }} />

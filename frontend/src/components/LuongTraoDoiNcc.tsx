@@ -11,7 +11,7 @@ import { ngay, ngayGio, ten, tuBayGio } from "../lib/format";
  */
 type Loai = "THUC" | "NCC" | "NGAY";
 interface Ev { luc: string; loai: Loai; tieu_de: string; chi_tiet: string; ai: string }
-const MAU: Record<Loai, string> = { THUC: "#2563EB", NCC: "#16A34A", NGAY: "#F59E0B" };
+const MAU: Record<Loai, string> = { THUC: "#0071e3", NCC: "#1d8a3c", NGAY: "#ff9500" };
 const NHAN: Record<Loai, string> = { THUC: "3T thúc NCC", NCC: "NCC trả lời", NGAY: "Cập nhật ngày DK" };
 const KENH: Record<string, string> = { DIEN_THOAI: "Gọi điện", ZALO: "Zalo", TIN_NHAN: "Tin nhắn", GAP: "Gặp trực tiếp", KHAC: "Khác" };
 const soNgayTu = (t: string) => Math.max(0, Math.floor((Date.now() + 7 * 3600_000 - Date.parse(t.slice(0, 19).replace(" ", "T") + "Z")) / 86400_000));
@@ -65,7 +65,7 @@ export function LuongTraoDoiNcc({ d, tim = "" }: { d: any; tim?: string }) {
           {gan.map((e, i) => (
             <div key={i} title={`${NHAN[e.loai]} · ${ngayGio(e.luc)}\n${e.tieu_de}\n${e.chi_tiet}\n${e.ai ? ten(e.ai) : ""}`}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 92, flex: 1, position: "relative" }}>
-              {i > 0 && <div style={{ position: "absolute", top: 7, right: "50%", width: "100%", height: 2, background: "#E2E8F0" }} />}
+              {i > 0 && <div style={{ position: "absolute", top: 7, right: "50%", width: "100%", height: 2, background: "#e8e8ed" }} />}
               <div style={{ width: 16, height: 16, borderRadius: 99, background: MAU[e.loai], position: "relative", zIndex: 1, border: "2px solid #fff", boxShadow: `0 0 0 1px ${MAU[e.loai]}` }} />
               <div style={{ fontSize: 11, fontWeight: 700, color: MAU[e.loai], marginTop: 3, textAlign: "center" }}>{e.loai === "THUC" ? "3T thúc" : e.loai === "NCC" ? "NCC trả lời" : "Ngày DK"}</div>
               <div className="muted" style={{ fontSize: 10.5 }}>{ngayGio(e.luc).slice(0, 10)}</div>

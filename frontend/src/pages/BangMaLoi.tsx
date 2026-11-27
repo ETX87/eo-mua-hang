@@ -19,8 +19,8 @@ interface Th { ma: string; so_loi: number; so_ban_ghi?: number; cho: number; da_
 interface Data { bang: Def[]; tong_hop: Th[]; dem_ceo: Record<string, number>; dem_gd: Record<string, { dang: number; dang_tre: number; xong30: number; tre30: number }>; so_ngay_tu_dong: number }
 type Dong = Def & { th?: Th; dem: number | null; phu: string };
 const NHOM: Record<string, { l: string; mau: string }> = {
-  HE_THONG: { l: "Hệ thống ghi · phải GT", mau: "#DC2626" }, TAY: { l: "Ghi khi giải trình", mau: "#2563EB" },
-  CEO: { l: "Cấp CEO", mau: "#7F1D1D" }, GIAI_DOAN: { l: "Trễ hạn bước · chỉ đo", mau: "#B45309" },
+  HE_THONG: { l: "Hệ thống ghi · phải GT", mau: "#d70015" }, TAY: { l: "Ghi khi giải trình", mau: "#0071e3" },
+  CEO: { l: "Cấp CEO", mau: "#8a0010" }, GIAI_DOAN: { l: "Trễ hạn bước · chỉ đo", mau: "#c26400" },
 };
 const TEN_GD: Record<string, string> = { G1: "Lập & trình", G2: "Thẩm định", G3: "Duyệt mua", G4: "Gửi đơn NCC", G5: "Chờ ngày DK", G6: "Chờ giao hàng", G7: "Nhập kho", G8: "Giao bù" };
 
@@ -51,7 +51,7 @@ export default function BangMaLoi() {
     { key: "da", header: "Đã giải trình", loc: "so", gt: (r) => r.th?.da_gt ?? null, align: "right",
       render: (r) => (r.th ? <>{so(r.th.da_gt, "var(--ok-ink)")}{r.th.so_loi > 0 && <div className="muted" style={{ fontSize: 11 }}>{r.th.ty_le_gt ?? 0}%</div>}</> : <span className="muted">—</span>) },
     { key: "kp", header: "Tự đóng · đã khắc phục", loc: "so", gt: (r) => r.th?.tu_khac_phuc ?? null, align: "right", render: (r) => (r.th ? so(r.th.tu_khac_phuc) : <span className="muted">—</span>) },
-    { key: "qh", header: `Tự đóng · quá ${d.so_ngay_tu_dong} ngày (vi phạm)`, loc: "so", gt: (r) => r.th?.tu_qua_han ?? null, align: "right", render: (r) => (r.th ? so(r.th.tu_qua_han, "#B45309") : <span className="muted">—</span>) },
+    { key: "qh", header: `Tự đóng · quá ${d.so_ngay_tu_dong} ngày (vi phạm)`, loc: "so", gt: (r) => r.th?.tu_qua_han ?? null, align: "right", render: (r) => (r.th ? so(r.th.tu_qua_han, "#c26400") : <span className="muted">—</span>) },
     { key: "act", header: "", render: (r) => (r.nhom === "HE_THONG" || r.nhom === "TAY") && r.dem
       ? <button className="btn sm" onClick={(e) => { e.stopPropagation(); xemLoi(r.ma); }}>Xem lỗi</button>
       : r.nhom === "CEO" && r.dem ? <button className="btn sm" onClick={() => nav("/ca-ceo")}>PO tồn CEO</button> : null },
@@ -74,7 +74,7 @@ export default function BangMaLoi() {
           <span>Chờ giải trình <b style={{ color: "var(--danger-ink)" }}>{soLuong(tong.cho)}</b></span>
           <span>Đã giải trình <b style={{ color: "var(--ok-ink)" }}>{soLuong(tong.da)}</b></span>
           <span>Tự đóng do đã khắc phục <b>{soLuong(tong.kp)}</b></span>
-          <span>Tự đóng do quá {d.so_ngay_tu_dong} ngày (tính vi phạm) <b style={{ color: "#B45309" }}>{soLuong(tong.qh)}</b></span>
+          <span>Tự đóng do quá {d.so_ngay_tu_dong} ngày (tính vi phạm) <b style={{ color: "#c26400" }}>{soLuong(tong.qh)}</b></span>
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={xuat} title="Xuất Excel bảng mã"><I.download width={14} height={14} /></button>
         </div>

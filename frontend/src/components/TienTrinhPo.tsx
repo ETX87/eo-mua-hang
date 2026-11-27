@@ -10,7 +10,7 @@ import { GD_CHINH } from "../lib/giaiDoan";
  */
 const MOC = [...GD_CHINH.map((g) => ({ k: g.k as string, l: g.l as string })), { k: "XONG", l: "Đủ hàng" }];
 const NGAN: Record<string, string> = { G1: "Lập", G2: "Thẩm định", G3: "Duyệt mua", G5: "Chờ ngày DK", G6: "Chờ giao hàng", G8: "Giao bù", XONG: "Đủ hàng" };
-const MAU = { xong: "#22C55E", dang: "#F59E0B", tre: "#EF4444", chua: "#CBD5E1" };
+const MAU = { xong: "#2fb350", dang: "#ff9500", tre: "#ff3b30", chua: "#d2d2d7" };
 
 export interface GdPo { dem: Record<string, number>; tre: Record<string, number> }
 

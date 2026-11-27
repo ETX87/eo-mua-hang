@@ -129,15 +129,15 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
     { k: "gt", nhom: "Lỗi & giải trình", h: "Đã GT", title: "Đã giải trình thật / (đã + chưa + không giải trình). Ca tự khắc phục không tính", r: (h) => {
       const m = h.g + h.c + h.v;
       if (!m) return <span className="muted">·</span>;
-      const t = h.g / m, mau = t < 0.5 ? "#DC2626" : t < 0.8 ? "#D97706" : "#16A34A";
+      const t = h.g / m, mau = t < 0.5 ? "#d70015" : t < 0.8 ? "#c26400" : "#1d8a3c";
       return <span title={`${h.g} / ${m} ca đã giải trình`} style={{ display: "inline-block", minWidth: 44, padding: "1px 6px", borderRadius: 10, background: `${mau}1A`, color: mau, fontWeight: 800 }}>{Math.round(t * 100)}%</span>;
     } },
     { k: "c", nhom: "Lỗi & giải trình", h: "Chưa GT", v: (h) => h.c, tc: "chua_gt", xau: true, title: "Ca lỗi còn trong hạn 16 giờ làm việc, chưa giải trình" },
     { k: "v", nhom: "Lỗi & giải trình", h: "Không GT", v: (h) => h.v, tc: "khong_gt", xau: true, title: "Hết 16 giờ làm việc không giải trình → vi phạm (tính riêng cho người phải giải trình)" },
   ];
   const nhomCot = COT.reduce<{ l: string; n: number }[]>((m, c) => { const x = m[m.length - 1]; if (x && x.l === c.nhom) x.n++; else m.push({ l: c.nhom, n: 1 }); return m; }, []);
-  const NEN_NHOM: Record<string, string> = { "Quy mô tồn": "#F8FAFC", "Tồn quá (ngày)": "#FFF7ED", "Ngày DK & thúc NCC": "#FEFCE8", "Lỗi & giải trình": "#FEF2F2" };
-  const VACH: Record<string, string> = { NCC: "#2563EB", NOI_BO: "#D97706", TONG: "#374151" };
+  const NEN_NHOM: Record<string, string> = { "Quy mô tồn": "#f5f5f7", "Tồn quá (ngày)": "#fff6e8", "Ngày DK & thúc NCC": "#FEFCE8", "Lỗi & giải trình": "#fff2f1" };
+  const VACH: Record<string, string> = { NCC: "#0071e3", NOI_BO: "#c26400", TONG: "#3a3a3c" };
   const dauNhom = (i: number) => i === 0 || COT[i - 1].nhom !== COT[i].nhom;
   const O = ({ h, c }: { h: Hang; c: Cot }) => {
     if (c.r) return <>{c.r(h)}</>;
@@ -149,7 +149,7 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
       <span className={bam ? "bt-o" : undefined} role={bam ? "button" : undefined}
         onClick={bam ? (e) => { e.stopPropagation(); setXem({ hang: h, tc: TC[c.tc!] }); } : undefined}
         title={`${bam ? `Bấm xem ${v} dòng: ${TC[c.tc!].l}` : soLuong(v)} — ${h.nhomTxt}${c.phu ? ` (${c.phu(h)})` : ""}`}
-        style={{ background: muc ? `rgba(220, 38, 38, ${0.08 + muc * 0.32})` : undefined, color: muc > 0.55 ? "#7F1D1D" : undefined }}>
+        style={{ background: muc ? `rgba(220, 38, 38, ${0.08 + muc * 0.32})` : undefined, color: muc > 0.55 ? "#8a0010" : undefined }}>
         {soLuong(v)}{c.phu && <span className="bt-phu">{c.phu(h)}</span>}
       </span>
     );
@@ -176,18 +176,18 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
       <style>{`
         .bt-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
         .bt-tbl th, .bt-tbl td { padding: 6px 8px; border-bottom: 1px solid #EEF0F3; white-space: nowrap; vertical-align: middle; }
-        .bt-tbl thead th { font-weight: 700; color: #4B5563; font-size: 12px; }
-        .bt-tbl .bt-nhom th { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #6B7280; border-bottom: 2px solid #E5E7EB; text-align: center; }
+        .bt-tbl thead th { font-weight: 700; color: #515154; font-size: 12px; }
+        .bt-tbl .bt-nhom th { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #6e6e73; border-bottom: 2px solid #e8e8ed; text-align: center; }
         .bt-tbl td.so { text-align: right; }
         .bt-tbl td.ten, .bt-tbl th.ten { position: sticky; left: 0; background: inherit; z-index: 2; text-align: left; }
         .bt-tbl tr.cap1 td { font-weight: 800; }
         .bt-tbl tr.cap2 td { font-weight: 500; }
         .bt-tbl tbody tr:hover td { filter: brightness(0.97); }
-        .bt-tbl tr.tong td { font-weight: 800; border-top: 2px solid #374151; }
+        .bt-tbl tr.tong td { font-weight: 800; border-top: 2px solid #3a3a3c; }
         .bt-o { display: inline-block; min-width: 34px; padding: 1px 6px; border-radius: 6px; cursor: pointer; }
-        .bt-o:hover { outline: 2px solid #2563EB; }
-        .bt-phu { display: block; font-size: 10.5px; font-weight: 400; color: #6B7280; line-height: 1.1; }
-        .bt-sep { border-left: 1px solid #E5E7EB; }
+        .bt-o:hover { outline: 2px solid #0071e3; }
+        .bt-phu { display: block; font-size: 10.5px; font-weight: 400; color: #6e6e73; line-height: 1.1; }
+        .bt-sep { border-left: 1px solid #e8e8ed; }
       `}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
         <b style={{ fontSize: 15 }}>Bảng trách nhiệm tồn đọng</b>
@@ -198,7 +198,7 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
         <span className="muted" style={{ fontSize: 11.5 }}>Ô càng đỏ càng nặng · bấm số để xem danh sách{gon ? "" : " · tồn tính từ ngày ban hành"}</span>
         <button className="btn sm" style={{ marginLeft: "auto" }} onClick={xuat}>⬇ Excel</button>
       </div>
-      <div style={{ overflowX: "auto", border: "1px solid #E5E7EB", borderRadius: 10 }}>
+      <div style={{ overflowX: "auto", border: "1px solid #e8e8ed", borderRadius: 10 }}>
         <table className="bt-tbl">
           <thead>
             <tr className="bt-nhom">
@@ -214,7 +214,7 @@ export function BangTrachNhiem({ dong, duyet, gon }: { dong: DongTn[]; duyet?: D
             </tr>
           </thead>
           <tbody>{hangs.map((h) => (<Fragment key={h.key}>
-            <tr className={h.cap === 0 ? "tong" : `cap${h.cap}`} style={{ background: h.cap === 1 ? (h.ben === "NCC" ? "#EFF6FF" : "#FFFBEB") : h.cap === 0 ? "#F3F4F6" : "#fff", cursor: "pointer" }}
+            <tr className={h.cap === 0 ? "tong" : `cap${h.cap}`} style={{ background: h.cap === 1 ? (h.ben === "NCC" ? "#e8f1fc" : "#fff6e8") : h.cap === 0 ? "#f5f5f7" : "#fff", cursor: "pointer" }}
               onClick={() => h.dong && setXem({ hang: h, tc: TC.tat_ca })}>
               <td className="ten" style={{ boxShadow: h.cap ? `inset 4px 0 0 ${VACH[h.ben]}` : undefined, paddingLeft: h.cap === 2 ? 32 : 12 }}>
                 {h.cap === 1 && <span role="button" style={{ cursor: "pointer", display: "inline-block", width: 16 }} onClick={(e) => { e.stopPropagation(); setMo((m) => ({ ...m, [h.ben]: !m[h.ben] })); }}>{mo[h.ben] ? "▾" : "▸"}</span>}

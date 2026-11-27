@@ -18,16 +18,16 @@ export interface R {
 }
 export type Muc = "RAT_HOT" | "GIAM_HOT" | "DA_XONG";
 export const MUC: Record<Muc, { l: string; ngan: string; mau: string; nen: string; icon: string; mo_ta: string }> = {
-  RAT_HOT: { l: "Rất hot — chưa xử lý", ngan: "Rất hot", mau: "#B91C1C", nen: "#FEE2E2", icon: "🔴", mo_ta: "còn thiếu hàng + có lỗi trong hạn giải trình (≤ 16h làm việc) chưa giải trình" },
-  GIAM_HOT: { l: "Đang giảm hot", ngan: "Giảm hot", mau: "#C2410C", nen: "#FFEDD5", icon: "🟠", mo_ta: "còn thiếu hàng + lỗi đã quá hạn giải trình 16h làm việc (hệ thống tự đóng) hoặc đã giải trình bù" },
-  DA_XONG: { l: "Đã xong — không còn hot", ngan: "Đã xong", mau: "#64748B", nen: "#F1F5F9", icon: "⚪", mo_ta: "hàng đã về đủ / kết thúc sớm — từng chạm ngưỡng CEO" },
+  RAT_HOT: { l: "Rất hot — chưa xử lý", ngan: "Rất hot", mau: "#d70015", nen: "#ffe7e5", icon: "🔴", mo_ta: "còn thiếu hàng + có lỗi trong hạn giải trình (≤ 16h làm việc) chưa giải trình" },
+  GIAM_HOT: { l: "Đang giảm hot", ngan: "Giảm hot", mau: "#c26400", nen: "#ffeddc", icon: "🟠", mo_ta: "còn thiếu hàng + lỗi đã quá hạn giải trình 16h làm việc (hệ thống tự đóng) hoặc đã giải trình bù" },
+  DA_XONG: { l: "Đã xong — không còn hot", ngan: "Đã xong", mau: "#6e6e73", nen: "#f5f5f7", icon: "⚪", mo_ta: "hàng đã về đủ / kết thúc sớm — từng chạm ngưỡng CEO" },
 };
 /** gia tri muc la (du lieu ban cu / API doi) -> khong vo man */
-export const mucCua = (k: string) => MUC[k as Muc] ?? { l: k, ngan: k, mau: "#64748B", nen: "#F1F5F9", icon: "•", mo_ta: "" };
+export const mucCua = (k: string) => MUC[k as Muc] ?? { l: k, ngan: k, mau: "#6e6e73", nen: "#f5f5f7", icon: "•", mo_ta: "" };
 export const MA_CEO: { ma: string; l: string; mau: string }[] = [
-  { ma: "ER.MH-201", l: "Lùi ngày dự kiến ≥ 3 lần", mau: "#B91C1C" },
-  { ma: "ER.MH-202", l: "Ngày dự kiến cách ngày đặt ≥ 30 ngày", mau: "#C2410C" },
-  { ma: "ER.MH-203", l: "≥ 3 lỗi trên dòng", mau: "#7F1D1D" },
+  { ma: "ER.MH-201", l: "Lùi ngày dự kiến ≥ 3 lần", mau: "#d70015" },
+  { ma: "ER.MH-202", l: "Ngày dự kiến cách ngày đặt ≥ 30 ngày", mau: "#c26400" },
+  { ma: "ER.MH-203", l: "≥ 3 lỗi trên dòng", mau: "#8a0010" },
 ];
 
 /** 1 dong bang = 1 dong LK trong 1 ca (PO + ma CEO) */

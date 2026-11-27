@@ -174,7 +174,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
                       : !m.kt ? (n.g.k === "G7" ? <span className="muted">—</span> : <span className={`badge ${tre ? "reject" : "review"}`}>{n.g.k === "G4" ? "Chưa ghi nhận mail" : "Đang thực hiện"}{tre ? " · trễ" : ""}</span>)
                       : <span className={`badge ${tre ? "reject" : "issued"}`}>{tre ? "Xong · trễ hạn" : "Xong · đúng hạn"}</span>;
                     return (
-                      <tr key={n.g.k} style={{ background: r.gd_hien_tai === n.g.k ? "#FFFBEB" : undefined }}>
+                      <tr key={n.g.k} style={{ background: r.gd_hien_tai === n.g.k ? "#fff6e8" : undefined }}>
                         <td style={{ whiteSpace: "nowrap" }}><b>{n.g.k}</b> {n.g.l}{n.g.k === "G4" && <span className="muted"> (song song)</span>}{n.g.k === "G7" && <span className="muted"> (chỉ đo)</span>}</td>
                         <td>{n.g.vai_tro}</td>
                         <td style={{ whiteSpace: "nowrap" }}>{m?.bd ? ngayGio(m.bd) : "—"}</td>

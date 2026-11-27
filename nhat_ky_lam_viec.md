@@ -4,6 +4,22 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.140: Chuyển toàn bộ giao diện app sang phong cách Apple (skill giao-dien-apple)
+
+- Yêu cầu (nguyên văn): "chuyển đổi toàn bộ giao diện app sang skill apple đang lưu".
+- Đã làm (đổi chỗ dùng chung để cả app đổi theo, không vá từng màn):
+  - `theme.css`: token mới (nền #f5f5f7, chữ #1d1d1f, màu hệ thống iOS, bóng mềm, bo 20) giữ tên biến cũ; vàng thương hiệu → cam "đang chọn / đang lọc", link → xanh #0071e3.
+    Nút viên thuốc, ô nhập nền xám không viền + vòng xanh khi focus, thẻ không viền, bảng tiêu đề kính mờ + dòng kẻ mảnh + cột đang lọc nền cam nhạt,
+    tab popup PO thành tab viên thuốc (đang chọn nền đen), hộp lọc cột kính mờ, segmented `.seg` + `.ptabs`, chuyển động mở popup, điện thoại Modal → bottom-sheet.
+  - Font: bỏ font web Be Vietnam Pro, dùng font hệ thống (-apple-system / SF / Inter / Segoe UI).
+  - `AppShell`: menu bên kính mờ sáng (mục chọn nền xanh chữ trắng, icon xanh nét mảnh), thanh trên kính mờ. `ui.tsx`: Modal (phủ mờ, bo 22, tiêu đề kính mờ, nút đóng tròn),
+    Popover, WidgetCard, KpiCard (ô biểu tượng kiểu icon iOS), StatTile, Avatar. `ChonNhieu` + lọc cột `DataTable`: kính mờ, đang lọc vòng cam.
+  - 332 mã màu Tailwind gắn cứng trong 36 file → màu hệ thống iOS cùng nghĩa; bỏ 4 viền màu dày (Tổng quan, Điều hành, Quản lý); 2 nhóm "tab vàng" (PO tồn CEO, Vi phạm) → segmented iOS.
+- 5W1H: Who — mọi người dùng. When — từ bản v0.140. Where — toàn bộ app web + điện thoại. What — đổi vẻ ngoài, không đổi chức năng / dữ liệu / quyền.
+  Why — Giám đốc chốt phong cách Apple cho mọi giao diện. How — dùng như cũ; ô lọc đang lọc có vòng cam + nút × cam, nút chính màu xanh.
+- Kiểm thử: typecheck + build; local 1440px: Tổng quan, Đơn PO, popup PO, form giải trình cả PO, Vi phạm; 375px: Tổng quan, menu bên, không tràn ngang.
+- Còn dở: các màn còn kẻ viền 1px quanh ô con trong trang (style viết tay từng màn) — sửa dần khi đụng tới từng màn.
+
 ## 27/11/2026 — v0.139: "Lỗi theo PO" theo demo đã duyệt — popup PO luồng ngang + thẻ trên điện thoại
 
 - Yêu cầu (nguyên văn): "tạo 1 fiel html giao diện để tôi đánh giá trước" → đã tạo demo `../demo-loi-theo-po.html` (ngoài repo, dữ liệu giả lập) → "Giữ như demo".

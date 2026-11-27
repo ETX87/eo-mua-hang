@@ -61,11 +61,11 @@ export function PageHeader({
 export function WidgetCard({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="card" style={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div style={{ background: "var(--brand-yellow)", padding: "12px 16px", fontWeight: 800, textAlign: "center", color: "var(--brand-ink)" }}>
+      <div style={{ padding: "18px 22px 4px", fontWeight: 650, fontSize: 17, letterSpacing: "-.02em", color: "var(--text)" }}>
         {title}
       </div>
-      <div style={{ padding: 16, flex: 1 }}>{children}</div>
-      {action && <div style={{ padding: "0 16px 16px" }}>{action}</div>}
+      <div style={{ padding: "10px 22px 20px", flex: 1 }}>{children}</div>
+      {action && <div style={{ padding: "0 22px 20px" }}>{action}</div>}
     </div>
   );
 }
@@ -75,13 +75,14 @@ export function KpiCard({ icon, tint, label, value, delta }: {
 }) {
   const Icon = I[icon];
   return (
-    <div className="card" style={{ padding: "18px 18px 20px", display: "flex", gap: 14, alignItems: "flex-start" }}>
-      <div style={{ width: 48, height: 48, borderRadius: 13, background: tint, display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 }}>
-        <Icon width={25} height={25} />
+    <div className="card" style={{ padding: "18px 20px 20px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div style={{ width: 40, height: 40, borderRadius: 11, background: `linear-gradient(160deg, color-mix(in srgb, ${tint} 78%, #fff), ${tint})`,
+        boxShadow: `0 2px 6px color-mix(in srgb, ${tint} 35%, transparent)`, display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 }}>
+        <Icon width={21} height={21} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</div>
-        <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.3, marginTop: 4 }} className="mono-num">{value}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap", color: "var(--text-faint)" }}>{label}</div>
+        <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-.025em", lineHeight: 1.2, marginTop: 4 }} className="mono-num">{value}</div>
         {delta && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, whiteSpace: "nowrap", color: delta.up ? "var(--ok)" : "var(--danger)" }}>{delta.text}</div>}
       </div>
     </div>
@@ -90,9 +91,9 @@ export function KpiCard({ icon, tint, label, value, delta }: {
 
 export function StatTile({ label, value, sub, tint }: { label: string; value: ReactNode; sub?: string; tint?: string }) {
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", background: tint ?? "#fff", minWidth: 120 }}>
-      <div className="muted" style={{ fontSize: 12 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }} className="mono-num">
+    <div style={{ border: 0, borderRadius: 16, padding: "12px 16px", background: tint ?? "var(--panel-2)", minWidth: 120 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-.025em", marginTop: 2 }} className="mono-num">
         {value}{sub && <span className="muted" style={{ fontSize: 12, fontWeight: 600, marginLeft: 6 }}>{sub}</span>}
       </div>
     </div>
@@ -100,7 +101,7 @@ export function StatTile({ label, value, sub, tint }: { label: string; value: Re
 }
 
 export function EmptyState({ text }: { text: string }) {
-  return <div className="muted" style={{ padding: "48px 12px", textAlign: "center", fontSize: 13 }}>{text}</div>;
+  return <div style={{ padding: "40px 12px", textAlign: "center", fontSize: 13, color: "var(--text-faint)" }}>{text}</div>;
 }
 
 export function Modal({ title, onClose, children, footer, wide, width }: {
@@ -114,14 +115,16 @@ export function Modal({ title, onClose, children, footer, wide, width }: {
     return () => window.removeEventListener("keydown", h);
   }, [onClose, id]);
   return (
-    <div data-modal="1" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.42)", display: "grid", placeItems: "center", zIndex: z, padding: 20 }}>
-      <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: width ?? (wide ? 720 : 460), maxWidth: "100%", padding: 0, boxShadow: "var(--shadow-pop)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderBottom: "1px solid var(--border)" }}>
-          <strong style={{ fontSize: 15 }}>{title}</strong>
-          <button className="btn ghost sm" onClick={onClose}><I.x /></button>
+    <div data-modal="1" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.28)", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", zIndex: z, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} className="card" role="dialog" aria-modal="true" aria-label={title}
+        style={{ width: width ?? (wide ? 720 : 460), maxWidth: "100%", padding: 0, borderRadius: 22, boxShadow: "var(--shadow-lg)", overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 18px 14px 22px", borderBottom: "1px solid rgba(0,0,0,.06)",
+          background: "var(--glass)", WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)" }}>
+          <strong style={{ fontSize: 17, fontWeight: 650, letterSpacing: "-.02em" }}>{title}</strong>
+          <button onClick={onClose} aria-label="Đóng" style={{ width: 30, height: 30, borderRadius: "50%", border: 0, background: "rgba(0,0,0,.06)", display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0, color: "var(--text-muted)" }}><I.x width={15} height={15} /></button>
         </div>
-        <div style={{ padding: 18, maxHeight: "70vh", overflow: "auto" }}>{children}</div>
-        {footer && <div style={{ padding: "14px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>{footer}</div>}
+        <div style={{ padding: "18px 22px", maxHeight: "70vh", overflow: "auto" }}>{children}</div>
+        {footer && <div style={{ padding: "12px 22px 16px", borderTop: "1px solid rgba(0,0,0,.06)", display: "flex", justifyContent: "flex-end", gap: 8 }}>{footer}</div>}
       </div>
     </div>
   );
@@ -148,10 +151,11 @@ export function Popover({ label, children, align = "left", width = 300, title, a
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button type="button" className={btnClass} title={title} onClick={() => setOpen((o) => !o)}
-        style={{ borderColor: active ? "var(--brand-yellow-btn)" : undefined, background: open ? "var(--panel-2)" : undefined }}>{label}</button>
+        style={{ boxShadow: active ? "0 0 0 2px var(--brand-yellow-btn)" : undefined, background: open ? "rgba(0,0,0,.1)" : active ? "#fff" : undefined }}>{label}</button>
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, width, maxWidth: "90vw", background: "#fff", border: "1px solid var(--border)",
-          borderRadius: 12, boxShadow: "var(--shadow-pop)", zIndex: 60, padding: 10 }}>
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", [align]: 0, width, maxWidth: "90vw", background: "rgba(255,255,255,.96)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)", backdropFilter: "saturate(180%) blur(20px)", border: 0,
+          borderRadius: 14, boxShadow: "0 0 0 .5px rgba(0,0,0,.12), 0 18px 44px rgba(0,0,0,.18)", zIndex: 60, padding: 10, animation: "ap-in .18s cubic-bezier(.2,.8,.2,1)" }}>
           {typeof children === "function" ? children(dong) : children}
         </div>
       )}
@@ -163,7 +167,7 @@ export function Popover({ label, children, align = "left", width = 300, title, a
 export function MenuItem({ icon, children, onClick, disabled, title, right }: { icon?: ReactNode; children: ReactNode; onClick: () => void; disabled?: boolean; title?: string; right?: ReactNode }) {
   return (
     <button type="button" className="btn ghost sm" disabled={disabled} title={title} onClick={onClick}
-      style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8 }}>
+      style={{ width: "100%", justifyContent: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 8, color: "var(--text)" }}>
       {icon}<span style={{ flex: 1, textAlign: "left" }}>{children}</span>{right}
     </button>
   );
@@ -174,12 +178,12 @@ export function Avatar({ name, size = 34 }: { name?: string | null; size?: numbe
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%", flexShrink: 0,
-      background: "linear-gradient(135deg,#FDE68A,#FBBF24)", color: "#7c5b00",
+      background: "linear-gradient(160deg,#5ea9ff,#0071e3)", color: "#fff", boxShadow: "0 2px 6px rgba(0,113,227,.3)",
       display: "grid", placeItems: "center", fontSize: size * 0.38, fontWeight: 700,
     }}>{initials || "?"}</div>
   );
 }
 
 export function Spinner({ text = "Đang tải…" }: { text?: string }) {
-  return <div className="muted" style={{ padding: "40px 12px", textAlign: "center" }}>{text}</div>;
+  return <div style={{ padding: "40px 12px", textAlign: "center", color: "var(--text-faint)", fontSize: 13 }}>{text}</div>;
 }

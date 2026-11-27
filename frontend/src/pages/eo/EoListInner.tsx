@@ -37,8 +37,8 @@ interface EoRow {
 
 const VP_TT: Record<string, { l: string; nen: string; mau: string }> = {
   // v0.110: "Cần giải trình" (còn hạn) ≠ "Có vi phạm" (hết hạn không giải trình); lỗi giải trình / khắc phục đúng hạn = không vi phạm
-  CEO: { l: "🔴 Cấp CEO", nen: "#FEE2E2", mau: "#B91C1C" }, CHO: { l: "Cần giải trình", nen: "#FFEDD5", mau: "#C2410C" },
-  VI_PHAM: { l: "Có vi phạm", nen: "#FEE2E2", mau: "#B91C1C" },
+  CEO: { l: "🔴 Cấp CEO", nen: "#ffe7e5", mau: "#d70015" }, CHO: { l: "Cần giải trình", nen: "#ffeddc", mau: "#c26400" },
+  VI_PHAM: { l: "Có vi phạm", nen: "#ffe7e5", mau: "#d70015" },
   DA_XL: { l: "✓ Xử lý trong hạn", nen: "#ECFDF5", mau: "#047857" }, KHONG: { l: "✓ Không có lỗi", nen: "transparent", mau: "var(--ok-ink)" },
 };
 const vpTomTat = (v: NonNullable<EoRow["vp"]>) => [v.ceo ? `${v.ceo} dòng cấp CEO` : "", v.vi_pham ? `${v.vi_pham} vi phạm (hết hạn không giải trình)` : "",
@@ -56,18 +56,18 @@ interface DsEo { rows: EoRow[]; total: number; tong_truoc_loc: number; tuy_chon:
  */
 const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "con_ton", l: "EO còn tồn", title: "EO chưa kết thúc: chưa đóng / chưa hủy / chưa từ chối, đang trình duyệt hoặc đã ban hành nhưng hàng chưa về đủ" },
-  { k: "cho_toi_duyet", l: "Chờ tôi duyệt", mau: "#DC2626", title: "Phiếu thẩm định / duyệt mua đang chờ bạn + EO bạn là người duyệt mua có dòng thêm sau ban hành chờ duyệt" },
-  { k: "nhap_cua_toi", l: "Nháp / bị trả về của tôi", mau: "#C2410C" },
+  { k: "cho_toi_duyet", l: "Chờ tôi duyệt", mau: "#d70015", title: "Phiếu thẩm định / duyệt mua đang chờ bạn + EO bạn là người duyệt mua có dòng thêm sau ban hành chờ duyệt" },
+  { k: "nhap_cua_toi", l: "Nháp / bị trả về của tôi", mau: "#c26400" },
   { k: "dang_tham_dinh", l: "Đang thẩm định" },
   { k: "cho_duyet_cuoi", l: "Chờ duyệt mua" },
   { k: "da_ban_hanh", l: "Đã ban hành (còn chờ hàng)" },
   { k: "done", l: "Đủ hàng (DONE)", title: "Đã ban hành, mọi dòng đã về đủ SL đặt (kể cả dòng kết thúc sớm)" },
   { k: "sau_bh_cho", l: "Có dòng thêm sau BH chờ duyệt" },
   // v0.084 bang dieu hanh (../QUAN_TRI_DIEU_HANH.md): muc DO / im lang / loi cho giai trinh theo dong LK dang mo
-  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#DC2626", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 12h làm việc / im lặng ≥ 7 ngày" },
+  { k: "po_do", l: "PO có dòng ĐỎ", mau: "#d70015", title: "Có dòng: cấp CEO / quá ngày DK / trễ hạn chưa có ngày DK / lỗi chờ giải trình ≥ 12h làm việc / im lặng ≥ 7 ngày" },
   { k: "po_im_lang", l: "PO im lặng ≥ 7 ngày", title: "Có dòng đang mở 7 ngày không ai tác động (cập nhật kế hoạch, push, mail NCC, gọi/Zalo, giải trình)" },
   { k: "po_loi_cho", l: "PO có lỗi chờ giải trình" },
-  { k: "po_ceo", l: "PO cấp CEO", mau: "#B91C1C", title: "PO có dòng đang ở cấp CEO (lùi ngày DK ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi)" },
+  { k: "po_ceo", l: "PO cấp CEO", mau: "#d70015", title: "PO có dòng đang ở cấp CEO (lùi ngày DK ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi)" },
   // v0.129 (menu Don PO): PO co loi CHUA xu ly (can giai trinh / vi pham het han) theo ben chiu
   { k: "loi_doi_tac", l: "Lỗi đối tác (chưa xử lý)", title: "PO có lỗi do nhà cung cấp chịu (chưa có / quá ngày DK…) đang cần giải trình hoặc đã thành vi phạm" },
   { k: "loi_noi_bo", l: "Lỗi nội bộ (chưa xử lý)", title: "PO có lỗi do nội bộ chịu (không thúc NCC, chậm duyệt…) đang cần giải trình hoặc đã thành vi phạm" },
@@ -177,8 +177,8 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       key: "canh_bao", header: "Cảnh báo", loc: "so", render: (r) => !r.dh ? <span className="muted">—</span> : (
         <span title={[r.dh.ly_do.length ? `Đỏ vì: ${r.dh.ly_do.join("; ")}` : "", `${r.dh.mo} dòng đang mở · quá DK ${r.dh.qua_dk} · chưa có DK ${r.dh.chua_dk} · cấp CEO ${r.dh.ceo}`].filter(Boolean).join("\n")}
           style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
-          {r.dh.do > 0 && <span style={{ background: "#FEE2E2", color: "#DC2626", fontWeight: 800, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.do} đỏ</span>}
-          {r.dh.vang > 0 && <span style={{ background: "#FEF3C7", color: "#B45309", fontWeight: 700, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.vang} vàng</span>}
+          {r.dh.do > 0 && <span style={{ background: "#ffe7e5", color: "#d70015", fontWeight: 800, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.do} đỏ</span>}
+          {r.dh.vang > 0 && <span style={{ background: "#fff1dc", color: "#c26400", fontWeight: 700, fontSize: 11, borderRadius: 6, padding: "1px 6px" }}>{r.dh.vang} vàng</span>}
           {!r.dh.do && !r.dh.vang && <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>✓ ổn</span>}
           {(r.dh.qua_dk > 0 || r.dh.ceo > 0) && <div className="muted" style={{ fontSize: 10.5, width: "100%" }}>{r.dh.qua_dk ? `quá DK ${r.dh.qua_dk}` : ""}{r.dh.qua_dk && r.dh.ceo ? " · " : ""}{r.dh.ceo ? `CEO ${r.dh.ceo}` : ""}</div>}
         </span>),
@@ -194,7 +194,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
               {m.l}{r.vp.tt === "CEO" && r.vp.ceo > 1 ? ` · ${r.vp.ceo} dòng` : ""}</span>
             {r.vp.tong > 0 && <div style={{ fontSize: 11, whiteSpace: "nowrap" }}>
               {r.vp.vi_pham > 0 && <b style={{ color: "var(--danger-ink)" }}>{soLuong(r.vp.vi_pham)} vi phạm</b>}
-              {r.vp.cho > 0 && <>{r.vp.vi_pham > 0 ? " · " : ""}<b style={{ color: "#C2410C" }}>{soLuong(r.vp.cho)} cần GT</b></>}
+              {r.vp.cho > 0 && <>{r.vp.vi_pham > 0 ? " · " : ""}<b style={{ color: "#c26400" }}>{soLuong(r.vp.cho)} cần GT</b></>}
               {r.vp.da_gt + r.vp.tu_dong > 0 && <span className="muted">{r.vp.vi_pham + r.vp.cho > 0 ? " · " : ""}{r.vp.da_gt + r.vp.tu_dong} đã xử lý</span>}
             </div>}
           </span>
@@ -213,7 +213,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
             {mo > 0 && <span style={{ color: mau, fontSize: 10.5 }}> · {mo} chưa xử lý</span>}
           </div>) : null;
         return <span title={`Đối tác (NCC): ${ncc} lỗi, ${ncc_mo} chưa xử lý\nNội bộ: ${nb} lỗi, ${nb_mo} chưa xử lý\n(chưa xử lý = cần giải trình + vi phạm hết hạn)`}>
-          <O l="Đối tác" n={ncc} mo={ncc_mo} mau="#1D4ED8" nen="#DBEAFE" /><O l="Nội bộ" n={nb} mo={nb_mo} mau="#B45309" nen="#FEF3C7" /></span>;
+          <O l="Đối tác" n={ncc} mo={ncc_mo} mau="#0062c4" nen="#e8f1fc" /><O l="Nội bộ" n={nb} mo={nb_mo} mau="#c26400" nen="#fff1dc" /></span>;
       },
     },
     {
@@ -233,7 +233,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
       ? <span style={{ fontWeight: r.doi_tac_po === "Nhiều đối tác" ? 400 : 700, color: r.doi_tac_po === "Nhiều đối tác" ? "var(--text-muted)" : undefined }}>{r.doi_tac_po}</span> : <span className="muted">—</span> },
     { key: "created_by", header: "Người tạo", loc: "chon", nhanChon: (v) => ten(v), maxW: 110, render: (r) => ten(r.created_by) },
     { key: "created_at", header: "Ngày tạo", loc: "ngay", render: (r) => ngay(r.created_at) },
-    { key: "so_dong", header: "Dòng · SL", loc: "so", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #C2410C)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
+    { key: "so_dong", header: "Dòng · SL", loc: "so", align: "right", render: (r) => <>{soLuong(r.so_dong)}<div className="muted" style={{ fontSize: 11 }}>{soLuong(r.tong_sl)}</div>{r.so_dong_sau_bh > 0 && <div title="Dòng thêm sau khi EO ban hành" style={{ fontSize: 10.5, color: "var(--orange-ink, #c26400)" }}>+{r.so_dong_sau_bh} sau BH</div>}</> },
     { key: "issued", header: "Ban hành", loc: "ngay", render: (r) => r.issued_at ? ngay(r.issued_at) : <span className="muted">—</span> },
     {
       key: "pct", header: "% về", loc: "so", align: "right", render: (r) => {
@@ -337,7 +337,7 @@ export default function EoListInner({ compact, actions }: { compact?: boolean; a
               {luu.map((x) => (
                 <div key={x.l} style={{ display: "flex", alignItems: "center" }}>
                   <MenuItem onClick={() => apLuu(x)}>{x.l}</MenuItem>
-                  <button className="btn ghost sm" title={macDinh === x.l ? "Bỏ mặc định" : "Đặt làm mặc định khi mở Đơn PO"} style={{ color: macDinh === x.l ? "#D97706" : undefined }}
+                  <button className="btn ghost sm" title={macDinh === x.l ? "Bỏ mặc định" : "Đặt làm mặc định khi mở Đơn PO"} style={{ color: macDinh === x.l ? "#c26400" : undefined }}
                     onClick={() => datMacDinh(x.l)}>{macDinh === x.l ? "★" : "☆"}</button>
                   <button className="btn ghost sm" title="Xóa bộ lọc đã lưu" onClick={() => xoaLuu(x.l)}><I.x width={12} height={12} /></button>
                 </div>

@@ -154,10 +154,10 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
               <YAxis yAxisId="p" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10.5 }} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: any, n: any) => (String(n).includes("%") ? `${v}%` : gioTxt(v))} />
               <Legend iconType="plainline" wrapperStyle={{ fontSize: 11.5 }} />
-              <Bar yAxisId="g" dataKey="tb" name="Trung bình" fill="#FDE68A" radius={[3, 3, 0, 0]} />
-              <Bar yAxisId="g" dataKey="p90" name="90% dòng ≤" fill="#FCA5A5" radius={[3, 3, 0, 0]} />
-              <Line yAxisId="p" dataKey="pt" name="% đúng hạn" stroke="#16A34A" strokeWidth={2.5} dot={{ r: 3 }} />
-              <ReferenceLine yAxisId="p" y={90} stroke="#16A34A" strokeDasharray="4 3" />
+              <Bar yAxisId="g" dataKey="tb" name="Trung bình" fill="#ffd8a8" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="g" dataKey="p90" name="90% dòng ≤" fill="#ffb3ad" radius={[3, 3, 0, 0]} />
+              <Line yAxisId="p" dataKey="pt" name="% đúng hạn" stroke="#1d8a3c" strokeWidth={2.5} dot={{ r: 3 }} />
+              <ReferenceLine yAxisId="p" y={90} stroke="#1d8a3c" strokeDasharray="4 3" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -202,8 +202,8 @@ export default function BaoCaoGiaiDoan({ nhung }: { nhung?: boolean }) {
                 <YAxis yAxisId="p" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10.5 }} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v: any, n: any) => (String(n).includes("%") ? `${v}%` : n === "Số dòng" ? v : gioTxt(v))} />
                 <Legend iconType="plainline" wrapperStyle={{ fontSize: 11.5 }} />
-                <Bar yAxisId="g" dataKey="tb" name="Thời gian TB" fill="#FDE68A" radius={[3, 3, 0, 0]} />
-                <Line yAxisId="p" dataKey="pt" name="% đúng hạn" stroke="#16A34A" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Bar yAxisId="g" dataKey="tb" name="Thời gian TB" fill="#ffd8a8" radius={[3, 3, 0, 0]} />
+                <Line yAxisId="p" dataKey="pt" name="% đúng hạn" stroke="#1d8a3c" strokeWidth={2.5} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

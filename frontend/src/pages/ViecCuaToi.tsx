@@ -60,7 +60,7 @@ function Han({ v, chu }: { v: V; chu?: string }) {
   if (v.con_gio == null) return <span className="muted">—</span>;
   const tre = v.con_gio < 0;
   const g = Math.abs(v.con_gio);
-  const [nen, mau] = tre ? ["#FEE2E2", "#B91C1C"] : g <= 4 ? ["#FFEDD5", "#C2410C"] : g <= 8 ? ["#FEF9C3", "#A16207"] : ["#ECFDF5", "#047857"];
+  const [nen, mau] = tre ? ["#ffe7e5", "#d70015"] : g <= 4 ? ["#ffeddc", "#c26400"] : g <= 8 ? ["#fff6e8", "#9c4f00"] : ["#ECFDF5", "#047857"];
   return (
     <div style={{ minWidth: 118 }}>
       <span style={{ background: nen, color: mau, fontWeight: 800, fontSize: 12, borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" }}>
@@ -100,11 +100,11 @@ function Muc({ id, so, tieuDe, lamGi, n, mau, xuat, children }: { id: string; so
   return (
     <Card>
       <div id={id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-        <span style={{ width: 30, height: 30, borderRadius: 99, background: n ? mau : "#E5E7EB", color: "#fff", display: "grid", placeItems: "center", fontWeight: 800 }}>{so}</span>
+        <span style={{ width: 30, height: 30, borderRadius: 99, background: n ? mau : "#e8e8ed", color: "#fff", display: "grid", placeItems: "center", fontWeight: 800 }}>{so}</span>
         <div style={{ fontSize: 16, fontWeight: 800 }}>{tieuDe} <span style={{ color: n ? mau : "var(--text-muted)" }}>({soLuong(n)})</span></div>
         {xuat && n > 0 && <button className="btn sm" style={{ marginLeft: "auto" }} onClick={xuat}>⬇ Xuất Excel</button>}
       </div>
-      <div style={{ fontSize: 13, background: "var(--panel-2, #F8FAFC)", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>{lamGi}</div>
+      <div style={{ fontSize: 13, background: "var(--panel-2, #f5f5f7)", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>{lamGi}</div>
       {n ? children : <div style={{ color: "var(--ok-ink)", fontSize: 13 }}>✓ Không có việc ở mục này.</div>}
     </Card>
   );
@@ -136,7 +136,7 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
   const tatCa = daChon.length > 0 && daChon.length === rows.filter((v) => !chiR5(v)).length;
   const NutXem = ({ k, l }: { k: XemGt; l: string }) => <button className={`btn sm ${xem === k ? "primary" : ""}`} onClick={() => setXem(k)}>{l}</button>;
   const dong = (v: V, thut = false) => (
-    <tr key={v.item_id} style={{ background: chon.has(v.item_id) ? "#F5F3FF" : undefined }}>
+    <tr key={v.item_id} style={{ background: chon.has(v.item_id) ? "#f9f2fd" : undefined }}>
       <td style={{ width: 28, paddingLeft: thut ? 22 : undefined }}>{chiR5(v) ? <span title="Lỗi chậm duyệt — giải trình từng dòng (nút bên phải)" className="muted">·</span>
         : <input type="checkbox" checked={chon.has(v.item_id)} onChange={(e) => doi([v.item_id], e.target.checked)} />}</td>
       <td><Han v={v} chu="tự đóng" /></td>
@@ -145,8 +145,8 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
         <div className="muted" style={{ fontSize: 11, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{xem === "lk" ? <EoLink id={v.eo_id}>{v.ma_phe_duyet || v.eo_code}</EoLink> : v.part_name}</div></td>
       <td>{v.kho ? <Kho t={v.kho} /> : <span className="muted">—</span>}</td>
       <td>{v.doi_tac || <span className="muted">—</span>}</td>
-      <td><b style={{ color: "#7C3AED" }}>{v.so_loi_cho_gt}</b>{v.loi_qt_cho ? <div style={{ fontSize: 11, color: "#7C3AED" }}>{loaiLoi(v, " · ")}</div> : null}</td>
-      <td style={{ textAlign: "right" }}><button className="btn sm" style={{ borderColor: "#7C3AED", color: "#7C3AED", fontWeight: 700 }} onClick={() => onMot(v)}>✍ Giải trình ({v.so_loi_cho_gt})</button></td>
+      <td><b style={{ color: "#8240a8" }}>{v.so_loi_cho_gt}</b>{v.loi_qt_cho ? <div style={{ fontSize: 11, color: "#8240a8" }}>{loaiLoi(v, " · ")}</div> : null}</td>
+      <td style={{ textAlign: "right" }}><button className="btn sm" style={{ borderColor: "#8240a8", color: "#8240a8", fontWeight: 700 }} onClick={() => onMot(v)}>✍ Giải trình ({v.so_loi_cho_gt})</button></td>
     </tr>
   );
   return (
@@ -171,7 +171,7 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
             const het = ids.length > 0 && ids.every((id) => chon.has(id));
             const v0 = ds[0];
             return [
-              <tr key={`n-${k}`} style={{ background: "#F5F3FF" }}>
+              <tr key={`n-${k}`} style={{ background: "#f9f2fd" }}>
                 <td>{ids.length > 0 && <input type="checkbox" title="Chọn cả nhóm" checked={het} onChange={(e) => doi(ids, e.target.checked)} />}</td>
                 <td><Han v={v0} chu="sớm nhất" /></td>
                 <td colSpan={4}>
@@ -179,8 +179,8 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
                     : <><b><DongLink id={v0.item_id} ma={v0.part_code} /></b> <span className="muted">· {v0.part_name} · {new Set(ds.map((v) => v.eo_id)).size} PO</span></>}
                   <span className="badge final" style={{ marginLeft: 8 }}>{ds.length} dòng</span>
                 </td>
-                <td><b style={{ color: "#7C3AED" }}>{soLoi(ds)}</b></td>
-                <td style={{ textAlign: "right" }}>{(ds.length === 1 || dsGop.length > 0) && <button className="btn sm primary" style={{ background: "#7C3AED", borderColor: "#7C3AED" }}
+                <td><b style={{ color: "#8240a8" }}>{soLoi(ds)}</b></td>
+                <td style={{ textAlign: "right" }}>{(ds.length === 1 || dsGop.length > 0) && <button className="btn sm primary" style={{ background: "#8240a8", borderColor: "#8240a8" }}
                   title={dsGop.length < ds.length ? "1 nội dung giải trình đóng lỗi chờ của cả nhóm — trừ lỗi chậm duyệt (giải trình từng dòng)" : "1 nội dung giải trình đóng mọi lỗi chờ của cả nhóm"}
                   onClick={() => (ds.length === 1 ? onMot(v0) : dsGop.length === 1 ? onMot(dsGop[0]) : onNhieu(dsGop))}>✍ Giải trình cả nhóm ({ds.length === 1 ? 1 : dsGop.length})</button>}</td>
               </tr>,
@@ -243,7 +243,7 @@ export default function ViecCuaToi() {
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: 15 }}>
-            {tong ? <>Hôm nay <b>{thuNgay(d.hom_nay)}</b> bạn có <b style={{ color: "#B91C1C" }}>{soLuong(tong)} việc</b>{tre ? <> — <b style={{ color: "#B91C1C" }}>{tre} việc đã trễ hạn</b>, làm ngay để không bị ghi thêm lỗi</> : ""}. Làm từ trên xuống, việc gấp nhất đứng đầu mỗi mục.</>
+            {tong ? <>Hôm nay <b>{thuNgay(d.hom_nay)}</b> bạn có <b style={{ color: "#d70015" }}>{soLuong(tong)} việc</b>{tre ? <> — <b style={{ color: "#d70015" }}>{tre} việc đã trễ hạn</b>, làm ngay để không bị ghi thêm lỗi</> : ""}. Làm từ trên xuống, việc gấp nhất đứng đầu mỗi mục.</>
               : <>✓ Hôm nay <b>{thuNgay(d.hom_nay)}</b> bạn không có việc gấp.</>}
           </div>
           {d.toan_bo && (
@@ -255,21 +255,21 @@ export default function ViecCuaToi() {
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Hạn tính theo giờ làm việc: T2–T6 8:00–12:00, 13:00–17:00 · T7 8:00–12:00 · Chủ nhật nghỉ. Làm xong trước hạn = không bị tính lỗi.</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-          <O so="①" l="Nhập ngày dự kiến" n={d.ndk.length} mau="#DC2626" toi="m-ndk" />
-          <O so="②" l={d.ngay_push ? "Push NCC hôm nay" : "Push NCC (thứ 2 / thứ 4)"} n={d.push.length} mau="#EA580C" toi="m-push" />
-          <O so="③" l="Quá ngày DK — ngày mới" n={d.ngay_moi.length} mau="#B91C1C" toi="m-ngay-moi" />
-          <O so="④" l="Giải trình lỗi" n={d.giai_trinh.length} mau="#7C3AED" toi="m-gt" />
-          <O so="⏳" l="Đang chờ NCC báo ngày" n={choNcc.length} mau="#2563EB" toi="m-cho-ncc" />
+          <O so="①" l="Nhập ngày dự kiến" n={d.ndk.length} mau="#d70015" toi="m-ndk" />
+          <O so="②" l={d.ngay_push ? "Push NCC hôm nay" : "Push NCC (thứ 2 / thứ 4)"} n={d.push.length} mau="#ff6b00" toi="m-push" />
+          <O so="③" l="Quá ngày DK — ngày mới" n={d.ngay_moi.length} mau="#d70015" toi="m-ngay-moi" />
+          <O so="④" l="Giải trình lỗi" n={d.giai_trinh.length} mau="#8240a8" toi="m-gt" />
+          <O so="⏳" l="Đang chờ NCC báo ngày" n={choNcc.length} mau="#0071e3" toi="m-cho-ncc" />
         </div>
       </Card>
 
-      <Muc id="m-ndk" so="1" n={d.ndk.length} mau="#DC2626" tieuDe="Nhập ngày dự kiến — trước khi bị tính lỗi" xuat={() => xuatMuc(d.ndk, "1-nhap-ngay-du-kien")}
+      <Muc id="m-ndk" so="1" n={d.ndk.length} mau="#d70015" tieuDe="Nhập ngày dự kiến — trước khi bị tính lỗi" xuat={() => xuatMuc(d.ndk, "1-nhap-ngay-du-kien")}
         lamGi={<>Hỏi nhà cung cấp ngày giao → bấm <b>📅 Nhập ngày dự kiến</b> ở dòng đó → điền <b>ngày NCC cam kết</b> + ngày dự kiến → Lưu. Hạn: <b>8 giờ làm việc</b> (Karofi / Livotec / Korihome) hoặc <b>16 giờ làm việc</b> (hãng khác) kể từ khi PO ban hành.
           {" "}NCC trả lời mà <b>chưa có ngày</b> → bấm <b>⏳ NCC chưa có ngày</b>, hẹn ngày hỏi lại: dòng chuyển xuống mục "Đang chờ NCC", không bị ghi thêm lỗi lặp tới ngày hẹn.</>}>
         <Bang rows={d.ndk} nut={(v) => haiNut(v)} />
       </Muc>
 
-      <Muc id="m-push" so="2" n={d.push.length} mau="#EA580C" tieuDe={d.ngay_push ? "Push NCC hôm nay — trước 23:59" : "Push nhà cung cấp"} xuat={() => xuatMuc(theoNcc.flatMap(([, ds]) => ds), "2-push-ncc", "Push trước")}
+      <Muc id="m-push" so="2" n={d.push.length} mau="#ff6b00" tieuDe={d.ngay_push ? "Push NCC hôm nay — trước 23:59" : "Push nhà cung cấp"} xuat={() => xuatMuc(theoNcc.flatMap(([, ds]) => ds), "2-push-ncc", "Push trước")}
         lamGi={d.ngay_push
           ? <>Mỗi thứ 2 và thứ 4, dòng chưa có ngày dự kiến phải được nhắc NCC trong ngày. Bấm <b>✉ Soạn mail Gmail</b> (đã điền sẵn CC <b>{CC}</b>, tiêu đề có mã PO, bảng mã LK) → điền email NCC → <b>Gửi</b>.
             Hệ thống tự ghi nhận khi mail về hộp theo dõi. Nhắc bằng gọi điện / Zalo thì bấm <b>📞 Đã nhắc</b>.</>
@@ -296,19 +296,19 @@ export default function ViecCuaToi() {
         </div>
       </Muc>
 
-      <Muc id="m-ngay-moi" so="3" n={d.ngay_moi.length} mau="#B91C1C" tieuDe="Quá ngày dự kiến mà hàng chưa về đủ — nhập ngày mới" xuat={() => xuatMuc(d.ngay_moi, "3-qua-ngay-du-kien")}
+      <Muc id="m-ngay-moi" so="3" n={d.ngay_moi.length} mau="#d70015" tieuDe="Quá ngày dự kiến mà hàng chưa về đủ — nhập ngày mới" xuat={() => xuatMuc(d.ngay_moi, "3-qua-ngay-du-kien")}
         lamGi={<>Hỏi lại NCC ngày giao mới → bấm <b>📅 Nhập ngày mới</b> → sửa đợt kế hoạch sang ngày mới → Lưu. Hạn: <b>8 giờ làm việc</b> từ đầu ngày sau ngày dự kiến cũ.</>}>
         <Bang rows={d.ngay_moi} nut={(v) => haiNut(v, "📅 Nhập ngày mới")} />
       </Muc>
 
-      <Muc id="m-gt" so="4" n={d.giai_trinh.length} mau="#7C3AED" tieuDe="Giải trình lỗi" xuat={() => xuatMuc(d.giai_trinh, "4-giai-trinh-loi", "Hạn tự đóng")}
+      <Muc id="m-gt" so="4" n={d.giai_trinh.length} mau="#8240a8" tieuDe="Giải trình lỗi" xuat={() => xuatMuc(d.giai_trinh, "4-giai-trinh-loi", "Hạn tự đóng")}
         lamGi={<>Bấm <b>✍ Giải trình</b> → kiểm tra <b>Do ai</b> (hệ thống gợi ý theo giai đoạn: chưa có / quá ngày DK = <b>Nhà cung cấp</b>, không thúc NCC = <b>nội bộ</b>; đổi được) + <b>Lỗi gì</b> + ghi nội dung. Ảnh / thư bằng chứng: tuỳ chọn. Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Có thư với NCC thì tick kèm thư làm bằng chứng. Nhiều lỗi cùng nguyên nhân: xem <b>Theo PO</b> / <b>Theo mã linh kiện</b> → bấm <b>✍ Giải trình cả nhóm</b>, hoặc tick nhiều dòng → <b>✍ Giải trình chung</b> (1 nội dung cho mọi lỗi). <b>Chậm duyệt</b> (thẩm định / duyệt mua quá hạn) chỉ hiện cho <b>người được yêu cầu duyệt</b> và tính lỗi cho người đó — giải trình từng dòng.</>}>
         <BangGiaiTrinh rows={d.giai_trinh} onMot={setGt} onNhieu={setGtNhieu} />
       </Muc>
 
-      <Muc id="m-cho-ncc" so="⏳" n={choNcc.length} mau="#2563EB" tieuDe="Đang chờ NCC báo ngày — hỏi lại đúng ngày hẹn" xuat={() => xuatMuc(choNcc, "5-cho-ncc-bao-ngay", "Hẹn hỏi lại")}
+      <Muc id="m-cho-ncc" so="⏳" n={choNcc.length} mau="#0071e3" tieuDe="Đang chờ NCC báo ngày — hỏi lại đúng ngày hẹn" xuat={() => xuatMuc(choNcc, "5-cho-ncc-bao-ngay", "Hẹn hỏi lại")}
         lamGi={<>Các dòng bạn đã ghi nhận <b>NCC chưa có ngày dự kiến</b>. Không bị ghi lỗi lặp tới ngày hẹn. Tới ngày hẹn: hỏi lại NCC → có ngày thì <b>📅 Nhập ngày dự kiến</b>; vẫn chưa có thì <b>⏳ NCC chưa có ngày</b> hẹn lần nữa (tối đa 7 ngày / lần — Điều hành vẫn thấy dòng chờ lâu).</>}>
-        <Bang rows={choNcc} chu="hẹn hỏi lại" nut={(v) => haiNut(v)} phu={(v: any) => v.cho_ncc_ket_qua ? <div style={{ fontSize: 11, color: "#1D4ED8" }}>NCC: {v.cho_ncc_ket_qua}</div> : null} />
+        <Bang rows={choNcc} chu="hẹn hỏi lại" nut={(v) => haiNut(v)} phu={(v: any) => v.cho_ncc_ket_qua ? <div style={{ fontSize: 11, color: "#0062c4" }}>NCC: {v.cho_ncc_ket_qua}</div> : null} />
       </Muc>
 
       {ngay && <NgayHangVeModal dong={ngay} onClose={() => setNgay(null)} onSaved={() => { setNgay(null); xong(); }} />}

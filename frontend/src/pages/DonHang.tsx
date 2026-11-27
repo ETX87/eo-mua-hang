@@ -180,13 +180,13 @@ const veTrongTuan = (r: Row, lech: number) => { const [a, b] = tuan(lech); const
 /** Nhom nhanh co so dem (bam = loc). Nhom theo doi chi gom dong EO da ban hanh trong pham vi theo doi (r.tinh_trang != null). */
 const NHOM: { k: string; l: string; f: (r: Row) => boolean; mau?: string; title?: string }[] = [
   { k: "con_cho", l: "Còn chờ hàng", title: "Đơn đã ban hành, hàng chưa về hoặc về chưa đủ (nhóm mặc định)", f: (r) => MO.includes(r.trang_thai_don_hang) },
-  { k: "can_xl", l: "Cần xử lý", mau: "#DC2626", title: "Dòng áp dụng quy tắc: cần nhập ngày dự kiến, quá ngày dự kiến hoặc có lỗi chờ giải trình (= Việc cần xử lý)",
+  { k: "can_xl", l: "Cần xử lý", mau: "#d70015", title: "Dòng áp dụng quy tắc: cần nhập ngày dự kiến, quá ngày dự kiến hoặc có lỗi chờ giải trình (= Việc cần xử lý)",
     f: (r) => r.ap_dung && (["CHO_NDK", "TRE_NDK", "QUA_HAN_NDK"].includes(r.tinh_trang) || r.so_loi_cho_gt > 0) },
   { k: "TRE_NDK", l: "Trễ hạn chưa có ngày DK", title: "Quá 8h làm việc (Karofi / Livotec / Korihome) hoặc 16h làm việc (hãng khác) sau ban hành mà chưa có ngày dự kiến", f: (r) => r.tinh_trang === "TRE_NDK" },
   { k: "CHO_NDK", l: "Chờ ngày DK (8h/16h LV)", f: (r) => r.tinh_trang === "CHO_NDK" },
   { k: "QUA_HAN_NDK", l: "Quá ngày dự kiến", f: (r) => r.tinh_trang === "QUA_HAN_NDK" },
   { k: "CO_LOI", l: "Lỗi chờ giải trình", f: (r) => r.so_loi_cho_gt > 0 },
-  { k: "CEO", l: "Cấp CEO", mau: "#DC2626", title: "Lùi ngày dự kiến ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi", f: (r) => (r.ceo_ly_do ?? []).length > 0 },
+  { k: "CEO", l: "Cấp CEO", mau: "#d70015", title: "Lùi ngày dự kiến ≥ 3 lần / ngày DK cách ngày đặt ≥ 30 ngày / ≥ 3 lỗi", f: (r) => (r.ceo_ly_do ?? []).length > 0 },
   { k: "CHO_HANG", l: "Có ngày DK, chờ hàng", f: (r) => r.tinh_trang === "CHO_HANG" },
   { k: "VE_TUAN", l: "Dự kiến về tuần này", title: "Đơn còn thiếu có ngày dự kiến gần nhất trong tuần này (Thứ 2 – Chủ nhật)", f: (r) => veTrongTuan(r, 0) },
   { k: "VE_TUAN_SAU", l: "Dự kiến về tuần sau", f: (r) => veTrongTuan(r, 1) },
@@ -468,7 +468,7 @@ function DanhSach() {
             <button className="btn sm" disabled={!idPush.length} onClick={() => setLh(idPush)} title="Đã nhắc đối tác bằng gọi điện / Zalo / tin nhắn (không mail) — tính như đã push (R3)">📞 Đã nhắc đối tác ({idPush.length})</button>
           </>}
           <Popover align="right" width={290} title="Công cụ: push đối tác, ngày KRF từ mail, kế hoạch hàng về…"
-            label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#EF4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
+            label={<><I.dots width={14} height={14} /> Công cụ{soKrf > 0 && <span style={{ background: "#ff3b30", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: "0 6px", marginLeft: 2 }} title="Gợi ý ngày KRF từ mail">{soKrf}</span>}</>}>
             {(dong) => <>
               {BAT_TAO_MAIL_NHAC && <MenuItem icon={<I.send width={14} height={14} />} disabled={!idPush.length || busy} onClick={() => { dong(); taoPush(); }} title="Gộp các dòng đã chọn vào một file Excel đính kèm mail nhắc">Tạo mail nhắc ({idPush.length})</MenuItem>}
               <MenuItem icon={<I.calendar width={14} height={14} />} onClick={() => { dong(); setHop("krf"); }} title="Ngày KRF đáp ứng đọc từ mail Karofi trả lời (hộp thư theodoimuahang) — gợi ý cập nhật ngày nhà máy cam kết"

@@ -63,7 +63,7 @@ export function BangGiaiThich({ onClose }: { onClose: () => void }) {
         <div className="muted" style={{ marginBottom: 6 }}>Ví dụ: đặt <b>100</b> · AMIS đã về <b>30</b> · đã lên kế hoạch 2 đợt (60 + 40 = <b>100</b>) → còn thiếu <b>70</b>, chưa lên kế hoạch <b>0</b>.</div>
         <table className="tbl tbl-dense"><thead><tr><th>Số</th><th>Là gì</th><th>Để làm gì</th></tr></thead>
           <tbody>{(["SL_DAT", "SL_VE", "SL_THIEU", "SL_KH", "SL_CHUA_KH", "DON_GIA"] as KhoaTN[]).map((k) => <Dong key={k} k={k} />)}</tbody></table>
-        <div style={{ marginTop: 6, background: "#FFFBEB", borderRadius: 8, padding: "8px 10px" }}>
+        <div style={{ marginTop: 6, background: "#fff6e8", borderRadius: 8, padding: "8px 10px" }}>
           <b>Vì sao giảm SL đặt có khi bị chặn?</b> Tổng kế hoạch không được lớn hơn SL đặt (không thể hẹn giao nhiều hơn số đã đặt).
           Khi giảm SL đặt xuống dưới tổng kế hoạch, hộp "Sửa SL đặt" cho chọn <b>tự giảm kế hoạch từ đợt xa nhất</b> — làm 1 bước.
         </div>

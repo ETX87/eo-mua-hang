@@ -31,7 +31,7 @@ function LopXemNhanh({ i, onPop, children }: { i: number; onPop: () => void; chi
     return () => window.removeEventListener("keydown", h);
   }, [onPop, id]);
   return (
-    <div className="qv-overlay" style={{ zIndex: z, background: i ? "rgba(15,23,42,.3)" : undefined }} onMouseDown={(e) => { if (e.target === e.currentTarget) onPop(); }}>
+    <div className="qv-overlay" style={{ zIndex: z, background: i ? "rgba(0,0,0,.3)" : undefined }} onMouseDown={(e) => { if (e.target === e.currentTarget) onPop(); }}>
       <div className="qv-panel">{children}</div>
     </div>
   );

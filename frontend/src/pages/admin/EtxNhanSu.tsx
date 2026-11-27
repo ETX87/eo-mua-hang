@@ -201,7 +201,7 @@ function DoiGmailModal({ row, onClose, onSaved }: { row: EtxRow; onClose: () => 
         </div>
       )}
       {canMove && (
-        <label style={{ display: "flex", gap: 6, alignItems: "flex-start", fontSize: 12.5, marginTop: 10, padding: 10, background: "#FEF3C7", borderRadius: 8 }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "flex-start", fontSize: 12.5, marginTop: 10, padding: 10, background: "#fff1dc", borderRadius: 8 }}>
           <input type="checkbox" checked={chuyen} onChange={(e) => setChuyen(e.target.checked)} style={{ marginTop: 2 }} />
           <span>Đổi Gmail sử dụng: chuyển vai trò + quyền từ tài khoản cũ <b>{oldEmail}</b> sang Gmail mới và <b>khoá tài khoản cũ</b>.
             (Lịch sử EO cũ vẫn giữ tên tài khoản cũ.)</span>

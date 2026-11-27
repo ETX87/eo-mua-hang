@@ -15,11 +15,11 @@ const PHU: Record<string, string> = { G4: "song song", G7: "chỉ đo" };
 
 type TrangThai = "xong" | "dang" | "tre" | "mot_phan" | "chua";
 const MAU: Record<TrangThai, { nen: string; vien: string; chu: string }> = {
-  xong: { nen: "#22C55E", vien: "#16A34A", chu: "#fff" },
-  mot_phan: { nen: "#BBF7D0", vien: "#22C55E", chu: "#166534" },
-  dang: { nen: "#F59E0B", vien: "#D97706", chu: "#fff" },
-  tre: { nen: "#EF4444", vien: "#DC2626", chu: "#fff" },
-  chua: { nen: "#fff", vien: "#CBD5E1", chu: "#94A3B8" },
+  xong: { nen: "#2fb350", vien: "#1d8a3c", chu: "#fff" },
+  mot_phan: { nen: "#c8efd2", vien: "#2fb350", chu: "#176e30" },
+  dang: { nen: "#ff9500", vien: "#c26400", chu: "#fff" },
+  tre: { nen: "#ff3b30", vien: "#d70015", chu: "#fff" },
+  chua: { nen: "#fff", vien: "#d2d2d7", chu: "#86868b" },
 };
 
 export interface NutGd {
@@ -89,7 +89,7 @@ export function TienTrinh({ defs, sla, rows, loi, onChonNut, nhung }: {
           ].filter(Boolean).join("\n");
           return (
             <div key={n.g.k} className="tt-nut" title={title} onClick={onChonNut ? () => onChonNut(n.g.k) : undefined} style={{ cursor: onChonNut ? "pointer" : undefined }}>
-              {i > 0 && <div className="tt-noi" style={{ background: nut[i - 1].tt === "xong" ? "#22C55E" : nut[i - 1].tt === "mot_phan" ? "#86EFAC" : "#E2E8F0" }} />}
+              {i > 0 && <div className="tt-noi" style={{ background: nut[i - 1].tt === "xong" ? "#2fb350" : nut[i - 1].tt === "mot_phan" ? "#a6e3b4" : "#e8e8ed" }} />}
               <div className="tt-tron" style={{ background: c.nen, borderColor: c.vien, color: c.chu, borderStyle: PHU[n.g.k] ? "dashed" : "solid" }}>
                 {n.tt === "xong" ? "✓" : n.g.k.slice(1)}
               </div>
@@ -144,7 +144,7 @@ export function TienTrinhGon({ r, soLoi = 0, loiCho = 0, onClick }: { r: Row | n
           const c = MAU[tt];
           return (
             <span key={g.k} style={{ display: "inline-flex", alignItems: "center" }}>
-              {i > 0 && <span className="ttg-noi" style={{ background: r.gd_moc?.[GD_8[i - 1].k]?.kt ? "#22C55E" : "#E2E8F0" }} />}
+              {i > 0 && <span className="ttg-noi" style={{ background: r.gd_moc?.[GD_8[i - 1].k]?.kt ? "#2fb350" : "#e8e8ed" }} />}
               <span className={`ttg-dot${dang ? " on" : ""}`} style={{ background: c.nen, borderColor: c.vien }} />
             </span>
           );
@@ -167,7 +167,7 @@ export const ceoTxt = (ct?: CeoCt[], lyDo?: string[]) =>
 export function GiaiThichCeo({ ct, lyDo }: { ct?: CeoCt[]; lyDo?: string[] }) {
   if (!ct?.length && !lyDo?.length) return null;
   return (
-    <div style={{ marginTop: 10, border: "1px solid #FCA5A5", background: "#FEF2F2", borderRadius: 10, padding: "8px 12px", fontSize: 12.5 }}>
+    <div style={{ marginTop: 10, border: "1px solid #ffb3ad", background: "#fff2f1", borderRadius: 10, padding: "8px 12px", fontSize: 12.5 }}>
       <b style={{ color: "var(--danger-ink)" }}>Vì sao đơn này ở cấp CEO</b>
       <span className="muted" style={{ marginLeft: 8, fontSize: 11.5 }}>Lên cấp CEO khi có 1 trong 3: lùi ngày dự kiến ≥ 3 lần · ngày dự kiến cách ngày đặt ≥ 30 ngày · ≥ 3 lỗi theo dõi</span>
       {(ct?.length ? ct : (lyDo ?? []).map((x) => ({ ma: "", tieu_de: x, nguong: "", gia_tri: "", dong: [] }))).map((c, i) => (
@@ -212,15 +212,15 @@ function ThanhHangVe({ dot, slDat }: { dot: { d: string; sl: number; so: number 
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, fontSize: 11.5 }}>
       <b style={{ whiteSpace: "nowrap" }}>Hàng về</b>
       <div style={{ position: "relative", flex: 1, minWidth: 160, height: 26 }}>
-        <div style={{ position: "absolute", top: 4, left: 0, right: 0, height: 6, borderRadius: 3, background: "#E2E8F0" }} />
-        <div style={{ position: "absolute", top: 4, left: 0, width: `${pct(ve)}%`, height: 6, borderRadius: 3, background: thieu ? "#86EFAC" : "#22C55E" }} />
+        <div style={{ position: "absolute", top: 4, left: 0, right: 0, height: 6, borderRadius: 3, background: "#e8e8ed" }} />
+        <div style={{ position: "absolute", top: 4, left: 0, width: `${pct(ve)}%`, height: 6, borderRadius: 3, background: thieu ? "#a6e3b4" : "#2fb350" }} />
         {dot.map((x, i) => {
           luy += x.sl;
           const left = pct(luy);
           return (
             <div key={x.d} title={`Đợt ${i + 1}: ngày chứng từ ${ngay(x.d)} · nhập ${soLuong(x.sl)} (${x.so} phiếu AMIS) · lũy kế ${soLuong(luy)}/${soLuong(slDat)}`}
               style={{ position: "absolute", left: `calc(${left}% - 5px)`, top: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#16A34A", border: "2px solid #fff", boxShadow: "0 0 0 1px #16A34A" }} />
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#1d8a3c", border: "2px solid #fff", boxShadow: "0 0 0 1px #1d8a3c" }} />
               <span style={{ fontSize: 10, whiteSpace: "nowrap", color: "var(--text-muted)", transform: i === dot.length - 1 && left > 85 ? "translateX(-40%)" : undefined }}>
                 {ngan(x.d)} +{soLuong(x.sl)}</span>
             </div>
@@ -333,10 +333,10 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
     truoc = kt ?? truoc;
     return (
       <div key={n.g.k} className="ttq-nut" title={tieuDeMoc(n, mot, rows.length)} onClick={onChonNut ? () => onChonNut(n.g.k) : undefined} style={{ cursor: onChonNut ? "pointer" : undefined }}>
-        {i > 0 && <div className="ttq-noi" style={{ background: nut[i - 1].tt === "xong" ? "#22C55E" : nut[i - 1].tt === "mot_phan" ? "#86EFAC" : "#E2E8F0" }} />}
+        {i > 0 && <div className="ttq-noi" style={{ background: nut[i - 1].tt === "xong" ? "#2fb350" : nut[i - 1].tt === "mot_phan" ? "#a6e3b4" : "#e8e8ed" }} />}
         <div className={`ttq-cham${dang ? " on" : ""}`} style={{ background: c.nen, borderColor: c.vien, color: c.chu, borderStyle: PHU[n.g.k] ? "dashed" : "solid" }}>
           {n.tt === "xong" ? "✓" : n.g.k.slice(1)}
-          {n.loi.length > 0 && <span className="ttq-loi" style={{ background: n.loiCho ? "#DC2626" : "#94A3B8" }}>{n.loi.length}</span>}
+          {n.loi.length > 0 && <span className="ttq-loi" style={{ background: n.loiCho ? "#d70015" : "#86868b" }}>{n.loi.length}</span>}
         </div>
         <div className="ttq-ten" style={{ fontWeight: dang ? 800 : 600, color: n.tt === "chua" ? "var(--text-muted)" : undefined }}>{n.g.l}</div>
         <div className="ttq-phu" style={{ color: n.tre.length && dang ? "var(--danger-ink)" : undefined }}>{phu || " "}</div>
