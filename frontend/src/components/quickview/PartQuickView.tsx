@@ -11,7 +11,7 @@ import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, EoLink, DongLink, useQuickView } from "./QuickView";
+import { QvHeader, Kpi, EoLink, DongLink, useQuickView, useAnPhu, KhuTieuDe, CotPhu } from "./QuickView";
 import { quyenEo, QtyModal, KetThucSomMaModal } from "../../pages/eo/eoActions";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, BAT_TAO_MAIL_NHAC, type MailNhac, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { Kho } from "../../lib/kho";
@@ -31,6 +31,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   // po (ma phe duyet): UI ma LK TRONG 1 PO (khi khong co dong dat de mo popup don hang) - loc dong / phieu AMIS / loi / log theo PO; bo loc = UI chung
   const [locPo, setLocPo] = useState(!!po);
   const [tab, setTab] = useState<Tab>(po ? "amis" : "kho");
+  const [anPhu, setAnPhu] = useAnPhu(); // v0.131: thu gon khu phu
   const [chiMo, setChiMo] = useState(false);
   const [loaiLog, setLoaiLog] = useState<"all" | "sl" | "kh" | "khac">("all");
   const qc = useQueryClient();
@@ -137,20 +138,12 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
             {t.don_gia_gan_nhat != null && <> · Đơn giá dự kiến gần nhất <b>{soLuong(t.don_gia_gan_nhat)}</b></>}
           </div>
         </QvHeader>
-        <div className="qv-kpis">
-          <Kpi l="SL đặt từ trước đến nay" v={<span title={`${soLuong(t.so_dong)} dòng trên ${soLuong(t.so_eo)} EO`}>{soLuong(t.sl_dat)}</span>} />
-          <Kpi l="Đã về (AMIS)" v={soLuong(t.sl_ve)} tone="ok" />
-          <Kpi l="Tỷ lệ đáp ứng (về / đặt)" v={tk?.ty_le != null ? `${tk.ty_le}%` : "—"} tone={tk?.ty_le == null ? undefined : tk.ty_le >= 90 ? "ok" : tk.ty_le >= 70 ? "warn" : "danger"} />
-          <Kpi l="Còn thiếu (đơn mở)" v={<span title={`${soLuong(t.dong_mo)} dòng đang mở${tk?.qua ? ` · ${tk.qua} dòng quá ngày dự kiến` : ""}`}>{soLuong(t.sl_thieu)}</span>} tone={t.sl_thieu > 0 ? "warn" : undefined} />
-          <Kpi l="Dự kiến về tiếp" v={tk?.dk ? ngay(tk.dk) : t.dong_mo ? "Chưa có ngày" : "—"} tone={t.dong_mo && !tk?.dk ? "danger" : undefined} />
-          <Kpi l="Tốc độ về TB (đặt → về đủ)" v={t.lead_time_tb != null ? `${t.lead_time_tb} ngày` : "—"} />
-          <Kpi l="Lần về gần nhất" v={t.ve_gan_nhat ? ngay(t.ve_gan_nhat) : "—"} />
-          <Kpi l="Số EO đã đặt" v={soLuong(t.so_eo)} />
-        </div>
       </div>
 
-      <div className="qv-body">
+      <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
+        {/* KHU CHINH (v0.131): theo kho / don dat / phieu nhap / loi cua ma */}
         <div className="qv-col">
+          <KhuTieuDe loai="chinh">📌 Theo dõi chính</KhuTieuDe>
           <div className="qv-tabs">
             {([["kho", `Theo kho (${tk?.theoKho.length ?? 0})`], ["eo", `Lịch sử EO / đặt hàng (${d.dong.length})`], ["amis", `Phiếu nhập AMIS (${d.phieu_nhap.length})`], ["loi", `Lỗi theo dõi (${d.loi.length})`]] as [Tab, string][])
               .map(([k, l]) => <button key={k} className={`qv-tab ${tab === k ? "on" : ""}`} onClick={() => { setTab(k); setTim(""); }}>{l}</button>)}
@@ -261,8 +254,21 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
           </div>
         </div>
 
-        <div className="qv-col">
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+        {/* KHU PHU (v0.131): so lieu tong cua ma + nhat ky chinh sua / cap nhat */}
+        <CotPhu an={anPhu} setAn={setAnPhu} tieuDe="Tiến độ · lịch sử">
+          <div className="qv-phu-sec">
+        <div className="qv-kpis" style={{ marginTop: 0 }}>
+          <Kpi l="SL đặt từ trước đến nay" v={<span title={`${soLuong(t.so_dong)} dòng trên ${soLuong(t.so_eo)} EO`}>{soLuong(t.sl_dat)}</span>} />
+          <Kpi l="Đã về (AMIS)" v={soLuong(t.sl_ve)} tone="ok" />
+          <Kpi l="Tỷ lệ đáp ứng (về / đặt)" v={tk?.ty_le != null ? `${tk.ty_le}%` : "—"} tone={tk?.ty_le == null ? undefined : tk.ty_le >= 90 ? "ok" : tk.ty_le >= 70 ? "warn" : "danger"} />
+          <Kpi l="Còn thiếu (đơn mở)" v={<span title={`${soLuong(t.dong_mo)} dòng đang mở${tk?.qua ? ` · ${tk.qua} dòng quá ngày dự kiến` : ""}`}>{soLuong(t.sl_thieu)}</span>} tone={t.sl_thieu > 0 ? "warn" : undefined} />
+          <Kpi l="Dự kiến về tiếp" v={tk?.dk ? ngay(tk.dk) : t.dong_mo ? "Chưa có ngày" : "—"} tone={t.dong_mo && !tk?.dk ? "danger" : undefined} />
+          <Kpi l="Tốc độ về TB (đặt → về đủ)" v={t.lead_time_tb != null ? `${t.lead_time_tb} ngày` : "—"} />
+          <Kpi l="Lần về gần nhất" v={t.ve_gan_nhat ? ngay(t.ve_gan_nhat) : "—"} />
+          <Kpi l="Số EO đã đặt" v={soLuong(t.so_eo)} />
+        </div>
+          </div>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 8 }}>Nhật ký chỉnh sửa / cập nhật ({log.length})</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {([["all", "Tất cả"], ["sl", "Số lượng / mã"], ["kh", "Kế hoạch"], ["khac", "Khác"]] as const).map(([k, l]) =>
@@ -279,7 +285,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
               tieu={(e: any) => <>{EVENT_LABEL[e.event_type] ?? e.event_type}{e.so_ban > 1 && <span className="muted" style={{ fontWeight: 400 }} title="Bản ghi giống hệt nhau (dữ liệu chuyển từ Google Sheet cũ)"> (×{e.so_ban})</span>}</>}
               moTa={(e: any) => moTaSuKien(e) || null} />
           </div>
-        </div>
+        </CotPhu>
       </div>
 
       {md?.k === "ndk" && <NgayHangVeModal dong={md.x} onClose={() => setMd(null)} onSaved={xong} />}

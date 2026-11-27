@@ -4,6 +4,28 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.131: PO tồn CEO bảng là chính · popup chi tiết chia 2 khu, bỏ tab trùng nhật ký
+
+- Yêu cầu (nguyên văn): "1. Po tồn CEO cũng cần làm lại giao diện, ưu tiên table danh sách 2. Các giao diện UI chi tiết mở lên đang rất rối. tôi không biết phải xem
+  cái gì, tăng kích thước toàn lên 95% diện tích làm việc. chia các khu vực thành các 2 khu vực, thông tin log, lịch sử, tiến độ... khu vực công theo dõi chính cần xem
+  chính. 3. UI chi tiết hiện tại có nhưng tab trung với log đã có sẵn => kiểm soát và giảm bớt".
+- Đã làm:
+  - PO tồn CEO (`pages/CaCeo.tsx`): bỏ 2 thẻ lớn Rất hot / Giảm hot + hàng ô số + dòng giải thích dài; còn 1 thanh: Đang theo dõi / Đã xong · ô Mã CEO (có số ca) ·
+    nút Rất hot / Giảm hot / Không thúc NCC 7 ngày (có số, bấm lại = bỏ) · ô tìm · Xóa lọc · số ca / PO / dòng · tải lại · Excel · chú giải ⓘ — rồi BẢNG (gộp theo ca,
+    lọc / sắp xếp tiêu đề cột như cũ).
+  - 3 popup chi tiết (PO, đơn hàng, mã linh kiện): mọi lớp popup = 95% màn hình (lớp chồng trước là 93%). Đầu popup chỉ còn tên + nút thao tác + 1 dòng thông tin.
+    Thân chia 2 khu: **📌 Theo dõi chính** (trái, rộng) = luồng tiến trình 1 dòng (▾ Xem chi tiết) + tab + bảng; **🕘 Tiến độ · lịch sử** (phải) = số liệu, cảnh báo,
+    phiếu đang chờ duyệt, nhật ký / lịch sử. Khu phải bấm "Thu gọn ⟩" thành 1 thanh dọc (nhớ trên máy) → khu chính rộng gần hết popup.
+  - Bỏ tab trùng nhật ký: popup PO bỏ "Quy trình duyệt" (nhật ký nhóm Duyệt + khối "Đang chờ duyệt" ở khu phải) và "Mail & push" (nhật ký nhóm Mail & push) — còn
+    Linh kiện · Kế hoạch & hàng về · Lỗi & giải trình · Tài liệu. Popup đơn hàng bỏ "Trao đổi NCC" (Lịch sử theo dõi đã có mail gửi / nhận, push, gọi / Zalo, ngày DK)
+    và bỏ mục "Giải trình & vi phạm" trong Lịch sử theo dõi (trùng tab Lỗi & giải trình) — còn Chi tiết giai đoạn · Kế hoạch & hàng về · Lỗi & giải trình.
+- 5W1H: Who — mọi người mở chi tiết PO / đơn hàng / mã LK; lãnh đạo + KH cung ứng xem PO tồn CEO. When — bấm 1 dòng ở bất kỳ danh sách nào; mở menu Đơn PO › PO tồn CEO.
+  Where — popup xem nhanh (web, điện thoại: 2 khu xếp dọc), màn `/ca-ceo`. What — biết ngay phải xem đâu: trái = việc theo dõi, phải = diễn biến; ít tab hơn.
+  Why — popup cũ đầu quá cao, 6 tab trong đó 2–3 tab lặp lại nhật ký; PO tồn CEO chiếm nửa màn bằng thẻ số. How — mở popup, xem luồng tiến trình rồi bảng ở khu trái;
+  cần lịch sử thì xem khu phải (lọc nhóm / ô tìm); muốn rộng thì "Thu gọn ⟩", mở lại bằng thanh dọc "⟨ Tiến độ · lịch sử".
+- Kiểm thử: typecheck + build; local 1440×900: popup PO 4 tab + 2 khu, thu gọn khu phải → khu chính 1290px, mở lại được; popup đơn hàng chồng lên = 1368×855 (95%), 3 tab,
+  không còn mục Giải trình & vi phạm ở khu phải; PO tồn CEO hiện thanh + bảng.
+
 ## 27/11/2026 — v0.130: Gộp Tổng quan + Điều hành thành 1 màn "Tổng quan & điều hành"
 
 - Yêu cầu (nguyên văn): "Gộp thành 2 màn" — trả lời câu hỏi v0.129 về 3 báo cáo Tổng quan / Báo cáo đặt LK / Điều hành (phương án: gộp Tổng quan + Điều hành, giữ Báo cáo đặt LK riêng).

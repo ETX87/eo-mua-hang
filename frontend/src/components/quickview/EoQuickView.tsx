@@ -10,7 +10,7 @@ import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
 import { Hoi } from "../../lib/thuatNgu";
 import { khopTim } from "../../lib/tonDong";
-import { QvHeader, Kpi, DongLink, PartLink, useQuickView, O_TIM } from "./QuickView";
+import { QvHeader, Kpi, DongLink, PartLink, useQuickView, O_TIM, useAnPhu, KhuTieuDe, CotPhu } from "./QuickView";
 import { QuyTrinh, TienTrinhGon, ceoTxt, type GdDef } from "../TienTrinh";
 import { GdBadge } from "../../lib/giaiDoan";
 import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
@@ -50,7 +50,8 @@ const nhomCua = (t: string): Nhom =>
   /SUBMIT|APPROVE|REJECT|REVIEW|ISSUE|RECALL|REQUEST_UPDATE|CANCEL_EO/.test(t) ? "duyet"
     : /PLAN/.test(t) ? "kehoach" : /GIAI_TRINH/.test(t) ? "loi" : "capnhat";
 
-type Tab = "lk" | "kh" | "duyet" | "file" | "mail" | "loi";
+// v0.131: bo tab "Quy trình duyệt" + "Mail & push" (trung nhat ky: nhom Duyệt / Mail & push) - phieu dang cho duyet hien o khu phu
+type Tab = "lk" | "kh" | "file" | "loi";
 /** Dong cua EO nhan 1 thu: backend (xemNhanh) da gom 1 thu = 1 ban ghi kem item_ids "1,2,3"; ban ghi tung dong (cu) dung eo_item_id. */
 const idsThu = (ds: any[]): number[] => ds.flatMap((y) => String(y.item_ids ?? y.eo_item_id ?? "").split(",").filter(Boolean).map(Number));
 
@@ -76,6 +77,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
   const [tim, setTim] = useState(""); // tim nhanh trong tab dang mo
   const [timTl, setTimTl] = useState(""); // tim trong nhat ky
   const [xemHuy, setXemHuy] = useState(false); // #29: mac dinh an dong huy / tu choi
+  const [anPhu, setAnPhu] = useAnPhu(); // v0.131: thu gon khu phu (tien do, lich su)
 
   const d = goc.data;
   const b = bs.data;
@@ -234,15 +236,14 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
     finally { setBusy(false); }
   };
 
-  const mailGop = gopTrung((b?.mail ?? []) as any[], khoaMail);
   const tabs: { k: Tab; l: string }[] = [
     { k: "lk", l: `Linh kiện (${d.items.length})` },
     { k: "kh", l: `Kế hoạch & hàng về (${d.plans.length} · ${(b?.phieu_nhap ?? []).length})` },
-    { k: "duyet", l: `Quy trình duyệt (${d.submissions.length})` },
+    { k: "loi", l: `Lỗi & giải trình (${new Set((b?.loi ?? []).map((l: any) => l.vp_khoa ?? l.id)).size})` },
     { k: "file", l: `Tài liệu (${d.files.length})` },
-    { k: "mail", l: `Mail & push (${mailGop.length + (b?.push ?? []).length})` },
-    { k: "loi", l: `Mã lỗi & giải trình (${new Set((b?.loi ?? []).map((l: any) => l.vp_khoa ?? l.id)).size} vi phạm)` },
   ];
+  // phieu duyet dang cho (lan trinh dang mo) - thay tab "Quy trinh duyet" cu; lich su duyet day du = nhat ky nhom "Duyệt"
+  const choDuyet = d.approvals.filter((a: any) => a.status === "PENDING" && d.submissions.find((x: any) => x.id === a.submission_id)?.status === "PENDING");
 
   return (
     <>
@@ -279,30 +280,14 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             {(b?.canh_bao ?? []).length > 0 && <span title={b.canh_bao.map((c: any) => c.text).join("\n")} style={{ color: "var(--danger-ink)", fontWeight: 700 }}>⚠ {b.canh_bao.length} cảnh báo</span>}
           </div>
         </QvHeader>
-        {/* THU GON = chi 1 dong quy trinh (~80% man cho danh sach); so lieu + canh bao + hang ve + van de theo buoc trong "Xem chi tiết" */}
-        {sdh.data && <QuyTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []}
-          phieuNhap={bs.data ? b?.phieu_nhap ?? [] : undefined} slDat={d.tong.tong_sl_dat} phuTrach={phuTrach}
-          chiTiet={<>
-            <div className="qv-kpis" style={{ marginTop: 6 }}>
-              <Kpi l="Số dòng" v={soLuong(d.tong.so_dong)} />
-              <Kpi l="Tổng SL đặt" v={soLuong(d.tong.tong_sl_dat)} />
-              <Kpi l="Đã về (AMIS)" v={soLuong(d.tong.sl_da_dat)} tone="ok" />
-              <Kpi l="Còn thiếu" v={soLuong(d.tong.sl_chua_dat)} tone={d.tong.sl_chua_dat > 0 ? "warn" : undefined} />
-              <Kpi l="Tiền dự kiến" v={tien(d.tong.tong_tien_du_kien)} />
-              <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
-              <Kpi l="Tài liệu" v={soLuong(d.files.length)} />
-            </div>
-            <div className="qv-alerts">
-              {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
-                : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
-                : b.canh_bao.map((c: any, i: number) => <span key={i} className={`qv-alert ${c.muc}`}>{c.muc === "danger" ? "⚠ " : c.muc === "warn" ? "! " : "i "}{c.text}</span>)}
-            </div>
-          </>} />}
       </div>
 
-      <div className="qv-body">
-        {/* ------- trai: noi dung ------- */}
+      <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
+        {/* ------- KHU CHINH (v0.131): luong tien trinh 1 dong + bang linh kien / ke hoach / loi / tai lieu ------- */}
         <div className="qv-col">
+          <KhuTieuDe loai="chinh" phai={<span className="muted">bấm mốc / “Xem chi tiết” để xem từng bước · bấm dòng LK = chi tiết đơn đặt</span>}>📌 Theo dõi chính</KhuTieuDe>
+          {sdh.data && <div className="qv-quytrinh"><QuyTrinh defs={sdh.data.giai_doan} sla={sdh.data.sla} rows={sdh.data.rows} loi={b?.loi ?? []}
+            phieuNhap={bs.data ? b?.phieu_nhap ?? [] : undefined} slDat={d.tong.tong_sl_dat} phuTrach={phuTrach} /></div>}
           <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => setTab(t.k)}>{t.l}</button>)}
             {/* 2026-11-23: 1 o tim CHUNG cho moi tab (giu chu khi doi tab) */}
             <O_TIM tim={tim} setTim={setTim} /></div>
@@ -347,26 +332,6 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                 )}
               </>
             )}
-            {tab === "duyet" && (
-              <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                {d.submissions.length === 0 && <div className="muted">Chưa gửi trình duyệt.</div>}
-                {[...d.submissions].reverse().filter((s: any) => !tim || k(s) || d.approvals.some((a: any) => a.submission_id === s.id && k({ ...a, ten: ten(a.approver_email) }))).map((s: any) => (
-                  <div key={s.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10, opacity: ["SUPERSEDED", "CANCELLED"].includes(s.status) ? 0.6 : 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>Lần trình #{s.version} · {ten(s.submitted_by)} · {ngayGio(s.submitted_at)} <span className="badge nhap" style={{ marginLeft: 6 }}>{s.status}</span></div>
-                    {s.note && <div className="muted" style={{ fontSize: 12 }}>{s.note}</div>}
-                    {d.approvals.filter((a: any) => a.submission_id === s.id).map((a: any) => (
-                      <div key={a.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, marginTop: 6 }}>
-                        <span className="badge nhap">{a.step_type === "FINAL" ? "Duyệt mua trên hệ thống" : "Thẩm định"}</span>
-                        <b>{ten(a.approver_email)}</b>
-                        <span className={`badge ${APR[a.status]?.c ?? "nhap"}`}>{APR[a.status]?.l ?? a.status}</span>
-                        <span className="muted">{a.action_at ? ngayGio(a.action_at) : `giao ${ngayGio(a.assigned_at)}`}</span>
-                        {a.comment && <Clip w={360} style={{ color: "var(--text-muted)" }}>— {a.comment}</Clip>}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
             {tab === "file" && (
               <div className="qv-pad">
                 <TabTaiLieu eoId={String(id)} files={d.files} onUploaded={() => qc.invalidateQueries()} canDelete={P.canDeleteFile}
@@ -374,38 +339,33 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
               </div>
             )}
             {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} tim={tim} />}
-            {tab === "mail" && (
-              <>
-                {coChon && BAT_TAO_MAIL_NHAC && <div className="qv-toolbar"><span className="muted" style={{ fontSize: 12 }}>Tạo push mới: tab <b>Linh kiện</b> → tick dòng còn thiếu → <b>Tạo mail nhắc</b>.</span>
-                  <button className="btn sm" onClick={() => setTab("lk")}>Chọn dòng để push</button></div>}
-                <div className="qv-sec">Đợt push đối tác</div>
-                <table className="tbl tbl-dense">
-                  <thead><tr><th>Mã push</th><th>Đối tác</th><th style={{ textAlign: "right" }}>Dòng</th><th>Trạng thái</th><th>Người tạo</th><th>Lúc</th></tr></thead>
-                  <tbody>
-                    {(b?.push ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa push đối tác.</td></tr>}
-                    {(b?.push ?? []).filter(k).map((p: any) => <tr key={p.id}><td style={{ fontFamily: "monospace" }}>{p.ma_push}</td><td><Clip w={160}>{p.doi_tac}</Clip></td><td style={{ textAlign: "right" }}>{p.so_dong}</td><td><span className="badge nhap">{p.trang_thai === "DA_TAO" ? "Chưa gửi" : p.trang_thai === "DA_GUI" ? "Đã gửi" : "Đã phản hồi"}</span></td><td>{ten(p.created_by)}</td><td>{ngayGio(p.created_at)}</td></tr>)}
-                  </tbody>
-                </table>
-                <div className="qv-sec">Luồng mail theodoimuahang@gmail.com</div>
-                <table className="tbl tbl-dense">
-                  <thead><tr><th></th><th>Lúc</th><th>Từ → Đến</th><th>Tiêu đề / tóm tắt</th><th title="Thư chung cho nhiều dòng — app đọc mail lưu 1 bản ghi / dòng">Dòng của EO</th></tr></thead>
-                  <tbody>
-                    {mailGop.length === 0 && <tr><td colSpan={5} className="muted">Chưa có mail đồng bộ (app theo-doi-mua-hang).</td></tr>}
-                    {mailGop.filter(({ x }) => k(x)).map(({ x: m, ds }) => {
-                      const ids = idsThu(ds).filter((x: number) => itemBy.has(x));
-                      return <tr key={m.id}><td>{m.huong === "GUI" ? "→" : "←"}</td><td style={{ whiteSpace: "nowrap" }}>{ngayGio(m.thoi_gian)}</td><td><Clip w={220}>{m.tu} → {m.den}</Clip></td><td><Clip w={420}><b>{m.tieu_de}</b>{m.tom_tat ? ` — ${m.tom_tat}` : ""}</Clip></td>
-                        <td><Clip w={160}>{ids.length ? `${new Set(ids).size}: ${lietKe(ids.map((x: number) => (itemBy.get(x) as any)?.part_code))}` : "—"}</Clip></td></tr>;
-                    })}
-                  </tbody>
-                </table>
-              </>
-            )}
           </div>
         </div>
 
-        {/* ------- phai: nhat ky ------- */}
-        <div className="qv-col">
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+        {/* ------- KHU PHU (v0.131): so lieu, canh bao, cho duyet, nhat ky hop nhat (duyet, ke hoach, loi, mail, push, binh luan) ------- */}
+        <CotPhu an={anPhu} setAn={setAnPhu} tieuDe="Tiến độ · lịch sử">
+          <div className="qv-phu-sec">
+            <div className="qv-kpis" style={{ marginTop: 0 }}>
+              <Kpi l="Dòng" v={soLuong(d.tong.so_dong)} />
+              <Kpi l="Đặt" v={soLuong(d.tong.tong_sl_dat)} />
+              <Kpi l="Về" v={soLuong(d.tong.sl_da_dat)} tone="ok" />
+              <Kpi l="Thiếu" v={soLuong(d.tong.sl_chua_dat)} tone={d.tong.sl_chua_dat > 0 ? "warn" : undefined} />
+              <Kpi l="Tiền DK" v={tien(d.tong.tong_tien_du_kien)} />
+              <Kpi l="Lỗi chờ GT" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
+            </div>
+            <div className="qv-alerts">
+              {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
+                : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
+                : b.canh_bao.map((c: any, i: number) => <span key={i} className={`qv-alert ${c.muc}`}>{c.muc === "danger" ? "⚠ " : c.muc === "warn" ? "! " : "i "}{c.text}</span>)}
+            </div>
+            {choDuyet.length > 0 && <div style={{ marginTop: 8, fontSize: 12.5 }}>
+              <b>Đang chờ duyệt</b>
+              {choDuyet.map((a: any) => <div key={a.id} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 3 }}>
+                <span className="badge final">{a.step_type === "FINAL" ? "Duyệt mua" : "Thẩm định"}</span><b>{ten(a.approver_email)}</b>
+                <span className="muted">giao {ngayGio(a.assigned_at)}</span></div>)}
+            </div>}
+          </div>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 8 }}>Nhật ký xử lý ({tlLoc.length}{tlGop.length < tlLoc.length ? ` — gọn ${tlGop.length} mục` : ""})</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {NHOM_TL.map((n) => <button key={n.k} className={`qv-chip ${nhom === n.k ? "on" : ""}`} onClick={() => setNhom(n.k)}>{n.l}</button>)}
@@ -421,7 +381,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
             <input className="input" placeholder="Viết bình luận / trao đổi…" value={cmt} onChange={(e) => setCmt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && guiBinhLuan()} />
             <button className="btn primary" disabled={busy || !cmt.trim()} onClick={guiBinhLuan}>Gửi</button>
           </div>
-        </div>
+        </CotPhu>
       </div>
 
       {md?.k === "duyet" && <ApprovalActionModal act={md.x} onClose={() => setMd(null)} onDone={xong} />}

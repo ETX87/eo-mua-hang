@@ -516,7 +516,8 @@ const THU_TU_TT: TrangThaiGt[] = ["VI_PHAM", "CAN_GT", "DA_GT", "KHAC_PHUC", "BO
  *  1. "Giải trình & vi phạm": 1 dong / nhom loi (quy tac + trang thai lib/giaiTrinh) - nhan trang thai + han giai trinh; mo ra = vi sao + ket luan + giai trinh.
  *  2. "Hoạt động": dong thoi gian gop mail / giai trinh / goi-Zalo / push / ngay DK, moi muc 1 dong, loc theo loai (chon nhieu), 8 muc moi nhat + "Xem thêm".
  */
-export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" | "kho" | "doi_tac" | "so_luong_dat" | "sl_nhap_amis" | "bat_dau" | "han_ngay_du_kien"> }) {
+/** boLoi (v0.131): bo muc "Giai trinh & vi pham" - popup don hang da co tab "Lỗi & giải trình" (tranh trung). */
+export function LichSuDong({ dong, boLoi }: { dong: Pick<Dong, "item_id" | "part_name" | "kho" | "doi_tac" | "so_luong_dat" | "sl_nhap_amis" | "bat_dau" | "han_ngay_du_kien">; boLoi?: boolean }) {
   const ls = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
@@ -595,6 +596,7 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
         Bắt đầu theo dõi {ngan(dong.bat_dau)} · hạn có ngày DK {ngan(dong.han_ngay_du_kien)}
       </div>
 
+      {!boLoi && <>
       <H phai={<button className="btn ghost sm" onClick={() => { setMoHet(!moHet); setMo(new Set()); }}>{moHet ? "▴ Thu gọn" : "▾ Xem chi tiết"}</button>}>
         Giải trình & vi phạm
       </H>
@@ -629,6 +631,8 @@ export function LichSuDong({ dong }: { dong: Pick<Dong, "item_id" | "part_name" 
           })}
         </>
       )}
+
+      </>}
 
       <H phai={<span className="muted" style={{ fontSize: 11.5 }}>{hdLoc.length}{loc.size ? ` / ${hd.length}` : ""} mục{daGop ? `, gộp còn ${nhomHd.length} nhóm` : ""}
         {(daGop || tungMuc) && <button type="button" className="btn ghost sm" style={{ marginLeft: 6, padding: "0 6px", fontSize: 11.5 }} onClick={() => setTungMuc(!tungMuc)}>{tungMuc ? "Gộp bước giống nhau" : "Hiện từng mục"}</button>}</span>}>Hoạt động</H>

@@ -592,3 +592,12 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `pages/Dashboard.tsx` (route `/`) = `ViecCanXuLy` + `QuanLyPanel` + `<DieuHanh nhung />`. `DieuHanh({ nhung })`: bỏ `PageHeader` khi nhúng; tab `xu_huong` render
   `pages/dieuhanh/XuHuongEo.tsx` (biểu đồ cũ của Tổng quan, query `dash-summary`). Bỏ `TrachNhiemLanhDao` (trùng tab `bang`).
 - `App.tsx`: `/dieu-hanh` → `ChuyenHuong to="/"` (giữ query). Menu cấp 2 = `/?tab=…` (`lib/nav.ts`); tiêu đề `/` = "Tổng quan & điều hành".
+
+## Popup chi tiết 2 khu + PO tồn CEO bảng là chính (v0.131, 27/11/2026)
+
+- `components/quickview/QuickView.tsx`: `useAnPhu()` (localStorage `qv-an-phu`), `KhuTieuDe` (`.qv-khu.chinh|phu`), `CotPhu` (khu phải, thu gọn = nút dọc `.qv-phu-thu`).
+  Mọi lớp `.qv-panel` 95vw × 95vh. CSS `theme.css`: `.qv-body.an-phu`, `.qv-quytrinh` (luồng tiến trình đầu khu chính, max 45vh), `.qv-phu-sec`.
+- Popup: `QuyTrinh` chuyển từ `.qv-head` vào đầu khu chính; KPI + cảnh báo chuyển sang khu phải (không còn trong "Xem chi tiết").
+  EO: bỏ tab `duyet` / `mail` (khối "Đang chờ duyệt" = approvals PENDING của lần trình PENDING). Đơn hàng: bỏ tab `ncc` (`LuongTraoDoiNcc` không còn dùng trong popup);
+  `LichSuDong({ boLoi })` ẩn mục "Giải trình & vi phạm" (chỗ khác — Vi phạm, LichSuModal — vẫn hiện đủ).
+- `pages/CaCeo.tsx`: bỏ thẻ / ô số; state `khongThuc`, `tim` (lọc tại chỗ không dấu); `muc` (Rất hot / Giảm hot) là nút; mã CEO = `?ma=` + `<select>`.

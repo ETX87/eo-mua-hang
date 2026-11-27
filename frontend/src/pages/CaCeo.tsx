@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { Card, PageHeader, Spinner } from "../components/ui";
-import { DataTable, type Col } from "../components/DataTable";
+import { Card, PageHeader, Spinner, Popover } from "../components/ui";
+import { DataTable, FilterBar, RefreshFiltersBtn, type Col } from "../components/DataTable";
 import { useQuickView } from "../components/quickview/QuickView";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../lib/format";
@@ -32,10 +32,19 @@ export default function CaCeo() {
   const rows = q.data?.rows ?? [];
   const caAll = useMemo(() => gomCa(rows), [rows]);
   const caTab = useMemo(() => caAll.filter((c) => (tab === "xong") === (c.muc === "DA_XONG")), [caAll, tab]);
-  const ds = useMemo(() => caTab.filter((c) => (!ma || c.ma === ma) && (!muc || c.muc === muc)).flatMap((c) => c.dong), [caTab, ma, muc]);
+  // v0.131: nhom nhanh "khong thuc NCC 7 ngay" (truoc la o so) + o tim
+  const [khongThuc, setKhongThuc] = useState(false);
+  const [tim, setTim] = useState("");
+  const khongThucCa = (c: (typeof caAll)[number]) => c.dong.every((r) => r.muc_xu_ly === "DA_XONG" || !r.thuc7);
+  const ds = useMemo(() => {
+    const w = tim.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").toLowerCase().split(/\s+/).filter(Boolean);
+    const bd = (x: unknown) => String(x ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").toLowerCase();
+    return caTab.filter((c) => (!ma || c.ma === ma) && (!muc || c.muc === muc) && (!khongThuc || khongThucCa(c))).flatMap((c) => c.dong)
+      .filter((r) => !w.length || ((h) => w.every((t) => h.includes(t)))(bd(`${r.po} ${r.ma_lk} ${r.ten_lk} ${r.doi_tac ?? ""} ${r.kho} ${r.nguoi_dat ?? ""} ${r._ma.ma}`)));
+  }, [caTab, ma, muc, khongThuc, tim]); // eslint-disable-line react-hooks/exhaustive-deps
   const soXong = caAll.filter((c) => c.muc === "DA_XONG").length;
   const caDang = caAll.length - soXong;
-  const doiTab = (t: "dang" | "xong") => { setTab(t); setMuc(""); };
+  const doiTab = (t: "dang" | "xong") => { setTab(t); setMuc(""); setKhongThuc(false); };
   if (q.isLoading) return <><PageHeader title="PO tồn CEO" /><Spinner /></>;
 
   const cols: Col<C>[] = [
@@ -96,64 +105,57 @@ export default function CaCeo() {
       </span>;
     },
   };
-  const nutTab = (t: "dang" | "xong", nhan: string, n: number, lon: boolean) => (
-    <button key={t} onClick={() => doiTab(t)} className={`btn${lon ? "" : " sm"}`}
-      style={{ fontWeight: tab === t ? 800 : 500, background: tab === t ? (t === "dang" ? "#FEE2E2" : "#F1F5F9") : "#fff",
-        borderColor: tab === t ? (t === "dang" ? "#B91C1C" : "#64748B") : "var(--border)", color: t === "dang" ? "#7F1D1D" : "#475569" }}>
-      {nhan} <span style={{ fontWeight: 800 }}>({soLuong(n)} ca)</span></button>);
-
+  // v0.131 (chu he thong 27/11/2026 "PO ton CEO cung can lam lai giao dien, uu tien table danh sach"): bo 2 the lon + hang o so;
+  // 1 thanh thao tac gon (giong Don PO / Vi pham) roi BANG. Ma CEO: menu cap 2 (?ma=) hoac o chon; muc / NCC / kho / nguoi = loc tieu de cot.
+  const soCa = (f: (c: (typeof caAll)[number]) => boolean) => caTab.filter(f).length;
+  const coLoc = !!(ma || muc || khongThuc || tim);
+  const xoaLoc = () => { setMa(""); setMuc(""); setKhongThuc(false); setTim(""); };
+  const soCaHien = new Set(ds.map((r) => r._khoa)).size;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <PageHeader title="PO tồn CEO" />
-      {/* v0.100: 2 tab - Dang theo doi (rat hot + giam hot) / tab nho Da xong (tranh loang) */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {nutTab("dang", "🔥 Đang theo dõi", caDang, true)}
-        {nutTab("xong", "⚪ Đã xong", soXong, false)}
-        <span className="muted" style={{ fontSize: 12 }}>1 ca = 1 PO + 1 mã CEO (gộp các dòng LK cùng lý do trên PO đó, như gộp vi phạm) · tổng {soLuong(caAll.length)} ca / {soLuong(rows.length)} dòng LK</span>
-      </div>
-      {tab === "dang" && <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-        {(["RAT_HOT", "GIAM_HOT"] as Muc[]).map((k) => {
-          const x = caTab.filter((c) => c.muc === k); const on = muc === k;
-          return (
-            <div key={k} onClick={() => setMuc(on ? "" : k)} title={on ? "Bấm lần nữa để bỏ lọc" : "Bấm để lọc"}
-              style={{ cursor: "pointer", background: on ? MUC[k].nen : "#fff", border: `2px solid ${on ? MUC[k].mau : "var(--border)"}`, borderLeft: `8px solid ${MUC[k].mau}`, borderRadius: 12, padding: "12px 14px" }}>
-              <div style={{ fontWeight: 800, color: MUC[k].mau, fontSize: 14 }}>{MUC[k].icon} {MUC[k].l}</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: 32, fontWeight: 900, color: x.length ? MUC[k].mau : "#94A3B8" }}>{soLuong(x.length)}</span>
-                <span className="muted" style={{ fontSize: 12.5 }}>ca · {new Set(x.map((c) => c.eo_id)).size} PO · {new Set(x.flatMap((c) => c.dong.map((r) => r.item_id))).size} dòng LK</span>
-              </div>
-              <div className="muted" style={{ fontSize: 11.5 }}>{k === "RAT_HOT" ? "Ca có ít nhất 1 dòng " : "Ca có dòng "}{MUC[k].mo_ta}</div>
-            </div>
-          );
-        })}
-      </div>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-        <O l={tab === "dang" ? "Ca đang theo dõi" : "Ca đã xong"} v={caTab.length} sub={`${new Set(caTab.map((c) => c.eo_id)).size} PO · ${new Set(caTab.flatMap((c) => c.dong.map((r) => r.item_id))).size} dòng LK`} on={!ma && !muc} onClick={() => { setMa(""); setMuc(""); }} />
-        {MA_CEO.map((m) => (
-          <O key={m.ma} l={`${m.ma} · ${m.l}`} v={caTab.filter((c) => c.ma === m.ma).length} sub="ca" mau={m.mau} on={ma === m.ma} onClick={() => setMa(ma === m.ma ? "" : m.ma)} />
-        ))}
-        {tab === "dang" && <O l="Ca không thúc NCC 7 ngày" v={caTab.filter((c) => c.dong.every((r) => r.muc_xu_ly === "DA_XONG" || !r.thuc7)).length} mau="#B91C1C" sub="mọi dòng còn thiếu đều chưa được thúc" />}
-      </div>
       <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <span className="muted" style={{ fontSize: 12 }}>{tab === "dang" ? "Ca còn thiếu hàng, nóng nhất lên đầu." : "Ca mà mọi dòng đã về đủ / kết thúc — để tra cứu."} Bấm tiêu đề ca để thu gọn / mở. Mốc 7 ngày = mốc hệ thống tự đóng lỗi chưa giải trình. Rê chuột lên mã CEO xem diễn giải (từng lần lùi, mốc ngày, lỗi theo quy tắc). Bấm dòng → popup đơn hàng (tab "Mã lỗi & giải trình", "Trao đổi NCC").</span>
+        <FilterBar>
+          <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+            {([["dang", "🔥 Đang theo dõi", caDang], ["xong", "⚪ Đã xong", soXong]] as const).map(([k, l, n]) => (
+              <button key={k} className="btn sm" style={{ borderRadius: 0, border: 0, background: tab === k ? "var(--brand-yellow-btn)" : "#fff", fontWeight: tab === k ? 800 : 500 }}
+                onClick={() => doiTab(k)}>{l} ({soLuong(n)})</button>
+            ))}
+          </div>
+          <select className="select tb" style={{ width: 230, borderColor: ma ? "var(--brand-yellow-btn)" : undefined }} value={ma} onChange={(e) => setMa(e.target.value)} title="Mã CEO (lý do lên cấp CEO)">
+            <option value="">Mọi mã CEO ({soLuong(caTab.length)} ca)</option>
+            {MA_CEO.map((m) => <option key={m.ma} value={m.ma}>{m.ma} · {m.l} ({soLuong(soCa((c) => c.ma === m.ma))})</option>)}
+          </select>
+          {tab === "dang" && (["RAT_HOT", "GIAM_HOT"] as Muc[]).map((k) => {
+            const on = muc === k;
+            return <button key={k} className="btn sm" title={MUC[k].mo_ta} onClick={() => setMuc(on ? "" : k)}
+              style={{ fontWeight: on ? 800 : 600, color: MUC[k].mau, borderColor: on ? MUC[k].mau : undefined, background: on ? MUC[k].nen : undefined }}>
+              {MUC[k].icon} {MUC[k].l} ({soLuong(soCa((c) => c.muc === k))})</button>;
+          })}
+          {tab === "dang" && <button className="btn sm" title="Mọi dòng còn thiếu của ca đều chưa được thúc NCC trong 7 ngày" onClick={() => setKhongThuc(!khongThuc)}
+            style={{ fontWeight: khongThuc ? 800 : 600, color: "#B91C1C", borderColor: khongThuc ? "#B91C1C" : undefined, background: khongThuc ? "#FEE2E2" : undefined }}>
+            Không thúc NCC 7 ngày ({soLuong(soCa(khongThucCa))})</button>}
+          <div style={{ position: "relative", flex: "1 1 180px", maxWidth: 280 }}>
+            <I.search width={15} height={15} style={{ position: "absolute", left: 11, top: 9, color: "var(--text-faint)" }} />
+            <input className="input tb" style={{ paddingLeft: 32 }} placeholder="Tìm PO, mã / tên LK, NCC, kho…" value={tim} onChange={(e) => setTim(e.target.value)} />
+          </div>
+          {coLoc && <RefreshFiltersBtn onClick={xoaLoc} />}
           <div style={{ flex: 1 }} />
-          <button className="btn sm" onClick={() => qc.invalidateQueries({ queryKey: ["ca-ceo"] })} title="Tải lại"><I.refresh width={13} height={13} /></button>
-          <button className="btn sm" onClick={xuat} title="Xuất Excel"><I.download width={14} height={14} /></button>
-        </div>
-        <DataTable key={tab} cols={cols} rows={ds} keyOf={(r) => r.item_id} pageSize={30} nhom={nhomCfg} onRowClick={(r) => qv.openDong(r.item_id)}
-          empty={tab === "dang" ? "Không có ca CEO đang theo dõi." : "Chưa có ca CEO nào đã xong."} />
+          <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}><b style={{ color: "var(--text)" }}>{soLuong(soCaHien)}</b> ca · {soLuong(new Set(ds.map((r) => r.eo_id)).size)} PO · {soLuong(ds.length)} dòng LK</span>
+          <button className="btn sm" style={{ padding: "0 9px" }} onClick={() => qc.invalidateQueries({ queryKey: ["ca-ceo"] })} title="Tải lại"><I.refresh width={13} height={13} /></button>
+          <button className="btn sm" style={{ padding: "0 9px" }} onClick={xuat} title="Xuất Excel các dòng đang lọc"><I.download width={14} height={14} /></button>
+          <Popover align="right" width={420} btnClass="btn sm ghost" title="Chú giải" label={<I.help width={15} height={15} />}>
+            <div style={{ fontSize: 12, lineHeight: 1.55 }}>
+              <div><b>1 ca</b> = 1 PO + 1 mã CEO (gộp các dòng LK cùng lý do trên PO, như gộp vi phạm). Tổng {soLuong(caAll.length)} ca / {soLuong(rows.length)} dòng LK.</div>
+              {(["RAT_HOT", "GIAM_HOT", "DA_XONG"] as Muc[]).map((k) => <div key={k} style={{ marginTop: 4 }}><b style={{ color: MUC[k].mau }}>{MUC[k].icon} {MUC[k].l}</b> — {MUC[k].mo_ta}</div>)}
+              <div style={{ marginTop: 4 }}>{MA_CEO.map((m) => `${m.ma}: ${m.l}`).join(" · ")}</div>
+              <div className="muted" style={{ marginTop: 6 }}>Bấm tiêu đề ca để thu gọn / mở · rê chuột lên mã CEO xem diễn giải · bấm dòng → popup đơn hàng · lọc / sắp xếp: phễu / tiêu đề cột.</div>
+            </div>
+          </Popover>
+        </FilterBar>
+        <DataTable key={tab} cols={cols} rows={ds} keyOf={(r) => r.item_id} pageSize={30} nhom={nhomCfg} onRowClick={(r) => qv.openDong(r.item_id)} timKiem={false}
+          empty={coLoc ? "Không có ca khớp bộ lọc." : tab === "dang" ? "Không có ca CEO đang theo dõi." : "Chưa có ca CEO nào đã xong."} />
       </Card>
-    </div>
-  );
-}
-
-function O({ l, v, sub, mau, on, onClick }: { l: string; v: number; sub?: string; mau?: string; on?: boolean; onClick?: () => void }) {
-  return (
-    <div className="ql-o" onClick={onClick} style={{ cursor: onClick ? "pointer" : undefined, outline: on ? "2px solid var(--brand-yellow-btn)" : undefined, borderTop: `3px solid ${mau ?? "var(--border)"}` }}>
-      <div className="ql-l">{l}</div>
-      <div className="ql-v" style={{ color: v ? mau : undefined }}>{soLuong(v)}</div>
-      {sub && <div className="ql-s">{sub}</div>}
     </div>
   );
 }

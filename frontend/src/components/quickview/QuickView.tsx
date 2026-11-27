@@ -32,7 +32,7 @@ function LopXemNhanh({ i, onPop, children }: { i: number; onPop: () => void; chi
   }, [onPop, id]);
   return (
     <div className="qv-overlay" style={{ zIndex: z, background: i ? "rgba(15,23,42,.3)" : undefined }} onMouseDown={(e) => { if (e.target === e.currentTarget) onPop(); }}>
-      <div className="qv-panel" style={i ? { width: "93vw", height: "93vh" } : undefined}>{children}</div>
+      <div className="qv-panel">{children}</div>
     </div>
   );
 }
@@ -134,4 +134,28 @@ export function DongLink({ id, ma, po, children }: { id?: number | null; ma: str
   if (!id) return <PartLink ma={ma}>{children}</PartLink>;
   return <button type="button" className="qv-link" title={`Xem ${ma} trong PO này (đơn hàng) — Shift + bấm: tất cả đơn của mã`}
     onClick={(e) => { e.stopPropagation(); if (e.shiftKey || e.ctrlKey || e.metaKey) qv.openPart(ma); else qv.openDong(id); }}>{children ?? ma}</button>;
+}
+
+
+/**
+ * v0.131 (chu he thong 27/11/2026 "UI chi tiet rat roi... chia 2 khu vuc: thong tin log, lich su, tien do / khu theo doi chinh"):
+ * khu PHU ben phai (so lieu, canh bao, nhat ky / lich su) thu gon duoc - nho tren may (moi popup dung chung) -> khu CHINH rong gan het popup.
+ */
+export function useAnPhu(): [boolean, (v: boolean) => void] {
+  const [an, setAn] = useState(() => localStorage.getItem("qv-an-phu") === "1");
+  return [an, (v) => { setAn(v); localStorage.setItem("qv-an-phu", v ? "1" : "0"); }];
+}
+/** Tieu de khu: "chinh" (vang) / "phu" (xam). */
+export function KhuTieuDe({ loai, children, phai }: { loai: "chinh" | "phu"; children: ReactNode; phai?: ReactNode }) {
+  return <div className={`qv-khu ${loai}`}>{children}{phai && <span className="sp">{phai}</span>}</div>;
+}
+/** Cot khu PHU: dang an -> 1 thanh doc bam de mo lai. */
+export function CotPhu({ an, setAn, tieuDe, children }: { an: boolean; setAn: (v: boolean) => void; tieuDe: string; children: ReactNode }) {
+  if (an) return <div className="qv-col"><button type="button" className="qv-phu-thu" title={`Mở khu ${tieuDe}`} onClick={() => setAn(false)}>⟨ {tieuDe}</button></div>;
+  return (
+    <div className="qv-col">
+      <KhuTieuDe loai="phu" phai={<button type="button" className="btn ghost sm" style={{ padding: "0 6px" }} title="Thu gọn — khu theo dõi chính rộng ra" onClick={() => setAn(true)}>Thu gọn ⟩</button>}>🕘 {tieuDe}</KhuTieuDe>
+      {children}
+    </div>
+  );
 }
