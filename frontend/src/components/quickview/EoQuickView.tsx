@@ -66,6 +66,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
   const [tab, setTab] = useState<Tab>("lk");
   // v0.141 (chu he thong 2026-11-27 "danh sach loi, an vao se filter san cac lk co loi trong PO do"): chi hien dong LK co loi
   // (bat san khi mo tu cot loi / danh sach loi; bam o "Lỗi chờ GT", canh bao loi, tab Loi -> nut "Xem các LK có lỗi")
+  const [chiCeo, setChiCeo] = useState(false);
   const [locGd, setLocGd] = useState<{ k: string; ids: Set<number>; kieu: "dang" | "loi" | "qua" } | null>(null);
   // v0.145: cot phai - tab "Tổng quát" (o so, canh bao, cho duyet) thay khoi tren cung; mac dinh nhat ky
   const [xemTq, setXemTq] = useState(false);
@@ -185,6 +186,9 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
   // dong co loi: moi loi da ghi tren dong (tl_loi qua /xem/eo/:id/bo-sung) + dong theo doi co so_loi > 0
   // v0.143: dong co loi = co loi TINH thong ke (moc tu 20/11/2026 - luat 15 CLAUDE.md), khop man Loi theo PO
   const dongCoLoi = new Set<number>(loiTinh.map((l: any) => l.eo_item_id));
+  // v0.147 (chu he thong "PO nay co bao loi CEO ma mo UI len toi khong biet phai tim cai loi CEO do o dau"): dong dang cap CEO (lui >= 3 / ngay DK >= 30 ngay / >= 3 loi)
+  const dongCeo = new Set<number>(d.items.filter((r: any) => ((tdBy.get(r.id) as any)?.ceo_ly_do?.length ?? 0) > 0).map((r: any) => r.id));
+  const xemCeo = () => { setChiCeo(true); setTab("lk"); };
   const lkRows = d.items.map((r: any, i: number) => {
     const t = tdBy.get(r.id) as any;
     const kh = d.plans.filter((p: any) => p.eo_item_id === r.id);
@@ -193,7 +197,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
     const ve = (b?.phieu_nhap ?? []).filter((x: any) => x.matched_eo_item_id === r.id).map((x: any) => x.doc_date).sort().pop();
     const g = (sdh.data?.rows ?? []).find((x: any) => x.item_id === r.id);
     return { r, t, i, ndk, nm, ve, g };
-  }).filter((x: any) => (xemHuy || !huy(x.r)) && (!chiLoi || (dsLocVao ?? dongCoLoi).has(x.r.id)) && (!locGd || locGd.ids.has(x.r.id)) && k({ ...x.r, ...(x.t ?? {}) }))
+  }).filter((x: any) => (xemHuy || !huy(x.r)) && (!chiLoi || (dsLocVao ?? dongCoLoi).has(x.r.id)) && (!locGd || locGd.ids.has(x.r.id)) && (!chiCeo || dongCeo.has(x.r.id)) && k({ ...x.r, ...(x.t ?? {}) }))
     .sort((a: any, b: any) => {
       // v0.145 (chu he thong): con ton truoc - ton LAU truoc (gio lam viec o giai doan hien tai, roi ngay tao som), roi ton SL nhieu - da xong - da huy
       const nhom = (x: any) => (huy(x.r) ? 2 : dongKetThuc(x.r) || (x.r.chua_dat ?? 0) <= 0 ? 1 : 0);
@@ -241,6 +245,11 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
         const cho = ls.some((l: any) => l.trang_thai === "CHO_GIAI_TRINH");
         return <span title={`${demTxt(ls, (l) => `${String(l.ma_loi).replace("ER.MH-", "")} ${l.ten_ma}`).map(([m, n]) => `${m} ×${n}`).join("\n")}\nAi lỗi: ${demTxt(ls, aiLoi).map(([a, n]) => `${a} ×${n}`).join(", ")}`}
           style={{ fontWeight: 700, borderRadius: 999, padding: "1px 9px", background: cho ? "#ffe7e5" : "#f5f5f7", color: cho ? "#d70015" : "var(--text)" }}>{ls.length}</span>; } },
+    { key: "ceo", header: <span title="Dòng cấp CEO (hệ thống tự tính): lùi ngày DK ≥ 3 lần · ngày DK cách ngày đặt ≥ 30 ngày · ≥ 3 lỗi">CEO</span>, loc: "chon", maxW: 220,
+      gt: ({ t }: any) => (t?.ceo_ly_do?.length ? "Cấp CEO" : ""),
+      render: ({ t }: any) => t?.ceo_ly_do?.length ? <span title={ceoTxt(t.ceo_chi_tiet, t.ceo_ly_do)}>
+        <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 8px", background: "#ff3b30", color: "#fff", marginRight: 5 }}>CEO</span>
+        <span style={{ color: "#d70015", fontSize: 12 }}>{t.ceo_ly_do.join(" · ")}</span></span> : <span className="muted">—</span> },
     { key: "tl", header: <span title="Tỷ lệ hàng về = SL về / SL đặt">Tỷ lệ về</span>, align: "right", loc: "so", gt: ({ r }: any) => (r.current_qty > 0 ? Math.round((Math.min(r.da_dat ?? 0, r.current_qty) / r.current_qty) * 100) : null),
       render: ({ r }: any) => { if (!(r.current_qty > 0)) return <span className="muted">—</span>; const v = Math.round((Math.min(r.da_dat ?? 0, r.current_qty) / r.current_qty) * 100);
         return <b className="mono-num" style={{ color: v >= 100 ? "var(--ok-ink)" : v > 0 ? "#c26400" : "var(--danger-ink)" }}>{v}%</b>; } },
@@ -296,6 +305,9 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
             <span style={{ fontSize: 22, fontWeight: 700, color: "var(--brand-ink)" }}>{eo.eo_code}</span>
             {/* v0.144 (chu he thong "tieu de bo hien thi thanh luong quy trinh"): luong chi con o khu chinh ben duoi */}
             {eo.approval_code ? <span className="badge issued">{eo.approval_code}</span> : <span className="badge nhap">Chưa ban hành</span>}
+            {dongCeo.size > 0 && <button type="button" onClick={xemCeo} title="Bấm: lọc các dòng cấp CEO (cột CEO ghi lý do từng dòng)"
+              style={{ border: 0, cursor: "pointer", fontSize: 12.5, fontWeight: 700, borderRadius: 999, padding: "3px 12px", background: "#ff3b30", color: "#fff", flexShrink: 0 }}>
+              🚩 CEO · {dongCeo.size} dòng</button>}
             <Clip w="min(60vw, 720px)" style={{ fontSize: 15, fontWeight: 600 }}>{eo.tieu_de || "(không tiêu đề)"}</Clip>
           </div>
           <div className="muted qv-meta" style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 12, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden" }}>
@@ -307,7 +319,8 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
             {eo.cancelled_at && <span style={{ color: "var(--danger-ink)" }}>Hủy {ngayGio(eo.cancelled_at)}{eo.cancel_reason ? ` — ${eo.cancel_reason}` : ""}</span>}
             {/* so lieu chinh ngay tren dong thong tin; o so lieu day du + canh bao nam trong "Xem chi tiết" cua QuyTrinh (#22) */}
             <span>Đặt <b>{soLuong(d.tong.tong_sl_dat)}</b> · về <b style={{ color: "var(--ok-ink)" }}>{soLuong(d.tong.sl_da_dat)}</b> · thiếu <b style={{ color: d.tong.sl_chua_dat > 0 ? "var(--warn-ink)" : undefined }}>{soLuong(d.tong.sl_chua_dat)}</b></span>
-            {(b?.canh_bao ?? []).length > 0 && <span title={b.canh_bao.map((c: any) => c.text).join("\n")} style={{ color: "var(--danger-ink)", fontWeight: 700 }}>⚠ {b.canh_bao.length} cảnh báo</span>}
+            {(b?.canh_bao ?? []).length > 0 && <span role="button" onClick={() => { setAnPhu(false); setXemTq(true); }} title={`${b.canh_bao.map((c: any) => c.text).join("\n")}\n\nBấm: mở tab Tổng quát`}
+              style={{ color: "var(--danger-ink)", fontWeight: 700, cursor: "pointer", textDecoration: "underline dotted" }}>⚠ {b.canh_bao.length} cảnh báo</span>}
           </div>
         </QvHeader>
       </div>
@@ -353,7 +366,10 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                       <span className="qv-loc-t">⚠ {dsLocVao ? `LK dính lỗi đang xem (${dsLocVao.size})` : `Chỉ LK có lỗi (${dongCoLoi.size})`}</span>{chiLoi && <span className="qv-loc-x">×</span>}</button>}
                     <button className="btn sm" onClick={() => setXemHuy(!xemHuy)} title="Hiện cả dòng đã hủy / bị từ chối" style={xemHuy ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>
                       <span className="qv-loc-t">Cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}</span>{xemHuy && <span className="qv-loc-x">×</span>}</button>
-                    {(locGd || chiLoi || xemHuy) && <button className="btn ghost sm" onClick={() => { setLocGd(null); setChiLoi(false); setXemHuy(false); }}>Xoá lọc</button>}
+                    {dongCeo.size > 0 && <button className="btn sm" onClick={() => setChiCeo(!chiCeo)} title="Chỉ hiện các dòng cấp CEO"
+                      style={chiCeo ? { background: "#fff", boxShadow: "0 0 0 2px #ff3b30", fontWeight: 600, color: "#d70015" } : { color: "#d70015" }}>
+                      <span className="qv-loc-t">🚩 Cấp CEO ({dongCeo.size})</span>{chiCeo && <span className="qv-loc-x" style={{ background: "#ff3b30" }}>×</span>}</button>}
+                    {(locGd || chiLoi || xemHuy || chiCeo) && <button className="btn ghost sm" onClick={() => { setLocGd(null); setChiLoi(false); setXemHuy(false); setChiCeo(false); }}>Xoá lọc</button>}
                     <div className="qv-loc-goi">Bấm mốc trên luồng quy trình để lọc LK theo bước.</div>
                   </aside>
                   <div className="qv-lk"><DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
@@ -418,8 +434,9 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
             <div className="qv-alerts">
               {bs.isLoading ? <span className="muted" style={{ fontSize: 12 }}>Đang kiểm tra cảnh báo…</span>
                 : (b?.canh_bao ?? []).length === 0 ? <span className="qv-alert ok">✓ Không có cảnh báo</span>
-                : b.canh_bao.map((c: any, i: number) => { const veLoi = /lỗi|giải trình|vi phạm/i.test(c.text) && dongCoLoi.size > 0; return (
-                  <span key={i} className={`qv-alert ${c.muc}`} role={veLoi ? "button" : undefined} onClick={veLoi ? xemLkLoi : undefined}
+                : b.canh_bao.map((c: any, i: number) => { const veCeo = (c.loai === "CEO" || /cấp CEO/.test(c.text)) && dongCeo.size > 0;
+                  const veLoi = veCeo || (/lỗi|giải trình|vi phạm/i.test(c.text) && dongCoLoi.size > 0); return (
+                  <span key={i} className={`qv-alert ${c.muc}`} role={veLoi ? "button" : undefined} onClick={veCeo ? xemCeo : veLoi ? xemLkLoi : undefined}
                     title={veLoi ? "Bấm: xem các LK có lỗi" : undefined} style={veLoi ? { cursor: "pointer" } : undefined}>{c.muc === "danger" ? "⚠ " : c.muc === "warn" ? "! " : "i "}{c.text}{veLoi ? " ›" : ""}</span>); })}
             </div>
             {choDuyet.length > 0 && <div style={{ marginTop: 8, fontSize: 12.5 }}>

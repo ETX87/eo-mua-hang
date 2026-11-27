@@ -20,7 +20,7 @@ import { CHO_DUYET_SAU_BH_SQL } from "../lib/choDuyetSauBh";
  */
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-type CanhBao = { muc: "danger" | "warn" | "info"; text: string };
+type CanhBao = { muc: "danger" | "warn" | "info"; text: string; /** v0.147: "CEO" = canh bao dong cap CEO (FE bam = loc dong CEO) */ loai?: "CEO" };
 const ngayGiua = (a: string, b: string) => Math.floor((Date.parse(b.replace(" ", "T") + "Z") - Date.parse(a.replace(" ", "T") + "Z")) / 86400_000);
 
 app.get("/eo/:id/bo-sung", async (c) => {
@@ -105,7 +105,7 @@ app.get("/eo/:id/bo-sung", async (c) => {
       lui.length ? `${lui.length} dòng lùi ngày dự kiến ≥ 3 lần (nhiều nhất ${Math.max(...lui.map((r) => r.so_lan_lui))} lần)` : "",
       nhieuLoi.length ? `${nhieuLoi.length} dòng có ≥ 3 lỗi (nhiều nhất ${Math.max(...nhieuLoi.map((r) => r.so_loi))} lỗi)` : "",
     ].filter(Boolean);
-    cb.push({ muc: "danger", text: `${ceo.length} dòng cấp CEO (hệ thống tự tính): ${phan.join(" · ")}. Chi tiết từng dòng ở tab "Mã lỗi & giải trình".` });
+    cb.push({ muc: "danger", text: `${ceo.length} dòng cấp CEO (hệ thống tự tính): ${phan.join(" · ")}. Bấm để lọc các dòng cấp CEO (cột "CEO" ghi lý do từng dòng).`, loai: "CEO" });
   }
   if (khongKhop.results.length) cb.push({ muc: "warn", text: `${khongKhop.results.length} phiếu nhập AMIS mang mã ${eo.approval_code} nhưng không khớp dòng nào (kho / mã hàng lệch)` });
   const chuaKh = dem((r) => !r.ap_dung && r.tinh_trang !== "DONG" && !r.co_ngay_du_kien);

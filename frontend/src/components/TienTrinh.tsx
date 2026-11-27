@@ -161,7 +161,7 @@ export function TienTrinhGon({ r, soLoi = 0, loiCho = 0, onClick }: { r: Row | n
 export interface CeoCt { ma: string; tieu_de: string; nguong: string; gia_tri: string; dong: string[] }
 /** Chuoi giai thich cap CEO (tooltip / Excel). */
 export const ceoTxt = (ct?: CeoCt[], lyDo?: string[]) =>
-  ct?.length ? ct.map((c) => `• ${c.tieu_de}: ${c.gia_tri} (ngưỡng ${c.nguong})${c.dong.length ? "\n   " + c.dong.join("\n   ") : ""}`).join("\n") : (lyDo ?? []).join("\n");
+  ct?.length ? ct.map((c) => `• ${c.tieu_de}: ${c.gia_tri} (ngưỡng ${c.nguong})${c.dong?.length ? "\n   " + c.dong.join("\n   ") : ""}`).join("\n") : (lyDo ?? []).join("\n");
 
 /** Khung "Vi sao don nay o cap CEO" - dien giai tung ly do (backend lib/theoDoi ceo_chi_tiet). */
 export function GiaiThichCeo({ ct, lyDo }: { ct?: CeoCt[]; lyDo?: string[] }) {

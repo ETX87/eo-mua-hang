@@ -4,6 +4,17 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.147: Hiện rõ dòng cấp CEO trong popup PO
+
+- Yêu cầu (nguyên văn): "po này có báo lỗi CEO mà mở UI lên tôi không biết phải tìm cái lỗi CEO đó ở đâu" (PO 3TDO-000864).
+- Nguyên nhân: v0.144 làm gọn bảng LK đã bỏ cột "Theo dõi" (chỗ có huy hiệu CEO); CEO chỉ còn trong chữ "⚠ n cảnh báo" (rê chuột) / tab Tổng quát, và câu cảnh báo còn trỏ sang
+  tab "Mã lỗi & giải trình" đã đổi tên, không chứa lý do CEO.
+- Đã làm: EoQuickView `dongCeo` / `chiCeo`: huy hiệu "🚩 CEO · n dòng" trên tiêu đề, cột "CEO" (lý do, rê chuột diễn giải ceoTxt), nút lọc CEO cột trái, cảnh báo CEO bấm = lọc,
+  "⚠ n cảnh báo" bấm = mở Tổng quát; backend xemNhanh câu cảnh báo CEO sửa thành "Bấm để lọc các dòng cấp CEO…" + `loai: "CEO"`; `ceoTxt` chịu dữ liệu thiếu `dong`.
+- 5W1H: Who — Giám đốc, quản lý, KH cung ứng. When — mở PO có dòng cấp CEO. Where — popup chi tiết PO: tiêu đề, cột lọc trái, cột CEO, tab Tổng quát. What — nhìn thấy ngay PO có CEO,
+  bấm 1 lần ra đúng dòng + lý do. Why — trước không tìm được lỗi CEO nằm ở đâu. How — bấm huy hiệu đỏ "🚩 CEO · n dòng" → bảng chỉ dòng CEO, cột CEO ghi lý do; bấm × để bỏ lọc.
+- Kiểm thử: typecheck; local không có dòng CEO → giả lập phản hồi API trên trình duyệt (không đổi dữ liệu): huy hiệu "CEO · 1 dòng", lọc còn 1 dòng, cột CEO đúng lý do, nút lọc trái.
+
 ## 28/11/2026 — v0.146: Lỗi theo PO — tô màu dòng theo trạng thái PO, cột Trạng thái PO + Giải trình
 
 - Yêu cầu (nguyên văn): "1. PO đã hủy tô màu tô cả nền và viền để dễ phân biệt, PO đã xong màu xanh lá, đang tồn quá hạn màu cam... 2. ở table danh sách lỗi theo PO, bổ sung thêm cột
