@@ -531,7 +531,8 @@ export function LichSuDong({ dong, boLoi }: { dong: Pick<Dong, "item_id" | "part
   const laMo = (k: string) => moHet || mo.has(k);
   const doiMo = (k: string) => setMo((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const H = ({ children, phai }: { children: ReactNode; phai?: ReactNode }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13, margin: "12px 0 4px" }}>{children}<span style={{ marginLeft: "auto", fontWeight: 400 }}>{phai}</span></div>
+    // v0.132: tieu de muc nhat (khong to dam) - chu he thong "tieu de dung to dam len"
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500, fontSize: 12.5, color: "var(--text-muted)", margin: "12px 0 4px" }}>{children}<span style={{ marginLeft: "auto", fontWeight: 400 }}>{phai}</span></div>
   );
   const now = nowVN();
   const gtBy = new Map<number, any>((d.giai_trinh ?? []).map((g: any) => [g.id, g]));

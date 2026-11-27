@@ -301,7 +301,12 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
                   <button className="btn sm" onClick={() => setMd({ k: "bulk" })}><I.calendar width={13} height={13} /> Lập kế hoạch hàng loạt</button>
                 </>}
                 {P.issued && P.canManage && <button className="btn sm" onClick={() => setMd({ k: "add" })}><I.plus width={13} height={13} /> Thêm dòng (duyệt sau BH)</button>}
-                <span className="sp muted" style={{ fontSize: 11.5 }}>Bấm dòng: xem chi tiết đơn đặt · nút ⋯: ngày DK, giải trình, lịch sử, sửa, thay mã, kết thúc / hủy</span>
+                {/* v0.132 (chu he thong "thu gon"): 1 hang - o "xem ca don huy" vao thanh, huong dan vao ⓘ */}
+                <label className="sp muted" style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, whiteSpace: "nowrap" }}>
+                  <input type="checkbox" checked={xemHuy} onChange={(e) => setXemHuy(e.target.checked)} />
+                  Xem cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}
+                </label>
+                <span className="muted" style={{ cursor: "help", fontSize: 13 }} title="Bấm dòng: xem chi tiết đơn đặt · nút ⋯: ngày DK, giải trình, lịch sử, sửa, thay mã, kết thúc / hủy">ⓘ</span>
               </div>
             )}
             {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
@@ -309,11 +314,7 @@ export default function EoQuickView({ id, onClose, onCloseAll, coTruoc }: { id: 
               // #29 (2026-11-08): bang dung chung DataTable - loc / sap xep kieu Excel tren tieu de; mac dinh AN don huy / tu choi
               // (tick "Xem cả đơn hủy"); thu tu mac dinh: dong con thieu len dau, thieu nhieu xep truoc. Loc tren may nguoi dung.
               <>
-                <label className="muted" style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, padding: "6px 12px" }}>
-                  <input type="checkbox" checked={xemHuy} onChange={(e) => setXemHuy(e.target.checked)} />
-                  Xem cả đơn hủy / từ chối{soHuy ? ` (${soHuy})` : ""}
-                </label>
-                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" khungCao="max(300px, calc(95vh - 420px))" />
+                <DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" khungCao="max(300px, calc(95vh - 330px))" />
               </>
             )}
             {tab === "kh" && (

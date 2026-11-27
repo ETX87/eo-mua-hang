@@ -130,7 +130,9 @@ const COT_EO: Record<string, { kieu: "chu" | "chon" | "ngay" | "so"; gt: (r: Don
   loai_hinh: { kieu: "chon", gt: (r) => r.loai_hinh },
   phong_ban: { kieu: "chon", gt: (r) => r.phong_ban },
   ma_lk: { kieu: "chu", gt: (r) => r.lk, sap: (r) => r.ma_lk },
-  trang_thai: { kieu: "chon", gt: mocPo, sap: (r) => MOC_PO.indexOf(mocPo(r)[0]) },
+  // v0.132 (chu he thong 27/11/2026): loc theo giai doan o cap PO = giai doan TON LAU NHAT (moc som nhat trong quy trinh, vd 1 don giao bu + 1 don cho duyet
+  // -> "cho duyet"); luong Tien trinh van ve moi moc. Loc theo tung dong LK (giai doan rieng tung dong): man Theo LK.
+  trang_thai: { kieu: "chon", gt: (r) => mocPo(r)[0], sap: (r) => MOC_PO.indexOf(mocPo(r)[0]) },
   ton: { kieu: "chon", gt: tonTt, sap: (r) => (tonTt(r) === "Còn dòng chưa về đủ" ? r.issued_at : tonTt(r) === "Chờ duyệt" ? r.created_at : null) },
   created_by: { kieu: "chon", gt: (r) => r.created_by },
   created_at: { kieu: "ngay", gt: (r) => r.created_at },
@@ -187,7 +189,8 @@ app.get("/dem", async (c) => {
   const out: Record<string, number | Record<string, Record<string, number>>> = { tat_ca: ds.length };
   // v0.129: so PO theo moc tien trinh trong tung nhom (menu cap 2 o sidebar: Don PO > nhom > giai doan)
   const theoMoc: Record<string, Record<string, number>> = { tat_ca: {} };
-  const cong = (k: string, r: DongEo) => { const m = (theoMoc[k] ??= {}); for (const g of mocPo(r)) m[g] = (m[g] ?? 0) + 1; };
+  // moi PO dem 1 lan, o giai doan ton lau nhat (khop loc cot trang_thai)
+  const cong = (k: string, r: DongEo) => { const m = (theoMoc[k] ??= {}); const g = mocPo(r)[0]; m[g] = (m[g] ?? 0) + 1; };
   for (const r of ds) cong("tat_ca", r);
   for (const [k, f] of Object.entries(CHIP_EO)) {
     const ok = ds.filter((r) => f(r, n));

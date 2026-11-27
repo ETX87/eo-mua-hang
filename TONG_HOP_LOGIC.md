@@ -120,7 +120,8 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
   Lỗi đối tác / Lỗi nội bộ = PO có vi phạm gộp CHƯA xử lý (cần giải trình còn hạn + vi phạm hết hạn không giải trình) mà bên chịu là NCC / nội bộ.
 - Bên chịu 1 lỗi (`benLoi` = `BEN_SQL`): đã giải trình thật → theo "Do ai" (Đối tác = NCC, còn lại nội bộ); chưa / tự đóng → R1, R4 = NCC; R3, R5 = nội bộ;
   lỗi ghi tay theo "Do ai". 1 vi phạm gộp lấy bên của dòng đại diện (dòng còn chờ, không có thì dòng mới nhất).
-- Số đếm menu Đơn PO = `GET /api/eo/dem` (`theo_moc[nhóm][giai đoạn]` = số PO của nhóm đang có dòng ở giai đoạn đó; 1 PO có thể nằm ở nhiều giai đoạn).
+- **Giai đoạn của 1 PO** (v0.132) = giai đoạn TỒN LÂU NHẤT = mốc sớm nhất trong quy trình còn dòng (vd 1 đơn giao bù G8 + 1 đơn thêm sau BH chờ duyệt G3 → PO tính G3).
+  Dùng cho lọc cột Tiến trình và số đếm menu cấp 2 (`GET /api/eo/dem` `theo_moc[nhóm][giai đoạn]`, mỗi PO đếm 1 lần). Theo LK lọc theo giai đoạn riêng từng dòng.
 
 ## 8. Báo cáo & tổng quan
 

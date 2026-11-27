@@ -185,7 +185,7 @@ table.eo-lines .input, table.eo-lines .select { padding: 6px 8px; font-size: 12.
 table.eo-lines .select { text-overflow: ellipsis; }
 
 /* ---- thao tac trong popup xem nhanh ---- */
-.qv-toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2, #F8FAFC); flex-shrink: 0; }
+.qv-toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 5px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2, #F8FAFC); flex-shrink: 0; }
 .qv-toolbar .sp { margin-left: auto; }
 /* cot thao tac DAU bang, ghim trai - bang nhieu cot khong day nut ra ngoai */
 .tbl .qv-act { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 6px 0 6px -6px rgba(15,23,42,.18); white-space: nowrap; text-align: left; }

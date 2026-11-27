@@ -4,6 +4,27 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.132: Popup chi tiết vi phạm dễ nhìn · thu gọn thanh công cụ popup PO · PO tính theo giai đoạn tồn lâu nhất
+
+- Yêu cầu (nguyên văn): "giao diện này khó nhìn quá, tiêu đề đừng tô đậm lên, tìm phương án khác dễ nhìn hơn" (popup chi tiết lỗi ở màn Vi phạm) · "thu gọn" (thanh công cụ
+  tab Linh kiện của popup PO) · "1 PO có nhiều trạng thái đơn, thì khi filter theo trạng thái tồn lâu nhất, ví dụ PO có 3 đơn đặt thì 1 đơn đang đặt bù, 1 đơn chờ duyệt
+  => tính theo đơn chờ duyệt. Khi lọc theo linh kiện thì mới tính đúng theo trạng thái của lk đó."
+- Đã làm:
+  - Chi tiết lỗi / vi phạm (`ViPham.tsx ChiTietViPham`): bỏ Modal 70% cũ (tiêu đề đậm, khung đỏ / xanh, bảng dài); dùng bố cục popup chi tiết 95% 2 khu. Đầu: tên lỗi + mức · trạng thái
+    · bên chịu + nút thao tác; dòng phụ PO · LK · mã lỗi · người chịu. Khu chính: **luồng ngang của lỗi** Phát sinh lỗi → Nhắc nhở ×n → Hạn giải trình → Giải trình / Đã khắc phục /
+    Vi phạm (mốc đang chờ tô cam nổi, vi phạm đỏ, chưa tới xám, bỏ qua nét đứt; rê chuột xem chi tiết), kết luận 1 câu nền nhạt, "Vì sao có lỗi" / "Cần làm gì" 2 cột,
+    thông tin dòng (nhãn nhạt, giá trị chữ thường), "▾ Xem chi tiết" = các lần lỗi + lỗi khác trên LK. Khu phụ: nhắc nhở + lịch sử LK (bỏ mục giải trình trùng).
+    Tiêu đề mục trong Lịch sử theo dõi chuyển chữ nhạt, không đậm.
+  - Popup PO, tab Linh kiện: thanh công cụ + ô "Xem cả đơn hủy" + dòng hướng dẫn gộp 1 hàng (hướng dẫn vào ⓘ); bảng cao thêm.
+  - Đơn PO: lọc cột Tiến trình + số đếm menu cấp 2 tính **mỗi PO 1 giai đoạn = giai đoạn tồn lâu nhất** (mốc sớm nhất còn dòng, `mocPo(r)[0]`). Luồng Tiến trình trên dòng
+    vẫn vẽ mọi mốc. Theo LK vẫn lọc theo giai đoạn riêng từng dòng.
+- 5W1H: Who — người xem lỗi / vi phạm; người lọc Đơn PO theo giai đoạn. When — bấm 1 lỗi ở màn Vi phạm; bấm menu cấp 2 giai đoạn. Where — màn Vi phạm & GT, popup PO,
+  menu Đơn PO. What — nhìn 1 giây biết lỗi đang ở mốc nào; PO không bị đếm lặp ở nhiều giai đoạn. Why — popup cũ chữ đậm dày đặc, khó tìm ý chính; PO nằm ở nhiều giai đoạn
+  làm số menu cộng lại lớn hơn số PO và PO chờ duyệt bị lẫn vào nhóm giao bù. How — mở lỗi xem luồng ngang + kết luận, cần thêm thì "▾ Xem chi tiết"; lọc giai đoạn bằng menu
+  cấp 2 hoặc phễu cột Tiến trình; muốn theo từng dòng thì dùng Đơn PO › Theo LK.
+- Kiểm thử: typecheck; local: `/api/eo/dem` tổng theo giai đoạn = 9 = số PO (trước đếm lặp); "PO cảnh báo" G3 = 2, G6 / G8 = 0, danh sách lọc khớp; popup lỗi R5 hiện luồng 4 mốc
+  (Hạn giải trình đang chờ), 2 khu; popup PO thanh công cụ 1 hàng.
+
 ## 27/11/2026 — v0.131: PO tồn CEO bảng là chính · popup chi tiết chia 2 khu, bỏ tab trùng nhật ký
 
 - Yêu cầu (nguyên văn): "1. Po tồn CEO cũng cần làm lại giao diện, ưu tiên table danh sách 2. Các giao diện UI chi tiết mở lên đang rất rối. tôi không biết phải xem

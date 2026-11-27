@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PageHeader, Card, Spinner, Modal, Popover } from "../components/ui";
 import { DataTable, FilterBar, RefreshFiltersBtn, locVaSap, soCotLoc, type Col, type LocCot } from "../components/DataTable";
-import { EoLink, DongLink, useQuickView } from "../components/quickview/QuickView";
+import { EoLink, DongLink, useQuickView, QvHeader, useAnPhu, KhuTieuDe, CotPhu } from "../components/quickview/QuickView";
+import { useLop, laTrenCung } from "../lib/lop";
 import { I } from "../lib/icons";
 import { soLuong, ngay, ngayGio, ten } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
@@ -411,94 +412,166 @@ function NhacNhoModal({ ids, ten: tenNhom, onClose, onSaved }: { ids: number[]; 
   );
 }
 
-/** Chi tiet 1 nhom loi (1 linh kien x 1 loai loi): vi sao, muc do, phai lam gi, tung lan, giai trinh, nhac nho, lich su day du. */
+/**
+ * Chi tiet 1 loi / vi pham gop (v0.132, chu he thong 27/11/2026 "giao dien nay kho nhin qua, tieu de dung to dam len, tim phuong an khac de nhin hon"):
+ * cung bo cuc popup chi tiet (95%, 2 khu - v0.131). Dau: 1 dong nhan (muc · trang thai · ben chiu) + LUONG NGANG cua loi
+ * (Phat sinh → Nhac nho → Han giai trinh → Ket qua; moc dang cho to noi). Khu CHINH: ket luan 1 cau, vi sao / phai lam gi, thong tin dong (nhan nhat, khong to dam),
+ * "▾ Xem chi tiết" = cac lan loi + loi khac tren LK. Khu PHU: nhac nho + lich su linh kien (bo muc loi trung). Nut thao tac o chan.
+ */
 function ChiTietViPham({ n, d, tenDm, onClose, onGt, onPo, onNdk, onNhac, onDong }: {
   n: Nhom; d: Data; tenDm: (loai: string, ma: string | null) => string; onClose: () => void;
   onGt: () => void; onPo: () => void; onNdk: () => void; onNhac: () => void; onDong: () => void;
 }) {
   const x = n.x;
+  const { z, id } = useLop();
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape" && laTrenCung(id.current) && !document.querySelector(".hop-loc, [data-modal='']")) onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose, id]);
+  const [anPhu, setAnPhu] = useAnPhu();
+  const [moCt, setMoCt] = useState(false);
   const nn = useQuery({ queryKey: ["vi-pham-nhac", x.eo_item_id], queryFn: () => api.get<any[]>(`/vi-pham/dong/${x.eo_item_id}/nhac-nho`) });
-  // moi loi cua cung dong (moi loai) - de thay tong the dong
   const cungDong = d.rows.filter((l) => l.eo_item_id === x.eo_item_id);
   const choN = n.ds.filter(cho).length;
   const lyDoMuc = x.muc === "CEO" ? `Dòng đang cấp CEO: ${x.ceo_ly_do.join("; ")}.`
     : x.muc === "CAO" ? (x.so_lan >= 3 ? `Lỗi này đã lặp ${x.so_lan} lần trên linh kiện.` : `Chờ giải trình ${x.tuoi_gio} giờ làm việc (≥ ${d.rat_lau_gio}).`)
     : x.muc === "TB" ? (x.so_lan >= 2 ? `Lỗi này đã lặp ${x.so_lan} lần.` : `Chờ giải trình ${x.tuoi_gio} giờ làm việc (≥ ${d.qua_lau_gio}).`)
     : "Lỗi lần đầu.";
-  const H = ({ children }: { children: ReactNode }) => <div style={{ fontWeight: 800, fontSize: 13.5, margin: "14px 0 6px" }}>{children}</div>;
-  const Tt = ({ k, v }: { k: string; v: ReactNode }) => <div><div className="muted" style={{ fontSize: 11 }}>{k}</div><div style={{ fontWeight: 600 }}>{v || "—"}</div></div>;
+
+  // ---- luong ngang cua loi: da qua (mau) / dang cho (to noi) / chua toi (xam) / bo qua (net dut)
+  type Moc = { l: string; t: string; tt: "qua" | "dang" | "chua" | "bo" | "xau"; tip: string };
+  const soNhac = nn.data?.length ?? x.so_nhac ?? 0;
+  const ketQua: Moc = vp(x) ? { l: "Vi phạm", t: `hết hạn ${ngayGio(x.han_gt)}`, tt: "xau", tip: "Hết hạn giải trình mà không giải trình → ghi nhận vi phạm" }
+    : cho(x) ? { l: "Giải trình", t: "chưa có", tt: "chua", tip: "Giải trình hoặc khắc phục trước hạn thì không bị ghi vi phạm" }
+    : x.tu_dong === "CU" ? { l: "Bỏ qua", t: "lỗi cũ", tt: "bo", tip: x.gt_noi_dung ?? "" }
+    : tuDong(x) ? { l: "Đã khắc phục", t: ngayGio(x.gt_luc), tt: "qua", tip: x.gt_noi_dung ?? "Hệ thống tự đóng vì đã khắc phục trong hạn" }
+    : { l: "Đã giải trình", t: ngayGio(x.gt_luc), tt: "qua", tip: `${ten(x.gt_boi)} · ${x.gt_noi_dung ?? ""}` };
+  const mocs: Moc[] = [
+    { l: "Phát sinh lỗi", t: ngayGio(x.han), tt: "qua", tip: `${QUY_TAC[x.quy_tac] ?? x.quy_tac} — mốc lỗi ${ngayGio(x.han)}` },
+    { l: soNhac ? `Nhắc nhở ×${soNhac}` : "Nhắc nhở", t: soNhac ? ngayGio((nn.data ?? [])[0]?.created_at ?? x.nhac_gan_nhat) : "chưa nhắc", tt: soNhac ? "qua" : "bo", tip: soNhac ? `${soNhac} lần nhắc · gần nhất ${ngayGio((nn.data ?? [])[0]?.created_at ?? x.nhac_gan_nhat)}` : "Chưa có lần nhắc nào" },
+    ...(x.han_gt ? [{ l: "Hạn giải trình", t: cho(x) ? `${ngayGio(x.han_gt)} · còn ${x.con_gio_gt}h LV` : ngayGio(x.han_gt), tt: cho(x) ? "dang" : "qua", tip: `Hạn = mốc lỗi + ${16} giờ làm việc` } as Moc] : []),
+    ketQua,
+  ];
+  const MAU_MOC = { qua: "#16A34A", dang: "#EA580C", chua: "#CBD5E1", bo: "#94A3B8", xau: "#B91C1C" } as const;
+
+  const L = ({ children }: { children: ReactNode }) => <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "14px 0 6px" }}>{children}</div>;
+  const Tt = ({ k, v }: { k: string; v: ReactNode }) => <div style={{ minWidth: 0 }}><div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{k}</div><div style={{ fontSize: 13, marginTop: 1 }}>{v || "—"}</div></div>;
+  const ben = BEN[x.ben];
+
   return (
-    <Modal title={`${vp(x) ? "Vi phạm" : "Lỗi"} — ${x.part_code} · ${maPo(x)}`} onClose={onClose} width={1000}
-      footer={<>
-        <button className="btn" onClick={onDong}>Mở đơn hàng</button>
-        {choN > 0 && (x.quy_tac === "R1" || x.quy_tac === "R4") && d.co_the_gt && <button className="btn" onClick={onNdk}>Cập nhật ngày DK</button>}
-        {choN > 0 && d.quan_ly && <button className="btn" onClick={onNhac}><I.bell width={13} height={13} /> Nhắc nhở</button>}
-        {choN > 0 && d.co_the_gt && x.quy_tac !== "R5" && <button className="btn" onClick={onPo}>Giải trình cả PO</button>}
-        {choN > 0 && d.co_the_gt && <button className="btn primary" onClick={onGt}>Giải trình{choN > 1 ? ` (${choN} lần)` : ""}</button>}
-      </>}>
-      <div style={{ fontSize: 13 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-          <MucBadge m={x.muc} /><TrangThai l={x} />
-          <b style={{ fontSize: 16 }}>{QUY_TAC[x.quy_tac] ?? x.quy_tac}</b>
-          {x.so_lan > 1 && <span className="badge final">Lặp {x.so_lan} lần trên linh kiện này</span>}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="qv-alert danger" style={{ display: "block" }}><b>Vì sao bị lỗi:</b> {QT_DAI[x.quy_tac]}<br /><b>Vì sao mức {MUC[x.muc].l}:</b> {lyDoMuc}</div>
-          <div className="qv-alert ok" style={{ display: "block" }}><b>Phải làm gì:</b> {CACH_XU_LY[x.quy_tac]}<br /><span style={{ fontSize: 12 }}>Giải trình ở nút <b>Giải trình</b> bên dưới (1 lần đóng mọi lần cùng loại); cả PO cùng nguyên nhân → <b>Giải trình cả PO</b>.</span></div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 10, marginTop: 12, padding: 10, background: "var(--panel-2)", borderRadius: 10 }}>
-          <Tt k="PO (mã phê duyệt / EO)" v={<EoLink id={x.eo_id}>{maPo(x)}</EoLink>} />
-          <Tt k="Linh kiện" v={<><DongLink id={x.eo_item_id} ma={x.part_code} /> <span className="muted" style={{ fontWeight: 400 }}>{x.part_name}</span></>} />
-          <Tt k="Kho · Đối tác" v={`${khoGon(x.kho)} · ${x.doi_tac || "—"}`} />
-          <Tt k="Tình trạng dòng" v={x.tinh_trang ? TINH_TRANG[x.tinh_trang as Dong["tinh_trang"]]?.l : ""} />
-          <Tt k="Người chịu lỗi" v={`${ten(x.nguoi_vp)}${x.ai_ma ? ` (${tenDm("AI", x.ai_ma)})` : ""}`} />
-          <Tt k="Người đặt" v={ten(x.nguoi_dat)} />
-          <Tt k="Ngày dự kiến hiện tại · lùi" v={`${ngay(x.ngay_du_kien) || "Chưa có"} · ${x.so_lan_lui} lần`} />
-          <Tt k="Đã về / đặt" v={x.so_luong_dat != null ? `${soLuong(x.sl_ve)} / ${soLuong(x.so_luong_dat)}` : ""} />
-        </div>
-        {/* v0.110: ket luan - can giai trinh (con han) hay da thanh vi pham (het han khong giai trinh) */}
-        <div className={`qv-alert ${vp(x) ? "danger" : cho(x) ? "warn" : "ok"}`} style={{ display: "block", marginTop: 10 }}>
-          <b>Kết luận:</b>{" "}
-          {vp(x) ? <>Hết hạn giải trình <b>{ngayGio(x.han_gt)}</b> (từ mốc lỗi {ngayGio(x.han)}) mà không có giải trình → <b>ghi nhận VI PHẠM</b>, không giải trình được nữa.</>
-            : cho(x) ? <>Lỗi <b>cần giải trình</b> — chưa phải vi phạm. Hạn giải trình <b>{ngayGio(x.han_gt)}</b> (còn {x.con_gio_gt} giờ làm việc). Giải trình hoặc khắc phục trước hạn thì không bị ghi vi phạm.</>
-            : x.tu_dong === "CU" ? <>Lỗi cũ (mốc trước 01/11/2026) hoặc vi phạm chốt trước đào tạo 20/11/2026 — hệ thống <b>tự bỏ, không tính vi phạm</b>.</>
-            : tuDong(x) ? <>Hệ thống tự đóng vì đã khắc phục trong hạn — <b>không tính vi phạm</b>. {x.gt_noi_dung}</>
-            : x.quy_tac === "TAY" ? <>Lỗi do người giải trình tự ghi nhận (nguyên nhân) — không tính vi phạm.</>
-            : <>Đã giải trình lúc {ngayGio(x.gt_luc)} — trước hạn {ngayGio(x.han_gt)}, <b>không tính vi phạm</b>.</>}
-        </div>
-        {x.ceo && <div className="qv-alert danger" style={{ display: "block", marginTop: 10 }}><b>Cấp CEO vì:</b> {x.ceo_ly_do.join(" · ")} <span className="muted">(hệ thống tự tính theo số liệu, không có hạn giải trình)</span></div>}
-
-        <H>Các lần lỗi ({n.ds.length}{x.so_lan > n.ds.length ? ` · tổng ${x.so_lan} lần gồm cả đã giải trình` : ""})</H>
-        <div className="tbl-wrap"><table className="tbl tbl-dense">
-          <thead><tr><th>Lần</th><th>Ngày lỗi</th><th>Mốc lỗi</th><th>Hạn giải trình</th><th>Trạng thái</th><th>Chờ / phản hồi</th><th>Giải trình</th></tr></thead>
-          <tbody>{[...n.ds].reverse().map((l) => (
-            <tr key={l.id}><td>{l.lan_thu}/{l.so_lan}</td><td>{ngay(l.ngay_tham_chieu ?? l.han)}</td><td>{ngayGio(l.han)}</td><td>{l.han_gt ? ngayGio(l.han_gt) : "—"}</td><td><TrangThai l={l} /></td>
-              <td>{cho(l) ? `${l.tuoi_ngay} ngày` : `sau ${l.tuoi_ngay} ngày`}</td>
-              <td style={{ fontSize: 12 }}>{l.gt_noi_dung ? <>{l.gt_noi_dung} <span className="muted">— {ten(l.gt_boi)} {ngayGio(l.gt_luc)}{l.gt_co_anh ? " · 📷" : ""}</span></> : "—"}</td></tr>
-          ))}</tbody>
-        </table></div>
-
-        {cungDong.length > n.ds.length && <>
-          <H>Lỗi khác trên linh kiện này</H>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {gopTrung(cungDong.filter((l) => !n.ds.includes(l)), (l) => `${l.quy_tac}|${l.trang_thai}`).map(({ x: l, ds }) => (
-              <span key={l.id} className={`badge ${vp(l) ? "reject" : cho(l) ? "final" : "nhap"}`}>{QUY_TAC[l.quy_tac]}{ds.length > 1 ? ` × ${ds.length}` : ""} · {vp(l) ? "vi phạm" : cho(l) ? "cần GT" : "đã xử lý"}</span>
-            ))}
-          </div>
-        </>}
-
-        <H>Nhắc nhở ({nn.data?.length ?? 0})</H>
-        {nn.isLoading ? <span className="muted">Đang tải…</span> : !(nn.data ?? []).length ? <div className="muted">Chưa có lần nhắc nào.</div> : (
-          <div>{(nn.data ?? []).map((r) => (
-            <div key={r.id} style={{ padding: "3px 0", borderBottom: "1px solid var(--border)" }}>
-              {ngayGio(r.created_at)} · <span className={`badge ${r.kenh === "TAY" ? "final" : "nhap"}`}>{r.kenh === "TAY" ? `${ten(r.created_by)} nhắc` : "Hệ thống tự nhắc"}</span> → <b>{ten(r.den_email)}</b>{r.noi_dung ? ` · ${r.noi_dung}` : ""}
+    <div className="qv-overlay" style={{ zIndex: z }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="qv-panel">
+        <div className="qv-head">
+          <QvHeader coTruoc={false} onClose={onClose} onCloseAll={onClose} actions={<>
+            {choN > 0 && d.co_the_gt && <button className="btn sm primary" onClick={onGt}><I.edit width={13} height={13} /> Giải trình{choN > 1 ? ` (${choN} lần)` : ""}</button>}
+            {choN > 0 && d.co_the_gt && x.quy_tac !== "R5" && <button className="btn sm" onClick={onPo}>Giải trình cả PO</button>}
+            {choN > 0 && (x.quy_tac === "R1" || x.quy_tac === "R4") && d.co_the_gt && <button className="btn sm" onClick={onNdk}><I.calendar width={13} height={13} /> Cập nhật ngày DK</button>}
+            {choN > 0 && d.quan_ly && <button className="btn sm" onClick={onNhac}><I.bell width={13} height={13} /> Nhắc nhở</button>}
+            <button className="btn sm" onClick={onDong}>Mở đơn hàng</button>
+          </>}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="muted" style={{ fontSize: 13 }}>{vp(x) ? "Vi phạm" : "Lỗi"}</span>
+              <span style={{ fontSize: 18, fontWeight: 600 }}>{QUY_TAC[x.quy_tac] ?? x.quy_tac}</span>
+              <MucBadge m={x.muc} /><TrangThai l={x} />{ben && <BenBadge b={x.ben} />}
+              {x.so_lan > 1 && <span className="badge final">lặp {x.so_lan} lần</span>}
             </div>
-          ))}</div>
-        )}
+            <div className="muted qv-meta" style={{ fontSize: 12.5, marginTop: 3, display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <span>PO <EoLink id={x.eo_id}>{maPo(x)}</EoLink></span>
+              <span>LK <DongLink id={x.eo_item_id} ma={x.part_code} /> {x.part_name}</span>
+              <span>Mã lỗi {x.ma_loi}{x.buoc ? ` · bước ${x.buoc}` : ""}</span>
+              <span>Người chịu <span style={{ color: "var(--text)" }}>{ten(x.nguoi_vp)}</span></span>
+            </div>
+          </QvHeader>
+        </div>
 
-        <H>Toàn bộ lịch sử linh kiện (lỗi, giải trình, push, mail, ngày dự kiến)</H>
-        <LichSuDong dong={{ item_id: x.eo_item_id, part_name: x.part_name, kho: x.kho, doi_tac: x.doi_tac, so_luong_dat: x.so_luong_dat ?? 0, sl_nhap_amis: x.sl_ve ?? 0, bat_dau: null, han_ngay_du_kien: null }} />
+        <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
+          <div className="qv-col">
+            <KhuTieuDe loai="chinh">📌 Theo dõi chính</KhuTieuDe>
+            {/* luong ngang cua loi */}
+            <div className="qv-quytrinh" style={{ display: "flex", alignItems: "flex-start", padding: "14px 18px 10px" }}>
+              {mocs.map((m, i) => (
+                <div key={i} title={m.tip} style={{ flex: 1, minWidth: 0, position: "relative", textAlign: "center" }}>
+                  {i > 0 && <div style={{ position: "absolute", top: 9, right: "50%", width: "100%", height: 3, background: m.tt === "chua" || m.tt === "bo" ? "#E2E8F0" : MAU_MOC[m.tt], zIndex: 0 }} />}
+                  <div style={{ position: "relative", zIndex: 1, margin: "0 auto", width: m.tt === "dang" || m.tt === "xau" ? 22 : 18, height: m.tt === "dang" || m.tt === "xau" ? 22 : 18, marginTop: m.tt === "dang" || m.tt === "xau" ? -2 : 0,
+                    borderRadius: "50%", background: m.tt === "bo" ? "#fff" : MAU_MOC[m.tt], border: m.tt === "bo" ? "2px dashed #94A3B8" : "3px solid #fff",
+                    boxShadow: m.tt === "dang" ? "0 0 0 4px #FED7AA" : m.tt === "xau" ? "0 0 0 4px #FECACA" : "0 0 0 1px #E2E8F0" }} />
+                  <div style={{ fontSize: 12.5, marginTop: 6, color: m.tt === "dang" ? "#C2410C" : m.tt === "xau" ? "#B91C1C" : m.tt === "chua" || m.tt === "bo" ? "var(--text-muted)" : "var(--text)", fontWeight: m.tt === "dang" || m.tt === "xau" ? 700 : 500 }}>{m.l}</div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>{m.t}</div>
+                </div>
+              ))}
+            </div>
+            <div className="qv-scroll" style={{ padding: "4px 18px 16px", fontSize: 13, lineHeight: 1.55 }}>
+              {/* ket luan 1 cau - nen nhat, khong khung dam */}
+              <div style={{ padding: "8px 12px", borderRadius: 10, marginTop: 8, background: vp(x) ? "#FEF2F2" : cho(x) ? "#FFF7ED" : "#F0FDF4", color: vp(x) ? "#991B1B" : cho(x) ? "#9A3412" : "#166534" }}>
+                {vp(x) ? <>Hết hạn giải trình {ngayGio(x.han_gt)} mà không có giải trình → ghi nhận vi phạm, không giải trình được nữa.</>
+                  : cho(x) ? <>Cần giải trình — chưa phải vi phạm. Còn {x.con_gio_gt} giờ làm việc (hạn {ngayGio(x.han_gt)}). Giải trình hoặc khắc phục trước hạn thì không bị ghi vi phạm.</>
+                  : x.tu_dong === "CU" ? <>Lỗi cũ / vi phạm chốt trước đào tạo 20/11/2026 — hệ thống tự bỏ, không tính vi phạm.</>
+                  : tuDong(x) ? <>Hệ thống tự đóng vì đã khắc phục trong hạn — không tính vi phạm.</>
+                  : x.quy_tac === "TAY" ? <>Lỗi do người giải trình tự ghi nhận — không tính vi phạm.</>
+                  : <>Đã giải trình lúc {ngayGio(x.gt_luc)}, trước hạn — không tính vi phạm.</>}
+              </div>
+              {x.ceo && <div style={{ marginTop: 6, color: "#7F1D1D" }}>Cấp CEO vì: {x.ceo_ly_do.join(" · ")} <span className="muted">(hệ thống tự tính, không có hạn giải trình)</span></div>}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div><L>Vì sao có lỗi</L><div>{QT_DAI[x.quy_tac]}</div><div className="muted" style={{ marginTop: 4 }}>Mức {MUC[x.muc].l}: {lyDoMuc}</div></div>
+                <div><L>Cần làm gì</L><div>{CACH_XU_LY[x.quy_tac]}</div></div>
+              </div>
+
+              <L>Thông tin dòng linh kiện</L>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "10px 16px", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10 }}>
+                <Tt k="Kho · đối tác" v={`${khoGon(x.kho)} · ${x.doi_tac || "—"}`} />
+                <Tt k="Tình trạng dòng" v={x.tinh_trang ? TINH_TRANG[x.tinh_trang as Dong["tinh_trang"]]?.l : ""} />
+                <Tt k="Ngày dự kiến · số lần lùi" v={`${ngay(x.ngay_du_kien) || "Chưa có"} · ${x.so_lan_lui} lần`} />
+                <Tt k="Đã về / đặt" v={x.so_luong_dat != null ? `${soLuong(x.sl_ve)} / ${soLuong(x.so_luong_dat)}` : ""} />
+                <Tt k="Người chịu lỗi" v={`${ten(x.nguoi_vp)}${x.ai_ma ? ` (${tenDm("AI", x.ai_ma)})` : ""}`} />
+                <Tt k="Người đặt" v={ten(x.nguoi_dat)} />
+                <Tt k="Bên chịu" v={ben?.l} />
+                <Tt k="Giải trình" v={x.gt_noi_dung ? `${x.gt_noi_dung} — ${ten(x.gt_boi)}` : ""} />
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <button type="button" className="btn ghost sm" onClick={() => setMoCt(!moCt)}>{moCt ? "▴ Thu gọn" : `▾ Xem chi tiết — các lần lỗi (${n.ds.length})${cungDong.length > n.ds.length ? " · lỗi khác trên linh kiện" : ""}`}</button>
+              </div>
+              {moCt && <>
+                <L>Các lần lỗi ({n.ds.length}{x.so_lan > n.ds.length ? ` · tổng ${x.so_lan} lần gồm cả đã giải trình` : ""})</L>
+                <div className="tbl-wrap"><table className="tbl tbl-dense">
+                  <thead><tr><th>Lần</th><th>Ngày lỗi</th><th>Mốc lỗi</th><th>Hạn giải trình</th><th>Trạng thái</th><th>Chờ / phản hồi</th><th>Giải trình</th></tr></thead>
+                  <tbody>{[...n.ds].reverse().map((l) => (
+                    <tr key={l.id}><td>{l.lan_thu}/{l.so_lan}</td><td>{ngay(l.ngay_tham_chieu ?? l.han)}</td><td>{ngayGio(l.han)}</td><td>{l.han_gt ? ngayGio(l.han_gt) : "—"}</td><td><TrangThai l={l} /></td>
+                      <td>{cho(l) ? `${l.tuoi_gio}h LV` : `sau ${l.tuoi_ngay} ngày`}</td>
+                      <td style={{ fontSize: 12 }}>{l.gt_noi_dung ? <>{l.gt_noi_dung} <span className="muted">— {ten(l.gt_boi)} {ngayGio(l.gt_luc)}{l.gt_co_anh ? " · 📷" : ""}</span></> : "—"}</td></tr>
+                  ))}</tbody>
+                </table></div>
+                {cungDong.length > n.ds.length && <>
+                  <L>Lỗi khác trên linh kiện này</L>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {gopTrung(cungDong.filter((l) => !n.ds.includes(l)), (l) => `${l.quy_tac}|${l.trang_thai}`).map(({ x: l, ds }) => (
+                      <span key={l.id} className={`badge ${vp(l) ? "reject" : cho(l) ? "final" : "nhap"}`}>{QUY_TAC[l.quy_tac]}{ds.length > 1 ? ` × ${ds.length}` : ""} · {vp(l) ? "vi phạm" : cho(l) ? "cần GT" : "đã xử lý"}</span>
+                    ))}
+                  </div>
+                </>}
+              </>}
+            </div>
+          </div>
+
+          <CotPhu an={anPhu} setAn={setAnPhu} tieuDe="Nhắc nhở · lịch sử">
+            <div className="qv-phu-sec" style={{ fontSize: 12.5 }}>
+              <div className="muted" style={{ marginBottom: 4 }}>Nhắc nhở ({nn.data?.length ?? 0})</div>
+              {nn.isLoading ? <span className="muted">Đang tải…</span> : !(nn.data ?? []).length ? <div className="muted">Chưa có lần nhắc nào.</div> : (
+                (nn.data ?? []).map((r) => (
+                  <div key={r.id} style={{ padding: "3px 0" }}>
+                    <span className="muted">{ngayGio(r.created_at)}</span> · {r.kenh === "TAY" ? `${ten(r.created_by)} nhắc` : "Hệ thống tự nhắc"} → {ten(r.den_email)}{r.noi_dung ? <span className="muted"> · {r.noi_dung}</span> : null}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="qv-scroll" style={{ padding: "0 12px 12px" }}>
+              <LichSuDong boLoi dong={{ item_id: x.eo_item_id, part_name: x.part_name, kho: x.kho, doi_tac: x.doi_tac, so_luong_dat: x.so_luong_dat ?? 0, sl_nhap_amis: x.sl_ve ?? 0, bat_dau: null, han_ngay_du_kien: null }} />
+            </div>
+          </CotPhu>
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 }

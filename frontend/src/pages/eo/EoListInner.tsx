@@ -74,7 +74,7 @@ const CHIP: { k: string; l: string; mau?: string; title?: string }[] = [
   { k: "tu_choi_huy", l: "Từ chối / Đã hủy" },
 ];
 const CHIP_MAC_DINH = "con_ton";
-/** Nhan gia tri loc cot Tien trinh (backend routes/eo.ts MOC_PO, v0.088): PO da ban hanh khop moi moc dang co dong o. */
+/** Nhan gia tri loc cot Tien trinh (backend routes/eo.ts MOC_PO). v0.132: 1 PO = 1 moc = giai doan TON LAU NHAT (moc som nhat con dong). */
 const NHAN_MOC: Record<string, string> = {
   G1: "1 · Lập (nháp / bị trả về)", G2: "2 · Thẩm định", G3: "3 · Duyệt mua (kể cả dòng thêm sau BH chờ duyệt)", G5: "5 · Chờ có ngày dự kiến",
   G6: "6 · Chờ hàng (sản xuất & giao)", G8: "8 · Giao bù đến đủ", XONG: "✓ Đủ hàng", TU_CHOI: "Từ chối", DA_HUY: "Đã hủy",

@@ -601,3 +601,10 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   EO: bỏ tab `duyet` / `mail` (khối "Đang chờ duyệt" = approvals PENDING của lần trình PENDING). Đơn hàng: bỏ tab `ncc` (`LuongTraoDoiNcc` không còn dùng trong popup);
   `LichSuDong({ boLoi })` ẩn mục "Giải trình & vi phạm" (chỗ khác — Vi phạm, LichSuModal — vẫn hiện đủ).
 - `pages/CaCeo.tsx`: bỏ thẻ / ô số; state `khongThuc`, `tim` (lọc tại chỗ không dấu); `muc` (Rất hot / Giảm hot) là nút; mã CEO = `?ma=` + `<select>`.
+
+## Chi tiết vi phạm dạng popup 2 khu + PO theo giai đoạn tồn lâu nhất (v0.132, 27/11/2026)
+
+- `ViPham.tsx ChiTietViPham`: tự dựng `.qv-overlay/.qv-panel` (z + Esc qua `lib/lop useLop / laTrenCung`), `QvHeader`, `KhuTieuDe`, `CotPhu`; luồng ngang mốc tự vẽ
+  (trạng thái `qua | dang | chua | bo | xau`). `LichSuDong boLoi`. Tiêu đề mục `H` trong `LichSuDong` = chữ nhạt 500.
+- `routes/eo.ts`: `COT_EO.trang_thai.gt = mocPo(r)[0]` (trước: cả mảng mốc) và `/dem theo_moc` đếm `mocPo(r)[0]` — 1 PO 1 giai đoạn. `mocPo` vẫn trả mảng (thứ tự `MOC_PO`) cho chỗ khác.
+- Popup PO tab Linh kiện: ô "Xem cả đơn hủy" nằm trong `.qv-toolbar`; `khungCao` bảng `calc(95vh - 330px)`; `.qv-toolbar` padding 5px.
