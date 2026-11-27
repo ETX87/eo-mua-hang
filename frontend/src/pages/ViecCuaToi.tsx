@@ -15,7 +15,10 @@ import { GiaiTrinhDongModal } from "./theodoi/GiaiTrinhPo";
  * Du lieu GET /api/viec-cua-toi (backend routes/viecCuaToi.ts). 4 viec, moi dong co HAN (gio lam viec con lai) + 1 nut lam ngay:
  *  ① Nhap ngay du kien (R1)  ② Push NCC thu 2/4 (R3, soan mail Gmail co san / ghi nhan goi-Zalo)  ③ Qua ngay DK -> ngay moi (R4)  ④ Giai trinh loi.
  */
-type V = Dong & { han: string | null; con_gio: number | null; loi_qt_cho?: string };
+type V = Dong & { han: string | null; con_gio: number | null; loi_qt_cho?: string; nguoi_duyet_r5?: string };
+/** Loai loi cho; R5 kem ten nguoi duyet chiu loi (v0.137). */
+const loaiLoi = (v: V, noi: string) => (v.loi_qt_cho ?? "").split(",").filter(Boolean)
+  .map((k) => (k === "R5" && v.nguoi_duyet_r5 ? `chậm duyệt — lỗi của ${v.nguoi_duyet_r5}` : QT[k] ?? k)).join(noi);
 interface Data {
   ndk: V[]; push: V[]; ngay_moi: V[]; giai_trinh: V[]; cho_ncc?: (V & { cho_ncc_ket_qua?: string; cho_ncc_tu?: string })[]; ngay_push: boolean; ngay_push_ke: string; hom_nay: string; luc: string;
   toan_bo: boolean; pham_vi: string; gio_tu_dong: number;
@@ -46,7 +49,8 @@ function xuatMuc(rows: V[], ten: string, chu = "Hạn") {
     { header: "SL đã về (AMIS)", get: (v) => v.sl_nhap_amis },
     { header: "Còn thiếu", get: (v) => v.so_luong_con_thieu },
     { header: "Lỗi chờ giải trình", get: (v) => v.so_loi_cho_gt || "" },
-    { header: "Loại lỗi chờ", get: (v) => (v.loi_qt_cho ? v.loi_qt_cho.split(",").map((k) => QT[k] ?? k).join(", ") : "") },
+    { header: "Loại lỗi chờ", get: (v) => loaiLoi(v, ", ") },
+    { header: "Người duyệt chịu lỗi chậm duyệt", get: (v) => v.nguoi_duyet_r5 ?? "" },
   ];
   exportRowsToXlsx(rows, cols, `viec-cua-toi_${ten}_${new Date().toISOString().slice(0, 10)}.xlsx`, ten.slice(0, 31));
 }
@@ -141,7 +145,7 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
         <div className="muted" style={{ fontSize: 11, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{xem === "lk" ? <EoLink id={v.eo_id}>{v.ma_phe_duyet || v.eo_code}</EoLink> : v.part_name}</div></td>
       <td>{v.kho ? <Kho t={v.kho} /> : <span className="muted">—</span>}</td>
       <td>{v.doi_tac || <span className="muted">—</span>}</td>
-      <td><b style={{ color: "#7C3AED" }}>{v.so_loi_cho_gt}</b>{v.loi_qt_cho ? <div style={{ fontSize: 11, color: "#7C3AED" }}>{v.loi_qt_cho.split(",").map((k) => QT[k] ?? k).join(" · ")}</div> : null}</td>
+      <td><b style={{ color: "#7C3AED" }}>{v.so_loi_cho_gt}</b>{v.loi_qt_cho ? <div style={{ fontSize: 11, color: "#7C3AED" }}>{loaiLoi(v, " · ")}</div> : null}</td>
       <td style={{ textAlign: "right" }}><button className="btn sm" style={{ borderColor: "#7C3AED", color: "#7C3AED", fontWeight: 700 }} onClick={() => onMot(v)}>✍ Giải trình ({v.so_loi_cho_gt})</button></td>
     </tr>
   );

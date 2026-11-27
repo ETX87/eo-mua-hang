@@ -629,4 +629,4 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `viecCanLam` "Lỗi chờ giải trình (dòng)": bỏ dòng chỉ có R5 (trừ người xem toàn bộ). R5 của người duyệt đã tính ở mục 4b.
 - Giải trình R5: `/theo-doi/giai-trinh` và `/vi-pham/giai-trinh-nhieu` ép `ai_ma = NGUOI_DUYET`, `ai_email` = của lỗi (cả `tl_giai_trinh` lẫn `tl_loi`).
 - FE `GiaiTrinhModal`: ẩn R5 không phải của mình (trừ Admin), R5 khoá Do ai + người cụ thể. `ViecCuaToi` mục ④: dòng chỉ R5 không có checkbox, "Giải trình cả nhóm" bỏ dòng chỉ R5.
-
+- v0.137: `giaiTrinhCuaToi` trả thêm `nguoi_duyet_r5` (LEFT JOIN users theo `ai_email` của R5, họ tên hoặc email); FE `loaiLoi()` hiện "chậm duyệt — lỗi của <tên>", Excel thêm cột.

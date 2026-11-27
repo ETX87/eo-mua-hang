@@ -4,6 +4,15 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.137: Hiện tên người duyệt chịu lỗi chậm duyệt ở Việc của tôi ④
+
+- Yêu cầu (nguyên văn): "sao tôi không lỗi người duyệt mua? Nguyễn Thị Phương Hoa" (dòng lỗi chỉ ghi "chậm duyệt (người duyệt)", không rõ ai chịu).
+- Đã làm: API `/viec-cua-toi` trả `nguoi_duyet_r5` (họ tên người duyệt bị ghi lỗi R5); cột "Lỗi chờ" hiện "chậm duyệt — lỗi của <tên>"; Excel mục ④ thêm cột
+  "Người duyệt chịu lỗi chậm duyệt". Lỗi vẫn tính cho người duyệt như v0.136 — chỉ bổ sung hiển thị.
+- 5W1H: Who — người xem phạm vi tất cả / người duyệt. When — có lỗi chậm duyệt chờ giải trình. Where — Việc của tôi › ④. What — thấy tên người chịu lỗi.
+  Why — trước chỉ ghi "người duyệt", nhìn như lỗi của người đặt. How — xem dòng tím dưới số lỗi; xuất Excel có cột riêng.
+- Kiểm thử: typecheck + build xanh.
+
 ## 27/11/2026 — v0.136: Lỗi chậm duyệt chỉ giao cho người duyệt giải trình, tính lỗi cho người duyệt
 
 - Yêu cầu (nguyên văn): "vi phạm cần giải trình, lỗi phê duyệt chậm thì là do người được yêu cầu phê duyệt giải trình. và tính lỗi cho người cần phê duyệt."

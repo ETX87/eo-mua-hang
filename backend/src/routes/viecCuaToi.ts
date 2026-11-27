@@ -25,21 +25,23 @@ type Viec = DongTheoDoi & { han: string | null; con_gio: number | null };
  * Muc 4 giai trinh (v0.136, chu he thong 2026-11-27: "loi phe duyet cham thi la do nguoi duoc yeu cau phe duyet giai trinh, va tinh loi cho nguoi can phe duyet"):
  *  - loi R1/R3/R4/TAY: dong "cua toi" (nguoi dat / kho phu trach / pham vi tat ca) nhu cu;
  *  - loi R5 cham duyet: CHI nguoi duyet bi ghi loi (tl_loi.ai_email) - ke ca khi dong khong phai cua minh / PO chua ban hanh; pham vi tat ca: moi R5.
- * so_loi_cho_gt / loi_qt_cho / han tinh lai CHI tren loi nguoi xem phai giai trinh. Khop dieu kien viecCanLam + /vi-pham/nhac-cua-toi.
+ * nguoi_duyet_r5 = ten nguoi duyet chiu loi R5 (v0.137, hien canh 'cham duyet'). so_loi_cho_gt / loi_qt_cho / han tinh lai CHI tren loi nguoi xem phai giai trinh. Khop dieu kien viecCanLam + /vi-pham/nhac-cua-toi.
  */
-async function giaiTrinhCuaToi(env: Env, email: string, tatCa: boolean, dongCua: DongTheoDoi[]): Promise<(Viec & { loi_qt_cho: string })[]> {
+async function giaiTrinhCuaToi(env: Env, email: string, tatCa: boolean, dongCua: DongTheoDoi[]): Promise<(Viec & { loi_qt_cho: string; nguoi_duyet_r5: string })[]> {
   const db = env.DB;
   const now = nowVN();
   const rs = (await db.prepare(
-    `SELECT l.eo_item_id, l.quy_tac, COALESCE(l.han, l.created_at) moc FROM tl_loi l
+    `SELECT l.eo_item_id, l.quy_tac, COALESCE(l.han, l.created_at) moc,
+            CASE WHEN l.quy_tac = 'R5' THEN COALESCE(NULLIF(u.ho_ten, ''), l.ai_email) END duyet
+     FROM tl_loi l LEFT JOIN users u ON lower(u.email) = lower(l.ai_email)
      WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND (
        (l.quy_tac <> 'R5' AND l.eo_item_id IN (SELECT value FROM json_each(?1)))
        OR (l.quy_tac = 'R5' AND (?2 = 1 OR lower(l.ai_email) = lower(?3))))`,
-  ).bind(JSON.stringify(dongCua.map((r) => r.item_id)), tatCa ? 1 : 0, email).all<{ eo_item_id: number; quy_tac: string; moc: string }>()).results;
-  const by = new Map<number, { n: number; moc: string; qt: Set<string> }>();
+  ).bind(JSON.stringify(dongCua.map((r) => r.item_id)), tatCa ? 1 : 0, email).all<{ eo_item_id: number; quy_tac: string; moc: string; duyet: string | null }>()).results;
+  const by = new Map<number, { n: number; moc: string; qt: Set<string>; duyet: Set<string> }>();
   for (const x of rs) {
-    const g = by.get(x.eo_item_id) ?? { n: 0, moc: x.moc, qt: new Set<string>() };
-    g.n++; if (x.moc < g.moc) g.moc = x.moc; g.qt.add(x.quy_tac);
+    const g = by.get(x.eo_item_id) ?? { n: 0, moc: x.moc, qt: new Set<string>(), duyet: new Set<string>() };
+    g.n++; if (x.moc < g.moc) g.moc = x.moc; g.qt.add(x.quy_tac); if (x.duyet) g.duyet.add(x.duyet);
     by.set(x.eo_item_id, g);
   }
   if (!by.size) return [];
@@ -58,12 +60,12 @@ async function giaiTrinhCuaToi(env: Env, email: string, tatCa: boolean, dongCua:
       for (const x of xs) dongBy.set(x.item_id, { ...x, sl_nhap_amis: 0, so_luong_con_thieu: x.so_luong_dat, ngay_du_kien_gan_nhat: null, ngay_nm_cam_ket: null } as DongTheoDoi);
     }
   }
-  const out: (Viec & { loi_qt_cho: string })[] = [];
+  const out: (Viec & { loi_qt_cho: string; nguoi_duyet_r5: string })[] = [];
   for (const [id, g] of by) {
     const r = dongBy.get(id);
     if (!r) continue;
     const han = hanGiaiTrinh(g.moc);
-    out.push({ ...r, so_loi_cho_gt: g.n, loi_qt_cho: [...g.qt].join(","), han, con_gio: han >= now ? demGioLV(now, han) : -demGioLV(han, now) });
+    out.push({ ...r, so_loi_cho_gt: g.n, loi_qt_cho: [...g.qt].join(","), nguoi_duyet_r5: [...g.duyet].join(", "), han, con_gio: han >= now ? demGioLV(now, han) : -demGioLV(han, now) });
   }
   return out.sort((a, b) => String(a.han ?? "9").localeCompare(String(b.han ?? "9")));
 }
