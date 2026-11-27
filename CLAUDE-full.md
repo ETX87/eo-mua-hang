@@ -608,3 +608,8 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   (trạng thái `qua | dang | chua | bo | xau`). `LichSuDong boLoi`. Tiêu đề mục `H` trong `LichSuDong` = chữ nhạt 500.
 - `routes/eo.ts`: `COT_EO.trang_thai.gt = mocPo(r)[0]` (trước: cả mảng mốc) và `/dem theo_moc` đếm `mocPo(r)[0]` — 1 PO 1 giai đoạn. `mocPo` vẫn trả mảng (thứ tự `MOC_PO`) cho chỗ khác.
 - Popup PO tab Linh kiện: ô "Xem cả đơn hủy" nằm trong `.qv-toolbar`; `khungCao` bảng `calc(95vh - 330px)`; `.qv-toolbar` padding 5px.
+
+## Tách lại Tổng quan / Điều hành (v0.133, 27/11/2026)
+
+- Bản gộp v0.130 bị chủ hệ thống phản hồi "chọn menu phụ nhưng báo cáo không thay đổi" → nguyên tắc: **menu phụ / cấp 2 phải đổi nội dung CHÍNH của màn**; không đặt cấp 2 cho
+  phần nằm dưới cùng của 1 trang dài. `/` = `ViecCanXuLy` + `QuanLyPanel` + `XuHuongEo` (`/?tab=` → `Navigate /dieu-hanh?tab=`); `/dieu-hanh` = `DieuHanh` (bỏ tab `xu_huong`).

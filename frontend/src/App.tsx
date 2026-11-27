@@ -8,6 +8,7 @@ import { QuickViewProvider } from "./components/quickview/QuickView";
 import { Spinner } from "./components/ui";
 import { NhacGiaiTrinhPopup, MoiBatDay } from "./components/NhacGiaiTrinhPopup";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DieuHanh = lazy(() => import("./pages/DieuHanh"));
 const CaCeo = lazy(() => import("./pages/CaCeo"));
 const ViecCuaToi = lazy(() => import("./pages/ViecCuaToi"));
 const BangMaLoi = lazy(() => import("./pages/BangMaLoi"));
@@ -60,8 +61,8 @@ export default function App() {
       <Suspense fallback={<Spinner />}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        {/* v0.129: Dieu hanh gop vao Tong quan ("/"), giu ?tab= */}
-        <Route path="/dieu-hanh" element={<ChuyenHuong to="/" />} />
+        {/* v0.133: Dieu hanh tach lai thanh menu phu rieng (cap 2 = tab ?tab=) */}
+        <Route path="/dieu-hanh" element={<DieuHanh />} />
         <Route path="/ca-ceo" element={<CaCeo />} />
         <Route path="/viec-cua-toi" element={<ViecCuaToi />} />
         <Route path="/ma-loi" element={<BangMaLoi />} />

@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.133: Tách lại Tổng quan / Điều hành thành 2 menu phụ
+
+- Yêu cầu (nguyên văn): "chọn menu phụ nhưng báo cáo không thay đổi, nếu không thay đổi thì tách báo cáo không liên quan riêng ra menu phụ riêng".
+- Nguyên nhân: ở bản gộp v0.130, menu cấp 2 (tab Điều hành) chỉ đổi phần Điều hành nằm cuối trang; phần đầu (Việc cần xử lý, Bảng điều khiển) không đổi nên nhìn như không có gì.
+- Đã làm: menu Tổng quan › **Tổng quan** (`/`: việc của bạn + bảng điều khiển + xu hướng EO, không có cấp 2) · **Điều hành** (`/dieu-hanh`, cấp 2 = 7 tab, mỗi tab đổi đúng
+  nội dung chính) · Báo cáo đặt LK. Tab "Xu hướng EO" về lại trang Tổng quan. Link `/?tab=…` của bản gộp tự chuyển sang `/dieu-hanh?tab=…`.
+- 5W1H: Who — mọi vai trò. When — mở app (Tổng quan) / cần truy trách nhiệm (Điều hành). Where — menu Tổng quan. What — mỗi menu phụ là 1 màn, bấm là thấy đổi.
+  Why — menu phụ không đổi nội dung chính gây khó hiểu. How — bấm Tổng quan › Điều hành › tab cần xem.
+- Kiểm thử: typecheck + build; local `/?tab=po` → `/dieu-hanh?tab=po`, tab Theo PO sáng ở menu + trang; `/` hiện việc của bạn + bảng điều khiển + biểu đồ.
+
 ## 27/11/2026 — v0.132: Popup chi tiết vi phạm dễ nhìn · thu gọn thanh công cụ popup PO · PO tính theo giai đoạn tồn lâu nhất
 
 - Yêu cầu (nguyên văn): "giao diện này khó nhìn quá, tiêu đề đừng tô đậm lên, tìm phương án khác dễ nhìn hơn" (popup chi tiết lỗi ở màn Vi phạm) · "thu gọn" (thanh công cụ

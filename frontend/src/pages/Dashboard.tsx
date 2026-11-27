@@ -1,22 +1,26 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { Card } from "../components/ui";
 import { soLuong } from "../lib/format";
 import QuanLyPanel from "./QuanLyPanel";
-import DieuHanh from "./DieuHanh";
+import { XuHuongEo } from "./dieuhanh/XuHuongEo";
 
 /**
- * v0.129 (chu he thong chot 27/11/2026 "Gop thanh 2 man"): "/" = TONG QUAN & DIEU HANH - gop Tong quan cu + man Dieu hanh (/dieu-hanh chuyen huong ve day).
- * Tren cung: viec cua ban + so tong (ty le dap ung, ton theo moc - QuanLyPanel); duoi: toan bo Dieu hanh (pham vi, ket luan, o suc khoe, luong giai doan, tab
- * - tab Trach nhiem thay bang trach nhiem lanh dao cu, tab Xu huong EO = bieu do cu). Bao cao dat LK (so lieu ky) giu man rieng.
+ * "/" = TONG QUAN (v0.133, chu he thong 27/11/2026 "chon menu phu nhung bao cao khong thay doi, neu khong thay doi thi tach bao cao khong lien quan
+ * rieng ra menu phu rieng"): viec cua ban + bang dieu khien (ty le dap ung, ton, giai doan) + xu huong EO. Dieu hanh tach lai thanh menu phu rieng
+ * (/dieu-hanh, cap 2 = tab) - link cu "/?tab=..." (ban gop v0.130-0.132) chuyen sang /dieu-hanh?tab=...
  */
 export default function TongQuan() {
+  const [sp] = useSearchParams();
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+  if (sp.get("tab")) return <Navigate to={`/dieu-hanh?tab=${sp.get("tab")}`} replace />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <ViecCanXuLy />
       <QuanLyPanel />
-      <DieuHanh nhung />
+      <XuHuongEo />
     </div>
   );
 }

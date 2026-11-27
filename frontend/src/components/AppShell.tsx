@@ -356,7 +356,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function titleFor(path: string): string {
-  if (path === "/") return "Tổng quan & điều hành";
+  if (path === "/") return "Tổng quan";
+  if (path.startsWith("/dieu-hanh")) return "Điều hành";
   if (/^\/eo\/new/.test(path)) return "Tạo mới EO";
   if (/^\/eo\/\d+\/edit/.test(path)) return "Sửa EO";
   if (/^\/eo\/\d+/.test(path)) return "Chi tiết EO";

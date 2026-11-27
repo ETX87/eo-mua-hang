@@ -40,13 +40,14 @@ const qtCua = (base: string, chi?: string[]): NavCap2[] =>
 export const NAV: NavItem[] = [
   // Viec cua toi (v0.104): nhan vien nhin 1 lan biet phai lam gi truoc han nao - backend routes/viecCuaToi.ts (so do = viecCanLam theo_doi)
   { to: "/viec-cua-toi", label: "Việc của tôi", icon: "check" },
-  // v0.129: Tong quan = 2 man (chu he thong chot gop 27/11/2026): "Tổng quan & điều hành" (/ = Tong quan cu + Dieu hanh, cap 2 = tab ?tab=)
-  // · "Báo cáo đặt LK" (so lieu ky cua dong linh kien). /dieu-hanh cu chuyen huong ve /.
+  // v0.133: Tong quan = 3 menu phu, moi menu 1 man rieng (chu he thong: "chon menu phu nhung bao cao khong thay doi -> tach rieng"):
+  // Tong quan (viec cua ban + bang dieu khien + xu huong) · Dieu hanh (cap 2 = tab ?tab=, doi dung noi dung chinh) · Bao cao dat LK.
   { to: "/", label: "Tổng quan", icon: "home", children: [
-    { to: "/", label: "Tổng quan & điều hành", icon: "home", con: [
-      { to: "/?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/?tab=nong", label: "Điểm nóng" },
-      { to: "/?tab=po", label: "Theo PO" }, { to: "/?tab=nguoi", label: "Theo người" }, { to: "/?tab=ncc", label: "Theo NCC" },
-      { to: "/?tab=nn", label: "Nguyên nhân & xu hướng" }, { to: "/?tab=duyet", label: "Duyệt đang treo" }, { to: "/?tab=xu_huong", label: "Xu hướng EO" },
+    { to: "/", label: "Tổng quan", icon: "home" },
+    { to: "/dieu-hanh", label: "Điều hành", icon: "trend", con: [
+      { to: "/dieu-hanh?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/dieu-hanh?tab=nong", label: "Điểm nóng" },
+      { to: "/dieu-hanh?tab=po", label: "Theo PO" }, { to: "/dieu-hanh?tab=nguoi", label: "Theo người" }, { to: "/dieu-hanh?tab=ncc", label: "Theo NCC" },
+      { to: "/dieu-hanh?tab=nn", label: "Nguyên nhân & xu hướng" }, { to: "/dieu-hanh?tab=duyet", label: "Duyệt đang treo" },
     ] },
     { to: "/don-hang?tab=bao-cao", label: "Báo cáo đặt LK", icon: "trend", con: [
       { to: "/don-hang?tab=bao-cao&bc=giai-doan", label: "Giai đoạn đơn hàng" },
