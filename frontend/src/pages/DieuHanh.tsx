@@ -11,6 +11,7 @@ import { soLuong, ngay, ngayGio, ten, tuBayGio } from "../lib/format";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
 import { ChonNhieu } from "../components/ChonNhieu";
 import { BangTrachNhiem } from "./dieuhanh/BangTrachNhiem";
+import { XuHuongEo } from "./dieuhanh/XuHuongEo";
 
 /** gia tri trong (NCC chua co...) trong bo loc chon nhieu */
 const TRONG_K = "∅";
@@ -72,7 +73,8 @@ const nhomLyDo = (s: string) => s.startsWith("Cấp CEO") ? "Cấp CEO" : s.star
   : s.includes("lỗi chờ giải trình") ? `Lỗi chờ giải trình ≥ ${12}h làm việc` : s.startsWith("Im lặng") ? "Im lặng ≥ 7 ngày" : s;
 const thoiGianCho = (gio: number) => (gio < 24 ? `${gio} giờ` : `${Math.floor(gio / 24)} ngày${gio % 24 ? ` ${gio % 24} giờ` : ""}`);
 
-export default function DieuHanh() {
+/** nhung = dat trong man "Tổng quan & điều hành" (v0.129) - khong ve tieu de trang rieng. */
+export default function DieuHanh({ nhung }: { nhung?: boolean } = {}) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["dieu-hanh"], queryFn: () => api.get<Data>("/dieu-hanh"), refetchInterval: 180000 });
   // pham vi chon NHIEU (nguyen tac 2026-11-18) - [] = khong loc; gia tri trong = TRONG_K
@@ -81,9 +83,9 @@ export default function DieuHanh() {
   const [gdChon, setGdChon] = useState("");
   // v0.122: tab mac dinh = Bang trach nhiem (NCC / noi bo) cho lanh dao
   // v0.129: tab nam tren URL (?tab=) - menu cap 2 "Tổng quan › Điều hành › …" o sidebar bam la doi tab
-  type Tab = "bang" | "nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet";
+  type Tab = "bang" | "nong" | "po" | "nguoi" | "ncc" | "nn" | "duyet" | "xu_huong";
   const [sp, setSp] = useSearchParams();
-  const tab: Tab = (["bang", "nong", "po", "nguoi", "ncc", "nn", "duyet"] as const).find((k) => k === sp.get("tab")) ?? "bang";
+  const tab: Tab = (["bang", "nong", "po", "nguoi", "ncc", "nn", "duyet", "xu_huong"] as const).find((k) => k === sp.get("tab")) ?? "bang";
   const setTab = (k: Tab) => setSp((s) => { const n = new URLSearchParams(s); if (k === "bang") n.delete("tab"); else n.set("tab", k); return n; }, { replace: true });
   // v0.118 tab Theo PO: bam so o 1 PO -> Diem nong chi dong cua PO do
   const [poChon, setPoChon] = useState<{ eo: number; po: string } | null>(null);
@@ -96,7 +98,7 @@ export default function DieuHanh() {
     return dongPv.filter((x) => (!tc || tc.f(x, d.nguong)) && (!gdChon || x.gd === gdChon) && (!poChon || x.eo === poChon.eo)).sort((a, b) => b.diem - a.diem);
   }, [d, dongPv, tieuChi, gdChon, poChon]);
 
-  if (q.isLoading || !d) return <><PageHeader title="Điều hành mua hàng" /><Spinner text="Đang tổng hợp toàn hệ thống…" /></>;
+  if (q.isLoading || !d) return <>{!nhung && <PageHeader title="Điều hành mua hàng" />}<Spinner text="Đang tổng hợp điều hành toàn hệ thống…" /></>;
 
   const loi30Pv = d.loi30.filter((l) => khopPv(pv.nguoi, l.ai) && khopPv(pv.ncc, l.ncc));
   const duyetPv = d.duyet.filter((x) => khopPv(pv.nguoi, x.ai) || (pv.nguoi.length > 0 && khopPv(pv.nguoi, x.nguoi_tao)));
@@ -165,7 +167,7 @@ export default function DieuHanh() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <PageHeader title="Điều hành mua hàng" />
+      {!nhung && <PageHeader title="Điều hành mua hàng" />}
       <FilterBar>
         <b style={{ fontSize: 13 }}>Phạm vi:</b>
         <S k="nguoi" w={210} ph="Mọi người phụ trách" o={opts(d.dong.map((x) => x.nguoi), (v) => ten(v))} />
@@ -216,7 +218,7 @@ export default function DieuHanh() {
       <Card>
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
           {([["bang", "📊 Trách nhiệm NCC / nội bộ"], ["nong", `🔥 Điểm nóng (${soLuong(dongDs.length)})`], ["po", `📦 Theo PO (${soLuong(theoPo.length)})`], ["nguoi", `👤 Theo người (${theoNguoi.length})`], ["ncc", `🏭 Theo NCC (${theoNcc.length})`],
-            ["nn", "🧭 Nguyên nhân & xu hướng"], ["duyet", `⏳ Duyệt đang treo (${duyetPv.length})`]] as const).map(([k, l]) => (
+            ["nn", "🧭 Nguyên nhân & xu hướng"], ["duyet", `⏳ Duyệt đang treo (${duyetPv.length})`], ["xu_huong", "📈 Xu hướng EO"]] as const).map(([k, l]) => (
             <button key={k} className={`qv-chip ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
@@ -228,6 +230,7 @@ export default function DieuHanh() {
         {tab === "ncc" && <BangNcc rows={theoNcc} onXem={(ncc, tc) => { setPv({ ...pv, ncc: [ncc || TRONG_K] }); setTieuChi(tc); setTab("nong"); }} />}
         {tab === "nn" && <NguyenNhan d={d} loi30={loi30Pv} dmTen={dmTen} />}
         {tab === "duyet" && <BangDuyet rows={duyetPv} />}
+        {tab === "xu_huong" && <XuHuongEo />}
       </Card>
     </div>
   );

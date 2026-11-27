@@ -124,9 +124,9 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 
 ## 8. Báo cáo & tổng quan
 
-- 3 màn báo cáo dưới menu Tổng quan (v0.129): **Tổng quan** = nhìn nhanh hôm nay (bảng trách nhiệm, tỷ lệ đáp ứng, tồn theo mốc, việc cần xử lý, biểu đồ xu hướng EO);
-  **Báo cáo đặt LK** = số liệu theo kỳ của dòng linh kiện (giai đoạn đơn hàng, tiến độ tuần KRF, lũy kế năm — để chốt số / xuất Excel);
-  **Điều hành** = truy trách nhiệm (ai / NCC nào giữ, điểm nóng, nguyên nhân, duyệt treo — để ra lệnh).
+- 2 màn dưới menu Tổng quan (v0.130, chủ hệ thống chốt gộp 27/11/2026): **Tổng quan & điều hành** (`/`) = việc cần xử lý của bạn + bảng điều khiển (tỷ lệ đáp ứng,
+  tồn theo mốc, giai đoạn) + toàn bộ Điều hành (phạm vi, kết luận nhanh, ô sức khoẻ, luồng giai đoạn, tab Trách nhiệm / Điểm nóng / Theo PO / người / NCC / Nguyên nhân /
+  Duyệt treo / Xu hướng EO); `/dieu-hanh` cũ chuyển về `/`. **Báo cáo đặt LK** = số liệu theo kỳ của dòng linh kiện (giai đoạn đơn hàng, tiến độ tuần KRF, lũy kế năm).
 
 - 4 báo cáo (tiến độ 0.1 là nguồn chung), báo cáo giai đoạn. Tổng quan: tỷ lệ đáp ứng tuần / tháng = Σmin(về, đặt) / Σđặt,
   tồn đọng theo 8 mốc tồn — cùng mốc bỏ qua với theo dõi nên số khớp màn Quản lý đơn hàng.

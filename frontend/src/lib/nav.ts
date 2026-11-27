@@ -40,19 +40,18 @@ const qtCua = (base: string, chi?: string[]): NavCap2[] =>
 export const NAV: NavItem[] = [
   // Viec cua toi (v0.104): nhan vien nhin 1 lan biet phai lam gi truoc han nao - backend routes/viecCuaToi.ts (so do = viecCanLam theo_doi)
   { to: "/viec-cua-toi", label: "Việc của tôi", icon: "check" },
-  // v0.129 (yeu cau 2026-11-27): Tong quan = nhom 3 bao cao: Tong quan (nhin nhanh) · Bao cao dat LK (so lieu ky) · Dieu hanh (truy trach nhiem)
+  // v0.129: Tong quan = 2 man (chu he thong chot gop 27/11/2026): "Tổng quan & điều hành" (/ = Tong quan cu + Dieu hanh, cap 2 = tab ?tab=)
+  // · "Báo cáo đặt LK" (so lieu ky cua dong linh kien). /dieu-hanh cu chuyen huong ve /.
   { to: "/", label: "Tổng quan", icon: "home", children: [
-    { to: "/", label: "Tổng quan", icon: "home" },
+    { to: "/", label: "Tổng quan & điều hành", icon: "home", con: [
+      { to: "/?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/?tab=nong", label: "Điểm nóng" },
+      { to: "/?tab=po", label: "Theo PO" }, { to: "/?tab=nguoi", label: "Theo người" }, { to: "/?tab=ncc", label: "Theo NCC" },
+      { to: "/?tab=nn", label: "Nguyên nhân & xu hướng" }, { to: "/?tab=duyet", label: "Duyệt đang treo" }, { to: "/?tab=xu_huong", label: "Xu hướng EO" },
+    ] },
     { to: "/don-hang?tab=bao-cao", label: "Báo cáo đặt LK", icon: "trend", con: [
       { to: "/don-hang?tab=bao-cao&bc=giai-doan", label: "Giai đoạn đơn hàng" },
       { to: "/don-hang?tab=bao-cao&bc=tien-do-tuan", label: "Tiến độ tuần (KH KRF)" },
       { to: "/don-hang?tab=bao-cao&bc=luy-ke-nam", label: "Lũy kế năm" },
-    ] },
-    // Dieu hanh (v0.084, ../QUAN_TRI_DIEU_HANH.md) - backend routes/dieuHanh.ts; cap 2 = tab (?tab=)
-    { to: "/dieu-hanh", label: "Điều hành", icon: "trend", con: [
-      { to: "/dieu-hanh?tab=bang", label: "Trách nhiệm NCC / nội bộ" }, { to: "/dieu-hanh?tab=nong", label: "Điểm nóng" },
-      { to: "/dieu-hanh?tab=po", label: "Theo PO" }, { to: "/dieu-hanh?tab=nguoi", label: "Theo người" }, { to: "/dieu-hanh?tab=ncc", label: "Theo NCC" },
-      { to: "/dieu-hanh?tab=nn", label: "Nguyên nhân & xu hướng" }, { to: "/dieu-hanh?tab=duyet", label: "Duyệt đang treo" },
     ] },
   ] },
   // v0.129: "Đơn PO" = menu goc; menu phu = cach xem / nhom PO, cap 2 = giai doan. Gop menu "LK đặt" (Theo LK) + "Ca tồn CEO" (PO tồn CEO) vao day.

@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.130: Gộp Tổng quan + Điều hành thành 1 màn "Tổng quan & điều hành"
+
+- Yêu cầu (nguyên văn): "Gộp thành 2 màn" — trả lời câu hỏi v0.129 về 3 báo cáo Tổng quan / Báo cáo đặt LK / Điều hành (phương án: gộp Tổng quan + Điều hành, giữ Báo cáo đặt LK riêng).
+- Đã làm: `/` = màn "Tổng quan & điều hành" (`pages/Dashboard.tsx`): trên cùng Việc cần xử lý của bạn + Bảng điều khiển mua hàng (tỷ lệ đáp ứng, tồn, giai đoạn),
+  dưới là toàn bộ Điều hành (`DieuHanh nhung`: phạm vi người / NCC / kho, kết luận nhanh, ô sức khoẻ, luồng giai đoạn, các tab). Bỏ khối "bảng trách nhiệm lãnh đạo"
+  trùng lặp (đã là tab Trách nhiệm NCC / nội bộ). Biểu đồ xu hướng EO + tỷ lệ theo trạng thái thành tab mới "📈 Xu hướng EO" (`pages/dieuhanh/XuHuongEo.tsx`).
+  `/dieu-hanh` (giữ `?tab=`) tự chuyển về `/`. Menu Tổng quan còn 2 mục: Tổng quan & điều hành (cấp 2 = 8 tab `/?tab=`) · Báo cáo đặt LK.
+- 5W1H: Who — mọi vai trò (lãnh đạo xem tab Trách nhiệm / Theo người; nhân viên xem việc của mình ở đầu trang). When — mở app (màn mặc định). Where — menu Tổng quan ›
+  Tổng quan & điều hành. What — 1 màn thay 2: số tổng + truy trách nhiệm + xu hướng; Báo cáo đặt LK vẫn riêng để chốt số theo kỳ. Why — 2 màn cũ trùng bảng trách nhiệm,
+  phải chuyển qua lại. How — cuộn xuống phần Điều hành, chọn phạm vi / bấm ô số / bấm tab (hoặc bấm tab ở menu cấp 2); link cũ tới Điều hành vẫn mở đúng tab.
+- Kiểm thử: typecheck + build; local: `/dieu-hanh?tab=xu_huong` → `/?tab=xu_huong`, menu cấp 2 "Xu hướng EO" sáng, 2 biểu đồ hiện trong tab, không lỗi console.
+
 ## 27/11/2026 — v0.129: Menu 3 cấp (Tổng quan · Đơn PO · Vi phạm & GT), trang Vi phạm lấy bảng làm chính, cột Lỗi đối tác / nội bộ
 
 - Yêu cầu (nguyên văn, rút gọn dòng): "thêm menu ở mục "Đơn PO" làm menu gốc, tách các menu phụ - Theo PO (trang hiện tại), Theo LK (gộp menu lk đặt vào đây),

@@ -356,14 +356,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function titleFor(path: string): string {
-  if (path === "/") return "Tổng quan";
+  if (path === "/") return "Tổng quan & điều hành";
   if (/^\/eo\/new/.test(path)) return "Tạo mới EO";
   if (/^\/eo\/\d+\/edit/.test(path)) return "Sửa EO";
   if (/^\/eo\/\d+/.test(path)) return "Chi tiết EO";
   if (path.startsWith("/don-hang/ke-hoach-tuan")) return "Kế hoạch tuần KRF";
   if (path.startsWith("/ca-ceo")) return "PO tồn CEO";
   if (path.startsWith("/don-hang")) return "Đơn PO · Theo LK";
-  if (path.startsWith("/dieu-hanh")) return "Điều hành";
   if (path.startsWith("/ma-loi")) return "Bảng mã lỗi";
   // khop dai nhat
   const hit = NAV.filter((n) => n.to !== "/" && path.startsWith(n.to)).sort((a, b) => b.to.length - a.to.length)[0];

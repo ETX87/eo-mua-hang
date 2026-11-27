@@ -586,3 +586,9 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   `?qt=` (nhiều, nối `|`); lọc còn lại = `locCot` của DataTable (bảng Theo lỗi điều khiển ngoài để `?ma=` / `?nguoi=` / "Xem lỗi" / "Xem chi tiết" đặt được). Excel bảng Theo lỗi
   xuất theo cả lọc cột (`locVaSap`).
 - Local: cổng 8790 bị app khác chiếm → chạy worker `--port 8791` + vite với `API_PORT=8791` (`frontend/vite.config.ts`).
+
+## Gộp Tổng quan + Điều hành (v0.130, 27/11/2026)
+
+- `pages/Dashboard.tsx` (route `/`) = `ViecCanXuLy` + `QuanLyPanel` + `<DieuHanh nhung />`. `DieuHanh({ nhung })`: bỏ `PageHeader` khi nhúng; tab `xu_huong` render
+  `pages/dieuhanh/XuHuongEo.tsx` (biểu đồ cũ của Tổng quan, query `dash-summary`). Bỏ `TrachNhiemLanhDao` (trùng tab `bang`).
+- `App.tsx`: `/dieu-hanh` → `ChuyenHuong to="/"` (giữ query). Menu cấp 2 = `/?tab=…` (`lib/nav.ts`); tiêu đề `/` = "Tổng quan & điều hành".
