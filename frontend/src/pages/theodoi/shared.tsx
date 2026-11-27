@@ -231,7 +231,11 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
   const dm = useDanhMuc();
   const ls = useQuery({ queryKey: ["tl-dong", dong.item_id], queryFn: () => api.get<any>(`/theo-doi/dong/${dong.item_id}`) });
   const users = useQuery({ queryKey: ["users-min"], queryFn: () => api.get<any[]>("/users/directory") });
-  const mo = (ls.data?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH");
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api.get<any>("/users/me") });
+  // v0.136: loi R5 cham duyet chi NGUOI DUYET bi ghi loi (hoac Admin) giai trinh - an voi nguoi khac (khop backend duocGiaiTrinh)
+  const toi = String(me.data?.email ?? "").toLowerCase();
+  const mo = (ls.data?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH"
+    && (l.quy_tac !== "R5" || me.data?.vai_tro === "Admin" || String(l.ai_email ?? "").toLowerCase() === toi));
   const [loiId, setLoiId] = useState<string>("");
   const [aiMa, setAiMa] = useState(""); // v0.113: khong mac dinh "Nguoi dat" - phai chon
   const [aiEmail, setAiEmail] = useState(dong.nguoi_dat ?? "");
@@ -245,11 +249,13 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
   const loiChon = mo.find((l: any) => String(l.id) === loiId);
   // mac dinh chon loi dang cho dau tien (chua co loi nao -> "Ghi loi moi")
   useEffect(() => {
-    if (loiId || ls.isLoading) return;
+    if (loiId || ls.isLoading || me.isLoading) return;
     if (mo.length) { setLoiId(String(mo[0].id)); setLoiMa(mo[0].loi_ma ?? ""); } else setLoiId("moi");
-  }, [ls.isLoading, mo.length, loiId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ls.isLoading, me.isLoading, mo.length, loiId]); // eslint-disable-line react-hooks/exhaustive-deps
   // v0.121: "Do ai" goi y theo giai doan cua loi dang chon (R1/R4 NCC, R3 noi bo); bang chung tuy chon
-  const aiDung = aiMa || aiGoiY(loiChon ? [loiChon.quy_tac] : []);
+  const laR5 = loiChon?.quy_tac === "R5";
+  const aiDung = laR5 ? "NGUOI_DUYET" : aiMa || aiGoiY(loiChon ? [loiChon.quy_tac] : []);
+  const aiEmailDung = laR5 ? (loiChon.ai_email ?? "") : aiEmail;
   // v0.113: thu NCC da luu cua dong (dung lam bang chung thay anh) + goi y "Doi tac / NCC" khi NCC tra loi ma KHONG co ngay
   const thuDong = (ls.data?.mail ?? []).filter((m: any) => m.eo_item_id === dong.item_id);
   const thuNhan = thuDong.filter((m: any) => m.huong === "NHAN").sort((a: any, b: any) => String(b.thoi_gian).localeCompare(String(a.thoi_gian)));
@@ -283,7 +289,7 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
     try {
       await api.post("/theo-doi/giai-trinh", {
         eo_item_id: dong.item_id, loi_id: loiId && loiId !== "moi" ? Number(loiId) : undefined, cung_loai: true,
-        ai_ma: aiDung, ai_email: aiEmail || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh, dung_mail: dungMail,
+        ai_ma: aiDung, ai_email: aiEmailDung || undefined, loi_ma: loiMa, noi_dung: noiDung.trim() + (dungMail ? `\n[Bằng chứng: ${thuDong.length} thư với NCC đã lưu ở hộp theo dõi — xem tab Trao đổi NCC]` : ""), hinh_anh: anh, dung_mail: dungMail,
       });
       onSaved();
     } catch (e: any) {
@@ -315,12 +321,15 @@ export function GiaiTrinhModal({ dong, onClose, onSaved }: { dong: Dong; onClose
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div>
-              <ChonDoAi value={aiDung} ai={ai} quyTac={loiChon ? [loiChon.quy_tac] : []}
-                onChange={(v) => { setAiMa(v); if (v !== "NGUOI_DAT" && aiEmail === dong.nguoi_dat) setAiEmail(""); }} />
+              {laR5 ? <>
+                <label className="field-label">Do ai</label>
+                <div className="badge review" title="Lỗi chậm duyệt luôn tính cho người được yêu cầu phê duyệt">Người duyệt — lỗi chậm duyệt tính cho người duyệt</div>
+              </> : <ChonDoAi value={aiDung} ai={ai} quyTac={loiChon ? [loiChon.quy_tac] : []}
+                onChange={(v) => { setAiMa(v); if (v !== "NGUOI_DAT" && aiEmail === dong.nguoi_dat) setAiEmail(""); }} />}
             </div>
             <div>
               <label className="field-label">Người cụ thể</label>
-              <select className="select" value={aiEmail} onChange={(e) => setAiEmail(e.target.value)}>
+              <select className="select" value={aiEmailDung} disabled={laR5} onChange={(e) => setAiEmail(e.target.value)}>
                 <option value="">— Không chọn —</option>
                 {(users.data ?? []).map((u: any) => <option key={u.email} value={u.email}>{u.ho_ten ? `${u.ho_ten} (${u.email})` : u.email}</option>)}
               </select>

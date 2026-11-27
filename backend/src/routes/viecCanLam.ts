@@ -78,7 +78,12 @@ app.get("/", async (c) => {
     const canNdk = rows.filter((r) => r.tinh_trang === "CHO_NDK" || r.tinh_trang === "TRE_NDK");
     const quaHan = rows.filter((r) => r.tinh_trang === "QUA_HAN_NDK");
     // loi cho giai trinh van tinh ca khi dong dang cho NCC; v0.120 ca dong PO truoc moc ap dung (loi R4 ton)
-    const loiCho = cuaToi.filter((r) => r.so_loi_cho_gt > 0);
+    // v0.136: loi R5 cham duyet la viec cua NGUOI DUYET (muc 4b) - dong chi con R5 cho khong tinh cho nguoi dat
+    const coLoi = cuaToi.filter((r) => r.so_loi_cho_gt > 0);
+    const coLoiKhacR5 = new Set(coLoi.length ? (await db.prepare(
+      "SELECT DISTINCT eo_item_id FROM tl_loi WHERE trang_thai = 'CHO_GIAI_TRINH' AND quy_tac <> 'R5' AND eo_item_id IN (SELECT value FROM json_each(?))",
+    ).bind(JSON.stringify(coLoi.map((r) => r.item_id))).all<{ eo_item_id: number }>()).results.map((x) => x.eo_item_id) : []);
+    const loiCho = coLoi.filter((r) => TOAN_BO(u) || coLoiKhacR5.has(r.item_id));
     const viec = new Set([...canNdk, ...quaHan, ...loiCho].map((r) => r.item_id));
     const chiTiet = [
       { label: "Cần nhập ngày dự kiến (8h/16h LV)", count: canNdk.length },

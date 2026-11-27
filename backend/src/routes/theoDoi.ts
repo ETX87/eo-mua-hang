@@ -151,6 +151,8 @@ app.post("/giai-trinh", async (c) => {
     if (bc) return c.json(bc, 400);
   }
   if (!loi && !canEditPlan(u, it)) return c.json({ error: "READ_ONLY" }, 403);
+  // v0.136: R5 cham duyet luon tinh cho NGUOI DUYET bi ghi loi - khong doi "Do ai" / nguoi chiu khi giai trinh
+  if (loi?.quy_tac === "R5") { b.ai_ma = "NGUOI_DUYET"; b.ai_email = loi.ai_email ?? undefined; }
   const now = nowVN();
   const gt = await c.env.DB.prepare(
     `INSERT INTO tl_giai_trinh (eo_item_id, eo_id, loi_id, ai_ma, ai_email, loi_ma, noi_dung, hinh_anh, created_by, created_at)
@@ -160,10 +162,10 @@ app.post("/giai-trinh", async (c) => {
     loi
       ? (b.cung_loai !== false
           ? c.env.DB.prepare(
-              `UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = CASE WHEN quy_tac = 'R5' THEN ai_email ELSE ? END, loi_ma = ?
+              `UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = CASE WHEN quy_tac = 'R5' THEN 'NGUOI_DUYET' ELSE ? END, ai_email = CASE WHEN quy_tac = 'R5' THEN ai_email ELSE ? END, loi_ma = ?
                WHERE eo_item_id = ? AND quy_tac = ? AND trang_thai = 'CHO_GIAI_TRINH' AND (quy_tac <> 'R5' OR ai_email IS ?)`,
             ).bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, itemId, loi.quy_tac, loi.ai_email ?? null)
-          : c.env.DB.prepare("UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = ?, ai_email = CASE WHEN quy_tac = 'R5' THEN ai_email ELSE ? END, loi_ma = ? WHERE id = ?")
+          : c.env.DB.prepare("UPDATE tl_loi SET trang_thai = 'DA_GIAI_TRINH', giai_trinh_id = ?, ai_ma = CASE WHEN quy_tac = 'R5' THEN 'NGUOI_DUYET' ELSE ? END, ai_email = CASE WHEN quy_tac = 'R5' THEN ai_email ELSE ? END, loi_ma = ? WHERE id = ?")
               .bind(gt!.id, b.ai_ma, b.ai_email?.trim() || null, b.loi_ma, loi.id))
       : c.env.DB.prepare(
           `INSERT INTO tl_loi (eo_item_id, eo_id, quy_tac, khoa, han, ai_ma, ai_email, loi_ma, trang_thai, giai_trinh_id, created_at)

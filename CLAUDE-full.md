@@ -619,3 +619,14 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `DieuHanh` Tab thêm `tong` (mặc định, luôn ghi `?tab=` lên URL): khối Kết luận nhanh / ô sức khoẻ / `LuongGiaiDoan` chỉ render khi `tab === "tong"`; Card bảng chỉ khi khác `tong`.
   `chonTc(k)` luôn đặt tiêu chí + chuyển `nong` (không bật / tắt). Menu cấp 2 đầu tiên `/dieu-hanh?tab=tong`.
 - v0.135: bỏ hàng chip tab trong Card bảng → `<select>` tab đầu `FilterBar`; `DataTable` prop `congCu` (nút / ⓘ cùng hàng ô tìm) — dùng ở DiemNong, BangNguoi.
+
+## Lỗi R5 về đúng người duyệt ở Việc của tôi (v0.136, 27/11/2026)
+
+- Chủ hệ thống: "lỗi phê duyệt chậm thì là do người được yêu cầu phê duyệt giải trình. và tính lỗi cho người cần phê duyệt."
+- `routes/viecCuaToi.ts` `giaiTrinhCuaToi(env, email, tatCa, dongCua)`: tính lại `so_loi_cho_gt` / `loi_qt_cho` / hạn chỉ trên lỗi người xem phải giải trình —
+  non-R5 thuộc dòng "của tôi", R5 khi `lower(ai_email) = me` (phạm vi tất cả: mọi R5). Dòng R5 ngoài phạm vi theo dõi lấy từ `layDongTheoDoi('tat_ca')`, PO chưa ban hành đọc thẳng `eo_item`.
+  Người không `canEditPlan` (chỉ duyệt) vẫn nhận mục giải trình với R5 của mình.
+- `viecCanLam` "Lỗi chờ giải trình (dòng)": bỏ dòng chỉ có R5 (trừ người xem toàn bộ). R5 của người duyệt đã tính ở mục 4b.
+- Giải trình R5: `/theo-doi/giai-trinh` và `/vi-pham/giai-trinh-nhieu` ép `ai_ma = NGUOI_DUYET`, `ai_email` = của lỗi (cả `tl_giai_trinh` lẫn `tl_loi`).
+- FE `GiaiTrinhModal`: ẩn R5 không phải của mình (trừ Admin), R5 khoá Do ai + người cụ thể. `ViecCuaToi` mục ④: dòng chỉ R5 không có checkbox, "Giải trình cả nhóm" bỏ dòng chỉ R5.
+

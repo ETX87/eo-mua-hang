@@ -4,6 +4,19 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.136: Lỗi chậm duyệt chỉ giao cho người duyệt giải trình, tính lỗi cho người duyệt
+
+- Yêu cầu (nguyên văn): "vi phạm cần giải trình, lỗi phê duyệt chậm thì là do người được yêu cầu phê duyệt giải trình. và tính lỗi cho người cần phê duyệt."
+- Nguyên nhân: lỗi R5 lúc ghi đã gán đúng người duyệt, nhưng mục ④ "Giải trình lỗi" ở Việc của tôi lọc theo **người đặt** của dòng và đếm cả R5 →
+  người đặt (KH cung ứng) thấy "chậm duyệt" và bấm giải trình bị chặn; người duyệt lại không thấy ở mục này. Dữ liệu thật: 13 lỗi R5 đang chờ đều gán đúng người duyệt — không phải sửa dữ liệu.
+- Đã làm: `routes/viecCuaToi.ts` (`giaiTrinhCuaToi`): R1/R3/R4/TAY theo dòng của mình như cũ; R5 chỉ của người duyệt bị ghi lỗi (kể cả không theo dõi dòng, PO đang duyệt);
+  `viecCanLam` không đếm dòng chỉ có R5 cho người đặt; giải trình R5 (`/theo-doi/giai-trinh`, `/vi-pham/giai-trinh-nhieu`) ép Do ai = NGUOI_DUYET + email người duyệt;
+  form giải trình ẩn lỗi R5 của người khác, khoá "Do ai" khi giải trình R5; mục ④ dòng chỉ có R5 không tick giải trình chung (API chung không đóng R5).
+- 5W1H: Who — người duyệt (thẩm định / duyệt mua / duyệt dòng thêm sau BH) giải trình và chịu lỗi; người đặt không còn thấy. When — bước duyệt quá hạn G2/G3 (mặc định 8h LV).
+  Where — Việc của tôi › ④ Giải trình lỗi, Vi phạm & GT. What — lỗi chậm duyệt về đúng người duyệt. Why — người đặt không duyệt được nên không thể giải trình / chịu lỗi thay.
+  How — người duyệt mở Việc của tôi → ④ → ✍ Giải trình từng dòng → chọn Lỗi gì + nội dung → Gửi (Do ai tự khoá "Người duyệt").
+- Kiểm thử: typecheck + build xanh; tra D1 thật (chỉ đọc) phân bổ lỗi R5 theo người.
+
 ## 27/11/2026 — v0.135: Thu gọn giao diện các bảng Điều hành
 
 - Yêu cầu (nguyên văn): "thu gọn giao diện" (màn Điều hành › Điểm nóng: thanh Phạm vi, hàng chip tab, dòng hướng dẫn, nút Excel, ô tìm mỗi thứ 1 hàng).

@@ -263,6 +263,7 @@ app.post("/giai-trinh-nhieu", async (c) => {
   ).bind(ids).all<{ id: number; quy_tac: string; eo_id: number; eo_item_id: number; ai_email: string | null; created_by: string }>()).results;
   if (!ds.length) return c.json({ error: "KHONG_CO_LOI" }, 400);
   if (new Set(ds.map((l) => l.quy_tac)).size > 1) return c.json({ error: "KHAC_LOAI" }, 400);
+  // v0.136: R5 luon tinh cho nguoi duyet bi ghi loi (Do ai = NGUOI_DUYET, giu ai_email cua loi) - xem SQL ben duoi
   // v0.125: R5 (cham duyet) - chinh nguoi duyet (hoac Admin) giai trinh; loi khac - nguoi sua duoc ke hoach (nguoi dat / KH cung ung / Admin)
   if (ds.some((l) => !duocGiaiTrinh(u, l))) return c.json({ error: "READ_ONLY" }, 403);
   const hinh = JSON.stringify((Array.isArray(b.hinh_anh) ? b.hinh_anh : []).filter((x: any) => x && x.url).slice(0, 10));
@@ -275,11 +276,11 @@ app.post("/giai-trinh-nhieu", async (c) => {
   const res = await db.batch([
     db.prepare(
       `INSERT INTO tl_giai_trinh (eo_item_id, eo_id, loi_id, ai_ma, ai_email, loi_ma, noi_dung, hinh_anh, created_by, created_at, pham_vi, nhom)
-       SELECT eo_item_id, eo_id, MIN(id), ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'NHIEU', ?9 FROM tl_loi
+       SELECT eo_item_id, eo_id, MIN(id), CASE WHEN MIN(quy_tac) = 'R5' THEN 'NGUOI_DUYET' ELSE ?2 END, CASE WHEN MIN(quy_tac) = 'R5' THEN MIN(ai_email) ELSE ?3 END, ?4, ?5, ?6, ?7, ?8, 'NHIEU', ?9 FROM tl_loi
        WHERE id IN (SELECT value FROM json_each(?1)) AND trang_thai = 'CHO_GIAI_TRINH' GROUP BY eo_item_id`,
     ).bind(chon, b.ai_ma, aiEmail, b.loi_ma, noiDung, hinh, u.email, now, nhom),
     db.prepare(
-      `UPDATE tl_loi AS l SET trang_thai = 'DA_GIAI_TRINH', ai_ma = ?2, ai_email = CASE WHEN l.quy_tac = 'R5' THEN l.ai_email ELSE ?3 END, loi_ma = ?4,
+      `UPDATE tl_loi AS l SET trang_thai = 'DA_GIAI_TRINH', ai_ma = CASE WHEN l.quy_tac = 'R5' THEN 'NGUOI_DUYET' ELSE ?2 END, ai_email = CASE WHEN l.quy_tac = 'R5' THEN l.ai_email ELSE ?3 END, loi_ma = ?4,
          giai_trinh_id = (SELECT g.id FROM tl_giai_trinh g WHERE g.nhom = ?5 AND g.eo_item_id = l.eo_item_id)
        WHERE l.id IN (SELECT value FROM json_each(?1)) AND l.trang_thai = 'CHO_GIAI_TRINH'
          AND l.eo_item_id IN (SELECT g.eo_item_id FROM tl_giai_trinh g WHERE g.nhom = ?5)`,

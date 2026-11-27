@@ -24,7 +24,7 @@ const THU = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 
 const thuNgay = (d: string) => `${THU[new Date(`${d}T00:00:00Z`).getUTCDay()]} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const hanTxt = (h: string | null) => (h ? `${thuNgay(h.slice(0, 10))} ${h.slice(11, 16)}` : "");
 const CC = "theodoimuahang@gmail.com";
-const QT: Record<string, string> = { R1: "chưa có ngày DK", R3: "không push NCC", R4: "quá ngày DK", R5: "chậm duyệt", TAY: "lỗi ghi tay" };
+const QT: Record<string, string> = { R1: "chưa có ngày DK", R3: "không push NCC", R4: "quá ngày DK", R5: "chậm duyệt (người duyệt)", TAY: "lỗi ghi tay" };
 const dm = (s: string | null | undefined) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "");
 
 /** Xuat Excel 1 muc (v0.107, yeu cau 2026-11-20 "xuat file excel cua moi 1 phan loai"). */
@@ -125,13 +125,16 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
     // nhom co han som nhat len dau (rows da sap theo han)
     return [...m.entries()];
   }, [rows, xem]); // eslint-disable-line react-hooks/exhaustive-deps
-  const daChon = rows.filter((v) => chon.has(v.item_id));
+  // v0.136: dong chi co loi R5 cham duyet (cua nguoi duyet) -> giai trinh tung dong (giai trinh chung khong dong R5)
+  const chiR5 = (v: V) => v.loi_qt_cho === "R5";
+  const daChon = rows.filter((v) => chon.has(v.item_id) && !chiR5(v));
   const soLoi = (ds: V[]) => ds.reduce((t, v) => t + (v.so_loi_cho_gt || 0), 0);
-  const tatCa = rows.length > 0 && daChon.length === rows.length;
+  const tatCa = daChon.length > 0 && daChon.length === rows.filter((v) => !chiR5(v)).length;
   const NutXem = ({ k, l }: { k: XemGt; l: string }) => <button className={`btn sm ${xem === k ? "primary" : ""}`} onClick={() => setXem(k)}>{l}</button>;
   const dong = (v: V, thut = false) => (
     <tr key={v.item_id} style={{ background: chon.has(v.item_id) ? "#F5F3FF" : undefined }}>
-      <td style={{ width: 28, paddingLeft: thut ? 22 : undefined }}><input type="checkbox" checked={chon.has(v.item_id)} onChange={(e) => doi([v.item_id], e.target.checked)} /></td>
+      <td style={{ width: 28, paddingLeft: thut ? 22 : undefined }}>{chiR5(v) ? <span title="Lỗi chậm duyệt — giải trình từng dòng (nút bên phải)" className="muted">·</span>
+        : <input type="checkbox" checked={chon.has(v.item_id)} onChange={(e) => doi([v.item_id], e.target.checked)} />}</td>
       <td><Han v={v} chu="tự đóng" /></td>
       <td>{xem === "po" ? <span className="muted">↳</span> : <EoLink id={v.eo_id}>{v.ma_phe_duyet || v.eo_code}</EoLink>}</td>
       <td>{xem === "lk" ? <span className="muted">↳</span> : <DongLink id={v.item_id} ma={v.part_code} />}
@@ -155,16 +158,17 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
         </span>
       </div>
       <table className="tbl tbl-dense" style={{ width: "100%" }}>
-        <thead><tr><th style={{ width: 28 }}><input type="checkbox" title="Chọn tất cả" checked={tatCa} onChange={(e) => doi(rows.map((v) => v.item_id), e.target.checked)} /></th>
+        <thead><tr><th style={{ width: 28 }}><input type="checkbox" title="Chọn tất cả" checked={tatCa} onChange={(e) => doi(rows.filter((v) => !chiR5(v)).map((v) => v.item_id), e.target.checked)} /></th>
           <th style={{ width: 130 }}>Hạn tự đóng</th><th>PO</th><th>Linh kiện</th><th>Kho</th><th>Nhà cung cấp</th><th>Lỗi chờ</th><th style={{ width: 150 }}></th></tr></thead>
         <tbody>
           {xem === "dong" ? rows.map((v) => dong(v)) : nhom.map(([k, ds]) => {
-            const ids = ds.map((v) => v.item_id);
-            const het = ids.every((id) => chon.has(id));
+            const dsGop = ds.filter((v) => !chiR5(v));
+            const ids = dsGop.map((v) => v.item_id);
+            const het = ids.length > 0 && ids.every((id) => chon.has(id));
             const v0 = ds[0];
             return [
               <tr key={`n-${k}`} style={{ background: "#F5F3FF" }}>
-                <td><input type="checkbox" title="Chọn cả nhóm" checked={het} onChange={(e) => doi(ids, e.target.checked)} /></td>
+                <td>{ids.length > 0 && <input type="checkbox" title="Chọn cả nhóm" checked={het} onChange={(e) => doi(ids, e.target.checked)} />}</td>
                 <td><Han v={v0} chu="sớm nhất" /></td>
                 <td colSpan={4}>
                   {xem === "po" ? <><b><EoLink id={v0.eo_id}>{v0.ma_phe_duyet || v0.eo_code}</EoLink></b> <span className="muted">· {v0.doi_tac || "—"} · {v0.nguoi_dat ? ten(v0.nguoi_dat) : ""}</span></>
@@ -172,8 +176,9 @@ function BangGiaiTrinh({ rows, onMot, onNhieu }: { rows: V[]; onMot: (v: V) => v
                   <span className="badge final" style={{ marginLeft: 8 }}>{ds.length} dòng</span>
                 </td>
                 <td><b style={{ color: "#7C3AED" }}>{soLoi(ds)}</b></td>
-                <td style={{ textAlign: "right" }}><button className="btn sm primary" style={{ background: "#7C3AED", borderColor: "#7C3AED" }}
-                  title="1 nội dung giải trình đóng mọi lỗi chờ của cả nhóm" onClick={() => (ds.length === 1 ? onMot(v0) : onNhieu(ds))}>✍ Giải trình cả nhóm ({ds.length})</button></td>
+                <td style={{ textAlign: "right" }}>{(ds.length === 1 || dsGop.length > 0) && <button className="btn sm primary" style={{ background: "#7C3AED", borderColor: "#7C3AED" }}
+                  title={dsGop.length < ds.length ? "1 nội dung giải trình đóng lỗi chờ của cả nhóm — trừ lỗi chậm duyệt (giải trình từng dòng)" : "1 nội dung giải trình đóng mọi lỗi chờ của cả nhóm"}
+                  onClick={() => (ds.length === 1 ? onMot(v0) : dsGop.length === 1 ? onMot(dsGop[0]) : onNhieu(dsGop))}>✍ Giải trình cả nhóm ({ds.length === 1 ? 1 : dsGop.length})</button>}</td>
               </tr>,
               ...ds.map((v) => dong(v, true)),
             ];
@@ -293,7 +298,7 @@ export default function ViecCuaToi() {
       </Muc>
 
       <Muc id="m-gt" so="4" n={d.giai_trinh.length} mau="#7C3AED" tieuDe="Giải trình lỗi" xuat={() => xuatMuc(d.giai_trinh, "4-giai-trinh-loi", "Hạn tự đóng")}
-        lamGi={<>Bấm <b>✍ Giải trình</b> → kiểm tra <b>Do ai</b> (hệ thống gợi ý theo giai đoạn: chưa có / quá ngày DK = <b>Nhà cung cấp</b>, không thúc NCC = <b>nội bộ</b>; đổi được) + <b>Lỗi gì</b> + ghi nội dung. Ảnh / thư bằng chứng: tuỳ chọn. Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Có thư với NCC thì tick kèm thư làm bằng chứng. Nhiều lỗi cùng nguyên nhân: xem <b>Theo PO</b> / <b>Theo mã linh kiện</b> → bấm <b>✍ Giải trình cả nhóm</b>, hoặc tick nhiều dòng → <b>✍ Giải trình chung</b> (1 nội dung cho mọi lỗi).</>}>
+        lamGi={<>Bấm <b>✍ Giải trình</b> → kiểm tra <b>Do ai</b> (hệ thống gợi ý theo giai đoạn: chưa có / quá ngày DK = <b>Nhà cung cấp</b>, không thúc NCC = <b>nội bộ</b>; đổi được) + <b>Lỗi gì</b> + ghi nội dung. Ảnh / thư bằng chứng: tuỳ chọn. Giải trình trong <b>{d.gio_tu_dong} giờ làm việc</b> thì không bị tính vi phạm; quá hạn không giải trình → <b>ghi nhận vi phạm</b>. Có thư với NCC thì tick kèm thư làm bằng chứng. Nhiều lỗi cùng nguyên nhân: xem <b>Theo PO</b> / <b>Theo mã linh kiện</b> → bấm <b>✍ Giải trình cả nhóm</b>, hoặc tick nhiều dòng → <b>✍ Giải trình chung</b> (1 nội dung cho mọi lỗi). <b>Chậm duyệt</b> (thẩm định / duyệt mua quá hạn) chỉ hiện cho <b>người được yêu cầu duyệt</b> và tính lỗi cho người đó — giải trình từng dòng.</>}>
         <BangGiaiTrinh rows={d.giai_trinh} onMot={setGt} onNhieu={setGtNhieu} />
       </Muc>
 

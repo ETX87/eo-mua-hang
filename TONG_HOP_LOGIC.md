@@ -90,6 +90,8 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
   lần trình đổi, hoặc dòng không còn chờ duyệt; hết 16 giờ làm việc không giải trình → vi phạm. **Chỉ chính người duyệt (hoặc Admin) giải trình** lỗi R5;
   "Giải trình cả PO" / giải trình chung theo dòng không đóng R5. Lỗi R5 hiện ở màn Vi phạm, popup nhắc, số đỏ "Lỗi của bạn" kể cả PO chưa ban hành; người đặt
   không bị tính lỗi R5 của người duyệt. Vi phạm gộp R5 = PO + người duyệt + ngày bắt đầu chờ.
+  Màn **Việc của tôi ④ Giải trình lỗi** (v0.136): lỗi R5 chỉ hiện cho người duyệt bị ghi lỗi (cả khi người đó không theo dõi dòng / PO chưa ban hành),
+  không hiện cho người đặt; dòng chỉ có R5 giải trình từng dòng. Giải trình R5 luôn giữ **Do ai = Người duyệt** + email người duyệt (không đổi được).
 
 
 G1 Lập & trình · G2 Thẩm định · G3 Duyệt cuối & ban hành · G4 Gửi đơn NCC (song song) · G5 Chờ ngày DK · G6 Chờ giao hàng ·
