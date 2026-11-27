@@ -143,7 +143,6 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
       <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
         {/* KHU CHINH (v0.131): theo kho / don dat / phieu nhap / loi cua ma */}
         <div className="qv-col">
-          <KhuTieuDe loai="chinh">📌 Theo dõi chính</KhuTieuDe>
           <div className="qv-tabs">
             {([["kho", `Theo kho (${tk?.theoKho.length ?? 0})`], ["eo", `Lịch sử EO / đặt hàng (${d.dong.length})`], ["amis", `Phiếu nhập AMIS (${d.phieu_nhap.length})`], ["loi", `Lỗi theo dõi (${d.loi.length})`]] as [Tab, string][])
               .map(([k, l]) => <button key={k} className={`qv-tab ${tab === k ? "on" : ""}`} onClick={() => { setTab(k); setTim(""); }}>{l}</button>)}

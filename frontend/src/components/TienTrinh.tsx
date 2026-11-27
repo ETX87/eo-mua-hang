@@ -303,13 +303,16 @@ function VanDeTheoBuoc({ nut, rows, loiKhac, phuTrach }: { nut: NutGd[]; rows: R
   );
 }
 
-export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach, onChonNut, chiTiet }: {
+export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach, onChonNut, chiTiet, chon }: {
   defs: GdDef[]; sla: Record<string, number>; rows: Row[]; loi?: Row[];
   /** phieu nhap AMIS khop (doc_date, qty_in) -> dot hang ve; undefined = khong hien */
   phieuNhap?: Row[]; slDat?: number;
   /** ten nguoi phu trach tung giai doan (G1 nguoi tao, G3 nguoi duyet mua, G4/G5 nguoi dat...) */
   phuTrach?: Record<string, string>;
-  onChonNut?: (k: string) => void;
+  /** bam 1 moc: k = giai doan, ids = item_id cac dong DANG DUNG o buoc do (v0.144: popup PO loc bang LK theo moc) */
+  onChonNut?: (k: string, ids: number[]) => void;
+  /** v0.144: moc dang duoc chon (loc) -> vong xanh */
+  chon?: string | null;
   /** noi dung chi hien khi bam "Xem chi tiết" (vd o so lieu, canh bao cua popup) - ban thu gon CHI 1 dong quy trinh */
   chiTiet?: ReactNode;
 }) {
@@ -332,14 +335,15 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
     const phu = kt ? `${ngan(kt)}${gio != null ? ` · ${gioTxt(gio)}` : ""}` : dang ? (gio != null ? `${gioTxt(gio)}${n.tre.length ? " · trễ" : ""}` : "đang") : n.tt === "mot_phan" ? `${n.xong.length}/${rows.length}` : "";
     truoc = kt ?? truoc;
     return (
-      <div key={n.g.k} className="ttq-nut" title={tieuDeMoc(n, mot, rows.length)} onClick={onChonNut ? () => onChonNut(n.g.k) : undefined} style={{ cursor: onChonNut ? "pointer" : undefined }}>
-        {i > 0 && <div className="ttq-noi" style={{ background: nut[i - 1].tt === "xong" ? "#2fb350" : nut[i - 1].tt === "mot_phan" ? "#a6e3b4" : "#e8e8ed" }} />}
-        <div className={`ttq-cham${dang ? " on" : ""}`} style={{ background: c.nen, borderColor: c.vien, color: c.chu, borderStyle: PHU[n.g.k] ? "dashed" : "solid" }}>
+      <div key={n.g.k} className={`ttq-nut${chon === n.g.k ? " chon" : ""}`} title={`${tieuDeMoc(n, mot, rows.length)}${onChonNut && n.dang.length ? "\nBấm: lọc các LK đang dừng ở bước này" : ""}`}
+        onClick={onChonNut ? () => onChonNut(n.g.k, n.dang.map((r) => r.item_id)) : undefined} style={{ cursor: onChonNut ? "pointer" : undefined }}>
+        {i > 0 && <div className="ttq-noi" style={{ background: nut[i - 1].tt === "xong" ? "#2fb350" : nut[i - 1].tt === "mot_phan" ? "#a6e3b4" : "#e3e3e8" }} />}
+        <div className={`ttq-cham ap ${n.tt}${dang ? " on" : ""}`} style={{ borderStyle: PHU[n.g.k] ? "dashed" : undefined }}>
           {n.tt === "xong" ? "✓" : n.g.k.slice(1)}
-          {n.loi.length > 0 && <span className="ttq-loi" style={{ background: n.loiCho ? "#d70015" : "#86868b" }}>{n.loi.length}</span>}
+          {n.loi.length > 0 && <span className="ttq-loi" style={{ background: n.loiCho ? "#ff3b30" : "#86868b" }}>{n.loi.length > 99 ? "99+" : n.loi.length}</span>}
         </div>
-        <div className="ttq-ten" style={{ fontWeight: dang ? 800 : 600, color: n.tt === "chua" ? "var(--text-muted)" : undefined }}>{n.g.l}</div>
-        <div className="ttq-phu" style={{ color: n.tre.length && dang ? "var(--danger-ink)" : undefined }}>{phu || " "}</div>
+        <div className="ttq-ten" style={{ fontWeight: dang ? 650 : 500, color: n.tt === "chua" ? "var(--text-muted)" : dang ? "#c26400" : undefined }}>{n.g.l}</div>
+        <div className="ttq-phu" style={{ color: n.tre.length && dang ? "var(--danger-ink)" : undefined }}>{n.dang.length && !mot ? `${n.dang.length} LK · ` : ""}{phu || " "}</div>
       </div>
     );
   });
@@ -348,21 +352,13 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
   const soVanDe = nut.filter((n) => n.loi.length || n.tre.length).length + (loiKhac.length ? 1 : 0);
   const loiChoTong = nut.reduce((s, n) => s + n.loiCho, 0) + loiKhac.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
   const ve = dot.reduce((s, x) => s + x.sl, 0);
+  // v0.144 (chu he thong 2026-11-27 "bo note N buoc co van de ve xxx/yyy, chi hien nut xem chi tiet o goc tren, khong chiem dien tich thanh quy trinh"):
+  // ban THU GON = CHI duong quy trinh (kieu Apple) + nut "Xem chi tiết" noi goc tren phai. So van de / hang ve xem trong "Xem chi tiết" + o so ben phai popup.
+  void soVanDe; void loiChoTong; void ve; void ketThuc; void dangO;
   if (!mo) return (
-    <div className="tt-wrap ttq-gon">
-      <div className="ttq-nhan">
-        <b>{mot ? "Tiến trình" : `PO · ${rows.length} dòng`}</b>
-        {ketThuc ? <span className={`badge ${mot!.gd_hien_tai === "XONG" ? "issued" : "nhap"}`}>{mot!.gd_hien_tai_ten}</span>
-          : dangO.slice(0, 1).map((n) => <span key={n.g.k} className={`badge ${n.tt === "tre" ? "reject" : "review"}`} title={dangO.map((x) => `${x.g.k} ${x.g.l}${mot ? "" : ` · ${x.dang.length} dòng`}`).join("\n")}>
-            {n.g.k}{n.tt === "tre" ? " · trễ" : ""}{dangO.length > 1 ? ` +${dangO.length - 1}` : ""}</span>)}
-      </div>
+    <div className="tt-wrap ttq-gon ap">
+      <button className="btn ghost sm ttq-xem" onClick={() => setMo(true)}>▾ Xem chi tiết</button>
       <div className="ttq-line" style={{ marginTop: 0, flex: 1, minWidth: 0 }}>{moc}</div>
-      <div className="ttq-tt">
-        {soVanDe > 0 && <span className={`badge ${loiChoTong ? "reject" : "final"}`} title="Lỗi / trễ hạn theo bước — bấm Xem chi tiết">⚠ {soVanDe} bước có vấn đề{loiChoTong ? ` · ${loiChoTong} chờ GT` : ""}</span>}
-        {phieuNhap && slDat != null && slDat > 0 && <span className={`badge ${ve >= slDat ? "issued" : ve > 0 ? "final" : "nhap"}`} title={dot.map((x, i) => `Đợt ${i + 1}: ${ngay(x.d)} +${soLuong(x.sl)}`).join("\n") || "Chưa có hàng về"}>
-          Về {soLuong(ve)}/{soLuong(slDat)}{dot.length > 1 ? ` · ${dot.length} đợt` : ""}</span>}
-        <button className="btn ghost sm" onClick={() => setMo(true)}>▾ Xem chi tiết</button>
-      </div>
     </div>
   );
   return (
@@ -376,7 +372,7 @@ export function QuyTrinh({ defs, sla, rows, loi = [], phieuNhap, slDat, phuTrach
         <button className="btn ghost sm" style={{ marginLeft: "auto" }} onClick={() => setMo(false)}>▴ Thu gọn</button>
       </div>
       {chiTiet}
-      <TienTrinh defs={defs} sla={sla} rows={rows} loi={loi} onChonNut={onChonNut} nhung />
+      <TienTrinh defs={defs} sla={sla} rows={rows} loi={loi} onChonNut={onChonNut ? (k) => onChonNut(k, (nut.find((x) => x.g.k === k)?.dang ?? []).map((r) => r.item_id)) : undefined} nhung />
       {phieuNhap && slDat != null && slDat > 0 && <ThanhHangVe dot={dot} slDat={slDat} />}
       <VanDeTheoBuoc nut={nut} rows={rows} loiKhac={loiKhac} phuTrach={phuTrach} />
     </div>

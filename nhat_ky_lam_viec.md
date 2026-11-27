@@ -4,6 +4,20 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 27/11/2026 — v0.144: Làm gọn popup chi tiết PO
+
+- Yêu cầu (nguyên văn): "nó rối quá. 1. fix lỗi mất chữ ở luồng quy trình 2. tiêu đề bỏ hiện thị thanh luồng quy trình. 3. UI chỉnh kích thước chiếm 95% diện tích 4. Bỏ dòng "theo dõi chính"
+  5. Cho phép ấn trực tiếp vào các nút quy trình để filter trực tiếp các LK đang dừng ở bước đó. 6. bỏ note 6 bước có vấn đề về xxx/yyy đi. chỉ hiện nút xem chi tiết ở góc trên (không chiếm
+  diện tích hiện thị của thanh quy trình) => thanh quy trình cũng sửa lại theo logic giao diện mới (apple) 7. Vùng table danh sách tách 3 ngày đang gộp thành 3 cột riêng, giảm khoảng cao
+  hiện thị xuống cho phù hợp (text dài thì "...") => hiện tối đa 10 dòng trên 1 trang, hiện: giai đoạn: Mã lk +tên lk + SL vi phạm+ sl về/sl thiếu/sl đặt+ ngày tạo + ngày nm + ngày dk +
+  ngày hàng về + kho + đối tác + ghi chú 8. ở khung table, chuyển các nút filter sang góc trái. ấn vào thì table sẽ filter theo."
+- Đã làm: `QuyTrinh` (TienTrinh.tsx) bản thu gọn = chỉ đường quy trình kiểu Apple (.ttq-gon.ap) + "Xem chi tiết" nổi góc phải, tên bước 2 dòng, `onChonNut(k, ids)` trả dòng đang dừng + prop `chon`;
+  EoQuickView: bỏ TienTrinhPo ở tiêu đề, bỏ "Theo dõi chính" (cả Dong / Part QuickView), lọc bảng theo mốc, cột bảng mới, 10 dòng / trang, dòng 34px 1 dòng chữ (.qv-lk), thanh bảng lọc trái /
+  thao tác phải; popup mở bằng hiện dần (không co giãn) → luôn đúng 95% × 95%.
+- 5W1H: Who — mọi người mở chi tiết PO. When — xem / xử lý 1 PO. Where — popup chi tiết PO (Đơn PO, Lỗi theo PO, mọi link PO). What — popup gọn, bấm mốc lọc LK, bảng đủ cột cần, 10 dòng / trang.
+  Why — popup cũ rối, mất chữ, nhiều thông tin trùng. How — bấm mốc (vd G6) → bảng chỉ LK đang ở G6 → bấm chip "Bước … ×" hoặc bấm lại mốc để bỏ; rê chuột Mã LK / SL vi phạm xem thêm.
+- Kiểm thử: typecheck; local 1600×900: popup 95% × 95%, 8 tên bước không bị cắt, không còn "Theo dõi chính" / thanh luồng tiêu đề; bấm G6 → 1 LK + chip, bấm lại → 5; popup đơn đặt vẫn chạy.
+
 ## 27/11/2026 — v0.143: Lỗi theo PO — mốc 20/11, số không nhảy, dải giai đoạn thẳng hàng, gộp popup PO
 
 - Yêu cầu (nguyên văn): "1. bug hiện thị 2. khi ấn vào các nút bên trên thì số bị thay đổi lung tung. 3. Đã chốt bỏ lỗi từ trước 20/11 rồi mà? sao lại thấy lỗi hết lại rồi?

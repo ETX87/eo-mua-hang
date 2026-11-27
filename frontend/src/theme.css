@@ -165,7 +165,7 @@ table.tbl tbody tr { height: 40px; }
 
 .qv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.28); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); z-index: 80; display: grid; place-items: center; }
 .qv-panel {
-  width: 95vw; height: 95vh; background: var(--panel-2); border-radius: 22px; box-shadow: var(--shadow-lg); animation: ap-in .22s cubic-bezier(.2,.8,.2,1);
+  width: 95vw; height: 95vh; background: var(--panel-2); border-radius: 22px; box-shadow: var(--shadow-lg); animation: ap-hien .2s ease-out; /* v0.144: chi hien dan, khong co gian -> luon dung 95% x 95% */
   display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto;
 }
 .qv-head { position: sticky; top: 0; z-index: 5; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(0,0,0,.06); padding: 10px 20px; }
@@ -364,3 +364,31 @@ table.tbl thead th.qv-act { background: #fafafc; z-index: 2; }
 .ptabs > button { flex: none; border: 0; background: rgba(0,0,0,.05); border-radius: 999px; padding: 5px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
 .ptabs > button.on { background: #1d1d1f; color: #fff; }
 
+/* v0.144 luong quy trinh THU GON kieu Apple (QuyTrinh .ttq-gon.ap): moc tron 28 tren duong 3px, ten buoc toi da 2 dong (khong mat chu),
+   so loi = cham do goc moc (khong bi cat), dang o = cam + nhip, da qua = xanh la, moc dang loc = vong xanh; nut Xem chi tiet noi goc tren phai */
+.ttq-gon.ap { position: relative; display: block; padding: 10px 12px 6px !important; margin-top: 0; background: #fff; }
+.ttq-gon.ap .ttq-xem { position: absolute; top: 4px; right: 6px; z-index: 3; min-height: 24px; padding: 0 10px; font-size: 12px; background: rgba(255,255,255,.9); }
+.ttq-gon.ap .ttq-line { padding: 8px 0 2px; }
+.ttq-gon.ap .ttq-nut { min-width: 92px; padding: 4px 4px 6px; border-radius: 12px; transition: background .15s; }
+.ttq-gon.ap .ttq-nut:hover { background: #f5f5f7; }
+.ttq-gon.ap .ttq-nut.chon { background: #e8f1fc; }
+.ttq-gon.ap .ttq-noi { top: 18px; height: 3px; }
+.ttq-cham.ap { width: 28px; height: 28px; border: 0; font-size: 12px; font-weight: 700; background: #fff; color: #86868b; box-shadow: inset 0 0 0 2px #d1d1d6; }
+.ttq-cham.ap.xong { background: #2fb350; color: #fff; box-shadow: none; }
+.ttq-cham.ap.mot_phan { background: #e2f6e7; color: #1d8a3c; box-shadow: inset 0 0 0 2px #a6e3b4; }
+.ttq-cham.ap.dang, .ttq-cham.ap.tre { background: #ff9500; color: #fff; box-shadow: none; animation: ap-nhip 2s infinite; }
+.ttq-cham.ap.tre { background: #ff3b30; animation-name: ap-nhip-do; }
+.ttq-gon.ap .ttq-nut.chon .ttq-cham.ap { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #0071e3; }
+.ttq-cham.ap .ttq-loi { top: -6px; right: -12px; min-width: 18px; height: 18px; border-radius: 9px; font-size: 10px; border: 2px solid #fff; z-index: 2; }
+.ttq-gon.ap .ttq-ten { font-size: 12px; line-height: 1.25; margin-top: 6px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  max-width: 100%; text-overflow: clip; min-height: 30px; }
+.ttq-gon.ap .ttq-phu { font-size: 11px; margin-top: 1px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@keyframes ap-nhip { 0% { box-shadow: 0 0 0 0 rgba(255,149,0,.45); } 70% { box-shadow: 0 0 0 9px rgba(255,149,0,0); } 100% { box-shadow: 0 0 0 0 rgba(255,149,0,0); } }
+@keyframes ap-nhip-do { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,.4); } 70% { box-shadow: 0 0 0 9px rgba(255,59,48,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); } }
+
+/* v0.144 bang LK popup PO: dong thap, 1 dong chu, chu dai "..." */
+.qv-lk table.tbl tbody tr { height: 34px; }
+.qv-lk table.tbl tbody td { padding: 5px 10px; white-space: nowrap; font-size: 12.5px; }
+.qv-lk table.tbl thead th { white-space: nowrap; padding: 8px 10px; }
+.qv-lk .tbl-wrap { border-radius: 0; box-shadow: none; }
+@keyframes ap-hien { from { opacity: 0; } to { opacity: 1; } }

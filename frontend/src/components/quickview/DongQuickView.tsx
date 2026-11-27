@@ -131,7 +131,6 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
       <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
         {/* KHU CHINH (v0.131): luong 8 giai doan + chi tiet giai doan / ke hoach & hang ve / loi & giai trinh */}
         <div className="qv-col">
-          <KhuTieuDe loai="chinh" phai={<span className="muted">“Xem chi tiết” trên luồng: các lần lùi ngày, lý do cấp CEO</span>}>📌 Theo dõi chính</KhuTieuDe>
           {r.item_id ? <div className="qv-quytrinh"><QuyTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} phieuNhap={ls.data.phieu_nhap ?? []} slDat={r.so_luong_dat ?? it.current_qty}
           phuTrach={{ G4: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G5: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G6: `NCC — ${it.supplier || "—"}`, G8: `NCC — ${it.supplier || "—"} + NV theo dõi` }}
           chiTiet={<>

@@ -671,4 +671,6 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - v0.143: **Mốc 20/11** `LOI_TINH_TU` (routes/loiPo.ts, dùng lại ở routes/xemNhanh bo-sung → trường `tinh`). Màn Lỗi theo PO: `locTru([...chiều])` = lọc trừ chiều (ô số / dải giai đoạn
   kiểu lọc chuẩn). **Gộp popup**: xoá `pages/loiPo/PopupPo.tsx`, còn `pages/loiPo/DsThe.tsx` (thẻ điện thoại); bấm PO → `qv.openEo(e, { loi: [item ids dính lỗi đang lọc], moTa })`,
   `EoQuickView` props `locLoi` (boolean | number[]) + `moTaLoc`; bo-sung lỗi có `ben` (benLoi), `nguoi_vp`, `tinh`.
+- v0.144 popup PO gọn: `QuyTrinh` thu gọn = `.ttq-gon.ap` (CSS cuối theme.css), `onChonNut(k, ids)` (ids = item_id dòng đang dừng, tinhNut().dang), `chon` = mốc đang lọc;
+  EoQuickView state `locGd`; bảng LK bọc `.qv-lk` (dòng 34px, nowrap); `.qv-panel` animation `ap-hien` (chỉ opacity) để kích thước luôn 95vw × 95vh.
 
