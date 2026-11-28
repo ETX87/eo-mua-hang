@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.155: "Lỗi theo giai đoạn" thành menu phụ riêng
+
+- Yêu cầu (nguyên văn): "vùng lỗi theo giai đoạn đẩy nó thành menu phụ phụ"
+- Đã làm: menu Lỗi theo PO thêm menu phụ **Theo giai đoạn** (`/loi-po?xem=gd`), cấp 2 = G1–G8 kèm số lần lỗi (ẩn khi 0) — trước nằm dưới "Theo PO".
+  Dải biểu đồ "Lỗi theo giai đoạn" chỉ hiện ở menu này; các menu phụ khác bỏ dải để bảng lên cao. Bảng dưới biểu đồ = bảng Theo PO, bấm G3 → lọc PO có lỗi G3.
+- 5W1H: Who — người xem màn Lỗi theo PO (lãnh đạo, kế hoạch cung ứng, người đặt). When — muốn xem lỗi dồn ở bước nào. Where — menu trái: Lỗi theo PO → Theo giai đoạn
+  → G1…G8. What — biểu đồ giai đoạn + bảng PO lọc theo giai đoạn; các màn khác gọn hơn. Why — dải biểu đồ chiếm nửa màn hình ở mọi cách xem, đẩy bảng xuống.
+  How — bấm "Theo giai đoạn" xem biểu đồ; bấm 1 giai đoạn (menu hoặc biểu đồ) để lọc; bấm "Theo PO" về bảng không có biểu đồ.
+- Kiểm thử: typecheck; local 1600×900: /loi-po không còn dải; menu Theo giai đoạn hiện dải + cấp 2 G3 (6), G6 (4); bấm G3 → URL ?xem=gd&gd=G3, 6 dòng, G3 sáng ở menu và biểu đồ.
+
 ## 28/11/2026 — v0.154: Nút Giải trình sáng lên nhắc đúng người cần giải trình
 
 - Yêu cầu (nguyên văn): "nếu mở UI PO hoặc UI linh kiện đang cần giải trình, nút giải trình sẽ sáng lên để nhắc người cần giải trình"

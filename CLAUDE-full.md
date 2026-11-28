@@ -720,3 +720,8 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `lib/giaiTrinh.tsx` `loiCuaToi(loi, email, nguoiDat?)`: CHO_GIAI_TRINH và `(ai_email || nguoiDat(l) || l.nguoi_dat) === email` (khớp backend `NGUOI_LOI_SQL`).
 - `theme.css` `.btn.nhac-gt` (đỏ #ff3b30 + `ap-nhip-do`, reduced-motion tắt). Dùng ở `EoQuickView` (soLoiToi, dongToi → `BangLoiTheoBuoc dongToi`),
   `DongQuickView` (soLoiToi, `BangViPhamDong nhac`), `PartQuickView` (dongToi: nút "!" colsEo + nút Giải trình colsLoi). Nút mới cần nhắc giải trình → dùng lại class này.
+
+## v0.155 — "Lỗi theo giai đoạn" thành menu phụ (28/11/2026)
+
+- `lib/nav.ts`: menu phụ `/loi-po?xem=gd` "Theo giai đoạn" (con: GD_LOI → `/loi-po?xem=gd&gd=Gx`); "Theo PO" bỏ con.
+- `pages/LoiTheoPo.tsx`: `xemGd = xem === "gd"` → hiện Card biểu đồ giai đoạn; `xem` nội bộ coi "gd" là "po" (bảng, xuất Excel, tab Theo PO đều như Theo PO).

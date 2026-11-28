@@ -29,7 +29,10 @@ export default function LoiTheoPo() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["loi-po"], queryFn: () => api.get<Data>("/loi-po") });
   const [sp, setSp] = useSearchParams();
-  const xem = (sp.get("xem") as Xem) || "po";
+  // v0.155 (chu he thong 28/11 "vung loi theo giai doan day no thanh menu phu"): bieu do giai doan chi hien o menu phu "Theo giai đoạn"
+  // (?xem=gd); bang ben duoi = bang Theo PO.
+  const xemGd = sp.get("xem") === "gd";
+  const xem = (xemGd ? "po" : (sp.get("xem") as Xem) || "po") as Xem;
   const lay = (k: string) => tachDs(sp.get(k));
   const dat = (k: string, v: string | string[] | null) => setSp((s) => {
     const n = new URLSearchParams(s);
@@ -220,8 +223,8 @@ export default function LoiTheoPo() {
         <Tile l="Vi phạm" v={soLuong(tTt.vp)} sub="hết hạn không giải trình" mau={TT.VI_PHAM.mau} on={fTt.length === 1 && fTt[0] === "VI_PHAM"} onClick={() => bat("tt", fTt, "VI_PHAM")} />
         <Tile l="Tỷ lệ đáp ứng" v={pt(veAll, datAll) == null ? "—" : `${pt(veAll, datAll)}%`} sub={`về ${soLuong(veAll)} / đặt ${soLuong(datAll)} · thiếu ${soLuong(datAll - veAll)}`} mau="#1d8a3c" />
       </div></Card>
-      {/* 2. Loi theo giai doan: moi cot = 1 giai doan, cao = so lan loi, tach doi tac / noi bo; bam = loc giai doan */}
-      <Card>
+      {/* 2. Loi theo giai doan: moi cot = 1 giai doan, cao = so lan loi, tach doi tac / noi bo; bam = loc giai doan. Chi o menu phu "Theo giai đoạn". */}
+      {xemGd && <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <b style={{ fontSize: 17, letterSpacing: "-.02em" }}>Lỗi theo giai đoạn</b>
           <span style={{ fontSize: 12, color: "#6e6e73" }}><span style={{ color: BEN.NCC.dac }}>●</span> đối tác <span style={{ color: BEN.NOI_BO.dac, marginLeft: 8 }}>●</span> nội bộ · bấm 1 giai đoạn để lọc</span>
@@ -254,7 +257,7 @@ export default function LoiTheoPo() {
             );
           })}
         </div>
-      </Card>
+      </Card>}
       {/* 3. Bo loc chung + 4 cach xem */}
       <Card>
         <FilterBar>

@@ -39,7 +39,7 @@ const qtCua = (base: string, chi?: string[]): NavCap2[] =>
 
 /** Cap 2 "Lỗi theo PO": giai doan phat sinh loi (gd = buoc cua ma loi) + ma loi theo ben chiu (an khi = 0 lan). */
 const GD_LOI: NavCap2[] = [["G1", "Lập EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua"], ["G4", "Gửi / thúc NCC"], ["G5", "Chờ ngày DK"], ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù"]]
-  .map(([k, l]) => ({ to: `/loi-po?gd=${k}`, label: `${k} · ${l}`, dem: `loi:gd|${k}`, anRong: true }));
+  .map(([k, l]) => ({ to: `/loi-po?xem=gd&gd=${k}`, label: `${k} · ${l}`, dem: `loi:gd|${k}`, anRong: true }));
 const MA_LOI_MENU: [string, string][] = [
   ["ER.MH-001", "001 · Chưa có ngày DK (8h)"], ["ER.MH-002", "002 · Chưa có ngày DK (16h)"], ["ER.MH-003", "003 · Không thúc NCC"],
   ["ER.MH-004", "004 · Quá ngày DK"], ["ER.MH-005", "005 · Chậm duyệt"], ["ER.MH-101", "101 · NCC không phản hồi"], ["ER.MH-102", "102 · NCC báo trễ"],
@@ -55,7 +55,9 @@ export const NAV: NavItem[] = [
   // v0.142 (chu he thong 2026-11-27 "loi theo PO cung chia theo cac menu phu"): menu phu = cach xem / nhom loi, cap 2 = giai doan / ma loi.
   // So dem = so LAN loi (GET /api/loi-po/dem, khoa "loi:..." - AppShell demCua). Bam = /loi-po?... (man tu loc theo URL).
   { to: "/loi-po", label: "Lỗi theo PO", icon: "trend", children: [
-    { to: "/loi-po", label: "Theo PO", icon: "clipboard", dem: "loi:", con: GD_LOI },
+    { to: "/loi-po", label: "Theo PO", icon: "clipboard", dem: "loi:" },
+    // v0.155: bieu do "Loi theo giai doan" thanh menu phu rieng, cap 2 = G1..G8 (truoc nam duoi "Theo PO")
+    { to: "/loi-po?xem=gd", label: "Theo giai đoạn", icon: "trend", con: GD_LOI },
     { to: "/loi-po?xem=lk", label: "Theo linh kiện", icon: "list" },
     { to: "/loi-po?xem=ma", label: "Theo mã lỗi", icon: "tag" },
     { to: "/loi-po?xem=ai", label: "Theo ai lỗi", icon: "users" },
