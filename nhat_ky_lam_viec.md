@@ -4,6 +4,17 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.150: Popup đơn hàng — bảng vừa khung (cắt "…"), 10 dòng/trang, phân trang ghim đáy
+
+- Yêu cầu (nguyên văn): "UI chi tiết table, nếu text qua dài thì hiện .... để tối ưu hiện thị đủ cột cho giao diện người dùng. hạn chế việc phải kéo trái kéo phải. trang chia tối đa 10 dòng.
+  thanh dưới cố định bên dưới"
+- Đã làm: CSS dùng chung `.qv-gon` (bảng `table-layout: fixed` 100% — cột chia theo %, ô 1 dòng, chữ dài cắt "…", tiêu đề xuống dòng được) cho bảng Danh sách vi phạm + Kế hoạch hàng về +
+  Phiếu nhập AMIS; bảng vi phạm nằm trong `.qv-lk` (cuộn trong khung, thanh phân trang 10 dòng ghim đáy như tab Linh kiện popup PO), khối kế hoạch cao tối đa 38% tự cuộn.
+  Ngày rút gọn dd/mm HH:mm, nhãn trạng thái ngắn (Cần GT / Đã GT / Không VP…); rê chuột ra đủ chữ (năm, kết luận, nội dung giải trình).
+- 5W1H: Who — người xem chi tiết 1 LK. When — mở popup đơn hàng. Where — popup đơn hàng (web). What — đủ 9 cột trong khung kể cả khi khu Nhật ký mở, không phải kéo ngang; giới hạn: chữ
+  bị cắt phải rê chuột mới đọc hết. Why — bảng cũ tràn ngang, phải kéo trái phải. How — rê chuột vào ô có "…" để xem đủ; chuyển trang ở thanh dưới cùng.
+- Kiểm thử: typecheck; local 1600×900 khu phụ mở: 9 cột vừa khung; nhân bản tạm 15 dòng (đã gỡ) → "Hiển thị 1–10 / 15" ghim đáy, 2 trang.
+
 ## 28/11/2026 — v0.149: Popup đơn hàng (1 LK trong PO) gọn lại — bỏ tab, kế hoạch hàng về cố định, bảng vi phạm
 
 - Yêu cầu (nguyên văn): "giao diện UI chi tiết của LK (trong PO nhất định) đang hiện các thông tin không cần thiết: 1. bỏ tab chi tiết giai đoạn (nó có trên luồng thanh quy trình rồi)

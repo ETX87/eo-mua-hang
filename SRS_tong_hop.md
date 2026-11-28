@@ -43,6 +43,7 @@ Ai cũng xem được mọi dữ liệu; quyền chỉ áp lên thao tác.
   nhật ký — thu gọn được). Không có tab lặp lại nội dung nhật ký (PO: Linh kiện · Kế hoạch & hàng về · Lỗi & giải trình · Tài liệu).
   Đơn hàng (v0.149): KHÔNG tab — kế hoạch hàng về + phiếu nhập luôn thấy; bảng "Danh sách vi phạm" (cột: giai đoạn lỗi, loại lỗi, số lần lỗi, người vi phạm, ngày ghi nhận,
   ngày giải trình, trạng thái giải trình, chốt vi phạm, thông tin giải trình; gộp lỗi giống nhau 1 dòng; không lỗi thì không hiện); khu phụ "Nhật ký xử lý" gọn như popup PO.
+  Bảng trong popup đơn hàng (v0.150): vừa khung (cột theo %), chữ dài cắt "…" (rê chuột xem đủ), không kéo ngang; tối đa 10 dòng/trang, thanh phân trang ghim đáy.
 - **Thao tác trên popup đơn hàng phải đủ như menu ⋯ của dòng ở popup PO** (v0.138): Ngày NM / dự kiến / hàng về · Đã nhắc đối tác · Kết thúc sớm ·
   **✎ Sửa đơn ▾** (Sửa SL đặt / ghi chú / ID CRM · Sửa mã LK / kho / đối tác · Thay mã linh kiện tương đương) · Hủy đơn · Giải trình ·
   Duyệt dòng / Từ chối dòng (dòng thêm sau ban hành đang chờ, chỉ người duyệt mua / Admin). Mỗi nút chỉ hiện khi có quyền (khớp backend).

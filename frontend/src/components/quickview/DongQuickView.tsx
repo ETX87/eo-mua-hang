@@ -142,24 +142,30 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
           : <div className="muted qv-quytrinh" style={{ fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
           {/* v0.149 (chu he thong 2026-11-28): bo tab "Chi tiết giai đoạn" (trung luong quy trinh) + tab "Kế hoạch & hàng về" (thanh khoi CO DINH)
               + bang "Danh sách vi phạm" (gop loi giong nhau, khong loi thi khong hien) thay tab "Lỗi & giải trình". */}
-          <div className="qv-scroll">
+          {/* v0.150: khoi ke hoach co dinh (cao toi da 38%, tu cuon) + bang vi pham chiem phan con lai, phan trang ghim day */}
+          <div className="qv-scroll lk-mode">
+            <div className="qv-don-kh">
             <div className="qv-sec">Kế hoạch hàng về ({(ls.data.ke_hoach ?? []).length}) · Phiếu nhập AMIS ({(ls.data.phieu_nhap ?? []).length})</div>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(0, 2fr)", gap: 12, padding: "0 8px" }}>
+            <div className="qv-gon" style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(0, 2fr)", gap: 12, padding: "0 8px" }}>
               <table className="tbl tbl-dense">
+                <colgroup><col style={{ width: "11%" }} /><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "9%" }} /><col style={{ width: "22%" }} /><col style={{ width: "28%" }} /></colgroup>
                 <thead><tr><th>Loại</th><th><NhanNgay k="NM" ngan /></th><th><NhanNgay k="DK" ngan /></th><th style={{ textAlign: "right" }}>SL</th><th>Ghi chú</th><th>Cập nhật</th></tr></thead>
                 <tbody>
                   {(ls.data.ke_hoach ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa có kế hoạch.</td></tr>}
-                  {(ls.data.ke_hoach ?? []).map((p: any) => <tr key={p.id}><td>{p.loai === "TUAN" ? `Tuần ${p.tuan ?? ""}` : "Ngày"}</td><td>{ngay(p.factory_committed_date) || "—"}</td><td>{ngay(p.planned_date)}</td>
-                    <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td><td>{p.ghi_chu || ""}</td><td className="muted" style={{ fontSize: 11.5 }}>{ten(p.updated_by ?? p.created_by)} · {ngayGio(p.updated_at ?? p.created_at)}</td></tr>)}
+                  {(ls.data.ke_hoach ?? []).map((p: any) => { const cn = `${ten(p.updated_by ?? p.created_by)} · ${ngayGio(p.updated_at ?? p.created_at)}`; return <tr key={p.id}>
+                    <td>{p.loai === "TUAN" ? `Tuần ${p.tuan ?? ""}` : "Ngày"}</td><td>{ngay(p.factory_committed_date) || "—"}</td><td>{ngay(p.planned_date)}</td>
+                    <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td><td title={p.ghi_chu || undefined}>{p.ghi_chu || ""}</td><td className="muted" style={{ fontSize: 11.5 }} title={cn}>{cn}</td></tr>; })}
                 </tbody>
               </table>
               <table className="tbl tbl-dense">
+                <colgroup><col style={{ width: "27%" }} /><col style={{ width: "28%" }} /><col style={{ width: "27%" }} /><col style={{ width: "18%" }} /></colgroup>
                 <thead><tr><th>Ngày hàng về</th><th>Số CT</th><th>Kho</th><th style={{ textAlign: "right" }}>SL nhập</th></tr></thead>
                 <tbody>
                   {(ls.data.phieu_nhap ?? []).length === 0 && <tr><td colSpan={4} className="muted">Chưa có hàng về.</td></tr>}
-                  {(ls.data.phieu_nhap ?? []).map((p: any) => <tr key={p.id}><td>{ngay(p.doc_date)}</td><td>{p.doc_no}</td><td>{p.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(p.qty_in)}</td></tr>)}
+                  {(ls.data.phieu_nhap ?? []).map((p: any) => <tr key={p.id}><td>{ngay(p.doc_date)}</td><td title={p.doc_no}>{p.doc_no}</td><td title={p.warehouse_name}>{p.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(p.qty_in)}</td></tr>)}
                 </tbody>
               </table>
+            </div>
             </div>
             <BangViPhamDong loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} doiTac={it.supplier} nguoiDat={r.nguoi_dat ?? it.created_by} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} />
           </div>

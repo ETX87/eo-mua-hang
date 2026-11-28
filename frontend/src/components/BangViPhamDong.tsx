@@ -15,10 +15,13 @@ import { AI_MAC_DINH, NHAN_GT, ketLuanGt, trangThaiGt, viSaoLoi, mocLoi, nowVN, 
 const TEN_GD: Record<string, string> = { G1: "Lập & trình EO", G2: "Thẩm định", G3: "Duyệt mua & BH", G4: "Gửi đơn NCC", G5: "Chờ ngày DK", G6: "Chờ giao hàng", G7: "Nhập kho", G8: "Giao bù đến đủ" };
 const THU_TU = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"];
 type Chot = "VI_PHAM" | "CHUA" | "KHONG";
-const NHAN_CHOT: Record<Chot, { l: string; cls: string }> = {
-  VI_PHAM: { l: "Vi phạm", cls: "reject" }, CHUA: { l: "Chưa chốt · còn hạn GT", cls: "final" }, KHONG: { l: "Không vi phạm", cls: "issued" },
+const NHAN_CHOT: Record<Chot, { l: string; n: string; cls: string }> = {
+  VI_PHAM: { l: "Vi phạm", n: "Vi phạm", cls: "reject" }, CHUA: { l: "Chưa chốt · còn hạn GT", n: "Chưa chốt", cls: "final" }, KHONG: { l: "Không vi phạm", n: "Không VP", cls: "issued" },
 };
 const MUC_TT: TrangThaiGt[] = ["VI_PHAM", "CAN_GT", "DA_GT", "KHAC_PHUC", "TAY", "BO_QUA"]; // nang -> nhe
+const TT_NGAN: Record<TrangThaiGt, string> = { CAN_GT: "Cần GT", DA_GT: "Đã GT", KHAC_PHUC: "Đã khắc phục", VI_PHAM: "Vi phạm", BO_QUA: "Bỏ qua", TAY: "Ghi khi GT" };
+/** dd/mm HH:mm (nam hien o title) */
+const ngan = (v: string | null | undefined) => (v ? `${v.slice(8, 10)}/${v.slice(5, 7)}${v.length > 10 ? ` ${v.slice(11, 16)}` : ""}` : "—");
 const chotCua = (tt: TrangThaiGt): Chot => (tt === "VI_PHAM" ? "VI_PHAM" : tt === "CAN_GT" ? "CHUA" : "KHONG");
 
 interface Muc {
@@ -77,35 +80,41 @@ export function BangViPhamDong({ loi, giaiTrinh, doiTac, nguoiDat, onGiaiTrinh }
 
   const coCho = ds.some((m) => m.tt === "CAN_GT");
   const cols: Col<Muc>[] = [
-    { key: "buoc", header: "Giai đoạn lỗi", loc: "chon", gt: (m) => m.buoc, nhanChon: (v) => (v ? `${v} ${TEN_GD[v]}` : "Không gắn giai đoạn"), gtSap: (m) => (m.buoc ? THU_TU.indexOf(m.buoc) : 99),
-      render: (m) => (m.buoc ? <span style={{ whiteSpace: "nowrap" }}><b>{m.buoc}</b> <span className="muted" style={{ fontSize: 11.5 }}>{TEN_GD[m.buoc]}</span></span> : <span className="muted">—</span>) },
-    { key: "ten", header: "Loại lỗi", loc: "chon", gt: (m) => m.ten, maxW: 190,
-      render: (m) => <span title={`${m.ma}\n${m.vi_sao}`}>{m.ten} <span className="muted" style={{ fontSize: 11, fontFamily: "ui-monospace, monospace" }}>{m.ma}</span></span> },
-    { key: "so_lan", header: "Số lần lỗi", loc: "so", align: "right", gt: (m) => m.so_lan, render: (m) => <b style={{ color: m.so_lan > 1 ? "var(--danger-ink)" : undefined }}>{m.so_lan}</b> },
-    { key: "nguoi", header: "Người vi phạm", loc: "chon", gt: (m) => m.nguoi, maxW: 170, render: (m) => m.nguoi },
-    { key: "ghi_nhan", header: "Ngày ghi nhận", loc: "ngay", gt: (m) => m.ghi_nhan,
-      render: (m) => <span style={{ whiteSpace: "nowrap" }} title={m.ghi_nhan_cuoi ? `Lần đầu ${ngayGio(m.ghi_nhan)} · lần gần nhất ${ngayGio(m.ghi_nhan_cuoi)}` : undefined}>
-        {m.ghi_nhan ? ngayGio(m.ghi_nhan) : "—"}{m.ghi_nhan_cuoi && <div className="muted" style={{ fontSize: 11 }}>→ {ngayGio(m.ghi_nhan_cuoi)}</div>}</span> },
-    { key: "ngay_gt", header: "Ngày giải trình", loc: "ngay", gt: (m) => m.ngay_gt, render: (m) => (m.ngay_gt ? <span style={{ whiteSpace: "nowrap" }}>{ngayGio(m.ngay_gt)}</span> : <span className="muted">—</span>) },
-    { key: "tt", header: "Trạng thái giải trình", loc: "chon", gt: (m) => m.tt, nhanChon: (v) => NHAN_GT[v as TrangThaiGt]?.l ?? v,
-      render: (m) => <span style={{ display: "inline-flex", gap: 3, flexWrap: "wrap" }} title={m.ket_luan}>{m.dem_tt.map(([t, n]) => (
-        <span key={t} className={`badge ${NHAN_GT[t].cls}`}>{NHAN_GT[t].l}{m.dem_tt.length > 1 || n > 1 ? ` ${n}` : ""}</span>))}</span> },
-    { key: "chot", header: "Chốt vi phạm", loc: "chon", gt: (m) => m.chot, nhanChon: (v) => NHAN_CHOT[v as Chot]?.l ?? v,
-      render: (m) => <span className={`badge ${NHAN_CHOT[m.chot].cls}`} title={m.ket_luan}>{NHAN_CHOT[m.chot].l}{m.so_vp > 1 ? ` ${m.so_vp} lần` : ""}</span> },
-    { key: "gt", header: "Thông tin giải trình", loc: "chu", gt: (m) => m.gt_txt, maxW: 240,
-      render: (m) => m.gt_txt ? <span title={m.gt_txt}><span style={{ fontSize: 12 }}>{m.gt_txt}</span>{m.gt_boi && <div className="muted" style={{ fontSize: 11 }}>{ten(m.gt_boi)}</div>}</span>
-        : m.tt === "CAN_GT" ? <span style={{ color: NHAN_GT.CAN_GT.mau, fontSize: 12 }}>Chưa giải trình — còn trong hạn</span> : <span className="muted">—</span> },
+    // v0.150: cot co dinh theo % (bang luon vua khung, khong keo ngang), chu dai cat "…" - re chuot xem du (title)
+    { key: "buoc", header: "Giai đoạn lỗi", width: "11%", loc: "chon", gt: (m) => m.buoc, nhanChon: (v) => (v ? `${v} ${TEN_GD[v]}` : "Không gắn giai đoạn"), gtSap: (m) => (m.buoc ? THU_TU.indexOf(m.buoc) : 99),
+      render: (m) => (m.buoc ? <span title={`${m.buoc} ${TEN_GD[m.buoc]}`}><b>{m.buoc}</b> <span className="muted" style={{ fontSize: 11.5 }}>{TEN_GD[m.buoc]}</span></span> : <span className="muted">—</span>) },
+    { key: "ten", header: "Loại lỗi", width: "17%", loc: "chon", gt: (m) => m.ten,
+      render: (m) => <span title={`${m.ten} (${m.ma})
+${m.vi_sao}`}>{m.ten} <span className="muted" style={{ fontSize: 11, fontFamily: "ui-monospace, monospace" }}>{m.ma}</span></span> },
+    { key: "so_lan", header: "Số lần lỗi", width: "6%", loc: "so", align: "right", gt: (m) => m.so_lan, render: (m) => <b style={{ color: m.so_lan > 1 ? "var(--danger-ink)" : undefined }}>{m.so_lan}</b> },
+    { key: "nguoi", header: "Người vi phạm", width: "13%", loc: "chon", gt: (m) => m.nguoi, render: (m) => <span title={m.nguoi}>{m.nguoi}</span> },
+    { key: "ghi_nhan", header: "Ngày ghi nhận", width: "9%", loc: "ngay", gt: (m) => m.ghi_nhan,
+      render: (m) => <span title={m.ghi_nhan_cuoi ? `Lần đầu ${ngayGio(m.ghi_nhan)} · lần gần nhất ${ngayGio(m.ghi_nhan_cuoi)}` : ngayGio(m.ghi_nhan)}>
+        {ngan(m.ghi_nhan_cuoi ?? m.ghi_nhan)}{m.ghi_nhan_cuoi && <span className="muted" style={{ fontSize: 11 }}> (từ {ngan(m.ghi_nhan).slice(0, 5)})</span>}</span> },
+    { key: "ngay_gt", header: "Ngày giải trình", width: "9%", loc: "ngay", gt: (m) => m.ngay_gt, render: (m) => (m.ngay_gt ? <span title={ngayGio(m.ngay_gt)}>{ngan(m.ngay_gt)}</span> : <span className="muted">—</span>) },
+    { key: "tt", header: "Trạng thái giải trình", width: "12%", loc: "chon", gt: (m) => m.tt, nhanChon: (v) => NHAN_GT[v as TrangThaiGt]?.l ?? v,
+      render: (m) => <span title={`${m.dem_tt.map(([t, n]) => `${NHAN_GT[t].l}: ${n}`).join(" · ")}
+${m.ket_luan}`}>{m.dem_tt.map(([t, n]) => (
+        <span key={t} className={`badge ${NHAN_GT[t].cls}`} style={{ marginRight: 3 }}>{TT_NGAN[t]}{m.dem_tt.length > 1 || n > 1 ? ` ${n}` : ""}</span>))}</span> },
+    { key: "chot", header: "Chốt vi phạm", width: "9%", loc: "chon", gt: (m) => m.chot, nhanChon: (v) => NHAN_CHOT[v as Chot]?.l ?? v,
+      render: (m) => <span className={`badge ${NHAN_CHOT[m.chot].cls}`} title={`${NHAN_CHOT[m.chot].l}
+${m.ket_luan}`}>{NHAN_CHOT[m.chot].n}{m.so_vp > 1 ? ` ${m.so_vp}` : ""}</span> },
+    { key: "gt", header: "Thông tin giải trình", width: "14%", loc: "chu", gt: (m) => m.gt_txt,
+      render: (m) => m.gt_txt ? <span title={`${m.gt_txt}${m.gt_boi ? `
+— ${ten(m.gt_boi)}` : ""}`} style={{ fontSize: 12 }}>{m.gt_boi && <b>{ten(m.gt_boi)}: </b>}{m.gt_txt}</span>
+        : m.tt === "CAN_GT" ? <span style={{ color: NHAN_GT.CAN_GT.mau, fontSize: 12 }} title="Chưa giải trình — còn trong hạn">Chưa GT — còn hạn</span> : <span className="muted">—</span> },
   ];
   return (
-    <div>
-      <div className="qv-sec" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="qv-don-vp">
+      <div className="qv-sec" style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 6px 6px", flex: "none" }}>
         Danh sách vi phạm ({ds.length} loại · {ds.reduce((s, m) => s + m.so_lan, 0)} lần)
+        {boQua > 0 && <span className="muted" style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400 }} title="Lỗi có mốc trước 20/11/2026 — hệ thống tự bỏ, không tính vi phạm">· bỏ qua {boQua} lỗi cũ trước 20/11</span>}
         {coCho && onGiaiTrinh && <button className="btn sm" style={{ marginLeft: "auto", textTransform: "none", letterSpacing: 0 }} onClick={onGiaiTrinh}>Giải trình</button>}
       </div>
-      <div style={{ padding: "0 8px" }}>
+      {/* qv-lk: bang cuon trong khung, thanh phan trang (10 dong / trang) ghim day - giong tab Linh kien popup PO */}
+      <div className="qv-lk qv-gon">
         <DataTable cols={cols} rows={ds} keyOf={(m) => m.k} pageSize={10} timKiem={false} empty="Không có vi phạm." />
       </div>
-      {boQua > 0 && <div className="muted" style={{ fontSize: 11.5, padding: "4px 14px" }}>+ {boQua} lỗi cũ (mốc trước 20/11/2026) đã bỏ qua, không tính vi phạm.</div>}
     </div>
   );
 }

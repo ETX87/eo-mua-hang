@@ -686,3 +686,9 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   khu phụ `CotPhu` tiêu đề "Nhật ký xử lý" + chip `xemTq` (Tổng quát = Kpi, Nhật ký = `LichSuDong boLoi`, mặc định Nhật ký) — giống EoQuickView v0.145.
 - `components/BangViPhamDong.tsx` (mới, chỉ cho 1 dòng): khoá gộp `buoc|ma_loi|người`, trạng thái từng kỳ lấy nặng nhất theo `MUC_TT`, `dem_tt` hiển thị số đếm; người = `ai_ma`/`ai_email`
   → giải trình thật → `AI_MAC_DINH` (+ tên NCC / người đặt). BO_QUA bỏ khỏi bảng. Không lỗi → `null`. Popup PO vẫn dùng `BangLoiTheoBuoc` (có CEO 2xx, trễ hạn 3xx).
+
+## v0.150 — Bảng popup đơn hàng vừa khung (28/11/2026)
+
+- `theme.css` `.qv-gon`: `table-layout: fixed; width: 100%`, td nowrap + ellipsis, `.clip` max-width 100%, tiêu đề cho xuống dòng; `.qv-don-kh` (khối kế hoạch, max 38%) +
+  `.qv-don-vp` (flex 1) trong `qv-scroll lk-mode`. Cột DataTable dùng `width` theo % (tổng 100) thay `maxW` px. Bảng vi phạm bọc `.qv-lk` → `.dt-trang` ghim đáy, pageSize 10.
+  Muốn áp kiểu này cho bảng khác trong popup: bọc `.qv-gon` + đặt `width` % cho cột (bảng HTML thường dùng `<colgroup>`).
