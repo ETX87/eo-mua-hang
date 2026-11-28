@@ -128,7 +128,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, 
         <span className="muted" style={{ marginLeft: "auto" }} title={`ER.MH-0xx / 1xx: chạm quy tắc → cần giải trình trong ${GIO_HAN_GT} giờ làm việc; hết hạn không giải trình → vi phạm.\nER.MH-2xx: cấp CEO, hệ thống tự tính theo số liệu, không có hạn giải trình.\nER.MH-3xx: trễ hạn bước, chỉ đo.`}>
           0xx/1xx: cần giải trình trong {GIO_HAN_GT}h LV, quá hạn → vi phạm · 2xx: cấp CEO tự tính · 3xx: chỉ đo ⓘ</span>
       </div>
-      <DataTable cols={colsDung} rows={ds} keyOf={(m) => m.k} pageSize={gon ? 10 : 15} empty="Chưa có lỗi / cảnh báo nào." q={tim} />
+      <DataTable cols={colsDung} coSo={gon ? 1200 : undefined} rows={ds} keyOf={(m) => m.k} pageSize={gon ? 10 : 15} empty="Chưa có lỗi / cảnh báo nào." q={tim} />
     </>
   );
 }

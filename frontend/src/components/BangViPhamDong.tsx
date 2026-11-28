@@ -115,7 +115,7 @@ ${m.ket_luan}`}>{NHAN_CHOT[m.chot].n}{m.so_vp > 1 ? ` ${m.so_vp}` : ""}</span> }
       </div>
       {/* qv-lk: bang cuon trong khung, thanh phan trang (10 dong / trang) ghim day - giong tab Linh kien popup PO */}
       <div className="qv-lk qv-gon">
-        <DataTable cols={cols} rows={ds} keyOf={(m) => m.k} pageSize={10} timKiem={false} empty="Không có vi phạm." />
+        <DataTable cols={cols} coSo={1200} rows={ds} keyOf={(m) => m.k} pageSize={10} timKiem={false} empty="Không có vi phạm." />
       </div>
     </div>
   );

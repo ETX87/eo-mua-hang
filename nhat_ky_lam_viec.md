@@ -4,6 +4,18 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.157: Bảng gọn trong popup có độ rộng tối thiểu đủ đọc (không khoá chết vừa khung)
+
+- Yêu cầu (nguyên văn): "chỉ là hạn chế cột quá dài thôi, không phải là khóa chết độ dài table chỉ có vậy, vẫn phải có độ dài tối thiểu để đọc được thông tin ghi chú, trạng thái..."
+- Đã làm: `DataTable` thêm tham số `coSo` (px): cột đặt % có tối thiểu % × coSo px, bảng tối thiểu = tổng px các cột; khung rộng hơn → cột giãn theo tỷ lệ,
+  khung hẹp hơn → kéo ngang. Chữ quá dài vẫn cắt "…" (rê chuột xem đủ). Áp cho: popup PO tab Linh kiện (coSo 1500; cột Thao tác có nút Duyệt / Từ chối 212px),
+  Kế hoạch & hàng về (1100), Lỗi & giải trình (1200); popup đơn hàng bảng vi phạm (1200); popup mã LK 4 bảng (1000 / 1500 / 900 / 1000).
+- 5W1H: Who — mọi người xem popup PO / đơn hàng / mã LK. When — đọc bảng linh kiện, kế hoạch, lỗi. Where — các bảng trong popup. What — mỗi cột luôn đủ rộng để đọc
+  (Ghi chú ~180px, Giai đoạn ~150px, Mã LK ~240px…), không bị bóp còn "6…", "Kar…". Why — bản v0.150–0.153 ép cả bảng vừa khung nên cột bị cắt mất thông tin.
+  How — khung hẹp thì kéo ngang bảng (cột Thao tác ghim trái); ô còn "…" thì rê chuột xem đủ.
+- Kiểm thử: typecheck; local 1600×900 EO 9 (mở khu nhật ký): bảng LK 1353px trong khung 868px → kéo ngang, Ghi chú 180, Giai đoạn 150, Mã LK 240;
+  tab Kế hoạch 1176px / khung 1072; tab Lỗi 1292px / khung 1062.
+
 ## 28/11/2026 — v0.156: Menu "Cần giải trình" có cấp 2 theo giai đoạn
 
 - Yêu cầu (nguyên văn): "dưới menu phụ cần giải trình => menu phụ cấp 2: theo giai đoạn"

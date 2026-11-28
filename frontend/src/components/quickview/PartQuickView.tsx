@@ -240,11 +240,11 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
               4 bang chuyen sang DataTable dung chung (loc + sap xep kieu Excel), cot theo % (.qv-gon cat "…"), 10 dong / trang, phan trang ghim day (.qv-bang) */}
           <div className="qv-scroll lk-mode">
             <div className="qv-bang qv-gon">
-            {tab === "kho" && tk && <DataTable timKiem={false} pageSize={10} rows={tk.theoKho.filter(khopTim(tim))} keyOf={(k: any) => k.kho} empty="Chưa có đơn đặt / phiếu nhập cho mã này." cols={colsKho} />}
-            {tab === "eo" && <DataTable timKiem={false} pageSize={10} minWidth={1000} rows={dong.filter(khopTim(tim))} keyOf={(r: any) => r.item_id} cols={colsEo}
+            {tab === "kho" && tk && <DataTable timKiem={false} coSo={1000} pageSize={10} rows={tk.theoKho.filter(khopTim(tim))} keyOf={(k: any) => k.kho} empty="Chưa có đơn đặt / phiếu nhập cho mã này." cols={colsKho} />}
+            {tab === "eo" && <DataTable timKiem={false} pageSize={10} coSo={1500} rows={dong.filter(khopTim(tim))} keyOf={(r: any) => r.item_id} cols={colsEo}
               empty={po && locPo ? `PO ${po} không có dòng đặt mang mã này (xem phiếu AMIS / bấm Xem tất cả đơn).` : "Không có dòng."} />}
-            {tab === "amis" && <DataTable timKiem={false} pageSize={10} rows={d.phieu_nhap.filter(khopTim(tim))} keyOf={(r: any) => r.id} cols={colsAmis} empty="Chưa có phiếu nhập AMIS cho mã này." />}
-            {tab === "loi" && <DataTable timKiem={false} pageSize={10} rows={gopTrung(d.loi.filter(khopTim(tim)) as any[], (l) => `${l.eo_item_id}|${l.quy_tac}|${l.trang_thai}`)}
+            {tab === "amis" && <DataTable timKiem={false} coSo={900} pageSize={10} rows={d.phieu_nhap.filter(khopTim(tim))} keyOf={(r: any) => r.id} cols={colsAmis} empty="Chưa có phiếu nhập AMIS cho mã này." />}
+            {tab === "loi" && <DataTable timKiem={false} coSo={1000} pageSize={10} rows={gopTrung(d.loi.filter(khopTim(tim)) as any[], (l) => `${l.eo_item_id}|${l.quy_tac}|${l.trang_thai}`)}
               keyOf={(x: any) => x.x.id} cols={colsLoi} empty="Không có lỗi theo dõi." />}
             </div>
           </div>

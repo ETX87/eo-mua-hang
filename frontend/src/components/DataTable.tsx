@@ -100,7 +100,7 @@ export function locVaSap<T>(rows: T[], cols: Col<T>[], loc?: LocCot, sap?: SapCo
  */
 export function DataTable<T>({
   cols: colsIn, rows: rowsIn, keyOf, totalRow: totalRowIn, empty = "Không có dữ liệu", onRowClick, minWidth, pageSize, timKiem = true,
-  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren, congCu, rowClass,
+  loc: locNgoai, onLoc, sap: sapNgoai, onSap, ngoai, tuyChon, rowsGoc, tongGoc, tongSauLoc, nhom, khungCao, q: qNgoai, luuSoDong, thanhTren, congCu, rowClass, coSo,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -143,6 +143,10 @@ export function DataTable<T>({
   congCu?: ReactNode;
   /** v0.146: class CSS cho tung dong (vd to mau theo trang thai: "r-huy" / "r-xong" / "r-tre" - theme.css) */
   rowClass?: (row: T) => string | undefined;
+  /** v0.157 (chu he thong 28/11 "chi han che cot qua dai, khong khoa chet do dai table, van phai co do dai toi thieu de doc"):
+   *  be rong CO SO (px) cho bang `table-layout: fixed` (.qv-gon). Cot "x%" -> toi thieu x% * coSo px; bang toi thieu = tong px moi cot.
+   *  Khung rong hon -> cot gian theo ty le; khung hep hon -> keo ngang (khong bop cot). */
+  coSo?: number;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const tren = useRef<HTMLDivElement>(null);
@@ -174,7 +178,15 @@ export function DataTable<T>({
   const coTim = timKiem && qNgoai === undefined && (rowsIn.length >= 6 || q !== "");
   const ai = colsIn.findIndex((c) => c.key === "act");
   const order = ai > 0 ? [ai, ...colsIn.map((_, i) => i).filter((i) => i !== ai)] : colsIn.map((_, i) => i);
-  const cols = order.map((i) => (i === ai ? { ...colsIn[i], sticky: true, align: "left" as const, header: colsIn[i].header || "Thao tác", wrap: true } : colsIn[i]));
+  const pxCua = (w: unknown): number | null => {
+    const s = String(w ?? "").trim();
+    if (s.endsWith("%") && coSo) return Math.round((parseFloat(s) * coSo) / 100);
+    if (s.endsWith("px")) return parseFloat(s);
+    return typeof w === "number" ? w : null;
+  };
+  const colsCo = coSo ? colsIn.map((c) => { const px = pxCua(c.width); return px != null ? { ...c, width: `${px}px` } : c; }) : colsIn;
+  const minTinh = coSo ? colsCo.reduce((s, c) => s + (pxCua(c.width) ?? 80), 0) : undefined;
+  const cols = order.map((i) => (i === ai ? { ...colsCo[i], sticky: true, align: "left" as const, header: colsCo[i].header || "Thao tác", wrap: true } : colsCo[i]));
   const totalRow = totalRowIn && totalRowIn.length === colsIn.length ? order.map((i) => totalRowIn[i]) : totalRowIn;
   // v0.117 (yeu cau 2026-11-23 "them lua chon so dong hien thi, 4, 8, 16..."): o chon so dong / trang o thanh phan trang
   const [sizeChon, setSizeChon] = useState<number>(() => {
@@ -268,7 +280,7 @@ export function DataTable<T>({
       )}
       <div className="tbl-wrap" ref={wrapRef} onScroll={khungCao || thanhTren ? () => dongBo(wrapRef.current, tren.current) : undefined}
         style={khungCao ? { maxHeight: khungCao, overflow: "auto" } : undefined}>
-        <table className="tbl" style={minWidth ? { minWidth } : undefined}>
+        <table className="tbl" style={minWidth || minTinh ? { minWidth: Math.max(minWidth ?? 0, minTinh ?? 0) } : undefined}>
           <thead>
             <tr>
               {cols.map((c) => {

@@ -163,7 +163,7 @@ export function TabKeHoach({ eo, items, plans, issued, canEdit, onChanged, tim, 
         {demTt("Về đủ") > 0 && <span className="badge issued">{demTt("Về đủ")} về đủ</span>}
       </div>
       {/* v0.151 gon (popup PO): cot theo % (.qv-gon cat "…"), 10 dong / trang, phan trang ghim day (.qv-bang) */}
-      <DataTable cols={gon ? cols.map((c) => ({ ...c, width: W_KH_GON[c.key] ?? c.width })) : cols} rows={rowsDong} keyOf={(r) => r.id} empty="EO không có dòng linh kiện hiệu lực" pageSize={gon ? 10 : 20} q={tim} />
+      <DataTable cols={gon ? cols.map((c) => ({ ...c, width: W_KH_GON[c.key] ?? c.width })) : cols} coSo={gon ? 1100 : undefined} rows={rowsDong} keyOf={(r) => r.id} empty="EO không có dòng linh kiện hiệu lực" pageSize={gon ? 10 : 20} q={tim} />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
       {ngayItem && <NgayHangVeModal dong={{ item_id: ngayItem.id, part_code: ngayItem.part_code }} onClose={() => setNgayItem(null)} onSaved={() => { setNgayItem(null); onChanged(); }} />}
       {edit && (

@@ -730,3 +730,10 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 
 - `routes/loiPo.ts` `/dem`: thêm khoá `${ttLoi}|gd|${buoc}` (dùng được cho VI_PHAM… nếu cần thêm menu tương tự).
 - `lib/nav.ts`: `GD_TEN_LOI` dùng chung; `GD_LOI_CHO` (to `/loi-po?tt=CHO&gd=Gx`, dem `loi:CHO|gd|Gx`, anRong) làm `con` của "Cần giải trình".
+
+## v0.157 — Bề rộng tối thiểu cho bảng gọn (28/11/2026)
+
+- **Luật** (chủ hệ thống): bảng gọn chỉ HẠN CHẾ cột quá dài, KHÔNG ép bảng vừa khung; mỗi cột phải có bề rộng tối thiểu đọc được, thiếu chỗ thì kéo ngang.
+- `DataTable` prop `coSo` (px): `width: "x%"` → `x% * coSo` px; minWidth bảng = tổng px (cột không width tính 80). `.qv-gon` (table-layout fixed, width 100%) giãn tỷ lệ khi khung rộng.
+  Bảng gọn mới trong popup: đặt width % như cũ + truyền `coSo` (thường 1000–1500) thay vì `minWidth` cứng.
+- Đang dùng: EoQuickView LK 1500 (act có nút duyệt 212px), TabKeHoach gon 1100, BangLoiTheoBuoc gon 1200, BangViPhamDong 1200, PartQuickView kho 1000 / eo 1500 / amis 900 / loi 1000.

@@ -284,7 +284,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
 
   // v0.151 (chu he thong "text qua dai thi hien ... de hien du cot, han che keo trai keo phai"): bang LK co dinh theo % (.qv-gon), cot thao tac theo px
   const coNutDuyet = P.canApprovePostIssue && lkRows.some((x: any) => x.r.post_issue_status === "PENDING" && !dongKetThuc(x.r));
-  const W_LK: Record<string, string> = { act: coNutDuyet ? "150px" : coChon ? "62px" : "48px", gd: "10%", ma: "16%", vp: "54px", ceo: "4%", tl: "50px", sl: "86px", tao: "66px", nm: "66px", dk: "78px", ve: "66px", kho: "6%", ncc: "7%", gc: "12%" };
+  const W_LK: Record<string, string> = { act: coNutDuyet ? "212px" : coChon ? "62px" : "48px", gd: "10%", ma: "16%", vp: "54px", ceo: "4%", tl: "50px", sl: "86px", tao: "66px", nm: "66px", dk: "78px", ve: "66px", kho: "6%", ncc: "7%", gc: "12%" };
   const lkColsGon = lkCols.map((c) => ({ ...c, width: W_LK[c.key] ?? c.width }));
 
   const guiBinhLuan = async () => {
@@ -390,7 +390,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                     {(locGd || chiLoi || xemHuy || chiCeo) && <button className="btn ghost sm" onClick={() => { setLocGd(null); setChiLoi(false); setXemHuy(false); setChiCeo(false); }}>Xoá lọc</button>}
                     <div className="qv-loc-goi">Bấm mốc trên luồng quy trình để lọc LK theo bước.</div>
                   </aside>
-                  <div className="qv-lk qv-gon"><DataTable timKiem={false} minWidth={860} cols={lkColsGon} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
+                  <div className="qv-lk qv-gon"><DataTable timKiem={false} coSo={1500} cols={lkColsGon} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
                 </div>
               </>
             )}
