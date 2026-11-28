@@ -4,6 +4,19 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.153: Popup PO — cột Ghi chú rộng hơn + nhật ký lỗi hiện nội dung giải trình
+
+- Yêu cầu (nguyên văn): "phần ghi chú này sao lại ngắn 1 đoạn không thấy thông tin gì cả mặc định cho khoảng cách lớn ra";
+  "nội dung giải trình ghi đã giải trình, nhưng giải trình thế nào thì xem ở đâu"
+- Đã làm: bảng Linh kiện popup PO — cột Ghi chú 6% → 12% (bớt CEO 6 → 4%, Giai đoạn 11 → 10%, Mã LK 17 → 16%, Đối tác 8 → 7%).
+  Nhật ký xử lý (khu phải popup PO) — mục "Lỗi: …" đã giải trình thêm dòng "Nội dung: “…” — người giải trình, giờ" (lấy theo `tl_loi.giai_trinh_id`,
+  gộp nội dung trùng, tối đa 3 nội dung + "+n nội dung khác"); mô tả nhật ký cho xuống dòng (`white-space: pre-line`).
+- 5W1H: Who — mọi người xem popup PO. When — xem chi tiết PO, đọc lịch sử lỗi. Where — popup PO: bảng tab Linh kiện (cột Ghi chú) và khu Nhật ký xử lý
+  (chip Lỗi & giải trình / Tất cả). What — ghi chú đọc được nhiều chữ hơn (rê chuột xem đủ); lỗi đã giải trình hiện luôn nội dung, ai, khi nào.
+  Why — cột cũ chỉ còn "có…", nhật ký chỉ ghi "Đã giải trình" nên không biết giải trình gì. How — mở PO → đọc ở nhật ký bên phải; lỗi không lưu nội dung
+  (dữ liệu cũ) ghi "không có nội dung lưu — xem tab Lỗi & giải trình".
+- Kiểm thử: typecheck; local 1600×900 EO 9: cột Ghi chú 36px → 85px; nhật ký hiện "Nội dung: “NCC báo trễ cả đơn” — …", nhóm 3 lần hiện đủ 3 nội dung.
+
 ## 28/11/2026 — v0.152: Admin mở lại EO/PO đã hủy + mở lại 3TDO-000858, 3TDO-000714
 
 - Yêu cầu (nguyên văn): "thêm quyền mở lại PO bị hủy cho admin: 3TDO-000858 3TDO-000714 mở lại PO bị hủy này"

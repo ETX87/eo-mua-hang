@@ -707,3 +707,10 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   Đích = `approval_code ? 'ISSUED' : 'DRAFT'` (approval_code chỉ gán lúc ban hành ở `approvals.ts`). Xoá `cancelled_by/at/cancel_reason`; event `REOPEN_EO`
   (before = thông tin hủy cũ). Có mã PO → `recomputeMatch` + bump `eo`,`amis`. Lần trình cũ (eo_submission CANCELLED) không khôi phục — EO về DRAFT thì gửi trình mới.
 - FE: `quyenEo.canReopen`, `ReopenModal` (`pages/eo/eoActions.tsx`), nút ở `EoQuickView`; `eventLabels` REOPEN_EO.
+
+## v0.153 — Ghi chú rộng + nội dung giải trình trong nhật ký popup PO (28/11/2026)
+
+- `EoQuickView` `W_LK`: gd 10%, ma 16%, ceo 4%, ncc 7%, gc 12%.
+- `tl` (nhật ký): mục lỗi DA_GIAI_TRINH ghép `b.giai_trinh` theo `tl_loi.giai_trinh_id` → "Nội dung: “…” — ten(created_by) | hệ thống, ngayGio" (unique theo noi_dung, tối đa 3).
+  `theme.css` `.qv-tl .d` thêm `white-space: pre-line` (text nhật ký dùng "
+" để xuống dòng).

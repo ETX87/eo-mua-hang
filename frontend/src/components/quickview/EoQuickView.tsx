@@ -108,11 +108,19 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
     }
     for (const c of d.comments) out.push({ at: c.created_at, nhom: "binhluan", h: "Bình luận", ai: c.user_email, text: c.noi_dung });
     // loi: 1 muc / (quy tac, trang thai) - "x n lan" (R3 ghi moi thu 2 / thu 4, R4 moi moc qua han), moc = lan gan nhat
+    // v0.153: loi da giai trinh -> kem NOI DUNG giai trinh (tl_loi.giai_trinh_id -> tl_giai_trinh), khong chi chu "Da giai trinh"
+    const gtBy = new Map(((b?.giai_trinh ?? []) as any[]).map((g) => [g.id, g]));
     for (const { x: l, ds } of gopTrung((b?.loi ?? []) as any[], (l) => `${l.quy_tac}|${l.trang_thai}`)) {
       const ids = ds.map((y) => y.eo_item_id);
       const moi = ds.map((y) => String(y.han || y.created_at)).sort().pop()!;
+      const nd = new Map<string, any>();
+      for (const y of ds) { const g = gtBy.get(y.giai_trinh_id); if (g?.noi_dung && !nd.has(g.noi_dung)) nd.set(g.noi_dung, g); }
+      const dsNd = [...nd.values()];
+      const ndTxt = dsNd.slice(0, 3).map((g) => `“${g.noi_dung}”${g.created_by ? ` — ${ten(g.created_by)}` : " — hệ thống"}${g.created_at ? `, ${ngayGio(g.created_at)}` : ""}`).join("\n")
+        + (dsNd.length > 3 ? `\n+${dsNd.length - 3} nội dung khác (xem tab Lỗi & giải trình)` : "");
       out.push({ at: moi, nhom: "loi", h: `Lỗi: ${QUY_TAC[l.quy_tac] ?? l.quy_tac}${ds.length > 1 ? ` × ${ds.length} lần` : ""} · ${new Set(ids).size > 1 ? `${new Set(ids).size} dòng` : lk(ids)}`, ai: l.ai_email,
-        text: `${l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}${new Set(ids).size > 1 ? ` — ${lk(ids)}` : ""}${ds.length > 1 ? ` · từ ${ngay(ds.map((y) => String(y.han || y.created_at)).sort()[0])} đến ${ngay(moi)}` : ""}` });
+        text: `${l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}${new Set(ids).size > 1 ? ` — ${lk(ids)}` : ""}${ds.length > 1 ? ` · từ ${ngay(ds.map((y) => String(y.han || y.created_at)).sort()[0])} đến ${ngay(moi)}` : ""}`
+          + (l.trang_thai === "DA_GIAI_TRINH" ? (ndTxt ? `\nNội dung: ${ndTxt}` : "\nNội dung: (không có nội dung lưu — xem tab Lỗi & giải trình)") : "") });
     }
     for (const p of b?.push ?? []) out.push({ at: p.created_at, nhom: "mail", h: `Tạo push ${p.ma_push} · ${p.doi_tac}`, ai: p.created_by, text: `${p.so_dong} dòng · ${p.trang_thai === "DA_TAO" ? "chưa gửi" : p.trang_thai === "DA_GUI" ? "đã gửi mail" : "đối tác đã phản hồi"}` });
     for (const { x: m, ds } of gopTrung((b?.mail ?? []) as any[], khoaMail)) {
@@ -271,7 +279,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
 
   // v0.151 (chu he thong "text qua dai thi hien ... de hien du cot, han che keo trai keo phai"): bang LK co dinh theo % (.qv-gon), cot thao tac theo px
   const coNutDuyet = P.canApprovePostIssue && lkRows.some((x: any) => x.r.post_issue_status === "PENDING" && !dongKetThuc(x.r));
-  const W_LK: Record<string, string> = { act: coNutDuyet ? "150px" : coChon ? "62px" : "48px", gd: "11%", ma: "17%", vp: "54px", ceo: "6%", tl: "50px", sl: "86px", tao: "66px", nm: "66px", dk: "78px", ve: "66px", kho: "6%", ncc: "8%", gc: "6%" };
+  const W_LK: Record<string, string> = { act: coNutDuyet ? "150px" : coChon ? "62px" : "48px", gd: "10%", ma: "16%", vp: "54px", ceo: "4%", tl: "50px", sl: "86px", tao: "66px", nm: "66px", dk: "78px", ve: "66px", kho: "6%", ncc: "7%", gc: "12%" };
   const lkColsGon = lkCols.map((c) => ({ ...c, width: W_LK[c.key] ?? c.width }));
 
   const guiBinhLuan = async () => {
