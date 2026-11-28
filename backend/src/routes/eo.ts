@@ -677,6 +677,39 @@ app.post("/:id/cancel", async (c) => {
   return c.json({ ok: true });
 });
 
+// ------------------------------------------------------------------ POST /:id/reopen (mo lai EO da huy - chi Admin)
+// 2026-11-28: Admin mo lai EO/PO bi huy nham. Da ban hanh (co approval_code) -> ISSUED; huy truoc ban hanh -> DRAFT
+// (lan trinh cu da dong, nguoi tao gui trinh lai). Bat buoc ly do. Lan huy cu van giu trong event_log (CANCEL_EO).
+// "Giu cho" bang UPDATE co dieu kien trang_thai = 'CANCELLED' (chong bam dup).
+app.post("/:id/reopen", async (c) => {
+  const id = Number(c.req.param("id"));
+  const u = c.get("user");
+  if (u.vai_tro !== "Admin") return c.json({ error: "ADMIN_ONLY" }, 403);
+  const eo = await c.env.DB.prepare("SELECT * FROM eo WHERE id = ?").bind(id).first<any>();
+  if (!eo) return c.json({ error: "NOT_FOUND" }, 404);
+  if (eo.trang_thai !== "CANCELLED") return c.json({ error: "BAD_STATE", trang_thai: eo.trang_thai }, 409);
+  const b = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const reason = String(b.reason ?? "").trim();
+  if (!reason) return c.json({ error: "REASON_REQUIRED" }, 400);
+  const now = nowVN();
+  const target = eo.approval_code ? "ISSUED" : "DRAFT";
+  const claim = await c.env.DB.prepare(
+    `UPDATE eo SET trang_thai = ?, cancelled_by = NULL, cancelled_at = NULL, cancel_reason = NULL, updated_by = ?, updated_at = ?
+     WHERE id = ? AND trang_thai = 'CANCELLED'`,
+  ).bind(target, u.email, now, id).run();
+  if (!claim.meta.changes) return c.json({ error: "BAD_STATE" }, 409);
+  await c.env.DB.batch([
+    eventStmt(c.env.DB, {
+      entity_type: "eo", entity_id: id, eo_id: id, event_type: "REOPEN_EO", user_email: u.email, at: now,
+      before: { trang_thai: "CANCELLED", cancelled_by: eo.cancelled_by, cancelled_at: eo.cancelled_at, cancel_reason: eo.cancel_reason },
+      after: { trang_thai: target }, metadata: { reason },
+    }),
+  ]);
+  if (eo.approval_code) await recomputeMatch(c.env.DB, [eo.approval_code]);
+  await bumpVersions(c.env.DB, eo.approval_code ? ["eo", "amis"] : ["eo"]);
+  return c.json({ ok: true, trang_thai: target });
+});
+
 // ------------------------------------------------------------------ POST /:id/recall (rut ve nhap de sua)
 // Nguoi tao (canManageEo) sua EO khi CHUA duyet xong: dong lan trinh hien tai (SUPERSEDED) TRUOC moi ghi
 // khac bang UPDATE co dieu kien - phieu duyet claim deu kiem tra submission con PENDING (routes/approvals.ts)

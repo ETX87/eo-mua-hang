@@ -34,6 +34,8 @@ export function quyenEo(eo: any, me: any) {
     canEditDraft: eo.trang_thai === "DRAFT" && canManage,
     canRecall: ["IN_REVIEW", "WAITING_FINAL_APPROVAL"].includes(eo.trang_thai) && canManage,
     canCancel: (preIssue && canManage) || (issued && role === "Admin"),
+    // mo lai EO da huy - chi Admin, khop backend POST /eo/:id/reopen
+    canReopen: eo.trang_thai === "CANCELLED" && role === "Admin",
     canEditQty: canManage && (issued || eo.trang_thai === "DRAFT"),
     canApprovePostIssue: issued && (m.email === eo.final_approver_email || role === "Admin"),
     canEditPlan: role !== "View" && (eo.created_by === m.email || ["Admin", "KH cung ung", "Kho", "Theo doi tien do"].includes(role) ||
@@ -612,6 +614,40 @@ export function CancelModal({ eo, onClose, onDone }: any) {
       <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Hành động này sẽ chuyển EO sang trạng thái "Đã hủy" và không thể hoàn tác.</div>
       <label className="field-label">Lý do hủy <span className="req">*</span></label>
       <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do hủy (bắt buộc)..." />
+      {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Modal>
+  );
+}
+
+export function ReopenModal({ eo, onClose, onDone }: any) {
+  const [reason, setReason] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const veBh = !!eo.approval_code;
+  const run = async () => {
+    setErr("");
+    if (!reason.trim()) return setErr("Cần nhập lý do mở lại (ghi vào lịch sử).");
+    setBusy(true);
+    try {
+      await api.post(`/eo/${eo.id}/reopen`, { reason: reason.trim() });
+      onDone();
+    } catch (e: any) {
+      setErr(e?.body?.error === "ADMIN_ONLY" ? "Chỉ Admin được mở lại EO đã hủy." :
+        e?.body?.error === "BAD_STATE" ? "EO không còn ở trạng thái Đã hủy (có thể đã được mở lại)." :
+        e?.body?.error === "REASON_REQUIRED" ? "Cần nhập lý do mở lại." : "Lỗi mở lại EO.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Mở lại EO đã hủy — ${eo.approval_code || eo.eo_code}`} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Đóng</button><button className="btn primary" disabled={busy} onClick={run}>Xác nhận mở lại</button></>}>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+        {veBh ? <>EO đã ban hành nên sẽ trở lại <b>Đã ban hành</b> — theo dõi kế hoạch hàng về và khớp AMIS như trước khi hủy.</>
+          : <>EO bị hủy trước khi ban hành nên sẽ trở về <b>Nháp</b> — người tạo cần gửi trình lại.</>}
+        {eo.cancel_reason ? <> Lý do hủy cũ: <i>{eo.cancel_reason}</i> (vẫn giữ trong lịch sử).</> : null}
+      </div>
+      <label className="field-label">Lý do mở lại <span className="req">*</span></label>
+      <textarea className="textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhập lý do mở lại (bắt buộc)..." />
       {err && <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
     </Modal>
   );

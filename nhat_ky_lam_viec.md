@@ -4,6 +4,20 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.152: Admin mở lại EO/PO đã hủy + mở lại 3TDO-000858, 3TDO-000714
+
+- Yêu cầu (nguyên văn): "thêm quyền mở lại PO bị hủy cho admin: 3TDO-000858 3TDO-000714 mở lại PO bị hủy này"
+- Đã làm: API `POST /api/eo/:id/reopen` (chỉ Admin, bắt buộc lý do, giữ chỗ bằng UPDATE có điều kiện `trang_thai = 'CANCELLED'`).
+  EO có mã PO (đã ban hành) → về **Đã ban hành**, chạy lại khớp AMIS; hủy trước ban hành → về **Nháp** (người tạo gửi trình lại).
+  Xoá `cancelled_*` trên EO, ghi `event_log` `REOPEN_EO` (before = thông tin hủy cũ, metadata = lý do mở lại); dòng `CANCEL_EO` cũ giữ nguyên.
+  FE: nút "Mở lại EO" ở popup PO (chỉ Admin, chỉ khi Đã hủy) + popup nhập lý do; nhãn lịch sử "Mở lại EO đã hủy".
+  Dữ liệu: mở lại 3TDO-000858 (EO id 1079) và 3TDO-000714 (EO id 713) — cả 2 bị hủy sau ban hành ngày 27/11 → về Đã ban hành.
+- 5W1H: Who — Admin thao tác; mọi người theo dõi PO thấy PO hoạt động lại. When — PO bị hủy nhầm / hủy rồi cần chạy tiếp. Where — popup chi tiết PO,
+  nút "Mở lại EO" trên thanh thao tác. What — trả PO về trạng thái trước khi hủy (Đã ban hành hoặc Nháp), dòng LK / kế hoạch giữ nguyên như lúc hủy.
+  Why — trước đây hủy là một chiều, hủy nhầm thì không cứu được. How — mở PO đã hủy → "Mở lại EO" → nhập lý do → Xác nhận; báo lỗi khi không phải Admin,
+  thiếu lý do, hoặc PO đã được người khác mở lại.
+- Kiểm thử: typecheck; gọi API thật mở lại 2 PO, tra D1 sau khi mở.
+
 ## 28/11/2026 — v0.151: Áp bảng gọn (cắt "…", 10 dòng/trang, phân trang ghim đáy) cho popup PO và popup mã LK
 
 - Yêu cầu (nguyên văn): "Áp luôn" (áp kiểu bảng gọn của v0.150 cho popup PO và popup mã LK).

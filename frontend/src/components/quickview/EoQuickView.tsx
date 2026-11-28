@@ -16,7 +16,7 @@ import { GdBadge } from "../../lib/giaiDoan";
 import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
 import { TienTrinhPo } from "../TienTrinhPo";
 import {
-  quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
+  quyenEo, TabKeHoach, TabTaiLieu, QtyModal, CancelModal, ReopenModal, RecallModal, ReplacePartModal, AddItemModal, BulkPlanModal,
   actionsFor, ApprovalActionModal, NhanSauBH, TuChoiDongModal, HuyDongModal, KetThucSomModal, SuaThongTinDongModal, KetThucSomPoModal, xuatDongEo,
 } from "../../pages/eo/eoActions";
 import { gopTrung, gopLienTiep, khoaMail, lietKe } from "../../lib/gopTrung";
@@ -47,7 +47,7 @@ const NHOM_TL: { k: Nhom; l: string }[] = [
 ];
 const MAU: Record<Nhom, string> = { all: "#86868b", duyet: "#ff9500", capnhat: "#0a84ff", kehoach: "#10B981", loi: "#ff3b30", mail: "#af52de", binhluan: "#6e6e73" };
 const nhomCua = (t: string): Nhom =>
-  /SUBMIT|APPROVE|REJECT|REVIEW|ISSUE|RECALL|REQUEST_UPDATE|CANCEL_EO/.test(t) ? "duyet"
+  /SUBMIT|APPROVE|REJECT|REVIEW|ISSUE|RECALL|REQUEST_UPDATE|CANCEL_EO|REOPEN_EO/.test(t) ? "duyet"
     : /PLAN/.test(t) ? "kehoach" : /GIAI_TRINH/.test(t) ? "loi" : "capnhat";
 
 // v0.131: bo tab "Quy trình duyệt" + "Mail & push" (trung nhat ky: nhom Duyệt / Mail & push) - phieu dang cho duyet hien o khu phu
@@ -302,6 +302,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
           {P.canEditDraft && <button className="btn sm" onClick={() => { onCloseAll(); nav(`/eo/${id}/edit`); }}><I.edit width={13} height={13} /> Sửa / gửi trình</button>}
           {P.canRecall && <button className="btn sm" onClick={() => setMd({ k: "recall" })}><I.edit width={13} height={13} /> Rút về &amp; sửa</button>}
           {P.canCancel && <button className="btn sm ghost danger" onClick={() => setMd({ k: "cancel" })}><I.x width={13} height={13} /> Hủy EO</button>}
+          {P.canReopen && <button className="btn sm" title="Admin: mở lại EO bị hủy (đã ban hành → Đã ban hành, chưa ban hành → Nháp)" onClick={() => setMd({ k: "reopen" })}><I.check width={13} height={13} /> Mở lại EO</button>}
           {P.canKetThucSomPo && !poDone && <button className="btn sm" title="Mọi dòng đang chờ hàng: SL đặt = SL đã về thực tế (xem trước + cảnh báo)" onClick={() => setMd({ k: "kts-po" })}><I.check width={13} height={13} /> Kết thúc sớm PO</button>}
           {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} vi phạm)</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
@@ -468,6 +469,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
       {md?.k === "duyet" && <ApprovalActionModal act={md.x} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "recall" && <RecallModal eo={eo} onClose={() => setMd(null)} onDone={() => { xong(); onCloseAll(); nav(`/eo/${id}/edit`); }} />}
       {md?.k === "cancel" && <CancelModal eo={eo} onClose={() => setMd(null)} onDone={xong} />}
+      {md?.k === "reopen" && <ReopenModal eo={eo} onClose={() => setMd(null)} onDone={xong} />}
       {md?.k === "qty" && <QtyModal item={md.x} issued={P.issued} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "thay" && <ReplacePartModal item={md.x} onClose={() => setMd(null)} onSaved={xong} />}
       {md?.k === "add" && <AddItemModal eoId={String(id)} phongBan={eo.phong_ban} nguoiDuyet={eo.final_approver_email} meEmail={me.data?.email} onClose={() => setMd(null)} onSaved={xong} />}

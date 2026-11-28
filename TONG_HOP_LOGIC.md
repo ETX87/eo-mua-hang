@@ -16,7 +16,7 @@
 
 | Vai trò / cờ | Việc chính |
 |---|---|
-| Admin | Toàn quyền, hủy EO đã ban hành, cấu hình |
+| Admin | Toàn quyền, hủy EO đã ban hành, mở lại EO đã hủy (có mã PO → Đã ban hành, chưa ban hành → Nháp; bắt buộc lý do, log `REOPEN_EO`), cấu hình |
 | KH cung ứng (`la_nv_dat_hang`) | Lập EO, sửa / thu hồi EO của mình, kế hoạch hàng về, giải trình |
 | Kế toán (`la_ke_toan`) | Nhập / sửa dữ liệu AMIS (hủy dòng sai, đồng bộ lại kỳ) |
 | Kho (`la_nv_kho`) | Theo dõi hàng về kho phụ trách |

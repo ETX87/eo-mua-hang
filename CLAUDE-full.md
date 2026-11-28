@@ -700,3 +700,10 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   Thêm `minWidth` DataTable cho bảng nhiều cột (LK PO 860, EO của mã 1000) để màn hẹp kéo ngang thay vì bóp nát.
 - `lib/format` `ngayNgan` (dd/mm/yy). `TabKeHoach` prop `gon` (W_KH_GON, 10 dòng), `BangLoiTheoBuoc` prop `gon` (W_GON, 10 dòng, trả fragment để `.qv-bang` thấy `.tbl-wrap`).
 - `PartQuickView`: 4 bảng HTML → DataTable (`colsKho`, `colsEo`, `colsAmis`, `colsLoi`), vẫn lọc ô tìm bằng `khopTim(tim)` trước khi đưa vào bảng.
+
+## v0.152 — Admin mở lại EO đã hủy (28/11/2026)
+
+- `routes/eo.ts` `POST /:id/reopen`: Admin only (`ADMIN_ONLY`), `REASON_REQUIRED`, claim `UPDATE ... WHERE trang_thai = 'CANCELLED'` (0 changes → 409 `BAD_STATE`).
+  Đích = `approval_code ? 'ISSUED' : 'DRAFT'` (approval_code chỉ gán lúc ban hành ở `approvals.ts`). Xoá `cancelled_by/at/cancel_reason`; event `REOPEN_EO`
+  (before = thông tin hủy cũ). Có mã PO → `recomputeMatch` + bump `eo`,`amis`. Lần trình cũ (eo_submission CANCELLED) không khôi phục — EO về DRAFT thì gửi trình mới.
+- FE: `quyenEo.canReopen`, `ReopenModal` (`pages/eo/eoActions.tsx`), nút ở `EoQuickView`; `eventLabels` REOPEN_EO.
