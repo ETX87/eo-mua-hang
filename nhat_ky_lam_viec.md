@@ -4,6 +4,21 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.149: Popup đơn hàng (1 LK trong PO) gọn lại — bỏ tab, kế hoạch hàng về cố định, bảng vi phạm
+
+- Yêu cầu (nguyên văn): "giao diện UI chi tiết của LK (trong PO nhất định) đang hiện các thông tin không cần thiết: 1. bỏ tab chi tiết giai đoạn (nó có trên luồng thanh quy trình rồi)
+  2. Tiến độ và lịch sử thu gọn lại như UI chi tiết PO 3. bỏ tab kế hoạch hàng về đẩy nó thành thông tin cố định phải thấy. 4. Danh sách vi phạm thành dạng table, cột: giai đoạn lỗi,
+  loại lỗi, số lần lỗi, người vi phạm, ngày ghi nhận, ngày giải trình, trạng thái giải trình, chốt vi phạm. thông tin giải trình. (gộp các lỗi giống nhau lại trên cùng 1 dòng). không lỗi thì không hiện."
+- Đã làm (`DongQuickView.tsx`, component mới `BangViPhamDong.tsx`): bỏ thanh tab + ô tìm chung; khu chính = luồng 8 giai đoạn → khối cố định "Kế hoạch hàng về · Phiếu nhập AMIS"
+  (2 bảng cạnh nhau) → "Danh sách vi phạm" (DataTable lọc/sắp xếp kiểu Excel). Gộp theo giai đoạn + mã lỗi + người chịu; số lần = số kỳ lỗi; trạng thái GT hiện số đếm từng loại;
+  chốt vi phạm = nặng nhất (Vi phạm > Chưa chốt · còn hạn GT > Không vi phạm). Lỗi bỏ qua (mốc trước 20/11) không hiện, chỉ 1 dòng chữ nhỏ; không lỗi → không hiện bảng.
+  Khu phụ đổi như popup PO: tiêu đề "Nhật ký xử lý", chip Tổng quát (9 ô số liệu) / Nhật ký (mặc định).
+- 5W1H: Who — NV đặt hàng, KH cung ứng, quản lý mở chi tiết 1 LK. When — khi bấm mã LK trong PO / danh sách đơn. Where — popup đơn hàng (web). What — 1 màn nhìn hết: tiến độ,
+  kế hoạch hàng về, vi phạm gộp; giới hạn: bảng vi phạm không gồm cảnh báo CEO / trễ hạn chỉ đo (CEO vẫn ở huy hiệu tiêu đề + "Xem chi tiết" luồng). Why — tab lặp thông tin luồng,
+  kế hoạch hàng về bị giấu sau tab, lỗi lặp nhiều dòng khó đọc. How — mở LK → nhìn luồng + kế hoạch; vi phạm còn hạn bấm "Giải trình" trên bảng hoặc tiêu đề; lọc cột trên tiêu đề bảng.
+- Kiểm thử: typecheck BE + FE (thêm --noUnusedLocals cho 2 file); local: LK CAM-A52-TRUOC — 3 loại · 4 lần, G6 gộp 2 lần (Cần GT 1 · Đã GT 1), chip Tổng quát / Nhật ký, thu gọn khu phụ
+  thấy đủ 9 cột, không lỗi console.
+
 ## 28/11/2026 — v0.148: Bỏ hẳn lỗi trước 20/11 (tính đã giải trình + log) + bỏ ô "Đang lọc" ở popup PO
 
 - Yêu cầu (nguyên văn): "dòng "Đang lọc: LK có lỗi..." cái đó bỏ đi. chúng ta chốt bỏ lỗi từ trước 20/11 thì bỏ hết lỗi, thêm log auto bỏ lỗi vào rồi tính đã giải trình".

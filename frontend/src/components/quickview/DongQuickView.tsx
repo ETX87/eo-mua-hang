@@ -4,28 +4,22 @@ import { api } from "../../api/client";
 import { Spinner, StatusBadge } from "../ui";
 import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
 import { I } from "../../lib/icons";
-import { gioTxt } from "../../lib/giaiDoan";
 import { MocTon } from "../../lib/tonDong";
 import { NhanNgay } from "../../lib/ngay";
-import { QvHeader, Kpi, EoLink, useQuickView, useAnPhu, KhuTieuDe, CotPhu } from "./QuickView";
-import { QuyTrinh, tinhNut, LOI_GD, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
+import { QvHeader, Kpi, EoLink, useQuickView, useAnPhu, CotPhu } from "./QuickView";
+import { QuyTrinh, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong, LienHeDoiTacModal } from "../../pages/theodoi/shared";
-import { BangLoiTheoBuoc } from "../BangLoiTheoBuoc";
+import { BangViPhamDong } from "../BangViPhamDong";
 import { GdBadge } from "../../lib/giaiDoan";
 import { HuyDongModal, KetThucSomModal, SuaThongTinDongModal, QtyModal, ReplacePartModal, TuChoiDongModal, quyenEo } from "../../pages/eo/eoActions";
 import { Kho } from "../../lib/kho";
 import { MenuXo } from "../MenuXo";
-import { khopTim } from "../../lib/tonDong";
-import { O_TIM } from "./QuickView";
-import { NHAN_GT, demGt, ketLuanGt, trangThaiGt, viSaoLoi } from "../../lib/giaiTrinh";
 
 /**
  * Popup "don hang" = 1 dong linh kien tren EO: duong tien trinh 8 giai doan + bang chi tiet tung giai doan (bat dau, ket thuc,
  * thoi gian, han, loi) + ke hoach & hang ve + lich su theo doi. Mo tu Quan ly don hang (bam dong) / popup EO (nut tien trinh).
  * Du lieu: GET /theo-doi/dong/:id (dong, ke hoach, AMIS, loi, mail...) + GET /so-don-hang?eo_id= (giai doan, chi so theo doi).
  */
-// v0.131: bo tab "Trao đổi NCC" (trung "Lịch sử theo dõi" o khu phu: mail gui / nhan, push, goi / Zalo, ngay DK)
-type Tab = "gd" | "kh" | "loi";
 
 export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id: number; onClose: () => void; onCloseAll: () => void; coTruoc: boolean }) {
   const qc = useQueryClient();
@@ -35,8 +29,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
     queryKey: ["so-don-hang", "eo", eoId], enabled: !!eoId,
     queryFn: () => api.get<{ giai_doan: GdDef[]; sla: Record<string, number>; rows: any[] }>(`/so-don-hang?eo_id=${eoId}`),
   });
-  const [tab, setTab] = useState<Tab>("gd");
-  const [tim, setTim] = useState(""); // o tim CHUNG cho moi tab (2026-11-23)
+  const [xemTq, setXemTq] = useState(false); // khu phu: false = Nhat ky, true = Tong quat (o so lieu)
   const qv = useQuickView();
   const [md, setMd] = useState<"ndk" | "gt" | "huy" | "kts" | "sua" | "lh" | "qty" | "thay" | "tuchoi" | null>(null);
   const [loiDuyet, setLoiDuyet] = useState("");
@@ -50,7 +43,6 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const defs = sdh.data?.giai_doan ?? [];
   const sla = sdh.data?.sla ?? {};
   const loi: any[] = ls.data.loi ?? [];
-  const nut = tinhNut(defs, r.item_id ? [r] : [], loi);
   const issued = r.trang_thai_eo === "ISSUED";
   const dong = { ...r, item_id: id, eo_id: it.eo_id, eo_code: it.eo_code, ma_phe_duyet: it.approval_code, part_code: it.part_code, part_name: it.part_name,
     kho: it.warehouse, doi_tac: it.supplier, so_luong_dat: r.so_luong_dat ?? it.current_qty } as Dong;
@@ -58,7 +50,6 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const xong = () => { setMd(null); qc.invalidateQueries(); };
   const tt = r.tinh_trang ? TINH_TRANG[r.tinh_trang as Dong["tinh_trang"]] : null;
   const loiCho = loi.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
-  const gtBy = new Map<number, any>((ls.data.giai_trinh ?? []).map((g: any) => [g.id, g]));
   // huy / ket thuc som don dat (dong): backend kiem quyen (nguoi quan ly EO / nguoi duyet cuoi), loi tra ve hien trong modal
   const daVe = (ls.data.phieu_nhap ?? []).reduce((s: number, p: any) => s + (p.qty_in || 0), 0);
   const moDong = issued && it.line_status === "ACTIVE" && r.phan_loai_thoi_diem_dat !== "Tạo sau ban hành (chờ duyệt)";
@@ -131,7 +122,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
       <div className={`qv-body${anPhu ? " an-phu" : ""}`}>
         {/* KHU CHINH (v0.131): luong 8 giai doan + chi tiet giai doan / ke hoach & hang ve / loi & giai trinh */}
         <div className="qv-col">
-          {r.item_id ? <div className="qv-quytrinh"><QuyTrinh defs={defs} sla={sla} rows={[r]} loi={loi} onChonNut={() => setTab("gd")} phieuNhap={ls.data.phieu_nhap ?? []} slDat={r.so_luong_dat ?? it.current_qty}
+          {r.item_id ? <div className="qv-quytrinh"><QuyTrinh defs={defs} sla={sla} rows={[r]} loi={loi} phieuNhap={ls.data.phieu_nhap ?? []} slDat={r.so_luong_dat ?? it.current_qty}
           phuTrach={{ G4: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G5: `NV đặt hàng — ${ten(r.nguoi_dat ?? it.created_by)}`, G6: `NCC — ${it.supplier || "—"}`, G8: `NCC — ${it.supplier || "—"} + NV theo dõi` }}
           chiTiet={<>
             {(r.lui_ds ?? []).length > 0 && (
@@ -149,76 +140,39 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
             {(r.ceo_ly_do ?? []).length > 0 && <GiaiThichCeo ct={r.ceo_chi_tiet} lyDo={r.ceo_ly_do} />}
           </>} /></div>
           : <div className="muted qv-quytrinh" style={{ fontSize: 12 }}>Chưa có dữ liệu giai đoạn.</div>}
-          <div className="qv-tabs">
-            <button className={`qv-tab ${tab === "gd" ? "on" : ""}`} onClick={() => setTab("gd")}>Chi tiết giai đoạn</button>
-            <button className={`qv-tab ${tab === "kh" ? "on" : ""}`} onClick={() => setTab("kh")}>Kế hoạch & hàng về ({(ls.data.ke_hoach ?? []).length} · {(ls.data.phieu_nhap ?? []).length})</button>
-            <button className={`qv-tab ${tab === "loi" ? "on" : ""}`} onClick={() => setTab("loi")} style={{ color: loi.some((l) => l.trang_thai === "CHO_GIAI_TRINH") ? "var(--danger-ink)" : undefined }}>
-              Lỗi & giải trình ({new Set(loi.map((l) => l.vp_khoa ?? l.id)).size})</button>
-            <O_TIM tim={tim} setTim={setTim} />
-          </div>
+          {/* v0.149 (chu he thong 2026-11-28): bo tab "Chi tiết giai đoạn" (trung luong quy trinh) + tab "Kế hoạch & hàng về" (thanh khoi CO DINH)
+              + bang "Danh sách vi phạm" (gop loi giong nhau, khong loi thi khong hien) thay tab "Lỗi & giải trình". */}
           <div className="qv-scroll">
-            {tab === "gd" && (
+            <div className="qv-sec">Kế hoạch hàng về ({(ls.data.ke_hoach ?? []).length}) · Phiếu nhập AMIS ({(ls.data.phieu_nhap ?? []).length})</div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(0, 2fr)", gap: 12, padding: "0 8px" }}>
               <table className="tbl tbl-dense">
-                <thead><tr><th>Giai đoạn</th><th>Phụ trách</th><th>Bắt đầu</th><th>Kết thúc</th><th style={{ textAlign: "right" }}>Thời gian (giờ LV)</th><th>Hạn</th><th>Kết quả</th><th title="Chạm quy tắc → cần giải trình trong hạn; hết hạn không giải trình → vi phạm">Giải trình / vi phạm</th></tr></thead>
+                <thead><tr><th>Loại</th><th><NhanNgay k="NM" ngan /></th><th><NhanNgay k="DK" ngan /></th><th style={{ textAlign: "right" }}>SL</th><th>Ghi chú</th><th>Cập nhật</th></tr></thead>
                 <tbody>
-                  {nut.filter((n) => !tim || khopTim(tim)(`${n.g.k} ${n.g.l} ${n.g.vai_tro} ${n.loi.map((l: any) => `${l.quy_tac} ${l.ma_loi ?? ""}`).join(" ")}`)).map((n) => {
-                    // v0.109: tach "can giai trinh" (con han) / "vi pham" (het han khong GT) / da xu ly - lib/giaiTrinh
-                    const dmGt = demGt(n.loi, gtBy);
-                    const xuLy = dmGt.DA_GT + dmGt.KHAC_PHUC + dmGt.TAY;
-                    const tip = n.loi.map((l: any) => { const k = trangThaiGt(l, gtBy); return `• ${NHAN_GT[k.tt].l}: ${viSaoLoi(l)}\n   → ${ketLuanGt(k)}`; }).join("\n");
-                    const m = r.gd_moc?.[n.g.k];
-                    const g = r.gd_gio_tung?.[n.g.k];
-                    const tre = r.gd_tre_tung?.[n.g.k];
-                    const kq = !m?.bd ? <span className="muted">Chưa tới</span>
-                      : !m.kt ? (n.g.k === "G7" ? <span className="muted">—</span> : <span className={`badge ${tre ? "reject" : "review"}`}>{n.g.k === "G4" ? "Chưa ghi nhận mail" : "Đang thực hiện"}{tre ? " · trễ" : ""}</span>)
-                      : <span className={`badge ${tre ? "reject" : "issued"}`}>{tre ? "Xong · trễ hạn" : "Xong · đúng hạn"}</span>;
-                    return (
-                      <tr key={n.g.k} style={{ background: r.gd_hien_tai === n.g.k ? "#fff6e8" : undefined }}>
-                        <td style={{ whiteSpace: "nowrap" }}><b>{n.g.k}</b> {n.g.l}{n.g.k === "G4" && <span className="muted"> (song song)</span>}{n.g.k === "G7" && <span className="muted"> (chỉ đo)</span>}</td>
-                        <td>{n.g.vai_tro}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>{m?.bd ? ngayGio(m.bd) : "—"}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>{m?.kt ? ngayGio(m.kt) : m?.bd && n.g.k !== "G7" ? <i className="muted">đang chạy</i> : "—"}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700, color: tre ? "var(--danger-ink)" : undefined }}>{g != null ? gioTxt(g) : "—"}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>{m?.han ? ngayGio(m.han) : sla[n.g.k] != null ? `${gioTxt(sla[n.g.k])} làm việc` : "—"}</td>
-                        <td>{kq}{n.traVe > 0 && <div><span className="badge final" style={{ marginTop: 3 }}>EO bị trả về {n.traVe} lần</span></div>}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>{n.loi.length ? <span title={tip} onClick={() => setTab("loi")} style={{ cursor: "pointer", display: "inline-flex", gap: 4 }}>
-                          {dmGt.VI_PHAM > 0 && <span className={`badge ${NHAN_GT.VI_PHAM.cls}`}>{dmGt.VI_PHAM} vi phạm</span>}
-                          {dmGt.CAN_GT > 0 && <span className={`badge ${NHAN_GT.CAN_GT.cls}`}>{dmGt.CAN_GT} cần GT</span>}
-                          {xuLy > 0 && <span className="badge nhap">{xuLy} đã xử lý</span>}</span> : <span className="muted">—</span>}</td>
-                      </tr>
-                    );
-                  })}
-                  {loi.some((l) => !LOI_GD[l.quy_tac]) && <tr><td colSpan={8} className="muted" style={{ fontSize: 12 }}>+ {loi.filter((l) => !LOI_GD[l.quy_tac]).length} lỗi ghi khi giải trình (không gắn giai đoạn).</td></tr>}
+                  {(ls.data.ke_hoach ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa có kế hoạch.</td></tr>}
+                  {(ls.data.ke_hoach ?? []).map((p: any) => <tr key={p.id}><td>{p.loai === "TUAN" ? `Tuần ${p.tuan ?? ""}` : "Ngày"}</td><td>{ngay(p.factory_committed_date) || "—"}</td><td>{ngay(p.planned_date)}</td>
+                    <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td><td>{p.ghi_chu || ""}</td><td className="muted" style={{ fontSize: 11.5 }}>{ten(p.updated_by ?? p.created_by)} · {ngayGio(p.updated_at ?? p.created_at)}</td></tr>)}
                 </tbody>
               </table>
-            )}
-            {tab === "loi" && <BangLoiTheoBuoc loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} rows={r.item_id ? [r] : []} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} tim={tim} />}
-            {tab === "kh" && (
-              <>
-                <div className="qv-sec">Kế hoạch hàng về</div>
-                <table className="tbl tbl-dense">
-                  <thead><tr><th>Loại</th><th><NhanNgay k="NM" ngan /></th><th><NhanNgay k="DK" ngan /></th><th style={{ textAlign: "right" }}>SL</th><th>Ghi chú</th><th>Cập nhật</th></tr></thead>
-                  <tbody>
-                    {(ls.data.ke_hoach ?? []).length === 0 && <tr><td colSpan={6} className="muted">Chưa có kế hoạch.</td></tr>}
-                    {(ls.data.ke_hoach ?? []).filter((p: any) => !tim || khopTim(tim)({ ...p, nm: ngay(p.factory_committed_date), dk: ngay(p.planned_date), ai: ten(p.updated_by ?? p.created_by) })).map((p: any) => <tr key={p.id}><td>{p.loai === "TUAN" ? `Tuần ${p.tuan ?? ""}` : "Ngày"}</td><td>{ngay(p.factory_committed_date) || "—"}</td><td>{ngay(p.planned_date)}</td>
-                      <td style={{ textAlign: "right" }}>{soLuong(p.planned_qty)}</td><td>{p.ghi_chu || ""}</td><td className="muted" style={{ fontSize: 11.5 }}>{ten(p.updated_by ?? p.created_by)} · {ngayGio(p.updated_at ?? p.created_at)}</td></tr>)}
-                  </tbody>
-                </table>
-                <div className="qv-sec">Phiếu nhập AMIS (ngày hàng về thực tế)</div>
-                <table className="tbl tbl-dense">
-                  <thead><tr><th>Ngày CT</th><th>Số CT</th><th>Kho</th><th style={{ textAlign: "right" }}>SL nhập</th></tr></thead>
-                  <tbody>
-                    {(ls.data.phieu_nhap ?? []).length === 0 && <tr><td colSpan={4} className="muted">Chưa có hàng về.</td></tr>}
-                    {(ls.data.phieu_nhap ?? []).filter((p: any) => !tim || khopTim(tim)({ ...p, ngay: ngay(p.doc_date) })).map((p: any) => <tr key={p.id}><td>{ngay(p.doc_date)}</td><td>{p.doc_no}</td><td>{p.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(p.qty_in)}</td></tr>)}
-                  </tbody>
-                </table>
-              </>
-            )}
+              <table className="tbl tbl-dense">
+                <thead><tr><th>Ngày hàng về</th><th>Số CT</th><th>Kho</th><th style={{ textAlign: "right" }}>SL nhập</th></tr></thead>
+                <tbody>
+                  {(ls.data.phieu_nhap ?? []).length === 0 && <tr><td colSpan={4} className="muted">Chưa có hàng về.</td></tr>}
+                  {(ls.data.phieu_nhap ?? []).map((p: any) => <tr key={p.id}><td>{ngay(p.doc_date)}</td><td>{p.doc_no}</td><td>{p.warehouse_name}</td><td style={{ textAlign: "right" }}>{soLuong(p.qty_in)}</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+            <BangViPhamDong loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} doiTac={it.supplier} nguoiDat={r.nguoi_dat ?? it.created_by} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} />
           </div>
         </div>
         {/* KHU PHU (v0.131): so lieu + lich su theo doi (mail, push, goi / Zalo, giai trinh, ngay DK) */}
-        <CotPhu an={anPhu} setAn={setAnPhu} tieuDe="Tiến độ · lịch sử">
-          <div className="qv-phu-sec">
+        {/* v0.149: khu phu gon nhu popup PO (v0.145) - tieu de "Nhật ký xử lý", chip Tổng quát (o so lieu) / Nhật ký */}
+        <CotPhu an={anPhu} setAn={setAnPhu} tieuDe="Nhật ký xử lý">
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", gap: 4 }}>
+            <button className={`qv-chip ${xemTq ? "on" : ""}`} onClick={() => setXemTq(true)} title="Ô số liệu: SL, ngày, tồn, lỗi chờ giải trình">
+              Tổng quát{loiCho ? <span style={{ marginLeft: 5, background: "#ff3b30", color: "#fff", borderRadius: 999, padding: "0 6px", fontSize: 10.5 }}>{loiCho}</span> : null}</button>
+            <button className={`qv-chip ${!xemTq ? "on" : ""}`} onClick={() => setXemTq(false)} title="Mail gửi / nhận, giải trình, gọi / Zalo, push, đổi ngày dự kiến">Nhật ký</button>
+          </div>
+          {xemTq ? <div className="qv-scroll"><div className="qv-phu-sec" style={{ borderBottom: 0 }}>
             <div className="qv-kpis" style={{ marginTop: 0 }}>
               <Kpi l="SL đặt" v={soLuong(r.so_luong_dat ?? it.current_qty)} />
               <Kpi l="Đã về (AMIS)" v={soLuong(r.sl_nhap_amis_dung_eo ?? 0)} tone="ok" />
@@ -230,10 +184,10 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
               <Kpi l="Tồn (từ ngày đặt)" v={["Hàng chưa về", "Chưa đủ hàng"].includes(r.trang_thai_don_hang) ? <MocTon tu={r.bat_dau ?? r.ngay_ban_hanh} nho /> : "—"} />
               <Kpi l="Lỗi chờ giải trình" v={soLuong(loiCho)} tone={loiCho ? "danger" : undefined} />
             </div>
-          </div>
-          <div className="qv-scroll" style={{ padding: "0 12px 12px" }}>
+          </div></div>
+          : <div className="qv-scroll" style={{ padding: "0 12px 12px" }}>
             <LichSuDong dong={dong} boLoi />
-          </div>
+          </div>}
         </CotPhu>
       </div>
 

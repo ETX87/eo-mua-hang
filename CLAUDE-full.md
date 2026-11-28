@@ -680,3 +680,9 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - v0.148: `LOI_TINH_TU` gốc ở `lib/theoDoi.ts` (routes/loiPo re-export). Dùng ở: tuGiaiTrinh (AUTO:CU), nhacSapHetHan, baoCaoLoi.laViPham, loiPo, xemNhanh `tinh`. `VP_CU_TRUOC` (01/11) chỉ còn cho ghi R4 "tồn".
   Migration 0029 (vi phạm mốc < 20/11 → AUTO:CU + event BO_LOI_TRUOC_20_11).
 
+## v0.149 — Popup đơn hàng gọn (28/11/2026)
+
+- `components/quickview/DongQuickView.tsx`: bỏ state `tab` / `tim` + thanh `qv-tabs`; bỏ bảng "Chi tiết giai đoạn" (luồng `QuyTrinh` đã có mốc, giờ, hạn); kế hoạch + phiếu nhập AMIS là khối cố định;
+  khu phụ `CotPhu` tiêu đề "Nhật ký xử lý" + chip `xemTq` (Tổng quát = Kpi, Nhật ký = `LichSuDong boLoi`, mặc định Nhật ký) — giống EoQuickView v0.145.
+- `components/BangViPhamDong.tsx` (mới, chỉ cho 1 dòng): khoá gộp `buoc|ma_loi|người`, trạng thái từng kỳ lấy nặng nhất theo `MUC_TT`, `dem_tt` hiển thị số đếm; người = `ai_ma`/`ai_email`
+  → giải trình thật → `AI_MAC_DINH` (+ tên NCC / người đặt). BO_QUA bỏ khỏi bảng. Không lỗi → `null`. Popup PO vẫn dùng `BangLoiTheoBuoc` (có CEO 2xx, trễ hạn 3xx).

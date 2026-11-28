@@ -259,6 +259,10 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - Popup đơn hàng có cùng bộ thao tác dòng như menu ⋯ ở popup PO (v0.138): sửa SL đặt (`PATCH /eo/items/:id`, EO đã ban hành bắt buộc lý do; SL < tổng kế hoạch
   → tự giảm kế hoạch từ đợt xa nhất), sửa mã / kho / NCC, thay mã tương đương, duyệt / từ chối dòng thêm sau ban hành, kết thúc sớm, hủy. Quyền theo `quyenEo`
   (FE) ↔ `eoAccess.ts` (BE); `GET /theo-doi/dong/:id` trả thêm ghi chú, ID CRM, ID đặt hàng, trạng thái duyệt sau BH, mã gốc, trạng thái EO, người duyệt mua.
+- Popup đơn hàng (v0.149): không tab — luồng 8 giai đoạn → kế hoạch hàng về + phiếu nhập AMIS (cố định) → "Danh sách vi phạm" (chỉ hiện khi có lỗi tính được):
+  gộp theo giai đoạn + mã lỗi + người chịu (`ai_ma`/`ai_email` của lỗi, thiếu thì lấy từ giải trình, rồi mặc định theo quy tắc `AI_MAC_DINH`); số lần = số kỳ (`vp_khoa`);
+  chốt vi phạm = trạng thái nặng nhất (VI_PHAM → Vi phạm, CAN_GT → Chưa chốt, còn lại → Không vi phạm); lỗi BO_QUA (trước 20/11) không vào bảng.
+  Khu phụ "Nhật ký xử lý": chip Tổng quát (ô số liệu) / Nhật ký (lịch sử mail, giải trình, liên hệ, push, ngày DK).
 - Luồng trao đổi NCC theo dòng: 3T thúc (mail gửi có CC hộp theo dõi, push, gọi/Zalo) ↔ NCC trả lời (mail NCC) ↔ cập nhật ngày DK.
 
 ## 9. Kết nối hệ khác
