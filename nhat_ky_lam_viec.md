@@ -16,7 +16,9 @@
   nút "Mở lại EO" trên thanh thao tác. What — trả PO về trạng thái trước khi hủy (Đã ban hành hoặc Nháp), dòng LK / kế hoạch giữ nguyên như lúc hủy.
   Why — trước đây hủy là một chiều, hủy nhầm thì không cứu được. How — mở PO đã hủy → "Mở lại EO" → nhập lý do → Xác nhận; báo lỗi khi không phải Admin,
   thiếu lý do, hoặc PO đã được người khác mở lại.
-- Kiểm thử: typecheck; gọi API thật mở lại 2 PO, tra D1 sau khi mở.
+- Kiểm thử: typecheck + build; deploy v0.152. 2 PO mở lại bằng SQL trên D1 thật làm đúng như API (đổi trạng thái, log `REOPEN_EO` ghi thông tin hủy cũ,
+  khớp lại AMIS, bump eo/amis) vì phiên trình duyệt chưa đăng nhập Admin; tra lại: cả 2 `ISSUED`, có 1 log mở lại, phiếu AMIS vẫn `MATCHED_EO`.
+  Nút "Mở lại EO" trên giao diện chưa bấm thử thật bằng tài khoản Admin.
 
 ## 28/11/2026 — v0.151: Áp bảng gọn (cắt "…", 10 dòng/trang, phân trang ghim đáy) cho popup PO và popup mã LK
 
