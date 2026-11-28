@@ -29,10 +29,8 @@ export default function LoiTheoPo() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["loi-po"], queryFn: () => api.get<Data>("/loi-po") });
   const [sp, setSp] = useSearchParams();
-  // v0.155 (chu he thong 28/11 "vung loi theo giai doan day no thanh menu phu"): bieu do giai doan chi hien o menu phu "Theo giai đoạn"
-  // (?xem=gd); bang ben duoi = bang Theo PO.
-  const xemGd = sp.get("xem") === "gd";
-  const xem = (xemGd ? "po" : (sp.get("xem") as Xem) || "po") as Xem;
+  // v0.155: menu phu "Theo giai đoạn" (?xem=gd) = bang Theo PO (cap 2 G1-G8 loc giai doan); v0.158 bo dai bieu do.
+  const xem = (sp.get("xem") === "gd" ? "po" : (sp.get("xem") as Xem) || "po") as Xem;
   const lay = (k: string) => tachDs(sp.get(k));
   const dat = (k: string, v: string | string[] | null) => setSp((s) => {
     const n = new URLSearchParams(s);
@@ -102,10 +100,8 @@ export default function LoiTheoPo() {
   const tat = d.loi;
   const tong = tongHop(loi);
   // o so: tong = bo qua ben + trang thai; doi tac / noi bo = bo qua ben; can GT / vi pham = bo qua trang thai; dai giai doan = bo qua giai doan
-  const loiNen = locTru(["ben", "tt"]), tBen = tongHop(locTru(["ben"])), tTt = tongHop(locTru(["tt"])), loiGd = locTru(["gd"]);
+  const loiNen = locTru(["ben", "tt"]), tBen = tongHop(locTru(["ben"])), tTt = tongHop(locTru(["tt"]));
   const datAll = dongHien.reduce((t, x) => t + x.dat, 0), veAll = dongHien.reduce((t, x) => t + Math.min(x.ve, x.dat), 0);
-  const theoGd = GD.map(([k, l]) => ({ k, l, ncc: loiGd.filter((x) => x.gd === k && x.ben === "NCC").length, nb: loiGd.filter((x) => x.gd === k && x.ben === "NOI_BO").length }));
-  const maxGd = Math.max(1, ...theoGd.map((g) => g.ncc + g.nb));
 
   const gtCua = (r: { cho: number; vp: number; dagt: number }) => r.cho ? { l: "Đang chờ", n: r.cho, mau: "#c26400", nen: "#fff1dc" }
     : r.vp ? { l: "Vi phạm", n: r.vp, mau: "#d70015", nen: "#ffe7e5" } : r.dagt ? { l: "Đã giải trình", n: 0, mau: "#1d8a3c", nen: "#e2f6e7" }
@@ -223,41 +219,7 @@ export default function LoiTheoPo() {
         <Tile l="Vi phạm" v={soLuong(tTt.vp)} sub="hết hạn không giải trình" mau={TT.VI_PHAM.mau} on={fTt.length === 1 && fTt[0] === "VI_PHAM"} onClick={() => bat("tt", fTt, "VI_PHAM")} />
         <Tile l="Tỷ lệ đáp ứng" v={pt(veAll, datAll) == null ? "—" : `${pt(veAll, datAll)}%`} sub={`về ${soLuong(veAll)} / đặt ${soLuong(datAll)} · thiếu ${soLuong(datAll - veAll)}`} mau="#1d8a3c" />
       </div></Card>
-      {/* 2. Loi theo giai doan: moi cot = 1 giai doan, cao = so lan loi, tach doi tac / noi bo; bam = loc giai doan. Chi o menu phu "Theo giai đoạn". */}
-      {xemGd && <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <b style={{ fontSize: 17, letterSpacing: "-.02em" }}>Lỗi theo giai đoạn</b>
-          <span style={{ fontSize: 12, color: "#6e6e73" }}><span style={{ color: BEN.NCC.dac }}>●</span> đối tác <span style={{ color: BEN.NOI_BO.dac, marginLeft: 8 }}>●</span> nội bộ · bấm 1 giai đoạn để lọc</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "stretch", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          {theoGd.map((g, i) => {
-            const on = fGd.includes(g.k);
-            const n = g.ncc + g.nb;
-            return (
-              <button key={g.k} onClick={() => bat("gd", fGd, g.k)} title={`${g.k} ${g.l}: ${n} lần (đối tác ${g.ncc} · nội bộ ${g.nb})`}
-                style={{ flex: "1 0 88px", border: 0, borderRadius: 0, background: "transparent", cursor: "pointer", padding: "6px 0 8px", display: "flex", flexDirection: "column" }}>
-                <div style={{ height: 54, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }}>
-                  <div style={{ ...SO, fontSize: 13, fontWeight: 700, color: "#1d1d1f" }}>{n || ""}</div>
-                  <div style={{ width: 30, borderRadius: "6px 6px 0 0", overflow: "hidden" }}>
-                    <div style={{ height: Math.round((g.nb / maxGd) * 34), background: BEN.NOI_BO.dac }} />
-                    <div style={{ height: Math.round((g.ncc / maxGd) * 34), background: BEN.NCC.dac }} />
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", marginTop: 6 }}>
-                  <div style={{ flex: 1, height: 3, background: i ? "#e3e3e8" : "transparent" }} />
-                  <span style={{ width: 28, height: 28, borderRadius: 99, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
-                    background: on ? "#0071e3" : n ? "#ffe7e5" : "#fff", color: on ? "#fff" : n ? "#d70015" : "#86868b", boxShadow: on || n ? "none" : "inset 0 0 0 2px #d1d1d6" }}>{g.k}</span>
-                  <div style={{ flex: 1, height: 3, background: i < GD.length - 1 ? "#e3e3e8" : "transparent" }} />
-                </div>
-                <div style={{ alignSelf: "center", fontSize: 12, marginTop: 4, fontWeight: on ? 650 : 500, color: on ? "#fff" : "#515154", background: on ? "#0071e3" : "transparent",
-                  borderRadius: 999, padding: "1px 10px", whiteSpace: "nowrap" }}>{g.l}</div>
-                {/* luon giu 1 dong (ke ca = 0) -> moi cot cao bang nhau, vong tron thang hang tren duong noi */}
-                <div style={{ ...SO, fontSize: 11, color: "#6e6e73", minHeight: 16, marginTop: 2 }}>{g.ncc ? <span style={{ color: BEN.NCC.mau }}>{g.ncc}</span> : null}{g.ncc && g.nb ? " · " : ""}{g.nb ? <span style={{ color: BEN.NOI_BO.mau }}>{g.nb}</span> : null}</div>
-              </button>
-            );
-          })}
-        </div>
-      </Card>}
+      {/* v0.158 (chu he thong 28/11 "bo cho nay vi da filter o menu roi"): bo dai bieu do "Loi theo giai doan" - loc giai doan bang menu cap 2 G1-G8 / o loc Moi giai doan */}
       {/* 3. Bo loc chung + 4 cach xem */}
       <Card>
         <FilterBar>

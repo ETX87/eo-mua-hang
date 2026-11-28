@@ -737,3 +737,8 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `DataTable` prop `coSo` (px): `width: "x%"` → `x% * coSo` px; minWidth bảng = tổng px (cột không width tính 80). `.qv-gon` (table-layout fixed, width 100%) giãn tỷ lệ khi khung rộng.
   Bảng gọn mới trong popup: đặt width % như cũ + truyền `coSo` (thường 1000–1500) thay vì `minWidth` cứng.
 - Đang dùng: EoQuickView LK 1500 (act có nút duyệt 212px), TabKeHoach gon 1100, BangLoiTheoBuoc gon 1200, BangViPhamDong 1200, PartQuickView kho 1000 / eo 1500 / amis 900 / loi 1000.
+
+## v0.158 — Bỏ dải biểu đồ giai đoạn ở Lỗi theo PO (28/11/2026)
+
+- Chủ hệ thống: "bỏ chỗ này vì đã filter ở menu rồi". `pages/LoiTheoPo.tsx` bỏ Card biểu đồ + `theoGd` / `maxGd` / `loiGd` / `xemGd`; `?xem=gd` vẫn = bảng Theo PO.
+  Đừng thêm lại biểu đồ giai đoạn ở màn này — lọc giai đoạn đi bằng menu cấp 2 (`GD_LOI`, `GD_LOI_CHO`).

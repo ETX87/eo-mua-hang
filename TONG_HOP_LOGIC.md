@@ -137,8 +137,8 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Đếm theo số lần lỗi**: mỗi bản ghi `tl_loi` = 1 lần (khác màn Vi phạm đếm "vi phạm gộp"). Bỏ lỗi "vi phạm cũ" đã tự bỏ (AUTO:CU).
 - Mỗi lần lỗi có: mã ER.MH, **giai đoạn** của mã (buoc), **bên** (`benLoi`: đối tác / nội bộ), **ai lỗi** (bên đối tác = tên NCC, nội bộ = người phải giải trình — `ai_email`,
   mặc định người đặt; R5 = người duyệt), **trạng thái**: Cần giải trình (còn hạn) · Vi phạm (hết hạn không giải trình) · Đã giải trình · Tự khắc phục.
-- 6 ô số trên cùng (tổng lần · đối tác · nội bộ · cần GT · vi phạm · tỷ lệ đáp ứng = về/đặt, mỗi dòng về tối đa bằng đặt); bấm ô = lọc. Dải "Lỗi theo giai đoạn" G1–G8
-  (cột cam đối tác, tím nội bộ; bấm giai đoạn = lọc) chỉ hiện ở menu phụ **Theo giai đoạn** (`/loi-po?xem=gd`, v0.155; cấp 2 = G1–G8 có số lần, ẩn khi 0; bảng dưới = Theo PO).
+- 6 ô số trên cùng (tổng lần · đối tác · nội bộ · cần GT · vi phạm · tỷ lệ đáp ứng = về/đặt, mỗi dòng về tối đa bằng đặt); bấm ô = lọc. Không còn dải biểu đồ giai đoạn (bỏ v0.158) —
+  lọc giai đoạn bằng menu phụ **Theo giai đoạn** (`/loi-po?xem=gd`, cấp 2 = G1–G8 có số lần, ẩn khi 0; bảng = Theo PO) hoặc ô lọc "Mọi giai đoạn".
   Menu phụ **Cần giải trình** có cấp 2 G1–G8 (v0.156) = số lần lỗi CHỜ giải trình ở từng giai đoạn (khoá đếm `CHO|gd|Gx`), bấm = `/loi-po?tt=CHO&gd=Gx`. Bộ lọc chọn nhiều: bên, mã lỗi, giai đoạn, NCC, người / NCC lỗi, trạng thái (lưu trên URL).
 - 4 cách xem cùng bộ lọc: **Theo PO** (mặc định; chỉ PO có lỗi, tick "Cả PO không lỗi" để xem hết; giai đoạn PO = giai đoạn tồn lâu nhất như 7b) ·
   **Theo linh kiện** · **Theo mã lỗi** (số lần, số PO / LK, ai lỗi nhiều nhất) · **Theo ai lỗi** (người & NCC, lỗi gì × lần). Bấm mã / người → về Theo PO đã lọc.

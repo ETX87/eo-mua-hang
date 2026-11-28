@@ -4,6 +4,15 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.158: Bỏ dải biểu đồ "Lỗi theo giai đoạn"
+
+- Yêu cầu (nguyên văn): "bỏ chỗ này vì đã filter ở menu rồi" (chỉ khối "Lỗi theo giai đoạn" trên màn Lỗi theo PO → Theo giai đoạn).
+- Đã làm: xoá khối biểu đồ giai đoạn ở `pages/LoiTheoPo.tsx` (và biến tính riêng cho nó). Menu "Theo giai đoạn" giữ nguyên, cấp 2 G1–G8 vẫn lọc bảng Theo PO.
+- 5W1H: Who — người xem màn Lỗi theo PO. When — xem lỗi theo giai đoạn. Where — menu Lỗi theo PO → Theo giai đoạn → G1…G8, hoặc ô lọc "Mọi giai đoạn".
+  What — màn chỉ còn 6 ô số + bảng, bảng lên ngay dưới ô số. Why — biểu đồ trùng chức năng với menu cấp 2 (đã có số lần từng giai đoạn), tốn chỗ.
+  How — bấm giai đoạn ở menu để lọc; bỏ lọc bằng × ở ô lọc hoặc "Xoá lọc".
+- Kiểm thử: typecheck; local /loi-po?xem=gd&gd=G3: không còn khối biểu đồ, ô lọc "G3 · Duyệt mua" + bảng PO hiện ngay dưới ô số, menu G3 sáng.
+
 ## 28/11/2026 — v0.157: Bảng gọn trong popup có độ rộng tối thiểu đủ đọc (không khoá chết vừa khung)
 
 - Yêu cầu (nguyên văn): "chỉ là hạn chế cột quá dài thôi, không phải là khóa chết độ dài table chỉ có vậy, vẫn phải có độ dài tối thiểu để đọc được thông tin ghi chú, trạng thái..."
