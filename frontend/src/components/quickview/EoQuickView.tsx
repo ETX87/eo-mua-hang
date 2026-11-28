@@ -21,6 +21,7 @@ import {
 } from "../../pages/eo/eoActions";
 import { gopTrung, gopLienTiep, khoaMail, lietKe } from "../../lib/gopTrung";
 import { NhatKyGop } from "../NhatKyGop";
+import { loiCuaToi } from "../../lib/giaiTrinh";
 import { type Dong, NgayHangVeModal, GiaiTrinhModal, LichSuModal, taoPushDoiTac, PushKetQua, BAT_TAO_MAIL_NHAC, type MailNhac, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { GiaiTrinhPoModal } from "../../pages/theodoi/GiaiTrinhPo";
 import { Kho, khoGon } from "../../lib/kho";
@@ -173,6 +174,10 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
   const aiLoi = (l: any) => (l.ben === "NCC" ? `NCC · ${l.doi_tac || "?"}` : ten(l.nguoi_vp) || "—");
   const demTxt = (ds: any[], f: (l: any) => string) => { const m = new Map<string, number>(); ds.forEach((l) => m.set(f(l), (m.get(f(l)) ?? 0) + 1)); return [...m].sort((a, b) => b[1] - a[1]); };
   const loiCho = new Set((b?.loi ?? []).filter((l: any) => l.trang_thai === "CHO_GIAI_TRINH").map((l: any) => l.vp_khoa ?? l.id)).size;
+  // v0.154: loi cho giai trinh cua CHINH nguoi dang mo -> nut Giai trinh sang len nhac
+  const loiToi = loiCuaToi(b?.loi ?? [], me.data?.email);
+  const soLoiToi = new Set(loiToi.map((l: any) => l.vp_khoa ?? l.id)).size;
+  const dongToi = new Set<number>(loiToi.map((l: any) => l.eo_item_id));
   // nguoi phu trach tung giai doan -> "Van de theo buoc" (ai tre han)
   const nguoiTD = [...new Set(d.approvals.filter((a: any) => a.step_type === "REVIEW" && a.submission_id === eo.current_submission_id).map((a: any) => ten(a.approver_email)))].join(", ");
   const ncc = [...new Set(activeItems.map((i: any) => i.supplier).filter(Boolean))].join(", ");
@@ -312,7 +317,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
           {P.canCancel && <button className="btn sm ghost danger" onClick={() => setMd({ k: "cancel" })}><I.x width={13} height={13} /> Hủy EO</button>}
           {P.canReopen && <button className="btn sm" title="Admin: mở lại EO bị hủy (đã ban hành → Đã ban hành, chưa ban hành → Nháp)" onClick={() => setMd({ k: "reopen" })}><I.check width={13} height={13} /> Mở lại EO</button>}
           {P.canKetThucSomPo && !poDone && <button className="btn sm" title="Mọi dòng đang chờ hàng: SL đặt = SL đã về thực tế (xem trước + cảnh báo)" onClick={() => setMd({ k: "kts-po" })}><I.check width={13} height={13} /> Kết thúc sớm PO</button>}
-          {loiCho > 0 && <button className="btn sm" title="1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này" onClick={() => setMd({ k: "gt-po" })}>Giải trình cả PO ({loiCho} vi phạm)</button>}
+          {loiCho > 0 && <button className={`btn sm${soLoiToi ? " nhac-gt" : ""}`} title={soLoiToi ? `Bạn có ${soLoiToi} lỗi cần giải trình trong PO này — bấm để giải trình (1 nội dung cho mọi linh kiện có lỗi)` : "1 nội dung giải trình cho mọi linh kiện có lỗi trong PO này"} onClick={() => setMd({ k: "gt-po" })}>{soLoiToi ? `⚠ Bạn cần giải trình (${soLoiToi})` : `Giải trình cả PO (${loiCho} vi phạm)`}</button>}
           {P.canCopy && <button className="btn sm" title="Tạo EO mới với thông tin phiếu giống EO này (không chép danh sách linh kiện)" onClick={() => { onCloseAll(); nav(`/eo/new?copy=${id}`); }}><I.copy width={13} height={13} /> Copy EO</button>}
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
@@ -414,7 +419,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
             {tab === "loi" && <div className="qv-bang qv-gon">
             {dongCoLoi.size > 0 && <div className="qv-toolbar" style={{ padding: "0 0 8px" }}><button className="btn sm primary" onClick={xemLkLoi}>⚠ Xem các LK có lỗi ({dongCoLoi.size})</button>
               <span className="muted" style={{ fontSize: 12 }}>mở tab Linh kiện, lọc sẵn các dòng có lỗi</span></div>}
-            <BangLoiTheoBuoc gon loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} tim={tim} />
+            <BangLoiTheoBuoc gon dongToi={dongToi} loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} tim={tim} />
             </div>}
           </div>
         </div>

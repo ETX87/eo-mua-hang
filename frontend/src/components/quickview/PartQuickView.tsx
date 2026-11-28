@@ -2,6 +2,7 @@ import { TienTrinhGon } from "../TienTrinh";
 import { gopTrung, gopLienTiep } from "../../lib/gopTrung";
 import { NhatKyGop } from "../NhatKyGop";
 import { useMemo, useState } from "react";
+import { loiCuaToi } from "../../lib/giaiTrinh";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Spinner, StatusBadge } from "../ui";
@@ -98,6 +99,8 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   if (!d) return <div style={{ padding: 30 }}>Không tải được dữ liệu mã {ma}. <button className="btn sm" onClick={onClose}>Đóng</button></div>;
   const t = d.tong;
   const tdBy = new Map<number, Dong>((d.theo_doi ?? []).map((x: Dong) => [x.item_id, x]));
+  // v0.154: dong co loi cho giai trinh cua CHINH nguoi dang mo -> nut Giai trinh sang len
+  const dongToi = new Set<number>(loiCuaToi(d.loi ?? [], me.data?.email, (l) => tdBy.get(l.eo_item_id)?.nguoi_dat).map((l: any) => l.eo_item_id));
   // dong theo doi (lib/theoDoi) neu co, khong thi dung dong bao cao 0.1 (cung ten truong) cho modal ngay DK / giai trinh / lich su
   const asDong = (r: any): Dong => tdBy.get(r.item_id) ?? ({ ...r, sl_nhap_amis: r.sl_nhap_amis_dung_eo, nguoi_dat: null } as any);
   const moDong = (r: any) => r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Kết thúc sớm", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang);
@@ -134,7 +137,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
         <button className="btn ghost sm" title="Xem đơn hàng: mã này trong PO này (tiến trình, kế hoạch, lỗi)" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
         {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
         {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
-        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 700, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className={`btn ${dongToi.has(r.item_id) ? "nhac-gt" : "ghost"} sm`} title={dongToi.has(r.item_id) ? "Bạn có lỗi cần giải trình ở đơn này — bấm để giải trình" : "Giải trình lỗi (Ai + Lỗi gì)"} style={{ fontWeight: 700, width: 26, color: t?.so_loi_cho_gt && !dongToi.has(r.item_id) ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
         {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
       </span>); } },
     { key: "chon", header: "", width: "30px", render: (r) => (chonDuoc(r) ? <input type="checkbox" checked={chon.has(r.item_id)} onClick={(e) => e.stopPropagation()}
@@ -174,7 +177,7 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   ];
   const colsLoi: Col<any>[] = [
     { key: "act", header: "Thao tác", width: "96px", render: ({ x: l }) => { const r = d.dong.find((y: any) => y.item_id === l.eo_item_id);
-      return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH" ? <button className="btn sm primary" onClick={(e) => { e.stopPropagation(); setMd({ k: "gt", x: asDong(r) }); }}>Giải trình</button> : null; } },
+      return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH" ? <button className={`btn sm ${dongToi.has(l.eo_item_id) ? "nhac-gt" : "primary"}`} title={dongToi.has(l.eo_item_id) ? "Bạn là người cần giải trình lỗi này" : undefined} onClick={(e) => { e.stopPropagation(); setMd({ k: "gt", x: asDong(r) }); }}>Giải trình</button> : null; } },
     { key: "han", header: "Hạn", width: "15%", loc: "ngay", gt: ({ x: l }) => l.han,
       render: ({ x: l, ds }) => <span title={ds.length > 1 ? `Các lần: ${ds.map((y: any) => ngayGio(y.han)).join(", ")}` : ngayGio(l.han)}>{ngayGio(l.han)}</span> },
     { key: "eo", header: "EO", width: "14%", loc: "chu", gt: ({ x: l }) => l.eo_code, render: ({ x: l }) => <EoLink id={l.eo_id}>{l.eo_code}</EoLink> },

@@ -74,6 +74,8 @@ duyệt cuối → `ISSUED` (cấp mã `3TDO-NNNNNN`). Từ chối → về ngư
   Chờ giải trình > Đã xử lý (đã giải trình / tự đóng hết) > Không vi phạm; kèm số vi phạm / chờ / đã GT / tự đóng. Chip "PO cấp CEO".
 - Mức độ: CEO / CAO (lặp ≥ 3 hoặc chờ giải trình ≥ 56 giờ làm việc) / TB (lặp 2 hoặc chờ ≥ 24 giờ làm việc) / THẤP. Giải trình: từng lỗi, cả PO, hoặc nhiều lỗi cùng loại 1 lần.
 - Nhắc nhở: hệ thống tự nhắc khi ghi lỗi mới; quản lý nhắc tay.
+- **Nút Giải trình sáng lên** (v0.154): mở popup PO / đơn hàng / mã LK mà người đang mở là người phải giải trình (`ai_email`, trống thì người đặt) của lỗi
+  còn **chờ giải trình** → nút Giải trình đỏ đặc + nhịp sáng ("⚠ Bạn cần giải trình (n)"); người khác mở thấy nút thường. Chỉ đổi hiển thị, không đổi quyền giải trình.
 - **Quét mỗi giờ + nhắc sắp hết hạn + thông báo đẩy + popup** (v0.105): ngoài lúc có người dùng app, cron mỗi giờ chạy lại việc ghi lỗi. Người phải
   giải trình = người vi phạm của lỗi (`ai_email`, mặc định người đặt). Lỗi mới → chuông + thông báo đẩy. Còn ≤ 6 giờ làm việc tới hạn giải trình
   (hạn lỗi + 56h LV) mà chưa giải trình → nhắc 1 lần / lỗi (chuông + nhắc nhở hệ thống + thông báo đẩy). Thông báo đẩy chỉ tới thiết bị đã bấm

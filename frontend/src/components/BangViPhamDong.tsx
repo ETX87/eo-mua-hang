@@ -29,8 +29,10 @@ interface Muc {
   ngay_gt: string | null; tt: TrangThaiGt; dem_tt: [TrangThaiGt, number][]; so_vp: number; chot: Chot; gt_txt: string; gt_boi: string | null; vi_sao: string; ket_luan: string;
 }
 
-export function BangViPhamDong({ loi, giaiTrinh, doiTac, nguoiDat, onGiaiTrinh }: {
+export function BangViPhamDong({ loi, giaiTrinh, doiTac, nguoiDat, onGiaiTrinh, nhac }: {
   loi: any[]; giaiTrinh: any[]; doiTac?: string | null; nguoiDat?: string | null; onGiaiTrinh?: () => void;
+  /** v0.154: nguoi dang mo co loi cho giai trinh -> nut Giai trinh sang len */
+  nhac?: boolean;
 }) {
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
@@ -109,7 +111,7 @@ ${m.ket_luan}`}>{NHAN_CHOT[m.chot].n}{m.so_vp > 1 ? ` ${m.so_vp}` : ""}</span> }
       <div className="qv-sec" style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 6px 6px", flex: "none" }}>
         Danh sách vi phạm ({ds.length} loại · {ds.reduce((s, m) => s + m.so_lan, 0)} lần)
         {boQua > 0 && <span className="muted" style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400 }} title="Lỗi có mốc trước 20/11/2026 — hệ thống tự bỏ, không tính vi phạm">· bỏ qua {boQua} lỗi cũ trước 20/11</span>}
-        {coCho && onGiaiTrinh && <button className="btn sm" style={{ marginLeft: "auto", textTransform: "none", letterSpacing: 0 }} onClick={onGiaiTrinh}>Giải trình</button>}
+        {coCho && onGiaiTrinh && <button className={`btn sm${nhac ? " nhac-gt" : ""}`} title={nhac ? "Bạn là người cần giải trình" : undefined} style={{ marginLeft: "auto", textTransform: "none", letterSpacing: 0 }} onClick={onGiaiTrinh}>Giải trình</button>}
       </div>
       {/* qv-lk: bang cuon trong khung, thanh phan trang (10 dong / trang) ghim day - giong tab Linh kien popup PO */}
       <div className="qv-lk qv-gon">

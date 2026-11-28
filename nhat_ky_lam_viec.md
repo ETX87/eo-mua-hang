@@ -4,6 +4,20 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.154: Nút Giải trình sáng lên nhắc đúng người cần giải trình
+
+- Yêu cầu (nguyên văn): "nếu mở UI PO hoặc UI linh kiện đang cần giải trình, nút giải trình sẽ sáng lên để nhắc người cần giải trình"
+- Đã làm: `lib/giaiTrinh` `loiCuaToi(loi, email, nguoiDat)` — lỗi CHO_GIAI_TRINH có người phải giải trình (`ai_email`, trống thì người đặt) = người đang mở.
+  CSS `.btn.nhac-gt` (đỏ đặc + nhịp `ap-nhip-do` dùng lại của luồng quy trình; tắt nhịp khi máy bật giảm chuyển động). Áp ở:
+  popup PO (nút tiêu đề đổi thành "⚠ Bạn cần giải trình (n)" + nút Giải trình từng dòng trong tab Lỗi & giải trình), popup đơn hàng (nút tiêu đề
+  "Bạn cần giải trình (n)" + nút trong bảng vi phạm), popup mã LK (nút "!" ở tab Lịch sử EO + nút Giải trình ở tab Lỗi theo dõi).
+- 5W1H: Who — người phải giải trình (người vi phạm của lỗi, mặc định người đặt); người khác mở vẫn thấy nút thường. When — lỗi đang chờ giải trình (còn hạn).
+  Where — popup PO, popup đơn hàng (1 dòng LK), popup mã LK. What — nút đỏ nhịp sáng kèm số lỗi của chính mình; không đổi quyền, không đổi số liệu.
+  Why — trước đây nút giống nhau với mọi người, người phải giải trình dễ bỏ sót, để quá hạn thành vi phạm. How — mở popup → thấy nút đỏ → bấm để giải trình;
+  giải trình xong nút về bình thường.
+- Kiểm thử: typecheck; local 1600×900: EO 2 (lỗi của mình) nút tiêu đề + nút tab Lỗi sáng; EO 7 (lỗi người khác) nút thường "Giải trình cả PO (1 vi phạm)";
+  popup đơn hàng SAC-TYPEC-25W 2 nút sáng; popup mã LK nút "!" + nút Giải trình tab Lỗi theo dõi sáng.
+
 ## 28/11/2026 — v0.153: Popup PO — cột Ghi chú rộng hơn + nhật ký lỗi hiện nội dung giải trình
 
 - Yêu cầu (nguyên văn): "phần ghi chú này sao lại ngắn 1 đoạn không thấy thông tin gì cả mặc định cho khoảng cách lớn ra";

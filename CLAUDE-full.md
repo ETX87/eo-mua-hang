@@ -714,3 +714,9 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `tl` (nhật ký): mục lỗi DA_GIAI_TRINH ghép `b.giai_trinh` theo `tl_loi.giai_trinh_id` → "Nội dung: “…” — ten(created_by) | hệ thống, ngayGio" (unique theo noi_dung, tối đa 3).
   `theme.css` `.qv-tl .d` thêm `white-space: pre-line` (text nhật ký dùng "
 " để xuống dòng).
+
+## v0.154 — Nút Giải trình sáng lên nhắc người cần giải trình (28/11/2026)
+
+- `lib/giaiTrinh.tsx` `loiCuaToi(loi, email, nguoiDat?)`: CHO_GIAI_TRINH và `(ai_email || nguoiDat(l) || l.nguoi_dat) === email` (khớp backend `NGUOI_LOI_SQL`).
+- `theme.css` `.btn.nhac-gt` (đỏ #ff3b30 + `ap-nhip-do`, reduced-motion tắt). Dùng ở `EoQuickView` (soLoiToi, dongToi → `BangLoiTheoBuoc dongToi`),
+  `DongQuickView` (soLoiToi, `BangViPhamDong nhac`), `PartQuickView` (dongToi: nút "!" colsEo + nút Giải trình colsLoi). Nút mới cần nhắc giải trình → dùng lại class này.

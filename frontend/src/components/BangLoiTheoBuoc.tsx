@@ -29,8 +29,10 @@ interface Muc { k: string; buoc: string; ma: string; ten: string; ma_lk: string;
   gt_ai: string; gt_loi: string; gt_nd: string; gt_boi: string | null; gt_luc: string | null }
 
 const W_GON: Record<string, string> = { buoc: "11%", ma: "9%", ten: "19%", ma_lk: "10%", han: "10%", han_gt: "10%", tt: "11%", gt: "20%", act: "92px" };
-export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, tim, gon }: {
+export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, tim, gon, dongToi }: {
   loi: any[]; giaiTrinh: any[]; rows: any[]; nhieuDong?: boolean; onGiaiTrinh?: (itemId: number, soDong: number) => void;
+  /** v0.154: item_id co loi cho giai trinh cua nguoi dang mo -> nut Giai trinh sang len */
+  dongToi?: Set<number>;
   /** o tim chung cua popup (thanh tab) - khong truyen thi bang tu co o tim */
   tim?: string;
   /** v0.151: bang gon trong popup - cot theo % (.qv-gon cat "…"), 10 dong / trang, phan trang ghim day (cha boc .qv-bang) */
@@ -110,7 +112,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, 
       render: (m) => m.gt_nd ? <span title={m.gt_nd}><span style={{ fontSize: 11.5, fontWeight: 700 }}>{m.gt_ai} · {m.gt_loi}</span><div style={{ fontSize: 12 }}>{m.gt_nd}</div>
         <div className="muted" style={{ fontSize: 11 }}>{ten(m.gt_boi)} · {ngayGio(m.gt_luc)}</div></span>
         : m.tt === "CHO" ? <span style={{ color: NHAN_GT.CAN_GT.mau, fontSize: 12 }}>Chưa giải trình — còn trong hạn</span> : <span className="muted">—</span> },
-    ...(onGiaiTrinh ? [{ key: "act", header: "", render: (m: Muc) => (m.tt === "CHO" && m.item_id ? <button className="btn sm" onClick={(e) => { e.stopPropagation(); onGiaiTrinh(m.item_id!, m.so_dong); }}>{m.so_dong > 1 ? "Giải trình chung" : "Giải trình"}</button> : null) }] : []),
+    ...(onGiaiTrinh ? [{ key: "act", header: "", render: (m: Muc) => (m.tt === "CHO" && m.item_id ? <button className={`btn sm${dongToi?.has(m.item_id!) ? " nhac-gt" : ""}`} title={dongToi?.has(m.item_id!) ? "Bạn là người cần giải trình lỗi này" : undefined} onClick={(e) => { e.stopPropagation(); onGiaiTrinh(m.item_id!, m.so_dong); }}>{m.so_dong > 1 ? "Giải trình chung" : "Giải trình"}</button> : null) }] : []),
   ];
   const colsDung = gon ? cols.map((c) => ({ ...c, width: W_GON[c.key] ?? c.width })) : cols;
   return (

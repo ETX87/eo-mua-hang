@@ -127,6 +127,12 @@ export function demGt(loi: any[], gtBy: Map<number, any>, now = nowVN()) {
 // ------------------------------------------------------------------ v0.121 "Do ai" theo giai doan (chu he thong 2026-11-26)
 /** "Do ai" MAC DINH theo quy tac loi - khop backend lib/maLoi AI_MAC_DINH: R1 cho ngay DK (G5) / R4 qua ngay DK (G6) = NCC;
  *  R3 khong thuc NCC (G4) = noi bo - nguoi dat. Nguoi giai trinh van doi duoc. */
+/** v0.154: loi CHO GIAI TRINH ma NGUOI DANG MO phai giai trinh - nguoi = tl_loi.ai_email, trong thi nguoi dat
+ *  (khop backend NGUOI_LOI_SQL = COALESCE(l.ai_email, e.created_by)). Dung de lam SANG nut Giai trinh nhac dung nguoi. */
+export function loiCuaToi(loi: any[], email: string | null | undefined, nguoiDat?: (l: any) => string | null | undefined): any[] {
+  if (!email) return [];
+  return loi.filter((l) => l.trang_thai === "CHO_GIAI_TRINH" && (l.ai_email || nguoiDat?.(l) || l.nguoi_dat) === email);
+}
 export const AI_MAC_DINH: Record<string, string> = { R1: "DOI_TAC", R4: "DOI_TAC", R3: "NGUOI_DAT", R5: "NGUOI_DUYET" };
 /** Ben chiu cua ma "Do ai": DOI_TAC = NCC, con lai = noi bo (khop backend benCuaAi). */
 export const benCuaAi = (ma: string | null | undefined): "NCC" | "NOI_BO" | "" => (!ma ? "" : ma === "DOI_TAC" ? "NCC" : "NOI_BO");

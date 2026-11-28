@@ -437,3 +437,9 @@ table.tbl tbody tr.r-huy:hover > td, table.tbl tbody tr.r-xong:hover > td, table
 .qv-bang > * { flex: none; }
 .qv-bang > .tbl-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .qv-bang > .dt-trang { margin-top: 8px !important; }
+
+/* v0.154: nut Giai trinh SANG LEN khi nguoi dang mo co loi cho giai trinh (lib/giaiTrinh loiCuaToi) */
+.btn.nhac-gt { background: #ff3b30; color: #fff; border-color: #ff3b30; font-weight: 700; animation: ap-nhip-do 1.8s infinite; }
+.btn.nhac-gt:hover { background: #e0352b; color: #fff; }
+.btn.nhac-gt svg { color: #fff; }
+@media (prefers-reduced-motion: reduce) { .btn.nhac-gt { animation: none; } }

@@ -8,6 +8,7 @@ import { MocTon } from "../../lib/tonDong";
 import { NhanNgay } from "../../lib/ngay";
 import { QvHeader, Kpi, EoLink, useQuickView, useAnPhu, CotPhu } from "./QuickView";
 import { QuyTrinh, GiaiThichCeo, ceoTxt, type GdDef } from "../TienTrinh";
+import { loiCuaToi } from "../../lib/giaiTrinh";
 import { type Dong, TINH_TRANG, NgayHangVeModal, GiaiTrinhModal, LichSuDong, LienHeDoiTacModal } from "../../pages/theodoi/shared";
 import { BangViPhamDong } from "../BangViPhamDong";
 import { GdBadge } from "../../lib/giaiDoan";
@@ -50,6 +51,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
   const xong = () => { setMd(null); qc.invalidateQueries(); };
   const tt = r.tinh_trang ? TINH_TRANG[r.tinh_trang as Dong["tinh_trang"]] : null;
   const loiCho = loi.filter((l) => l.trang_thai === "CHO_GIAI_TRINH").length;
+  // v0.154: nguoi dang mo la nguoi phai giai trinh -> nut sang len nhac
+  const soLoiToi = loiCuaToi(loi, me.data?.email, () => r.nguoi_dat ?? it.created_by).length;
   // huy / ket thuc som don dat (dong): backend kiem quyen (nguoi quan ly EO / nguoi duyet cuoi), loi tra ve hien trong modal
   const daVe = (ls.data.phieu_nhap ?? []).reduce((s: number, p: any) => s + (p.qty_in || 0), 0);
   const moDong = issued && it.line_status === "ACTIVE" && r.phan_loai_thoi_diem_dat !== "Tạo sau ban hành (chờ duyệt)";
@@ -88,7 +91,8 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
               title: "NCC giao mã tương đương — đổi mã đang dùng, giữ mã gốc để khớp AMIS" },
           ]} />
           {moDong && <button className="btn sm ghost danger" title="Không đặt nữa — SL đã về (nếu có) không tính" onClick={() => setMd("huy")}><I.x width={13} height={13} /> Hủy đơn</button>}
-          {r.theo_doi && <button className="btn sm" onClick={() => setMd("gt")} style={{ color: loiCho ? "var(--danger)" : undefined }}><I.edit width={13} height={13} /> Giải trình{loiCho ? ` (${loiCho})` : ""}</button>}
+          {r.theo_doi && <button className={`btn sm${soLoiToi ? " nhac-gt" : ""}`} onClick={() => setMd("gt")} title={soLoiToi ? `Bạn có ${soLoiToi} lỗi cần giải trình ở đơn hàng này` : undefined}
+            style={{ color: loiCho && !soLoiToi ? "var(--danger)" : undefined }}><I.edit width={13} height={13} /> {soLoiToi ? `Bạn cần giải trình (${soLoiToi})` : `Giải trình${loiCho ? ` (${loiCho})` : ""}`}</button>}
         </>}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap", whiteSpace: "nowrap", overflow: "hidden", minWidth: 0 }}>
             <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>Đơn hàng</span>
@@ -167,7 +171,7 @@ export default function DongQuickView({ id, onClose, onCloseAll, coTruoc }: { id
               </table>
             </div>
             </div>
-            <BangViPhamDong loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} doiTac={it.supplier} nguoiDat={r.nguoi_dat ?? it.created_by} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} />
+            <BangViPhamDong nhac={soLoiToi > 0} loi={loi} giaiTrinh={ls.data.giai_trinh ?? []} doiTac={it.supplier} nguoiDat={r.nguoi_dat ?? it.created_by} onGiaiTrinh={r.theo_doi ? () => setMd("gt") : undefined} />
           </div>
         </div>
         {/* KHU PHU (v0.131): so lieu + lich su theo doi (mail, push, goi / Zalo, giai trinh, ngay DK) */}
