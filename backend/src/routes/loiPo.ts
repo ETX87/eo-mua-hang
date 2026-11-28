@@ -33,7 +33,7 @@ const ttLoi = (l: any) => (l.vi_pham ? "VI_PHAM" : l.trang_thai === "CHO_GIAI_TR
 
 /**
  * GET /dem (v0.142, chu he thong 2026-11-27 "loi theo PO cung chia theo cac menu phu"): so LAN loi cho so dem menu phu / cap 2 (FE lib/nav.ts khoa "loi:...").
- * Khoa: "" tong · NCC / NOI_BO · CHO / VI_PHAM · "gd|G5" · "NCC|ER.MH-004" / "NOI_BO|ER.MH-003". Cung pham vi + cung bo "vi pham cu" (AUTO:CU) voi GET /.
+ * Khoa: "" tong · NCC / NOI_BO · CHO / VI_PHAM · "gd|G5" · "CHO|gd|G5" (v0.156, theo trang thai + giai doan) · "NCC|ER.MH-004" / "NOI_BO|ER.MH-003". Cung pham vi + cung bo "vi pham cu" (AUTO:CU) voi GET /.
  */
 app.get("/dem", async (c) => {
   const { thay } = phamViXem(c.get("user"));
@@ -42,7 +42,8 @@ app.get("/dem", async (c) => {
   const cong = (k: string) => { out[k] = (out[k] ?? 0) + 1; };
   for (const l of rows) {
     if (!tinhLoi(l) || !thay(l.nguoi_dat, l.nguoi_vp, l.kho)) continue;
-    cong(""); cong(l.ben); cong(ttLoi(l)); if (l.buoc) cong(`gd|${l.buoc}`); cong(`${l.ben}|${l.ma_loi}`);
+    const tt = ttLoi(l);
+    cong(""); cong(l.ben); cong(tt); if (l.buoc) { cong(`gd|${l.buoc}`); cong(`${tt}|gd|${l.buoc}`); } cong(`${l.ben}|${l.ma_loi}`);
   }
   return c.json(out);
 });

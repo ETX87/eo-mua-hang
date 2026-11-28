@@ -4,6 +4,16 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.156: Menu "Cần giải trình" có cấp 2 theo giai đoạn
+
+- Yêu cầu (nguyên văn): "dưới menu phụ cần giải trình => menu phụ cấp 2: theo giai đoạn"
+- Đã làm: backend `GET /api/loi-po/dem` thêm khoá `<trạng thái>|gd|<Gx>` (vd `CHO|gd|G3`). Menu Lỗi theo PO → Cần giải trình có cấp 2 G1–G8,
+  mỗi mục = số lần lỗi đang chờ giải trình ở giai đoạn đó (ẩn khi 0), bấm → `/loi-po?tt=CHO&gd=Gx` (bảng Theo PO lọc sẵn 2 bộ lọc).
+- 5W1H: Who — người phải giải trình, quản lý theo dõi. When — muốn biết lỗi chờ giải trình đang dồn ở bước nào. Where — menu trái: Lỗi theo PO → Cần giải trình → G1…G8.
+  What — số lỗi chờ giải trình theo từng giai đoạn + bảng PO lọc sẵn. Why — trước chỉ có 1 con số tổng, phải tự lọc giai đoạn. How — bấm giai đoạn ở menu;
+  bỏ lọc bằng × ở ô lọc hoặc "Xoá lọc".
+- Kiểm thử: typecheck; local: /dem trả CHO 10 = G3 6 + G6 4; menu hiện "G3 · Duyệt mua 6", "G6 · Chờ giao hàng 4"; bấm G3 → ?tt=CHO&gd=G3, 6 lỗi chờ, G3 sáng ở menu.
+
 ## 28/11/2026 — v0.155: "Lỗi theo giai đoạn" thành menu phụ riêng
 
 - Yêu cầu (nguyên văn): "vùng lỗi theo giai đoạn đẩy nó thành menu phụ phụ"

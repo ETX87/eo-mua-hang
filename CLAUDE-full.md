@@ -725,3 +725,8 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 
 - `lib/nav.ts`: menu phụ `/loi-po?xem=gd` "Theo giai đoạn" (con: GD_LOI → `/loi-po?xem=gd&gd=Gx`); "Theo PO" bỏ con.
 - `pages/LoiTheoPo.tsx`: `xemGd = xem === "gd"` → hiện Card biểu đồ giai đoạn; `xem` nội bộ coi "gd" là "po" (bảng, xuất Excel, tab Theo PO đều như Theo PO).
+
+## v0.156 — Cấp 2 giai đoạn dưới "Cần giải trình" (28/11/2026)
+
+- `routes/loiPo.ts` `/dem`: thêm khoá `${ttLoi}|gd|${buoc}` (dùng được cho VI_PHAM… nếu cần thêm menu tương tự).
+- `lib/nav.ts`: `GD_TEN_LOI` dùng chung; `GD_LOI_CHO` (to `/loi-po?tt=CHO&gd=Gx`, dem `loi:CHO|gd|Gx`, anRong) làm `con` của "Cần giải trình".

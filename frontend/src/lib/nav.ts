@@ -38,8 +38,10 @@ const qtCua = (base: string, chi?: string[]): NavCap2[] =>
   QT_VP.filter(([k]) => !chi || chi.includes(k)).map(([k, l]) => ({ to: `${base}${base.includes("?") ? "&" : "?"}qt=${k}`, label: l }));
 
 /** Cap 2 "Lỗi theo PO": giai doan phat sinh loi (gd = buoc cua ma loi) + ma loi theo ben chiu (an khi = 0 lan). */
-const GD_LOI: NavCap2[] = [["G1", "Lập EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua"], ["G4", "Gửi / thúc NCC"], ["G5", "Chờ ngày DK"], ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù"]]
-  .map(([k, l]) => ({ to: `/loi-po?xem=gd&gd=${k}`, label: `${k} · ${l}`, dem: `loi:gd|${k}`, anRong: true }));
+const GD_TEN_LOI: [string, string][] = [["G1", "Lập EO"], ["G2", "Thẩm định"], ["G3", "Duyệt mua"], ["G4", "Gửi / thúc NCC"], ["G5", "Chờ ngày DK"], ["G6", "Chờ giao hàng"], ["G7", "Nhập kho"], ["G8", "Giao bù"]];
+const GD_LOI: NavCap2[] = GD_TEN_LOI.map(([k, l]) => ({ to: `/loi-po?xem=gd&gd=${k}`, label: `${k} · ${l}`, dem: `loi:gd|${k}`, anRong: true }));
+/** v0.156 (chu he thong 28/11 "duoi menu phu can giai trinh => menu phu cap 2: theo giai doan"): G1..G8 chi dem loi CHO giai trinh (khoa "loi:CHO|gd|Gx"). */
+const GD_LOI_CHO: NavCap2[] = GD_TEN_LOI.map(([k, l]) => ({ to: `/loi-po?tt=CHO&gd=${k}`, label: `${k} · ${l}`, dem: `loi:CHO|gd|${k}`, anRong: true }));
 const MA_LOI_MENU: [string, string][] = [
   ["ER.MH-001", "001 · Chưa có ngày DK (8h)"], ["ER.MH-002", "002 · Chưa có ngày DK (16h)"], ["ER.MH-003", "003 · Không thúc NCC"],
   ["ER.MH-004", "004 · Quá ngày DK"], ["ER.MH-005", "005 · Chậm duyệt"], ["ER.MH-101", "101 · NCC không phản hồi"], ["ER.MH-102", "102 · NCC báo trễ"],
@@ -63,7 +65,7 @@ export const NAV: NavItem[] = [
     { to: "/loi-po?xem=ai", label: "Theo ai lỗi", icon: "users" },
     { to: "/loi-po?ben=NCC", label: "Lỗi đối tác", icon: "user", dem: "loi:NCC", con: maLoiCua("NCC") },
     { to: "/loi-po?ben=NOI_BO", label: "Lỗi nội bộ", icon: "home", dem: "loi:NOI_BO", con: maLoiCua("NOI_BO") },
-    { to: "/loi-po?tt=CHO", label: "Cần giải trình", icon: "edit", dem: "loi:CHO", demDo: true },
+    { to: "/loi-po?tt=CHO", label: "Cần giải trình", icon: "edit", dem: "loi:CHO", demDo: true, con: GD_LOI_CHO },
     { to: "/loi-po?tt=VI_PHAM", label: "Vi phạm (hết hạn)", icon: "x", dem: "loi:VI_PHAM" },
   ] },
   // v0.133: Tong quan = 3 menu phu, moi menu 1 man rieng (chu he thong: "chon menu phu nhung bao cao khong thay doi -> tach rieng"):
