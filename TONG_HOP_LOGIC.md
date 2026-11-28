@@ -145,6 +145,8 @@ G7 Nhập kho & lên hệ thống · G8 Giao bù đến đủ. Hạn tính theo 
 - **Trạng thái PO + tô màu dòng** (v0.146): cột "Trạng thái PO" (Theo PO) / "Trạng thái" (Theo linh kiện): **Đã hủy** (EO hủy hoặc mọi dòng hủy — nền hồng + viền đỏ) ·
   **Đang duyệt** (EO chưa ban hành) · **Đã xong** (mọi dòng về đủ / hủy — nền xanh lá) · **Tồn quá hạn** (có dòng trễ hạn giai đoạn / quá ngày DK / trễ nhập ngày DK — nền cam) ·
   **Đang tồn**. Tính trên MỌI dòng của PO. Cột **"Giải trình"** thay "Cần GT / VP": Đang chờ · n (còn lỗi chờ) → Vi phạm · n (hết hạn không giải trình) → Đã giải trình → Không cần (lỗi tự khắc phục).
+- **Lỗi có mốc trước 20/11/2026 = BỎ** (v0.148): mỗi lần quét, lỗi còn chờ có mốc trước 20/11 tự đóng `AUTO:CU` ("Tự bỏ lỗi: mốc lỗi trước thời điểm đào tạo 20/11/2026 — tính đã
+  giải trình"), không nhắc hết hạn, không tính vi phạm; migration 0029 đổi vi phạm còn lại có mốc trước 20/11 sang `AUTO:CU` + log `BO_LOI_TRUOC_20_11`.
 - **Mốc tính lỗi 20/11/2026** (v0.143, luật 15 CLAUDE.md): màn Lỗi theo PO, số đếm menu, ô số / cột lỗi / nút "LK có lỗi" của popup PO chỉ tính lỗi có mốc từ 20/11/2026 (ngày đào tạo).
 - **Ô số / dải giai đoạn không bị chính bộ lọc của mình làm về 0** (v0.143): Tổng = bỏ qua lọc bên + trạng thái; Đối tác / Nội bộ = bỏ qua lọc bên; Cần GT / Vi phạm = bỏ qua lọc
   trạng thái; dải giai đoạn = bỏ qua lọc giai đoạn. Bảng bên dưới vẫn áp đủ mọi bộ lọc.

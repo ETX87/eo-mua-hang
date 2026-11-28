@@ -359,7 +359,6 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                   {/* v0.145 (chu he thong "chuyen cac filter sang goc trai"): BO LOC = cot doc ben trai bang, bam la bang loc ngay */}
                   <aside className="qv-loc">
                     <div className="qv-loc-tieu">Lọc</div>
-                    {chiLoi && dsLocVao && moTaLoc && <div className="qv-loc-mo">Đang lọc: <b>{moTaLoc}</b></div>}
                     {locGd && <button className="btn sm" onClick={() => setLocGd(null)} title="Bấm để bỏ lọc bước" style={{ background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 }}>
                       <span className="qv-loc-t">Bước {locGd.k} · {(sdh.data?.giai_doan ?? []).find((g: any) => g.k === locGd.k)?.l ?? ""} — {KIEU_TXT[locGd.kieu]} ({locGd.ids.size})</span><span className="qv-loc-x">×</span></button>}
                     {dongCoLoi.size > 0 && <button className="btn sm" onClick={() => setChiLoi(!chiLoi)} title="Chỉ hiện các dòng linh kiện có lỗi (tính từ 20/11/2026)" style={chiLoi ? { background: "#fff", boxShadow: "0 0 0 2px var(--brand-yellow-btn)", fontWeight: 600 } : undefined}>

@@ -44,8 +44,8 @@ npm run deploy            # build + wrangler deploy (Worker THẬT)
 13. Menu FE `frontend/src/lib/nav.ts` ↔ quyền BE `backend/src/lib/eoAccess.ts` đồng bộ tay.
 14. **Luồng duyệt** (`routes/approvals.ts`): mỗi action "giữ chỗ" bằng 1 UPDATE có điều kiện trước mọi ghi khác (`meta.changes = 0` → 409, chống bấm đúp);
     kiểm tra "hết phiếu REVIEW PENDING" nằm TRONG SQL của batch. Chi tiết `CLAUDE-full.md` mục "Luồng duyệt".
-15. **Mốc tính lỗi 20/11/2026** (ngày đào tạo, chủ hệ thống chốt): lỗi / vi phạm có mốc trước 20/11 KHÔNG tính ở mọi màn thống kê lỗi mới
-    (dùng `LOI_TINH_TU` ở `backend/src/routes/loiPo.ts`; vi phạm chốt trước 20/11 đã là `AUTO:CU` từ v0.128). Màn / báo cáo lỗi mới phải áp mốc này.
+15. **Mốc tính lỗi 20/11/2026** (ngày đào tạo, chủ hệ thống chốt): lỗi có mốc trước 20/11 = BỎ — tự đóng `AUTO:CU` (tính đã giải trình, có log, không vi phạm,
+    không nhắc), không đếm ở màn thống kê lỗi. Hằng số `LOI_TINH_TU` ở `backend/src/lib/theoDoi.ts`; màn / báo cáo lỗi mới phải áp mốc này.
 
 ## Nguồn định nghĩa duy nhất
 

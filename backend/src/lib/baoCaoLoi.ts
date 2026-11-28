@@ -1,7 +1,7 @@
 import type { Env } from "../types";
 import { todayVN, nowVN } from "./vnTime";
 import { demGioLV } from "./gioLamViec";
-import { hanGiaiTrinh, VP_CU_TRUOC } from "./theoDoi";
+import { hanGiaiTrinh, LOI_TINH_TU } from "./theoDoi";
 import { layDongTheoDoi } from "./theoDoi";
 import { layBangMaLoi, maCuaLoi, maCeo, khoaViPham, benLoi, type BangMaLoi } from "./maLoi";
 
@@ -51,7 +51,7 @@ export async function dsLoiDayDu(env: Env): Promise<{ rows: any[]; bang: BangMaL
   const hanGtCua = (l: any) => (l.quy_tac === "TAY" ? null : hanGiaiTrinh((l.han ?? l.created_at) as string));
   const laViPham = (l: any) => {
     if (l.quy_tac === "TAY") return false;
-    if (l.trang_thai === "CHO_GIAI_TRINH") { const h = hanGtCua(l); return !!h && h <= now && String(l.han ?? l.created_at) >= VP_CU_TRUOC; }
+    if (l.trang_thai === "CHO_GIAI_TRINH") { const h = hanGtCua(l); return !!h && h <= now && String(l.han ?? l.created_at) >= LOI_TINH_TU; }
     const g = l.giai_trinh_id ? gtBy.get(l.giai_trinh_id) : null;
     return g?.pham_vi === "AUTO" && g.nhom === "AUTO:QUA_HAN";
   };

@@ -596,7 +596,7 @@ async function nhacSapHetHan(env: Env, now: string): Promise<number> {
   const rs = (await db.prepare(
     `SELECT l.id, COALESCE(l.han, l.created_at) moc FROM tl_loi l JOIN eo e ON e.id = l.eo_id
      WHERE l.trang_thai = 'CHO_GIAI_TRINH' AND l.quy_tac <> 'TAY' AND l.nhac_het_han_luc IS NULL
-       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') AND COALESCE(l.han, l.created_at) >= '${VP_CU_TRUOC}'
+       AND date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') AND COALESCE(l.han, l.created_at) >= '${LOI_TINH_TU}'
        AND substr(COALESCE(e.issued_at, e.created_at), 1, 10) >= COALESCE((SELECT value FROM app_settings WHERE key = 'theo_doi_bo_qua_truoc'), '2026-07-01')`,
   ).bind(now.slice(0, 10)).all<{ id: number; moc: string }>()).results
     .filter((r) => { const han = hanGiaiTrinh(r.moc); return han > now && demGioLV(now, han) <= GIO_NHAC_HET_HAN; });
@@ -629,6 +629,10 @@ export const GIO_TU_DONG = 16;
 /** v0.113 (chu he thong 2026-11-23 "loi vi pham cu truoc thang 11 thi bo qua (auto bo vi pham do vi pham cu)"): loi co moc truoc ngay nay
  *  KHONG tinh vi pham - tuGiaiTrinh dong 'AUTO:CU'; migration 0026 doi cac AUTO:QUA_HAN cu sang AUTO:CU. */
 export const VP_CU_TRUOC = "2026-11-01";
+/** v0.143 / v0.148 (chu he thong 2026-11-28 "chot bo loi tu truoc 20/11 thi bo het loi, them log auto bo loi vao roi tinh da giai trinh"): moc tinh loi = ngay dao tao.
+ *  Loi co moc (han, khong co thi luc ghi) TRUOC moc nay: tuGiaiTrinh tu dong AUTO:CU (tinh da giai trinh, khong vi pham, co log), khong nhac het han, khong tinh vi pham,
+ *  man thong ke loi khong dem. (VP_CU_TRUOC 01/11 chi con dung cho logic ghi R4 "ton".) */
+export const LOI_TINH_TU = "2026-11-20";
 /** v0.115: dong ton qua ngay DK tu truoc VP_CU_TRUOC -> 1 loi R4 moi voi moc nay (sau khi bo loi cu van tiep tuc day giai trinh). */
 export const R4_TON_TU = "2026-11-24 08:00:00";
 /** v0.120: dong cua PO ban hanh truoc moc ap dung quy tac (theo_doi_ap_dung_tu) van ton qua ngay DK -> R4 tu moc nay (khong hoi to). */
@@ -667,7 +671,7 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
          date(COALESCE(l.han, l.created_at)) <= date(?1, '-1 days') qua_han, COALESCE(l.han, l.created_at) moc
        FROM l)
      SELECT id, quy_tac, khac_phuc, gt_cung, qua_han, moc, moc < ?2 cu FROM k WHERE khac_phuc IS NOT NULL OR gt_cung IS NOT NULL OR qua_han = 1 OR moc < ?2`,
-  ).bind(now.slice(0, 10), VP_CU_TRUOC).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number; moc: string; cu: number }>()).results
+  ).bind(now.slice(0, 10), LOI_TINH_TU).all<{ id: number; quy_tac: string; khac_phuc: string | null; gt_cung: string | null; qua_han: number; moc: string; cu: number }>()).results
     // SQL loc tho (>= 1 ngay lich - 16h LV luon qua it nhat 1 ngay); qua han that = hanGiaiTrinh(moc) <= bay gio
     .filter((r) => r.khac_phuc || r.gt_cung || r.cu || hanGiaiTrinh(r.moc) <= now);
   if (!rs.length) return 0;
@@ -681,7 +685,7 @@ async function tuGiaiTrinh(env: Env, now: string): Promise<number> {
     : r.gt_cung
       ? [r.id, `Tự đóng lỗi do đã có giải trình cùng lỗi ngày ${dmy(r.gt_cung)} — không cần giải trình lại, không tính vi phạm.`, "AUTO:KHAC_PHUC"]
       : r.cu
-        ? [r.id, `Tự bỏ vi phạm do vi phạm cũ (mốc lỗi trước ${dmy(VP_CU_TRUOC)}) — không tính vi phạm.`, "AUTO:CU"]
+        ? [r.id, `Tự bỏ lỗi: mốc lỗi trước thời điểm đào tạo ${dmy(LOI_TINH_TU)} — tính đã giải trình, không tính vi phạm.`, "AUTO:CU"]
         : [r.id, `Hết hạn giải trình (${gioHanGt(r.moc)} giờ làm việc từ mốc lỗi) mà không giải trình → ghi nhận VI PHẠM, không giải trình được nữa.`, "AUTO:QUA_HAN"]);
   let xong = 0;
   for (let i = 0; i < ds.length; i += 250) {

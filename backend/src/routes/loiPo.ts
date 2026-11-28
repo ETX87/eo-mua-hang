@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env, AppVariables } from "../types";
 import { nowVN } from "../lib/vnTime";
 import { isViewOnly, xemToanBoTheoDoi } from "../lib/eoAccess";
-import { danhGiaQuyTac, layDongTheoDoi } from "../lib/theoDoi";
+import { danhGiaQuyTac, layDongTheoDoi, LOI_TINH_TU } from "../lib/theoDoi";
 import { dsLoiDayDu } from "../lib/baoCaoLoi";
 import { layGiaiDoan } from "../lib/giaiDoan";
 
@@ -27,7 +27,7 @@ function phamViXem(u: AppVariables["user"]) {
 }
 /** v0.143 (chu he thong 2026-11-27 "Da chot bo loi tu truoc 20/11 roi ma? ... khong luu nguyen tac a?" - noi tiep v0.128 bo vi pham truoc dao tao 20/11):
  *  man Loi theo PO + so dem menu CHI tinh loi co MOC (han, khong co thi luc ghi) tu ngay dao tao 20/11/2026. Loi truoc moc (ke ca da giai trinh / tu khac phuc) khong hien. */
-export const LOI_TINH_TU = "2026-11-20";
+export { LOI_TINH_TU }; // v0.148: dinh nghia goc o lib/theoDoi
 const tinhLoi = (l: any) => l.tu_dong !== "CU" && String(l.han ?? l.created_at) >= LOI_TINH_TU;
 const ttLoi = (l: any) => (l.vi_pham ? "VI_PHAM" : l.trang_thai === "CHO_GIAI_TRINH" ? "CHO" : l.tu_dong ? "KHAC_PHUC" : "DA_GT");
 

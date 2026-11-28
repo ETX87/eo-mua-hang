@@ -8,7 +8,7 @@ export const EVENT_LABEL: Record<string, string> = {
   ADD_PLAN: "Thêm kế hoạch", UPDATE_PLAN: "Sửa kế hoạch", DELETE_PLAN: "Xóa kế hoạch", IMPORT_AMIS: "Import AMIS",
   UPLOAD_FILE: "Đính kèm tài liệu", REPLACE_PART: "Thay mã linh kiện tương đương", BULK_PLAN: "Cập nhật kế hoạch hàng loạt",
   IMPORT_ITEMS: "Import dòng linh kiện từ Excel", DELETE_FILE: "Xóa tài liệu đính kèm", RECALL_EO: "Rút về nháp để sửa",
-  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", AUTO_GIAI_TRINH: "Hệ thống tự giải trình vi phạm", BO_VI_PHAM_CU: "Bỏ vi phạm cũ (lỗi trước 01/11 / chốt trước đào tạo 20/11/2026)", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi", LIEN_HE_DOI_TAC: "Nhắc đối tác (gọi điện / tin nhắn)", KET_THUC_SOM: "Kết thúc sớm đơn đặt", KET_THUC_SOM_PO: "Kết thúc sớm cả PO", SUA_THONG_TIN_DONG: "Sửa mã LK / kho / đối tác",
+  GIAI_TRINH_THEO_DOI: "Giải trình theo dõi", AUTO_GIAI_TRINH: "Hệ thống tự giải trình vi phạm", BO_VI_PHAM_CU: "Bỏ vi phạm cũ (lỗi trước 01/11 / chốt trước đào tạo 20/11/2026)", BO_LOI_TRUOC_20_11: "Tự bỏ lỗi trước đào tạo 20/11/2026 (tính đã giải trình)", NHAC_NHO_VI_PHAM: "Nhắc giải trình vi phạm", XOA_LOI_THEO_DOI: "Bỏ lỗi theo dõi", LIEN_HE_DOI_TAC: "Nhắc đối tác (gọi điện / tin nhắn)", KET_THUC_SOM: "Kết thúc sớm đơn đặt", KET_THUC_SOM_PO: "Kết thúc sớm cả PO", SUA_THONG_TIN_DONG: "Sửa mã LK / kho / đối tác",
 };
 
 const sl = (v: unknown) => (v == null || v === "" ? "" : Number(v).toLocaleString("vi-VN"));

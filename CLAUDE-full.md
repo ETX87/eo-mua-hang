@@ -677,4 +677,6 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
   `.qv-head.po/.don/.lk`, `.qv-panel` 98vw × 98vh; EoQuickView state `xemTq` (tab Tổng quát ở cột phải, CotPhu tieuDe = "Nhật ký xử lý (n)").
 - v0.146: DataTable prop `rowClass(row)` (tô màu dòng; lớp `r-huy` / `r-xong` / `r-tre` ở theme.css — dùng lại cho bảng khác). `lib/loiPo` `ttPoCua(ttEo, dongCuaPO)` / `ttDong` / `TT_PO`.
 - v0.147: CEO trong popup PO — `dongCeo` (theo_doi.ceo_ly_do), huy hiệu tiêu đề + cột "ceo" + lọc `chiCeo`; canh_bao CEO có `loai: "CEO"` (xemNhanh). Khi làm gọn bảng đừng bỏ dấu hiệu CEO.
+- v0.148: `LOI_TINH_TU` gốc ở `lib/theoDoi.ts` (routes/loiPo re-export). Dùng ở: tuGiaiTrinh (AUTO:CU), nhacSapHetHan, baoCaoLoi.laViPham, loiPo, xemNhanh `tinh`. `VP_CU_TRUOC` (01/11) chỉ còn cho ghi R4 "tồn".
+  Migration 0029 (vi phạm mốc < 20/11 → AUTO:CU + event BO_LOI_TRUOC_20_11).
 

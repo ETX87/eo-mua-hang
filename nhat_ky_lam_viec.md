@@ -4,6 +4,17 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.148: Bỏ hẳn lỗi trước 20/11 (tính đã giải trình + log) + bỏ ô "Đang lọc" ở popup PO
+
+- Yêu cầu (nguyên văn): "dòng "Đang lọc: LK có lỗi..." cái đó bỏ đi. chúng ta chốt bỏ lỗi từ trước 20/11 thì bỏ hết lỗi, thêm log auto bỏ lỗi vào rồi tính đã giải trình".
+- Đã làm: bỏ ô "Đang lọc: …" ở cột lọc trái popup PO; `LOI_TINH_TU = 2026-11-20` chuyển về `lib/theoDoi` — `tuGiaiTrinh` tự đóng lỗi chờ có mốc trước 20/11 thành `AUTO:CU`
+  (trước là mốc 01/11), nhắc sắp hết hạn + tính vi phạm (`baoCaoLoi`) theo mốc 20/11; migration `0029_bo_loi_truoc_20_11.sql`: vi phạm (AUTO:QUA_HAN) có mốc lỗi trước 20/11 → AUTO:CU
+  + event `BO_LOI_TRUOC_20_11` (nhãn FE). Logic ghi lỗi R4 "tồn" vẫn dùng mốc 01/11 (đổi sẽ sinh lỗi mới hàng loạt).
+- Dữ liệu thật trước khi chạy (chỉ đọc): 1 vi phạm có mốc trước 20/11 (chốt 20/11 10:52, mốc 09/11 — v0.128 đã giữ lại), 0 lỗi trước 20/11 còn chờ.
+- 5W1H: Who — người bị gán lỗi, quản lý xem vi phạm / điều hành. When — áp ngay + mỗi lần quét. Where — mọi màn lỗi / vi phạm / nhật ký PO. What — lỗi trước 20/11 không còn chờ / vi phạm,
+  có dòng nhật ký "tự bỏ lỗi". Why — chủ hệ thống đã chốt bỏ lỗi trước đào tạo 20/11. How — không cần thao tác; nhật ký PO hiện "Tự bỏ lỗi trước đào tạo 20/11/2026".
+- Kiểm thử: typecheck BE + FE; migration chạy D1 local OK.
+
 ## 28/11/2026 — v0.147: Hiện rõ dòng cấp CEO trong popup PO
 
 - Yêu cầu (nguyên văn): "po này có báo lỗi CEO mà mở UI lên tôi không biết phải tìm cái lỗi CEO đó ở đâu" (PO 3TDO-000864).
