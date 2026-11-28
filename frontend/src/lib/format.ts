@@ -19,6 +19,12 @@ export function ngay(v: string | null | undefined): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
 }
 
+/** v0.151: dd/mm/yy - cho bang gon trong popup (cot hep); ngay day du de o title */
+export function ngayNgan(v: string | null | undefined): string {
+  const s = ngay(v);
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(s) ? `${s.slice(0, 6)}${s.slice(8)}` : s;
+}
+
 export function ngayGio(v: string | null | undefined): string {
   if (!v) return "";
   const s = String(v);

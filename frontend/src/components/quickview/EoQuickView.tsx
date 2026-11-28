@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Spinner, StatusBadge } from "../ui";
 import { Clip } from "../Clip";
-import { soLuong, tien, ngay, ngayGio, ten } from "../../lib/format";
+import { soLuong, tien, ngay, ngayGio, ngayNgan, ten } from "../../lib/format";
 import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
@@ -256,18 +256,23 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
     { key: "sl", header: <span title="Về / thiếu / đặt">Về / thiếu / đặt</span>, align: "right", loc: "so", gt: ({ r }: any) => r.chua_dat,
       render: ({ r }: any) => <span className="mono-num" style={{ whiteSpace: "nowrap" }}><span style={{ color: "var(--ok-ink)" }}>{soLuong(r.da_dat)}</span>
         {" / "}<b style={{ color: r.chua_dat > 0 ? "var(--warn-ink)" : undefined }}>{soLuong(r.chua_dat)}</b>{" / "}{soLuong(r.current_qty)}</span> },
-    { key: "tao", header: "Ngày tạo", loc: "ngay", gt: ({ r }: any) => String(r.created_at ?? "").slice(0, 10), render: ({ r }: any) => <span className="mono-num">{ngay(r.created_at)}</span> },
-    { key: "nm", header: "Ngày NM", loc: "ngay", gt: (x: any) => x.nm ?? "", render: (x: any) => x.nm ? <span className="mono-num">{ngay(x.nm)}</span> : <span className="muted">—</span> },
+    { key: "tao", header: "Ngày tạo", loc: "ngay", gt: ({ r }: any) => String(r.created_at ?? "").slice(0, 10), render: ({ r }: any) => <span className="mono-num" title={ngay(r.created_at)}>{ngayNgan(r.created_at)}</span> },
+    { key: "nm", header: "Ngày NM", loc: "ngay", gt: (x: any) => x.nm ?? "", render: (x: any) => x.nm ? <span className="mono-num" title={ngay(x.nm)}>{ngayNgan(x.nm)}</span> : <span className="muted">—</span> },
     { key: "dk", header: "Ngày DK", loc: "ngay", gt: (x: any) => x.ndk ?? "",
-      render: (x: any) => x.ndk ? <span className="mono-num" title={x.t?.so_lan_lui ? `Lùi ngày dự kiến ${x.t.so_lan_lui} lần` : undefined}>{ngay(x.ndk)}
+      render: (x: any) => x.ndk ? <span className="mono-num" title={`${ngay(x.ndk)}${x.t?.so_lan_lui ? ` · lùi ngày dự kiến ${x.t.so_lan_lui} lần` : ""}`}>{ngayNgan(x.ndk)}
         {x.t?.so_lan_lui > 0 && <span style={{ color: x.t.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)", fontSize: 11, marginLeft: 4 }}>lùi {x.t.so_lan_lui}</span>}</span>
         : <span className="muted">—</span> },
     { key: "ve", header: "Hàng về", loc: "ngay", gt: (x: any) => x.ve ?? "",
-      render: (x: any) => x.ve ? <span className="mono-num" style={{ color: x.r.da_dat >= x.r.current_qty ? "var(--ok-ink)" : undefined }}>{ngay(x.ve)}</span> : <span className="muted">—</span> },
+      render: (x: any) => x.ve ? <span className="mono-num" title={ngay(x.ve)} style={{ color: x.r.da_dat >= x.r.current_qty ? "var(--ok-ink)" : undefined }}>{ngayNgan(x.ve)}</span> : <span className="muted">—</span> },
     { key: "kho", header: "Kho", loc: "chon", maxW: 90, gt: ({ r }: any) => r.warehouse, nhanChon: (v) => (khoGon(v) !== v ? `${khoGon(v)} — ${v}` : v), render: ({ r }: any) => <Kho t={r.warehouse} /> },
     { key: "ncc", header: "Đối tác", loc: "chon", gt: ({ r }: any) => r.supplier ?? "", maxW: 150, render: ({ r }: any) => <span title={r.supplier ?? ""}>{r.supplier || "—"}</span> },
     { key: "gc", header: "Ghi chú", loc: "chu", gt: ({ r }: any) => r.ghi_chu ?? "", maxW: 200, render: ({ r }: any) => <span title={r.ghi_chu ?? ""}>{r.ghi_chu || "—"}</span> },
   ];
+
+  // v0.151 (chu he thong "text qua dai thi hien ... de hien du cot, han che keo trai keo phai"): bang LK co dinh theo % (.qv-gon), cot thao tac theo px
+  const coNutDuyet = P.canApprovePostIssue && lkRows.some((x: any) => x.r.post_issue_status === "PENDING" && !dongKetThuc(x.r));
+  const W_LK: Record<string, string> = { act: coNutDuyet ? "150px" : coChon ? "62px" : "48px", gd: "11%", ma: "17%", vp: "54px", ceo: "6%", tl: "50px", sl: "86px", tao: "66px", nm: "66px", dk: "78px", ve: "66px", kho: "6%", ncc: "8%", gc: "6%" };
+  const lkColsGon = lkCols.map((c) => ({ ...c, width: W_LK[c.key] ?? c.width }));
 
   const guiBinhLuan = async () => {
     if (!cmt.trim()) return;
@@ -335,7 +340,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
           <div className="qv-tabs">{tabs.map((t) => <button key={t.k} className={`qv-tab ${tab === t.k ? "on" : ""}`} onClick={() => setTab(t.k)}>{t.l}</button>)}
             {/* 2026-11-23: 1 o tim CHUNG cho moi tab (giu chu khi doi tab) */}
             <O_TIM tim={tim} setTim={setTim} /></div>
-          <div className={`qv-scroll${tab === "lk" ? " lk-mode" : ""}`}>
+          <div className={`qv-scroll${tab === "lk" || tab === "kh" || tab === "loi" ? " lk-mode" : ""}`}>
             {tab === "lk" && (
               <div className="qv-toolbar">
                 <span className="muted" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><b style={{ color: "var(--text)" }}>{lkRows.length}</b>/{d.items.length} LK · còn tồn xếp trước (tồn lâu, rồi thiếu nhiều)</span>
@@ -371,15 +376,14 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                     {(locGd || chiLoi || xemHuy || chiCeo) && <button className="btn ghost sm" onClick={() => { setLocGd(null); setChiLoi(false); setXemHuy(false); setChiCeo(false); }}>Xoá lọc</button>}
                     <div className="qv-loc-goi">Bấm mốc trên luồng quy trình để lọc LK theo bước.</div>
                   </aside>
-                  <div className="qv-lk"><DataTable timKiem={false} cols={lkCols} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
+                  <div className="qv-lk qv-gon"><DataTable timKiem={false} minWidth={860} cols={lkColsGon} rows={lkRows} keyOf={(x: any) => x.r.id} onRowClick={(x: any) => qv.openDong(x.r.id)} empty="Không có dòng linh kiện khớp bộ lọc" pageSize={10} /></div>
                 </div>
               </>
             )}
             {tab === "kh" && (
               <>
-                <div className="qv-pad">
-                  <TabKeHoach eo={eo} items={d.items} plans={d.plans} issued={P.issued} canEdit={P.canEditPlan} onChanged={() => qc.invalidateQueries()} tim={tim} />
-                </div>
+                <div className="qv-bang qv-gon">
+                  <TabKeHoach eo={eo} items={d.items} plans={d.plans} issued={P.issued} canEdit={P.canEditPlan} onChanged={() => qc.invalidateQueries()} tim={tim} gon />
                 {(b?.phieu_khong_khop ?? []).length > 0 && (
                   <>
                     <div className="qv-sec" style={{ color: "var(--warn-ink)" }}>Phiếu AMIS có mã {eo.approval_code} nhưng KHÔNG khớp dòng</div>
@@ -389,6 +393,7 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                     </table>
                   </>
                 )}
+                </div>
               </>
             )}
             {tab === "file" && (
@@ -397,9 +402,11 @@ export default function EoQuickView({ id, locLoi, moTaLoc, onClose, onCloseAll, 
                   myEmail={me.data?.email} preIssue={!["ISSUED", "CANCELLED"].includes(eo.trang_thai)} tim={tim} />
               </div>
             )}
-            {tab === "loi" && dongCoLoi.size > 0 && <div className="qv-toolbar"><button className="btn sm primary" onClick={xemLkLoi}>⚠ Xem các LK có lỗi ({dongCoLoi.size})</button>
+            {tab === "loi" && <div className="qv-bang qv-gon">
+            {dongCoLoi.size > 0 && <div className="qv-toolbar" style={{ padding: "0 0 8px" }}><button className="btn sm primary" onClick={xemLkLoi}>⚠ Xem các LK có lỗi ({dongCoLoi.size})</button>
               <span className="muted" style={{ fontSize: 12 }}>mở tab Linh kiện, lọc sẵn các dòng có lỗi</span></div>}
-            {tab === "loi" && <BangLoiTheoBuoc loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} tim={tim} />}
+            <BangLoiTheoBuoc gon loi={b?.loi ?? []} giaiTrinh={b?.giai_trinh ?? []} rows={sdh.data?.rows ?? []} nhieuDong onGiaiTrinh={(itemId, soDong) => (soDong > 1 ? setMd({ k: "gt-po" }) : qv.openDong(itemId))} tim={tim} />
+            </div>}
           </div>
         </div>
 

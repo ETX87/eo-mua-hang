@@ -692,3 +692,11 @@ Phân vân giữa hai làn → chọn làn CAO hơn (an toàn hơn).
 - `theme.css` `.qv-gon`: `table-layout: fixed; width: 100%`, td nowrap + ellipsis, `.clip` max-width 100%, tiêu đề cho xuống dòng; `.qv-don-kh` (khối kế hoạch, max 38%) +
   `.qv-don-vp` (flex 1) trong `qv-scroll lk-mode`. Cột DataTable dùng `width` theo % (tổng 100) thay `maxW` px. Bảng vi phạm bọc `.qv-lk` → `.dt-trang` ghim đáy, pageSize 10.
   Muốn áp kiểu này cho bảng khác trong popup: bọc `.qv-gon` + đặt `width` % cho cột (bảng HTML thường dùng `<colgroup>`).
+
+## v0.151 — Bảng gọn cho popup PO + popup mã LK (28/11/2026)
+
+- `theme.css` `.qv-bang`: con trực tiếp `flex: none`, `.tbl-wrap` flex 1 cuộn, `.dt-trang` ở đáy → bọc tab bằng `<div className="qv-scroll lk-mode"><div className="qv-bang qv-gon">…</div></div>`.
+- Quy tắc bề rộng cột trong `.qv-gon`: cột ngày / số / thao tác đặt `width` px (đủ chữ, vd ngày dd/mm/yy 66–70px), cột chữ dài đặt % — đặt toàn % thì ngày bị bóp còn "13/…".
+  Thêm `minWidth` DataTable cho bảng nhiều cột (LK PO 860, EO của mã 1000) để màn hẹp kéo ngang thay vì bóp nát.
+- `lib/format` `ngayNgan` (dd/mm/yy). `TabKeHoach` prop `gon` (W_KH_GON, 10 dòng), `BangLoiTheoBuoc` prop `gon` (W_GON, 10 dòng, trả fragment để `.qv-bang` thấy `.tbl-wrap`).
+- `PartQuickView`: 4 bảng HTML → DataTable (`colsKho`, `colsEo`, `colsAmis`, `colsLoi`), vẫn lọc ô tìm bằng `khopTim(tim)` trước khi đưa vào bảng.

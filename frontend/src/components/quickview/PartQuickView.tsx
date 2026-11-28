@@ -6,7 +6,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Spinner, StatusBadge } from "../ui";
 import { Clip } from "../Clip";
-import { soLuong, ngay, ngayGio, ten } from "../../lib/format";
+import { soLuong, ngay, ngayGio, ngayNgan, ten } from "../../lib/format";
+import { DataTable, type Col } from "../DataTable";
 import { EVENT_LABEL, moTaSuKien } from "../../lib/eventLabels";
 import { I } from "../../lib/icons";
 import { BaNgay, NhanNgay } from "../../lib/ngay";
@@ -113,6 +114,79 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
   const chonDuoc = (r: any) => moDong(r) && r.so_luong_con_thieu > 0 && quyen(r).canEditPlan;
   const dong = d.dong.filter((r: any) => !chiMo || (r.trang_thai_eo === "ISSUED" && !["Kết thúc", "Kết thúc sớm", "Đơn trên EO bị hủy"].includes(r.trang_thai_don_hang)));
 
+  // ---- v0.151: cot 4 bang (DataTable) - width theo % de bang vua khung, chu dai cat "…" (re chuot xem du)
+  const colsKho: Col<any>[] = [
+    { key: "kho", header: "Kho", width: "17%", loc: "chon", gt: (k) => k.kho, render: (k) => <span title={k.kho}><Kho t={k.kho} /></span> },
+    { key: "dong", header: "Dòng", width: "6%", align: "right", loc: "so", gt: (k) => k.so_dong, render: (k) => soLuong(k.so_dong) },
+    { key: "dat", header: "SL đặt", width: "8%", align: "right", loc: "so", gt: (k) => k.sl_dat, render: (k) => soLuong(k.sl_dat) },
+    { key: "ve", header: "Đã về (đúng EO)", width: "9%", align: "right", loc: "so", gt: (k) => k.sl_ve, render: (k) => <span style={{ color: "var(--ok-ink)" }}>{soLuong(k.sl_ve)}</span> },
+    { key: "tl", header: "Tỷ lệ đáp ứng", width: "9%", align: "right", loc: "so", gt: (k) => k.ty_le,
+      render: (k) => <b style={{ color: k.ty_le == null ? undefined : k.ty_le >= 90 ? "var(--ok-ink)" : k.ty_le >= 70 ? "var(--warn-ink)" : "var(--danger-ink)" }}>{k.ty_le != null ? `${k.ty_le}%` : "—"}</b> },
+    { key: "thieu", header: "Còn thiếu", width: "8%", align: "right", loc: "so", gt: (k) => k.thieu, render: (k) => <span style={{ fontWeight: k.thieu ? 700 : 400 }}>{soLuong(k.thieu)}</span> },
+    { key: "dk", header: "Dự kiến về tiếp", width: "12%", loc: "ngay", gt: (k) => k.dk ?? "", render: (k) => (k.dk ? ngay(k.dk) : k.thieu ? <span style={{ color: "var(--danger-ink)" }}>Chưa có ngày</span> : "—") },
+    { key: "vgn", header: "Lần về gần nhất (mọi phiếu AMIS)", width: "21%", loc: "ngay", gt: (k) => k.ve?.doc_date ?? "",
+      render: (k) => (k.ve ? <span title={`${ngay(k.ve.doc_date)} · ${soLuong(k.ve.qty_in)} · ${k.ve.doc_no}`}>{ngay(k.ve.doc_date)} · <b>{soLuong(k.ve.qty_in)}</b><span className="muted" style={{ fontSize: 11 }}> · {k.ve.doc_no}</span></span> : <span className="muted">Chưa về</span>) },
+    { key: "toc", header: "Tốc độ TB", width: "10%", align: "right", loc: "so", gt: (k) => k.toc, render: (k) => (k.toc != null ? `${k.toc} ngày` : "—") },
+  ];
+  const colsEo: Col<any>[] = [
+    { key: "act", header: "Thao tác", width: "150px", render: (r) => { const Q = quyen(r); const mo = moDong(r); const t = tdBy.get(r.item_id); return (
+      <span style={{ display: "inline-flex", gap: 2 }} onClick={(e) => e.stopPropagation()}>
+        <button className="btn ghost sm" title="Xem đơn hàng: mã này trong PO này (tiến trình, kế hoạch, lỗi)" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
+        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
+        {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
+        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 700, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
+        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
+      </span>); } },
+    { key: "chon", header: "", width: "30px", render: (r) => (chonDuoc(r) ? <input type="checkbox" checked={chon.has(r.item_id)} onClick={(e) => e.stopPropagation()}
+      onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} /> : null) },
+    { key: "tao", header: "Ngày tạo", width: "70px", loc: "ngay", gt: (r) => String(r.ngay_tao ?? "").slice(0, 10), render: (r) => <span title={ngay(r.ngay_tao)}>{ngayNgan(r.ngay_tao)}</span> },
+    { key: "eo", header: "EO · 3TDO", width: "9%", loc: "chu", gt: (r) => `${r.eo_code} ${r.ma_phe_duyet ?? ""}`, gtSap: (r) => r.eo_code,
+      render: (r) => <span title={`${r.eo_code} · ${r.ma_phe_duyet || "chưa ban hành"}${r.part_code_goc ? ` · ${r.part_code_goc} → ${r.part_code}` : ""}`}><EoLink id={r.eo_id}>{r.eo_code}</EoLink> <span className="muted" style={{ fontSize: 11 }}>{r.ma_phe_duyet || "chưa BH"}</span></span> },
+    { key: "ma", header: "Mã LK trong PO", width: "8%", loc: "chu", gt: (r) => r.part_code, render: (r) => <span title={r.part_code}><DongLink id={r.item_id} ma={r.part_code} /></span> },
+    { key: "tteo", header: "Trạng thái EO", width: "104px", loc: "chon", gt: (r) => r.trang_thai_eo ?? "", render: (r) => <StatusBadge status={r.trang_thai_eo} /> },
+    { key: "kho", header: "Kho · Đối tác", width: "9%", loc: "chu", gt: (r) => `${r.kho ?? ""} ${r.doi_tac ?? ""}`,
+      render: (r) => <span title={`${r.kho ?? ""} · ${r.doi_tac || "—"}`}><Kho t={r.kho} /> <span className="muted" style={{ fontSize: 11 }}>· {r.doi_tac || "—"}</span></span> },
+    { key: "dat", header: "Đặt", width: "48px", align: "right", loc: "so", gt: (r) => r.so_luong_dat, render: (r) => soLuong(r.so_luong_dat) },
+    { key: "ve", header: "Về", width: "48px", align: "right", loc: "so", gt: (r) => r.sl_nhap_amis_dung_eo, render: (r) => <span style={{ color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo)}</span> },
+    { key: "thieu", header: "Thiếu", width: "52px", align: "right", loc: "so", gt: (r) => r.so_luong_con_thieu, render: (r) => <b>{soLuong(r.so_luong_con_thieu)}</b> },
+    { key: "ngay", header: <><NhanNgay k="NM" ngan /> · <NhanNgay k="DK" ngan /> · <NhanNgay k="VE" ngan /></>, width: "112px", wrap: true, loc: "ngay", gt: (r) => r.ngay_du_kien_gan_nhat ?? "",
+      render: (r) => { const t = tdBy.get(r.item_id); return <><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} />
+        {(t?.so_lan_lui ?? 0) > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: t!.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến">lùi {t!.so_lan_lui} lần</div>}</>; } },
+    { key: "tt", header: "Tình trạng đơn", width: "11%", loc: "chon", gt: (r) => r.trang_thai_don_hang ?? "",
+      render: (r) => <span title={[r.trang_thai_don_hang, r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span>
+        {r.canh_bao && <span style={{ fontSize: 10.5, color: "var(--danger-ink)", marginLeft: 4 }}>{r.canh_bao}</span>}</span> },
+    { key: "tien", header: <span title="8 giai đoạn: bấm để xem chi tiết đơn hàng">Tiến trình</span>, width: "128px", wrap: true,
+      render: (r) => { const t = tdBy.get(r.item_id); return <TienTrinhGon r={d.giai_doan?.[r.item_id]} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.item_id)} />; } },
+    { key: "id", header: <span title="ID CRM = mã ca · ID đặt hàng bên app linh kiện">ID case · ID đặt hàng</span>, width: "7%", loc: "chu", gt: (r) => `${r.id_crm ?? ""} ${r.id_dat_hang ?? ""}`,
+      render: (r) => (r.id_crm || r.id_dat_hang ? <span title={`Case ${r.id_crm || "—"} · ĐH ${r.id_dat_hang || "—"}`} style={{ fontSize: 12 }}>{[r.id_crm, r.id_dat_hang].filter(Boolean).join(" · ")}</span> : <span className="muted">—</span>) },
+    { key: "ly", header: "Lý do / ghi chú", width: "6.5%", loc: "chu", gt: (r) => [r.ly_do_ps, r.ghi_chu].filter(Boolean).join(" · "),
+      render: (r) => { const v = [r.ly_do_ps, r.ghi_chu].filter(Boolean).join(" · "); return <span title={v || undefined}>{v || "—"}</span>; } },
+  ];
+  const colsAmis: Col<any>[] = [
+    { key: "ngay", header: "Ngày CT", width: "12%", loc: "ngay", gt: (r) => r.doc_date, render: (r) => <span style={{ opacity: r.voided_at ? 0.45 : 1 }}>{ngay(r.doc_date)}</span> },
+    { key: "so", header: "Số CT", width: "16%", loc: "chu", gt: (r) => r.doc_no, render: (r) => <span title={r.doc_no} style={{ opacity: r.voided_at ? 0.45 : 1 }}>{r.doc_no}</span> },
+    { key: "kho", header: "Kho", width: "22%", loc: "chon", gt: (r) => r.warehouse_name, render: (r) => <span title={r.warehouse_name}><Kho t={r.warehouse_name} /></span> },
+    { key: "sl", header: "SL nhập", width: "9%", align: "right", loc: "so", gt: (r) => r.qty_in, render: (r) => soLuong(r.qty_in) },
+    { key: "mpd", header: "Mã phê duyệt", width: "16%", loc: "chu", gt: (r) => r.approval_code_raw ?? "", render: (r) => <span title={r.approval_code_raw}>{r.approval_code_raw}</span> },
+    { key: "khop", header: "Khớp EO", width: "25%", loc: "chon", gt: (r) => (r.voided_at ? "Đã hủy" : r.eo_id ? "Khớp EO" : r.match_status === "CODE_ONLY_NO_LINE" ? "Có mã, không khớp dòng" : "Không khớp"),
+      render: (r) => (r.voided_at ? <span className="badge nhap">Đã hủy</span> : r.eo_id ? <EoLink id={r.eo_id}>{r.eo_code}</EoLink>
+        : <span className={`badge ${r.match_status === "CODE_ONLY_NO_LINE" ? "final" : "nhap"}`}>{r.match_status === "CODE_ONLY_NO_LINE" ? "Có mã, không khớp dòng" : "Không khớp"}</span>) },
+  ];
+  const colsLoi: Col<any>[] = [
+    { key: "act", header: "Thao tác", width: "96px", render: ({ x: l }) => { const r = d.dong.find((y: any) => y.item_id === l.eo_item_id);
+      return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH" ? <button className="btn sm primary" onClick={(e) => { e.stopPropagation(); setMd({ k: "gt", x: asDong(r) }); }}>Giải trình</button> : null; } },
+    { key: "han", header: "Hạn", width: "15%", loc: "ngay", gt: ({ x: l }) => l.han,
+      render: ({ x: l, ds }) => <span title={ds.length > 1 ? `Các lần: ${ds.map((y: any) => ngayGio(y.han)).join(", ")}` : ngayGio(l.han)}>{ngayGio(l.han)}</span> },
+    { key: "eo", header: "EO", width: "14%", loc: "chu", gt: ({ x: l }) => l.eo_code, render: ({ x: l }) => <EoLink id={l.eo_id}>{l.eo_code}</EoLink> },
+    { key: "qt", header: "Quy tắc", width: "13%", loc: "chon", gt: ({ x: l }) => l.quy_tac,
+      render: ({ x: l, ds }) => <>{l.quy_tac}{ds.length > 1 && <span className="badge final" style={{ marginLeft: 4 }}>× {ds.length} lần</span>}</> },
+    { key: "ai", header: "Ai", width: "22%", loc: "chon", gt: ({ x: l }) => `${l.ai_ma ?? ""}${l.ai_email ? ` (${ten(l.ai_email)})` : ""}`,
+      render: ({ x: l }) => { const v = `${l.ai_ma ?? ""}${l.ai_email ? ` (${ten(l.ai_email)})` : ""}`; return <span title={v}>{v || "—"}</span>; } },
+    { key: "loi", header: "Lỗi", width: "14%", loc: "chon", gt: ({ x: l }) => l.loi_ma ?? "", render: ({ x: l }) => <span title={l.loi_ma}>{l.loi_ma}</span> },
+    { key: "tt", header: "Trạng thái", width: "13%", loc: "chon", gt: ({ x: l }) => (l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"),
+      render: ({ x: l }) => <span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span> },
+  ];
+
   return (
     <>
       <div className="qv-head lk">
@@ -159,97 +233,17 @@ export default function PartQuickView({ ma, po, onClose, onCloseAll, coTruoc }: 
             </div>
           )}
           {err && <div style={{ color: "var(--danger)", fontSize: 12.5, padding: "6px 12px" }}>{err}</div>}
-          <div className="qv-scroll">
-            {tab === "kho" && tk && (
-              <table className="tbl tbl-dense">
-                <thead><tr><th>Kho</th><th style={{ textAlign: "right" }}>Dòng</th><th style={{ textAlign: "right" }}>SL đặt</th><th style={{ textAlign: "right" }}>Đã về (đúng EO)</th>
-                  <th style={{ textAlign: "right" }}>Tỷ lệ đáp ứng</th><th style={{ textAlign: "right" }}>Còn thiếu</th><th>Dự kiến về tiếp</th><th>Lần về gần nhất (mọi phiếu AMIS)</th><th style={{ textAlign: "right" }}>Tốc độ TB</th></tr></thead>
-                <tbody>
-                  {tk.theoKho.length === 0 && <tr><td colSpan={9} className="muted">Chưa có đơn đặt / phiếu nhập cho mã này.</td></tr>}
-                  {tk.theoKho.filter(khopTim(tim)).map((k) => (
-                    <tr key={k.kho}>
-                      <td><Clip w={200}><Kho t={k.kho} /></Clip></td>
-                      <td style={{ textAlign: "right" }}>{soLuong(k.so_dong)}</td>
-                      <td style={{ textAlign: "right" }}>{soLuong(k.sl_dat)}</td>
-                      <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(k.sl_ve)}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: k.ty_le == null ? undefined : k.ty_le >= 90 ? "var(--ok-ink)" : k.ty_le >= 70 ? "var(--warn-ink)" : "var(--danger-ink)" }}>{k.ty_le != null ? `${k.ty_le}%` : "—"}</td>
-                      <td style={{ textAlign: "right", fontWeight: k.thieu ? 700 : 400 }}>{soLuong(k.thieu)}</td>
-                      <td>{k.dk ? ngay(k.dk) : k.thieu ? <span style={{ color: "var(--danger-ink)" }}>Chưa có ngày</span> : "—"}</td>
-                      <td>{k.ve ? <>{ngay(k.ve.doc_date)} · <b>{soLuong(k.ve.qty_in)}</b><span className="muted" style={{ fontSize: 11 }}> · {k.ve.doc_no}</span></> : <span className="muted">Chưa về</span>}</td>
-                      <td style={{ textAlign: "right" }}>{k.toc != null ? `${k.toc} ngày` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tab === "eo" && (
-              <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th><th style={{ width: 28, minWidth: 28 }}></th><th>Ngày tạo</th><th>EO · 3TDO</th><th title="Bấm mã: mở đơn hàng (mã này trong PO này)">Mã LK trong PO</th><th>Trạng thái EO</th><th>Kho · Đối tác</th><th style={{ textAlign: "right" }}>Đặt</th><th style={{ textAlign: "right" }}>Về</th><th style={{ textAlign: "right" }}>Thiếu</th><th><NhanNgay k="NM" ngan /><br /><NhanNgay k="DK" ngan /><br /><NhanNgay k="VE" ngan /></th><th>Tình trạng đơn</th><th title="8 giai đoạn: bấm để xem chi tiết đơn hàng">Tiến trình</th><th title="ID CRM = mã ca · ID đặt hàng bên app linh kiện">ID case · ID đặt hàng</th><th>Lý do / ghi chú</th></tr></thead>
-                <tbody>
-                  {dong.length === 0 && <tr><td colSpan={15} className="muted">{po && locPo ? `PO ${po} không có dòng đặt mang mã này (xem phiếu AMIS / bấm Xem tất cả đơn).` : "Không có dòng."}</td></tr>}
-                  {dong.filter(khopTim(tim)).map((r: any) => {
-                    const Q = quyen(r);
-                    const mo = moDong(r);
-                    const t = tdBy.get(r.item_id);
-                    return (
-                    <tr key={r.item_id}><td className="qv-act">
-                        {/* chuyen sang UI le: ma LK nay trong PO nay (popup don hang) */}
-                        <button className="btn ghost sm" title="Xem đơn hàng: mã này trong PO này (tiến trình, kế hoạch, lỗi)" onClick={() => qv.openDong(r.item_id)}><I.eye width={14} height={14} /></button>
-                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Ngày nhà máy cam kết · dự kiến · hàng về (xem / cập nhật)" onClick={() => setMd({ k: "ndk", x: asDong(r) })}><I.calendar width={14} height={14} /></button>}
-                        {mo && Q.canManage && <button className="btn ghost sm" title="Sửa số lượng / ghi chú / ID CRM" onClick={() => setMd({ k: "qty", x: { id: r.item_id, part_code: r.part_code, current_qty: r.so_luong_dat, ghi_chu: r.ghi_chu, crm_id: r.id_crm, order_id: r.id_dat_hang } })}><I.edit width={14} height={14} /></button>}
-                        {r.trang_thai_eo === "ISSUED" && Q.canEditPlan && <button className="btn ghost sm" title="Giải trình lỗi (Ai + Lỗi gì)" style={{ fontWeight: 700, width: 26, color: t?.so_loi_cho_gt ? "var(--danger)" : undefined }} onClick={() => setMd({ k: "gt", x: asDong(r) })}>!</button>}
-                        {r.trang_thai_eo === "ISSUED" && <button className="btn ghost sm" title="Lịch sử theo dõi (lỗi, giải trình, push, mail)" onClick={() => setMd({ k: "ls", x: asDong(r) })}><I.clock width={14} height={14} /></button>}
-                      </td>
-                      <td>{chonDuoc(r) && <input type="checkbox" checked={chon.has(r.item_id)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(r.item_id)) n.delete(r.item_id); else n.add(r.item_id); return n; })} />}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>{ngay(r.ngay_tao)}</td>
-                      <td style={{ whiteSpace: "nowrap" }}><EoLink id={r.eo_id}>{r.eo_code}</EoLink><div className="muted" style={{ fontSize: 10.5 }}>{r.ma_phe_duyet || "chưa ban hành"}{r.part_code_goc ? ` · ${r.part_code_goc} → ${r.part_code}` : ""}</div></td>
-                      <td style={{ whiteSpace: "nowrap" }}><DongLink id={r.item_id} ma={r.part_code} /></td>
-                      <td><StatusBadge status={r.trang_thai_eo} /></td>
-                      <td><Clip w={140}><Kho t={r.kho} /></Clip><Clip w={140} style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.doi_tac || "—"}</Clip></td>
-                      <td style={{ textAlign: "right" }}>{soLuong(r.so_luong_dat)}</td>
-                      <td style={{ textAlign: "right", color: "var(--ok-ink)" }}>{soLuong(r.sl_nhap_amis_dung_eo)}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>{soLuong(r.so_luong_con_thieu)}</td>
-                      <td><BaNgay nm={t?.ngay_nm_cam_ket} dk={r.ngay_du_kien_gan_nhat} ve={t?.ngay_hang_ve ?? r.ngay_nhap_kho_amis_theo_eo} veDu={r.so_luong_con_thieu <= 0 && r.sl_nhap_amis_dung_eo > 0} />{(t?.so_lan_lui ?? 0) > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: t!.so_lan_lui >= 3 ? "var(--danger-ink)" : "var(--warn-ink)" }} title="Số lần lùi ngày dự kiến">lùi {t!.so_lan_lui} lần</div>}</td>
-                      <td style={{ whiteSpace: "nowrap" }}><span className={`badge ${TRANG_THAI_MAU[r.trang_thai_don_hang] ?? "nhap"}`}>{r.trang_thai_don_hang}</span><Clip w={120} style={{ fontSize: 10.5, color: r.canh_bao ? "var(--danger-ink)" : "var(--text-muted)" }}>{[r.canh_bao, r.toc_do_hang_ve].filter(Boolean).join(" · ")}</Clip></td>
-                      <td><TienTrinhGon r={d.giai_doan?.[r.item_id]} soLoi={t?.so_loi} loiCho={t?.so_loi_cho_gt} onClick={() => qv.openDong(r.item_id)} /></td>
-                      <td style={{ fontSize: 12 }}>{r.id_crm || r.id_dat_hang ? <>{r.id_crm && <div>Case <b>{r.id_crm}</b></div>}{r.id_dat_hang && <div>ĐH <b>{r.id_dat_hang}</b></div>}</> : <span className="muted">—</span>}</td>
-                      <td><Clip w={120}>{[r.ly_do_ps, r.ghi_chu].filter(Boolean).join(" · ") || "—"}</Clip></td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-            {tab === "amis" && (
-              <table className="tbl tbl-dense">
-                <thead><tr><th>Ngày CT</th><th>Số CT</th><th>Kho</th><th style={{ textAlign: "right" }}>SL nhập</th><th>Mã phê duyệt</th><th>Khớp EO</th></tr></thead>
-                <tbody>
-                  {d.phieu_nhap.length === 0 && <tr><td colSpan={6} className="muted">Chưa có phiếu nhập AMIS cho mã này.</td></tr>}
-                  {d.phieu_nhap.filter(khopTim(tim)).map((r: any) => (
-                    <tr key={r.id} style={{ opacity: r.voided_at ? 0.45 : 1 }}>
-                      <td>{ngay(r.doc_date)}</td><td>{r.doc_no}</td><td><Clip w={200}><Kho t={r.warehouse_name} /></Clip></td>
-                      <td style={{ textAlign: "right" }}>{soLuong(r.qty_in)}</td><td>{r.approval_code_raw}</td>
-                      <td>{r.voided_at ? <span className="badge nhap">Đã hủy</span> : r.eo_id ? <EoLink id={r.eo_id}>{r.eo_code}</EoLink>
-                        : <span className={`badge ${r.match_status === "CODE_ONLY_NO_LINE" ? "final" : "nhap"}`}>{r.match_status === "CODE_ONLY_NO_LINE" ? "Có mã, không khớp dòng" : "Không khớp"}</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tab === "loi" && (
-              <table className="tbl tbl-dense">
-                <thead><tr><th className="qv-act">Thao tác</th><th>Hạn</th><th>EO</th><th>Quy tắc</th><th>Ai</th><th>Lỗi</th><th>Trạng thái</th></tr></thead>
-                <tbody>
-                  {d.loi.length === 0 && <tr><td colSpan={7} className="muted">Không có lỗi theo dõi.</td></tr>}
-                  {gopTrung(d.loi.filter(khopTim(tim)) as any[], (l) => `${l.eo_item_id}|${l.quy_tac}|${l.trang_thai}`).map(({ x: l, ds }) => <tr key={l.id} title={ds.length > 1 ? `Các lần: ${ds.map((y: any) => ngayGio(y.han)).join(", ")}` : undefined}><td className="qv-act">{(() => {
-                      const r = d.dong.find((x: any) => x.item_id === l.eo_item_id);
-                      return r && quyen(r).canEditPlan && l.trang_thai === "CHO_GIAI_TRINH"
-                        ? <button className="btn sm primary" onClick={() => setMd({ k: "gt", x: asDong(r) })}>Giải trình</button> : null;
-                    })()}</td><td>{ngayGio(l.han)}</td><td><EoLink id={l.eo_id}>{l.eo_code}</EoLink></td><td>{l.quy_tac}{ds.length > 1 && <span className="badge final" style={{ marginLeft: 4 }}>× {ds.length} lần</span>}</td><td>{l.ai_ma}{l.ai_email ? ` (${ten(l.ai_email)})` : ""}</td><td>{l.loi_ma}</td><td><span className={`badge ${l.trang_thai === "CHO_GIAI_TRINH" ? "reject" : "nhap"}`}>{l.trang_thai === "CHO_GIAI_TRINH" ? "Chờ giải trình" : "Đã giải trình"}</span></td>
-                    </tr>)}
-                </tbody>
-              </table>
-            )}
+          {/* v0.151 (chu he thong "text qua dai thi hien ...; han che keo trai keo phai; trang chia toi da 10 dong; thanh duoi co dinh"):
+              4 bang chuyen sang DataTable dung chung (loc + sap xep kieu Excel), cot theo % (.qv-gon cat "…"), 10 dong / trang, phan trang ghim day (.qv-bang) */}
+          <div className="qv-scroll lk-mode">
+            <div className="qv-bang qv-gon">
+            {tab === "kho" && tk && <DataTable timKiem={false} pageSize={10} rows={tk.theoKho.filter(khopTim(tim))} keyOf={(k: any) => k.kho} empty="Chưa có đơn đặt / phiếu nhập cho mã này." cols={colsKho} />}
+            {tab === "eo" && <DataTable timKiem={false} pageSize={10} minWidth={1000} rows={dong.filter(khopTim(tim))} keyOf={(r: any) => r.item_id} cols={colsEo}
+              empty={po && locPo ? `PO ${po} không có dòng đặt mang mã này (xem phiếu AMIS / bấm Xem tất cả đơn).` : "Không có dòng."} />}
+            {tab === "amis" && <DataTable timKiem={false} pageSize={10} rows={d.phieu_nhap.filter(khopTim(tim))} keyOf={(r: any) => r.id} cols={colsAmis} empty="Chưa có phiếu nhập AMIS cho mã này." />}
+            {tab === "loi" && <DataTable timKiem={false} pageSize={10} rows={gopTrung(d.loi.filter(khopTim(tim)) as any[], (l) => `${l.eo_item_id}|${l.quy_tac}|${l.trang_thai}`)}
+              keyOf={(x: any) => x.x.id} cols={colsLoi} empty="Không có lỗi theo dõi." />}
+            </div>
           </div>
         </div>
 

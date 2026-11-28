@@ -426,9 +426,14 @@ table.tbl tbody tr.r-huy:hover > td, table.tbl tbody tr.r-xong:hover > td, table
 /* v0.150 popup don hang: bang gon vua khung - cot co dinh theo %, chu dai cat "…" (re chuot xem du), 1 dong / hang; bang vi pham cuon trong khung, phan trang ghim day */
 .qv-gon table.tbl { table-layout: fixed; width: 100%; }
 .qv-gon table.tbl tbody tr { height: 34px; }
-.qv-gon table.tbl tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 10px; font-size: 12.5px; }
-.qv-gon table.tbl thead th { white-space: normal !important; overflow: hidden; padding: 8px 10px; }
+.qv-gon table.tbl tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 7px; font-size: 12.5px; }
+.qv-gon table.tbl thead th { white-space: normal !important; overflow: hidden; padding: 8px 7px; min-width: 0; }
 .qv-gon table.tbl thead th > span { flex-wrap: wrap; }
 .qv-gon .clip { max-width: 100% !important; }
 .qv-don-kh { flex: none; max-height: 38%; overflow: auto; padding-bottom: 4px; }
 .qv-don-vp { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0 8px 8px; }
+/* v0.151: khung bang dung chung cho moi tab popup (PO, ma LK): noi dung phu o tren (flex none), bang cuon trong khung, phan trang ghim day */
+.qv-bang { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 8px 12px 10px; }
+.qv-bang > * { flex: none; }
+.qv-bang > .tbl-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.qv-bang > .dt-trang { margin-top: 8px !important; }

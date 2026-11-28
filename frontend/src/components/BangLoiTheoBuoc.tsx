@@ -28,10 +28,13 @@ const NHAN_TT: Record<TT, { l: string; cls: string }> = {
 interface Muc { k: string; buoc: string; ma: string; ten: string; ma_lk: string; so_dong: number; ds_lk: string[]; item_id: number | null; han: string | null; han_gt: string | null; vi_sao: string; tt: TT; chi_tiet: string;
   gt_ai: string; gt_loi: string; gt_nd: string; gt_boi: string | null; gt_luc: string | null }
 
-export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, tim }: {
+const W_GON: Record<string, string> = { buoc: "11%", ma: "9%", ten: "19%", ma_lk: "10%", han: "10%", han_gt: "10%", tt: "11%", gt: "20%", act: "92px" };
+export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, tim, gon }: {
   loi: any[]; giaiTrinh: any[]; rows: any[]; nhieuDong?: boolean; onGiaiTrinh?: (itemId: number, soDong: number) => void;
   /** o tim chung cua popup (thanh tab) - khong truyen thi bang tu co o tim */
   tim?: string;
+  /** v0.151: bang gon trong popup - cot theo % (.qv-gon cat "…"), 10 dong / trang, phan trang ghim day (cha boc .qv-bang) */
+  gon?: boolean;
 }) {
   const dm = useDanhMuc();
   const tenDm = (loai: string, ma: string | null) => (dm.data ?? []).find((x) => x.loai === loai && x.ma === ma)?.ten ?? ma ?? "";
@@ -109,8 +112,9 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, 
         : m.tt === "CHO" ? <span style={{ color: NHAN_GT.CAN_GT.mau, fontSize: 12 }}>Chưa giải trình — còn trong hạn</span> : <span className="muted">—</span> },
     ...(onGiaiTrinh ? [{ key: "act", header: "", render: (m: Muc) => (m.tt === "CHO" && m.item_id ? <button className="btn sm" onClick={(e) => { e.stopPropagation(); onGiaiTrinh(m.item_id!, m.so_dong); }}>{m.so_dong > 1 ? "Giải trình chung" : "Giải trình"}</button> : null) }] : []),
   ];
+  const colsDung = gon ? cols.map((c) => ({ ...c, width: W_GON[c.key] ?? c.width })) : cols;
   return (
-    <div>
+    <>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 8, fontSize: 12 }}>
         <b>Theo bước:</b>
         {tomTat.length === 0 && <span className="muted">không có lỗi / trễ hạn nào</span>}
@@ -122,7 +126,7 @@ export function BangLoiTheoBuoc({ loi, giaiTrinh, rows, nhieuDong, onGiaiTrinh, 
         <span className="muted" style={{ marginLeft: "auto" }} title={`ER.MH-0xx / 1xx: chạm quy tắc → cần giải trình trong ${GIO_HAN_GT} giờ làm việc; hết hạn không giải trình → vi phạm.\nER.MH-2xx: cấp CEO, hệ thống tự tính theo số liệu, không có hạn giải trình.\nER.MH-3xx: trễ hạn bước, chỉ đo.`}>
           0xx/1xx: cần giải trình trong {GIO_HAN_GT}h LV, quá hạn → vi phạm · 2xx: cấp CEO tự tính · 3xx: chỉ đo ⓘ</span>
       </div>
-      <DataTable cols={cols} rows={ds} keyOf={(m) => m.k} pageSize={15} empty="Chưa có lỗi / cảnh báo nào." q={tim} />
-    </div>
+      <DataTable cols={colsDung} rows={ds} keyOf={(m) => m.k} pageSize={gon ? 10 : 15} empty="Chưa có lỗi / cảnh báo nào." q={tim} />
+    </>
   );
 }

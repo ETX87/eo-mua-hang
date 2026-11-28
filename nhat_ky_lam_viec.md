@@ -4,6 +4,20 @@
 > Không ghi tài khoản, mật khẩu, khoá hay mô tả lỗ hổng bảo mật vào file này (repo có thể công khai).
 
 
+## 28/11/2026 — v0.151: Áp bảng gọn (cắt "…", 10 dòng/trang, phân trang ghim đáy) cho popup PO và popup mã LK
+
+- Yêu cầu (nguyên văn): "Áp luôn" (áp kiểu bảng gọn của v0.150 cho popup PO và popup mã LK).
+- Đã làm: CSS `.qv-bang` (khung tab: nội dung phụ ở trên, bảng cuộn trong khung, phân trang ghim đáy) + `.qv-gon` (lề ô 7px).
+  Popup PO: tab Linh kiện cột theo px (ngày/số) + % (chữ), ngày dd/mm/yy (rê chuột ra đủ); tab Kế hoạch (`TabKeHoach gon`) và tab Lỗi
+  (`BangLoiTheoBuoc gon`) 10 dòng/trang, ghim đáy. Popup mã LK: 4 bảng HTML (Theo kho, Lịch sử EO, Phiếu nhập AMIS, Lỗi theo dõi) chuyển sang
+  DataTable dùng chung → thêm lọc + sắp xếp kiểu Excel trên tiêu đề, 10 dòng/trang, ghim đáy. Tab Tài liệu (dạng thẻ) giữ nguyên.
+- 5W1H: Who — mọi người mở popup PO / mã LK. When — xem chi tiết PO, xem mọi đơn của 1 mã. Where — popup PO (Linh kiện, Kế hoạch & hàng về,
+  Lỗi & giải trình), popup mã LK (4 tab). What — bảng vừa khung, chữ dài cắt "…", tối đa 10 dòng/trang, thanh trang luôn ở đáy; popup mã LK có thêm
+  lọc / sắp xếp cột. Why — bảng tràn ngang phải kéo trái phải, bảng dài phải cuộn tìm thanh trang. How — rê chuột ô có "…" xem đủ; bấm tiêu đề cột để
+  sắp xếp, biểu tượng phễu để lọc; chuyển trang ở thanh dưới cùng. Màn hẹp hơn mức tối thiểu (bảng LK 860px, bảng EO của mã 1000px) mới kéo ngang.
+- Kiểm thử: typecheck; local 1600×900 khu Nhật ký mở: popup PO tab Linh kiện / Kế hoạch / Lỗi (13 dòng → 2 trang, thanh ghim đáy) vừa khung;
+  popup mã LK tab Lịch sử EO bề rộng nội dung = bề rộng khung (không kéo ngang), Theo kho vừa khung; không lỗi console.
+
 ## 28/11/2026 — v0.150: Popup đơn hàng — bảng vừa khung (cắt "…"), 10 dòng/trang, phân trang ghim đáy
 
 - Yêu cầu (nguyên văn): "UI chi tiết table, nếu text qua dài thì hiện .... để tối ưu hiện thị đủ cột cho giao diện người dùng. hạn chế việc phải kéo trái kéo phải. trang chia tối đa 10 dòng.
